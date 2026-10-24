@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "name": "Fluent System Icons Regular",
+  "license": "MIT",
+  "source": "https://github.com/microsoft/fluentui-system-icons",
+  "upstreamRevision": "463d58b8186f874ab2f51cf0a08b4ff5097c912f",
+  "upstreamFontSha256": "17e14e952734fa82431212cc16841571d35de9ad787091e099e505e72a42ea14",
+  "upstreamMappingSha256": "c63246542a591de8b79a2fa3d54002d74eca68d7352808af387369ed28596aab",
+  "upstreamFontPath": "fonts/FluentSystemIcons-Regular.ttf",
+  "sha256": "9624a0cedfd13587629f5f89cb4abc4d1726c185734d9fc5d38a723c4262046e",
+  "mappingSha256": "c0d5a47a24f46411c4c3333be08059353f9695deca628e83c9b0edc912958b29",
+  "licenseFile": "FluentSystemIcons-MIT.txt",
+  "licenseSha256": "69bc45dc42b9acb96a69823adbc6ae538374e3c0bde169b855b32c48eaaef52f",
+  "modification": "The Unicode character map is replaced with the application's 80 icon codepoints. Original outlines, metrics and naming tables are unchanged; this is not a Segoe font. Reproduce with scripts/prepare-icon-font.py and the two pinned upstream source files."
+}

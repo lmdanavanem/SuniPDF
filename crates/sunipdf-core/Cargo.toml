@@ -17,6 +17,9 @@ image = { workspace = true }
 thiserror = { workspace = true }
 log = { workspace = true }
 serde_json = { workspace = true }
+serde = { workspace = true }
+base64 = "0.23.1"
+sha2 = "0.11"
 chrono = { workspace = true }
 tempfile = "3"
 zeroize = "1"
@@ -24,8 +27,8 @@ xml-rs = "1.0"
 allsorts = { version = "=0.17.0", default-features = false, features = ["flate2_rust"] }
 
 [target.'cfg(windows)'.dependencies]
-# gpu-allocator 0.28 caps Windows at 0.62.0; share its COM types with wgpu-hal.
-windows = { version = "=0.62.0", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_Registry", "Win32_Storage_FileSystem", "Win32_System_SystemInformation"] }
+# Share Windows COM types with wgpu-hal and gpu-allocator.
+windows = { version = "=0.62.2", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_Registry", "Win32_Storage_FileSystem", "Win32_System_SystemInformation"] }
 
 [dev-dependencies]
 image = { workspace = true }

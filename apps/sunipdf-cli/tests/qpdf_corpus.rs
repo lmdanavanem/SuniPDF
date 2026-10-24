@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::time::{Duration, Instant};
 
+#[cfg(windows)]
 #[path = "../../../crates/sunipdf-core/tests/support/certificate_identity.rs"]
 mod test_identity;
 
@@ -130,6 +131,222 @@ fn check(qpdf: &Path, file: &Path, password: Option<&str>) {
     println!("qpdf OK: {}", file.file_name().unwrap().to_string_lossy());
 }
 
+fn check_annotation_library(
+    qpdf: &Path,
+    source: &Path,
+    directory: &Path,
+    prefix: &str,
+    password: Option<&str>,
+) {
+    let original = std::fs::read(source).unwrap();
+    let library = directory.join(format!("{prefix}-annotation-library.json"));
+    let output = directory.join(format!("{prefix}-library-group.pdf"));
+    std::fs::write(
+        &library,
+        serde_json::to_vec(&serde_json::json!({
+            "format":"sunipdf-annotation-library","version":1,
+            "entries":[{"id":"review","name":"Review group",
+                "provenance":{"author":null,"source":null,"license":null},
+                "primitives":[
+                    {"kind":"stamp","rect":[0,0,100,30],"stamp":"draft"},
+                    {"kind":"stamp","rect":[110,0,210,30],"stamp":"approved"}
+                ]}]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let mut command = cli(&["annotation-library", "place"], &[&library]);
+    command
+        .args(["--id", "review", "--file"])
+        .arg(source)
+        .args(["--page", "1", "--origin", "40,60", "--scale", "1", "--out"])
+        .arg(&output);
+    if let Some(password) = password {
+        command
+            .args(["--password-env", "SUNIPDF_QA_LIBRARY_PASSWORD"])
+            .env("SUNIPDF_QA_LIBRARY_PASSWORD", password);
+    }
+    let result = success(command);
+    assert_eq!(result["count"], 2);
+    assert_eq!(result["source_content_exported"], false);
+    check(qpdf, &output, password);
+    assert_eq!(std::fs::read(source).unwrap(), original);
+}
+
+fn check_quantity_fields(
+    qpdf: &Path,
+    source: &Path,
+    directory: &Path,
+    prefix: &str,
+    password: Option<&str>,
+) {
+    let original = std::fs::read(source).unwrap();
+    let counted = directory.join(format!("{prefix}-quantity-count.pdf"));
+    let priced = directory.join(format!("{prefix}-quantity-price.pdf"));
+    let cleared = directory.join(format!("{prefix}-quantity-cleared.pdf"));
+    let expected = directory.join(format!("{prefix}-quantity-row.json"));
+    let fields = directory.join(format!("{prefix}-quantity-fields.json"));
+    let authenticated = |mut command: Command| {
+        if let Some(password) = password {
+            command
+                .args(["--password-env", "SUNIPDF_QA_QUANTITY_PASSWORD"])
+                .env("SUNIPDF_QA_QUANTITY_PASSWORD", password);
+        }
+        command
+    };
+    let mut command = cli(&["count"], &[source]);
+    command
+        .args(["--group", "Quantity corpus", "--point", "80,80", "--out"])
+        .arg(&counted);
+    success(authenticated(command));
+    check(qpdf, &counted, password);
+    let read = |path: &Path| {
+        let mut command = cli(&["quantity-table"], &[path]);
+        command.args(["--count-group", "Quantity corpus"]);
+        success(authenticated(command))
+    };
+    let report = read(&counted);
+    assert_eq!(report["rows"].as_array().unwrap().len(), 1);
+    std::fs::write(&expected, serde_json::to_vec(&report["rows"][0]).unwrap()).unwrap();
+    std::fs::write(&fields, serde_json::to_vec(&serde_json::json!({
+        "unit_price":{"amount":"12.50","currency":"CHF","per_unit":"each","rounding_decimals":2},
+        "custom":{"Revision":{"type":"number","value":"2"}}
+    })).unwrap()).unwrap();
+    let mut command = cli(&["set-quantity-fields"], &[&counted]);
+    command
+        .args(["--page", "1", "--expected-record"])
+        .arg(&expected)
+        .arg("--fields")
+        .arg(&fields)
+        .arg("--out")
+        .arg(&priced);
+    assert_eq!(
+        success(authenticated(command))["source_content_exported"],
+        false
+    );
+    check(qpdf, &priced, password);
+    let report = read(&priced);
+    assert_eq!(report["rows"][0]["line_total"]["amount"], "12.50");
+    std::fs::write(&expected, serde_json::to_vec(&report["rows"][0]).unwrap()).unwrap();
+    let mut command = cli(&["clear-quantity-fields"], &[&priced]);
+    command
+        .args(["--page", "1", "--expected-record"])
+        .arg(&expected)
+        .arg("--out")
+        .arg(&cleared);
+    assert_eq!(success(authenticated(command))["cleared"], true);
+    check(qpdf, &cleared, password);
+    let cleared_report = read(&cleared);
+    assert_eq!(cleared_report["rows"][0]["quantity"]["value"], 1.0);
+    assert!(cleared_report["rows"][0]["line_total"].is_null());
+    assert_eq!(
+        cleared_report["rows"][0]["register"]["annotation_id"],
+        report["rows"][0]["register"]["annotation_id"]
+    );
+    assert_eq!(std::fs::read(source).unwrap(), original);
+}
+
+fn check_page_calibration(
+    qpdf: &Path,
+    source: &Path,
+    directory: &Path,
+    prefix: &str,
+    password: Option<&str>,
+) {
+    let original = std::fs::read(source).unwrap();
+    let saved = directory.join(format!("{prefix}-page-calibration.pdf"));
+    let measured = directory.join(format!("{prefix}-saved-scale-measurement.pdf"));
+    let removed = directory.join(format!("{prefix}-page-calibration-removed.pdf"));
+    let authenticated = |mut command: Command| {
+        if let Some(password) = password {
+            command
+                .args(["--password-env", "SUNIPDF_QA_CALIBRATION_PASSWORD"])
+                .env("SUNIPDF_QA_CALIBRATION_PASSWORD", password);
+        }
+        command
+    };
+    let mut command = cli(&["set-page-calibration"], &[source]);
+    command
+        .args([
+            "--page",
+            "1",
+            "--calibration",
+            "40,40 140,40",
+            "--known-distance",
+            "10",
+            "--unit",
+            "m",
+            "--out",
+        ])
+        .arg(&saved);
+    assert_eq!(success(authenticated(command))["original_unchanged"], true);
+    check(qpdf, &saved, password);
+    let mut command = cli(&["measure"], &[&saved]);
+    command
+        .args([
+            "--page",
+            "1",
+            "--kind",
+            "length",
+            "--points",
+            "40,80 140,80",
+            "--use-page-calibration",
+            "--unit",
+            "cm",
+            "--out",
+        ])
+        .arg(&measured);
+    assert_eq!(
+        success(authenticated(command))["measurement"]["value"].as_f64(),
+        Some(1000.0)
+    );
+    check(qpdf, &measured, password);
+    let records = success(authenticated(cli(&["measurements"], &[&measured])));
+    let mut command = cli(&["remove-page-calibration"], &[&measured]);
+    command.args(["--page", "1", "--out"]).arg(&removed);
+    assert_eq!(
+        success(authenticated(command))["existing_measurements_changed"],
+        false
+    );
+    check(qpdf, &removed, password);
+    let read = success(authenticated(cli(
+        &["page-calibration", "--page", "1"],
+        &[&removed],
+    )));
+    assert!(read["pages"][0]["calibration"].is_null());
+    assert_eq!(
+        success(authenticated(cli(&["measurements"], &[&removed]))),
+        records
+    );
+    let expected = directory.join(format!("{prefix}-expected-measurement.json"));
+    let record = &records["pages"][0]["measurements"][0];
+    std::fs::write(&expected, serde_json::to_vec(record).unwrap()).unwrap();
+    let edited = directory.join(format!("{prefix}-edited-measurement.pdf"));
+    let mut command = cli(&["edit-measurement"], &[&removed]);
+    command
+        .args(["--page", "1", "--index"])
+        .arg(record["index"].as_u64().unwrap().to_string())
+        .arg("--expected-record")
+        .arg(&expected)
+        .args(["--unit", "ft", "--precision", "3", "--out"])
+        .arg(&edited);
+    let result = success(authenticated(command));
+    assert_eq!(result["original_unchanged"], true);
+    assert_eq!(
+        result["measurement"]["annotation_id"],
+        record["annotation_id"]
+    );
+    assert!((result["measurement"]["value"].as_f64().unwrap() - 10.0 / 0.3048).abs() < 1e-7);
+    check(qpdf, &edited, password);
+    let reread = success(authenticated(cli(&["measurements"], &[&edited])));
+    assert_eq!(reread["pages"][0]["measurements"][0], result["measurement"]);
+    assert_eq!(
+        success(authenticated(cli(&["measurements"], &[&removed]))),
+        records
+    );
+    assert_eq!(std::fs::read(source).unwrap(), original);
+}
+
 #[test]
 #[ignore = "requires the pinned official QPDF QA runtime; executed separately in Windows CI"]
 fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
@@ -197,6 +414,9 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         .all(|page| page["label"].is_null()));
     let original = fixture("two-pages.pdf");
     let original_bytes = std::fs::read(&original).unwrap();
+    check_page_calibration(&qpdf, &original, temp.path(), "plain", None);
+    check_annotation_library(&qpdf, &original, temp.path(), "plain", None);
+    check_quantity_fields(&qpdf, &original, temp.path(), "plain", None);
     let signature_image = temp.path().join("signature.png");
     image::RgbaImage::from_pixel(80, 40, image::Rgba([20, 20, 20, 255]))
         .save(&signature_image)
@@ -333,6 +553,56 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
         assert!(opened.is_object());
         assert_eq!(opened["permissions"]["copy"], false);
         assert_eq!(opened["permissions"]["print"], false);
+        for export in ["measurements", "page-calibration"] {
+            let output = bounded(
+                cli(&[export, "--password", "package-owner"], &[&encrypted]),
+                None,
+            );
+            assert!(!output.status.success());
+            assert!(output.stdout.is_empty());
+            assert_eq!(
+                serde_json::from_slice::<serde_json::Value>(&output.stderr).unwrap()["error"],
+                "security_restricted"
+            );
+        }
+        let measurement_source = temp.path().join(format!("{name}-measurement-source.pdf"));
+        let mut command = cli(&["protect"], &[&original]);
+        command
+            .args([
+                "--user-password",
+                "package-user",
+                "--owner-password",
+                "package-owner",
+                "--no-print",
+                "--out",
+            ])
+            .arg(&measurement_source);
+        if aes128 {
+            command.arg("--aes128");
+        }
+        success(command);
+        check(&qpdf, &measurement_source, Some("package-user"));
+        check_page_calibration(
+            &qpdf,
+            &measurement_source,
+            temp.path(),
+            name,
+            Some("package-owner"),
+        );
+        check_annotation_library(
+            &qpdf,
+            &measurement_source,
+            temp.path(),
+            name,
+            Some("package-owner"),
+        );
+        check_quantity_fields(
+            &qpdf,
+            &measurement_source,
+            temp.path(),
+            name,
+            Some("package-owner"),
+        );
         let preservation_protected = temp.path().join(format!("{name}-preservation-source.pdf"));
         let mut command = cli(&["protect"], &[&preservation_source]);
         command
@@ -790,25 +1060,51 @@ fn synthetic_corpus_and_generated_outputs_pass_independent_structural_checks() {
     assert!(report["words"].as_u64().unwrap() >= 3);
     check(&qpdf, &ocr, None);
 
-    let pfx = temp.path().join("identity.pfx");
-    std::fs::write(&pfx, test_identity::identity()).unwrap();
-    let signed = temp.path().join("signed.pdf");
-    let mut command = cli(&["sign"], &[&original]);
-    command
-        .arg("--certificate")
-        .arg(&pfx)
-        .arg("--certificate-password-stdin")
-        .arg("--out")
-        .arg(&signed);
-    let output = bounded(command, Some(b"test-only\n"));
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    check(&qpdf, &signed, None);
-    let report = success(cli(&["signatures"], &[&signed]));
-    assert_eq!(report["signatures"][0]["status"], "valid");
+    #[cfg(windows)]
+    {
+        let pfx = temp.path().join("identity.pfx");
+        std::fs::write(&pfx, test_identity::identity()).unwrap();
+        let signed = temp.path().join("signed.pdf");
+        let mut command = cli(&["sign"], &[&original]);
+        command
+            .arg("--certificate")
+            .arg(&pfx)
+            .arg("--certificate-password-stdin")
+            .arg("--out")
+            .arg(&signed);
+        let output = bounded(command, Some(b"test-only\n"));
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        check(&qpdf, &signed, None);
+        let report = success(cli(&["signatures"], &[&signed]));
+        assert_eq!(report["signatures"][0]["status"], "valid");
+    }
+
+    #[cfg(not(windows))]
+    {
+        let pfx = temp.path().join("unavailable-identity.pfx");
+        std::fs::write(&pfx, b"unsupported certificate backend test input").unwrap();
+        let signed = temp.path().join("must-not-be-signed.pdf");
+        let mut command = cli(&["sign"], &[&original]);
+        command
+            .arg("--certificate")
+            .arg(pfx)
+            .arg("--certificate-password-stdin")
+            .arg("--out")
+            .arg(&signed);
+        let output = bounded(command, Some(b"private test input\n"));
+        assert!(!output.status.success());
+        let error: serde_json::Value = serde_json::from_slice(&output.stderr).unwrap();
+        assert!(error["message"]
+            .as_str()
+            .unwrap()
+            .contains("unavailable on this platform"));
+        assert!(!String::from_utf8_lossy(&output.stderr).contains("private test input"));
+        assert!(!signed.exists());
+    }
 
     for (name, bytes) in [
         ("empty.pdf", b"".as_slice()),

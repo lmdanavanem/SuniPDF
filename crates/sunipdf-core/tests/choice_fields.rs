@@ -1,10 +1,23 @@
 use std::path::Path;
+use std::sync::{Mutex, OnceLock};
 use sunipdf_core::{
     form_data, security, Engine, FieldKind, FieldOption, FieldValue, FillMode, PointRect,
     Protection,
 };
 
 const PDF: &[u8] = include_bytes!("fixtures/two-pages.pdf");
+
+static SERIAL: Mutex<()> = Mutex::new(());
+static ENGINE: OnceLock<EnginePtr> = OnceLock::new();
+struct EnginePtr(*const Engine);
+// Every access is serialized; PDFium stays initialized for this test process.
+unsafe impl Send for EnginePtr {}
+unsafe impl Sync for EnginePtr {}
+
+fn engine() -> &'static Engine {
+    let ptr = ENGINE.get_or_init(|| EnginePtr(Box::leak(Box::new(Engine::new().unwrap()))));
+    unsafe { &*ptr.0 }
+}
 
 fn options() -> Vec<FieldOption> {
     vec![
@@ -21,7 +34,8 @@ fn options() -> Vec<FieldOption> {
 
 #[test]
 fn choice_fields_fill_reopen_and_interchange_on_cropped_rotated_encrypted_pages() {
-    let engine = Engine::new().unwrap();
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
     for rotation in [0, 90, 180, 270] {
         for encrypted in [false, true] {
             let mut pdf = lopdf::Document::load_mem(PDF).unwrap();
@@ -173,7 +187,8 @@ fn choice_fields_fill_reopen_and_interchange_on_cropped_rotated_encrypted_pages(
 
 #[test]
 fn invalid_choice_creation_keeps_existing_fields() {
-    let engine = Engine::new().unwrap();
+    let _guard = SERIAL.lock().unwrap_or_else(|e| e.into_inner());
+    let engine = engine();
     let mut doc = engine
         .open_bytes(PDF.to_vec(), None, Path::new("choices.pdf"))
         .unwrap();

@@ -1,15 +1,322 @@
 # Changelog
 
-[Français](CHANGELOG.fr.md)
-
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
-`release.yml` builds and publishes the artefacts (portable x64/ARM64 ZIP, x64 MSI) on the GitHub Releases page.
+`release.yml` builds draft release assets (Windows portable x64/ARM64 ZIP, x64 MSI, Ubuntu amd64 DEB); publication follows exact-source and package qualification.
 
 ## [Unreleased]
 
 ### Added
 
-- macOS preview (local build, not published): `scripts/package-macos.sh [--install]` builds an ad hoc signed `SuniPDF.app` with PDFium; same interface, San Francisco text and Fluent UI System Icons mapped onto the Segoe code points; settings and recovery under `~/Library/Application Support/SuniPDF`; PDFs open from the Finder; native menu bar built from the same command registry as the in-app Menu (⌘Q asks about unsaved changes); “Use SuniPDF as Default PDF App” in the SuniPDF menu, checked when it already is; ⌘ shortcut labels, ⌫ deletes, ⌃Tab switches tabs. Printing, certificate signatures, saved visual signatures, OCR, Office conversion and automatic updates remain Windows-only.
+- macOS preview (local build, not published): `scripts/package-macos.sh [--install]` builds an ad hoc signed `SuniPDF.app` with PDFium; same interface with San Francisco text and the bundled icon font; settings and recovery under `~/Library/Application Support/SuniPDF`; PDFs open from the Finder; native menu bar built from the same command registry as the in-app Menu (⌘Q asks about unsaved changes); “Use SuniPDF as Default PDF App” in the SuniPDF menu; ⌘ and ⌃ are distinct shortcut modifiers, ⌘⌫ deletes the page, ⌃Tab switches tabs. Printing, certificate signatures, saved visual signatures, OCR, Office conversion and automatic updates remain unavailable on macOS.
+
+Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.72.0] - 2026-10-24
+
+- Trace one page region from an explicit interior point and manual closures, retaining the actual raster contour and enclosed holes.
+- Preview and explicitly review a calibrated area before creating one editable measurement with one Undo.
+- Refuse leakage, ambiguous topology, excessive geometry, incomplete processing and stale candidates; retain historical generation inputs separately.
+- Provide CLI inspection, a strict review file, a calibrated PNG preview and guarded new-copy output.
+- Keep window closing blocked during plan-link copy saving, including with a clean active document, and retain the committed-copy result.
+- Preserve unsaved plan-set manifests and unapplied metadata when closing the window; finish active saves before quitting and keep failed saves available for retry.
+
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.72.0). Source `23c3f1846f8870b34865266a35ba6bd25753128b`.
+Windows: 1,135 passed, zero failed, 15 ignored; Linux: 1,116 passed, zero failed, 10 ignored. 8,432 assertions across 590 recorded commands in eleven downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.72.0.json).
+AEC-012 is **In progress**; native interaction and broader drawing qualification remain open.
+Raster resolution, threshold and printed-content deductions require review; no physical accuracy claim is made.
+[Workflow and limits](docs/REGION_FILL.md) · [Release scope](docs/RELEASE_0.72.0.md).
+
+## [0.71.0] - 2026-10-24
+
+- Find same-scale visual symbols across selected pages with explicit quarter-turns and similarity settings.
+- Preview proposed matches and create accepted count markers in one undoable batch.
+- Preserve partial-search status, source checks, cancellation and resource limits in desktop and CLI workflows.
+
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.71.0). Source `fe6b6e912152d605e65a5ffb8b106a05007e0a24`.
+Windows: 1,114 passed, 15 ignored; Linux: 1,095 passed, 10 ignored; zero failures. 7,409 assertions across 493 recorded commands in ten downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.71.0.json).
+Native interaction and broader drawing qualification remain open; AEC-011 is **In progress**.
+[Workflow](docs/VISUAL_SEARCH.md) · [Release scope](docs/RELEASE_0.71.0.md).
+
+## [0.70.0] - 2026-10-24
+
+### Quantity fields and revision history
+
+- Declare optional units on numeric custom fields, with consistent column definitions and exact geometric products and quotients within each unit family. Keep missing values, incompatible dimensions and unsupported calculations explicit.
+- Preserve field values and units across PDF saves, quantity reports and workbook refreshes. Version 2 XLSX comparisons include before/after custom fields; existing unitless version 1 data and comparison identities remain compatible.
+- Show computed units in quantity and workbook previews, and retain the existing numeric/text export safeguards.
+
+Publication: [Published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.70.0). Exact source: `3909bfaab7ad0ce1e1b287040187eadf742e3657`.
+
+The local development source passed formatting, strict workspace Clippy and desktop/CLI compilation, with **1,094 tests passed, zero failed and 15 ignored**. The English and French catalogs contain **1,871 matching keys**. The independent units corpus passed **1,992 assertions across 96 commands** (71 development CLI 0.70 commands, four packaged CLI 0.69 compatibility commands and 21 qpdf checks). These results are scoped to the recorded development binaries; they do not qualify a downloaded 0.70 release package.
+
+Qualification: Windows: 1,094 passed, 15 ignored; Linux: 1,075 passed, 10 ignored; zero failures. 7,019 assertions in nine downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.70.0.json).
+
+AEC-007, AEC-018 and AEC-019 remain **In progress**. Native desktop interaction, native spreadsheet interoperability and broader reader qualification remain open. Packages remain unsigned; ARM64 hardware, physical printing, human accessibility and private project plans retain their separate limits. No overall performance improvement, universal interoperability or PDF/A/PDF/UA conformance is claimed.
+
+[Release scope and qualification](docs/RELEASE_0.70.0.md).
+
+## [0.69.0] - 2026-10-24
+
+- Prepare readable PDF, CSV and JSON reports from the exact annotation-register or quantity-table selection. Show quantity and cost summaries, coverage, issue groups and actual style legends, with complete source details in a separate technical appendix. See the [report guide](docs/ISSUE_REPORTS.md).
+- Export quantity workbooks with structured rows, totals, changes and provenance. Review refreshes from a separate manifest using stable annotation identities, preserving missing and ambiguous records for later review. See the [workbook guide](docs/QUANTITY_WORKBOOKS.md).
+
+The report and workbook increments are combined in this release; 0.68 was an intermediate
+development build. Windows: 1,083 passed, 15 ignored; Linux: 1,064 passed, 10 ignored. Eight independent package corpora passed 5,027 assertions across 326 commands. [Qualification evidence](docs/qa/RELEASE_0.69.0.json).
+
+Native desktop interaction and native spreadsheet interoperability remain untested. AEC-018 and
+AEC-019 remain In progress. Packages are unsigned, and the existing ARM64, physical-device,
+accessibility and private-plan qualification limits remain open.
+
+[Release notes and qualification limits](docs/RELEASE_0.69.0.md).
+
+## [0.67.0] - 2026-10-24
+
+- Review exact searchable sheet references against indexed plan destinations and create relative PDF links in a new copy, with ambiguous/missing targets and changed sources refused explicitly.
+- Classify bounded raster differences between an explicit old/new page pair, review each selected decision and write editable revision outlines with source/region provenance in a new PDF copy.
+- Define named rectangular page zones with parent zones, preview deterministic annotation assignments and use shared register/quantity filters with visible boundary, overlap, unknown and stale coverage.
+- Keep zone filters in the compact Filters menu and group coverage and quantities under Totals.
+
+Published as stable Latest after exact-source CI and package qualification. Windows recorded 1,045
+passed / 15 ignored; Linux recorded 1,026 passed / 10 ignored. Portable upgrade checks cover 45
+baselines plus four guards; MSI covers 43 baselines / 215 logs. All eight public assets were verified
+anonymously; the downloaded Windows x64 package passed 238 recorded commands / 3,603 assertions.
+Native interaction with the new
+0.67 plan workflows remains untested. [Release notes and qualification limits](docs/RELEASE_0.67.0.md).
+
+## [0.64.0] - 2026-10-24
+
+- Transfer explicitly selected supported native annotations between confirmed revision pages, with real destination previews, fresh identities, source fingerprints and new-copy output.
+- Filter and naturally sort indexed sheets; group by discipline, revision or source file without changing manifest order or physical-page identity.
+- Preserve revised PDF content, supported encryption and original files; refuse stale sources, unsafe geometry, unsupported semantic records and output collisions.
+- Add published 0.63.0 portable and MSI packages to upgrade regression baselines.
+
+[Release notes and completed qualification](docs/RELEASE_0.64.0.md).
+
+## [0.63.0] - 2026-10-24
+
+Published as stable Latest after exact-source CI and package qualification. Windows: 963 passed / 15 ignored; Linux: 943 passed / 10 ignored. All eight public assets were verified anonymously; the downloaded x64 CLI passed 68 commands / 968 assertions. Portable upgrades cover 43 baselines plus 4 guards; MSI covers 41 baselines / 205 logs. Native development-build checks have their own documented scope.
+
+- Add local plan-set manifests with stable sheet identities, editable metadata, source fingerprints, explicit validation and guarded sheet navigation. Create, refresh, relink and save new manifest copies through the desktop or CLI without modifying source PDFs; preserve unsaved tabs and use passwords only for the requested operation.
+- Export supported form values as FDF and retain typed button appearance-state semantics during import. Bound serialized and expanded input, and refuse ambiguous or unsupported structures before writing.
+- Add polygon area deductions and constant-depth volume measurements, with selectable contours, explicit depth units, gross/deducted/net summaries and guarded Preview/Apply/Undo. Preserve all rings and physical depth through editing, recalibration and reopening.
+- Add cubic quantity units and dimension-safe pricing. Keep historical quantities inactive, reject incompatible prices atomically, and select measurement scales from the outer boundary without joining separate rings.
+- Preserve button appearance states when displaying forms requesting refresh and when importing values repeatedly. Keep appearance writes transactional and preserve signed or restricted source files during display.
+- Keep thin measurement contours visible in small preview images and bring volume/deduction controls closer together.
+
+[Release notes and qualification limits](docs/RELEASE_0.63.0.md).
+
+## [0.62.0] - 2026-10-24
+
+Published as stable Latest with exact-source CI, Windows/Ubuntu packages, upgrade checks and
+anonymous verification of all eight public assets. See the release notes for qualification limits.
+
+- Create a dimensioned rectangle from a displayed-page anchor and real width/height, using local, page, region or automatic calibration. Preview its four-vertex area, apply with one Undo step, save and reopen; the CLI shares the same checks.
+
+- Add formula subtotals for all filtered rows, grouped by formula, selected group, result unit and precision. Sum the rounded row results with checked arithmetic; retain explicit coverage and error counts without inventing a zero when every row fails.
+- Evaluate formula cells once per table refresh or export and reuse them for summaries. Keep typed signed values numeric in CSV while neutralizing spreadsheet formulas in free text.
+- Read document permissions once when building a quantity table and access each annotation without cloning the entire page annotation array. Keep fresh permission and source checks when exporting or applying edits.
+- Preserve version 1 quantity coverage fields and add separate additive, angular and excluded-row counts.
+- Bind new saved measurements to the current page bounds, user unit, decoded content, reachable resources and initial rendering state. Show legacy or changed-page records as historical; retain their points and values while excluding them from usable quantities, costs and quantity-dependent formulas.
+- Require an explicit current reference and Preview/Apply to recalibrate historical lengths and areas; recreate historical angles. Unit, precision, price or custom-field edits cannot restore page provenance. Strengthen saved page scales and named regions, requiring older references to be recalibrated or removed.
+- Reject measurement edits and batch recalibration atomically if the resulting dimension or quantity cannot use the preserved unit price, including pricing overflow. Compatible unit conversions retain the stored price and its explicit price basis.
+- Enforce the CLI's no-overwrite policy at final output creation, including files created while processing; retain command-specific source protections and explicit replacement rules.
+- Make document restoration transactional, retaining the current document and password when loading or refreshing the replacement fails. Refuse certificate signing of encrypted PDFs, including files automatically unlocked with an empty user password.
+- Retain unsaved tab bytes, Undo/Redo history and recovery identity after a failed tab resume, allowing retry. Reload cancelled register work and invalidate obsolete search results and measurement caches.
+- Synchronize page selection, labels, navigation history and scroll destination when an edit completes during tab suspension, including the suspension-failure path.
+- Close measurement editors after successful Apply and keep drafts available after refusal. Keep strong text, active controls and historical-value warnings readable in light and dark themes; format quantity cells without exposing floating-point noise while retaining raw values in tooltips and exports.
+- Add the published 0.61.0 portable and MSI packages to the upgrade-regression baselines.
+
+[Release notes and qualification scope](docs/RELEASE_0.62.0.md).
+
+## [0.61.0] - 2026-10-23
+
+- Sort register custom text fields and typed quantity fields, keeping missing values last.
+- Capture supported saved shape annotations as reusable groups with explicit source attribution, bounded appearance checks and unchanged originals.
+- Calculate bounded quantity report formulas with explicit units, rounding and per-cell errors; reuse JSON configurations and export source-bound CSV/JSON results.
+- Add pinned PDF/A-1b, PDF/A-2b and PDF/UA-1 positive/negative fixtures with independent veraPDF and Poppler checks. Validation applies to the recorded files and operations.
+- Preserve the compression state of XML metadata during lossless optimization, fixing the PDF/A-1 regression exposed by the independent corpus.
+
+[Release notes](docs/RELEASE_0.61.0.md) · [Evidence](docs/qa/RELEASE_0.61.0.json) · [Conformance gate](docs/CONFORMANCE.md).
+
+- Maintain one English documentation set, consolidate current priorities in the roadmap and archive earlier project-status records. Packages include the English user guide; application translations and OCR remain available in English and French.
+
+## [0.60.0] - 2026-10-23
+
+0.60 implements cached page layouts and register views, cooperative page-by-page search/inventory, dockable tables, vector snapping, feet/inches entry, named independent scale regions and atomic batch recalibration with preview and Undo. Private real-project plan qualification is deferred at the owner's request; the remaining 1.0 qualification gates stay open.
+
+[Release notes](docs/RELEASE_0.60.0.md) · [Evidence](docs/qa/RELEASE_0.60.0.json).
+
+## [0.51.0] - 2026-10-23
+
+Install SuniPDF on Ubuntu 22.04 or 24.04 amd64 with the new Debian package: desktop, CLI, private PDFium, local English/French OCR and application-menu entry. Linux settings follow XDG directories; recent paths retain case and recovery sessions use interprocess locks. Update notifications open the Ubuntu download; installation uses the system package manager. Windows packages remain available.
+
+[Release notes](docs/RELEASE_0.51.0.md) · [Evidence](docs/qa/RELEASE_0.51.0.json).
+
+## [0.50.0] - 2026-10-22
+
+Find 18 tools in five searchable families from Tools, with Measurements and the annotation library under Review & measure. Switch one left dock between Tools, Pages and Bookmarks; use four measurement sections on the right. Page and zoom controls sit below the PDF, keep percentages such as 149% on one line and retain reading options in compact layouts. View rotation changes reading orientation only; the right rail opens panels. One context panel occupies the right side. An active measurement draft blocks opening other context panels; explicitly leaving or changing tools cancels that local draft and preserves confirmed scales.
+
+The published 0.49.0 packages join upgrade regressions. Offscreen UI checks and retained CLI regressions remain separate from native qualification.
+
+[Notes and limits](docs/RELEASE_0.50.0.md) · [Evidence](docs/qa/RELEASE_0.50.0.json).
+
+## [0.49.0] - 2026-10-22
+
+Add or remove vertices in saved polylines, perimeters and polygon areas, including closing edges, and select a point by number when handles coincide. Preview, adjust and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields; measured values and compatible price totals recalculate. Stale, invalid and protected edits remain guarded.
+
+The published 0.48.0 packages join upgrade regressions. Insertion and removal sequences cover reopen, preserved data and recalculated quantities; fixed point counts and shape bounds remain guarded.
+
+[Notes and limits](docs/RELEASE_0.49.0.md) · [Evidence](docs/qa/RELEASE_0.49.0.json).
+
+## [0.48.0] - 2026-10-22
+
+Edit existing vertices of a saved measurement directly on its original page, inspect Preview, adjust the draft and Apply with one Undo step. The measurement keeps its own calibration, unit, precision, identity, replies and entered quantity fields. Measured values and compatible price totals follow the accepted geometry; stale, invalid and protected edits remain guarded.
+
+The documentation CI path checks actual packaged guides, links, backlog and evidence without repeating application tests for an eligible documentation-only diff; source, script and workflow changes retain full checks. The published 0.47.0 packages join upgrade regressions.
+
+[Notes and limits](docs/RELEASE_0.48.0.md) · [Evidence](docs/qa/RELEASE_0.48.0.json).
+
+## [0.47.0] - 2026-10-22
+
+Overlay two saved PDF pages in magenta/cyan, align them through explicit translation, clockwise rotation and scale or two corresponding point pairs, then export a new PNG or source-bound JSON report. Both sources must permit copying; exact hashes, cropped/rotated geometry, bounded rasters and fresh-output checks preserve the originals.
+
+[Notes and limits](docs/RELEASE_0.47.0.md) · [Evidence](docs/qa/RELEASE_0.47.0.json).
+
+## [0.46.0] - 2026-10-22
+
+Inspect actual counts and measurements in filtered quantity tables, edit typed fields and explicit unit prices with Undo, and export source-bound CSV/JSON. Totals distinguish missing values from zero, convert compatible price bases and keep currencies separate. Guarded CLI field changes require an expected record and a new PDF copy; copying and annotation permissions remain enforced.
+
+[Notes and limits](docs/RELEASE_0.46.0.md) · [Evidence](docs/qa/RELEASE_0.46.0.json).
+
+## [0.45.0] - 2026-10-22
+
+Save supported local annotation drafts as named templates, combine up to 16 primitives in a flat group, then place a rendered preview at an explicit origin and scale with one Undo step and fresh identities. Strict self-contained JSON supports import, export and removal; CLI placement writes a new PDF copy and preserves encryption and permissions.
+
+[Notes and limits](docs/RELEASE_0.45.0.md) · [Evidence](docs/qa/RELEASE_0.45.0.json).
+
+## [0.44.0] - 2026-10-22
+
+Edit a saved measurement's scale, unit and precision through Preview and Apply while retaining its identity, replies and register data. The CLI also edits geometry in a new copy guarded by an expected record. Measurement exports enforce copying permission; unsafe measured-page resizing is refused atomically. The inspector shares cached records and labels, and temporary scales can be cleared explicitly. No implicit manual calibration is supplied.
+
+[Scope, audit and qualification status](docs/RELEASE_0.44.0.md).
+
+## [0.43.0] - 2026-10-22
+
+Save or remove a page scale explicitly in the PDF with Undo/Redo, inspect the current page's saved measurements, and reuse a non-angle measurement's physical scale for new measurements. Session calibration and existing annotation values remain separate. The CLI reads, writes and removes page defaults in new copies and converts units when using a saved scale.
+
+[Release notes, validation and limits](docs/RELEASE_0.43.0.md).
+
+## [0.42.0] - 2026-10-22
+
+Measurements now has a labelled toolbar button and its own All tools workspace. Calibrate with two page clicks and a confirmed distance, then draw lengths, polylines, perimeters, areas and angles directly on the PDF. Preview and Apply control every insertion; point undo, cancellation and horizontal/vertical constraints support drawing. Each page keeps its session scale across annotation edits and normal tab switches.
+
+[Release notes, validation and limits](docs/RELEASE_0.42.0.md).
+
+## [0.41.0] - 2026-10-21
+
+[0.41.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.41.0) under `lmdanavanem`, source `8e36a4bf2d2396e6cff92cea4fd006c8c964c62f`.
+
+Place persistent count markers directly on local PDF plans, group items, move/delete with Undo, regroup without changing identity and export totals linked to actual markers. The all-page annotation register adds search, named filters, sorting, navigation, business statuses, disciplines and custom text fields, with guarded CSV/JSON exports. Changes refuse stale snapshot targets and preserve originals and annotation permissions. Pinned test-only Pillow 13.0.0 replaces the vulnerable QA dependency. Published 0.40.0 packages join upgrade regressions. Shared annotation writers now enforce PDF annotation permission for moves, deletion, replies and other annotation edits; register exports also refuse incomplete page inventories or malformed count identities.
+
+PR #16 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.41.0.md).
+
+## [0.40.0] - 2026-10-21
+
+[0.40.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.40.0) under `lmdanavanem`, source `5e2d2705411b2b82d7f03bf78c0217ce49f261b5`.
+
+Local length, polyline, perimeter, simple-polygon area and angle annotations with explicit two-point calibration, metric/decimal imperial units, precision and JSON records. Each measurement embeds its own scale and geometry; preview/Undo and copy-only CLI output preserve originals. Image Stamp annotations embed aspect-fitted pixels and alpha. Text watermarks/numbering now preflight all pages and refuse invalid margins or overflow atomically. Published 0.39.0 packages join upgrade regressions. The local feature backlog prioritises plan workflows.
+
+PR #14 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.40.0.md).
+
+## [0.39.0] - 2026-10-20
+
+[0.39.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.39.0) under `lmdanavanem`, source `24e3dcd0978fd74fb63d1c43aa8e668f5774fe04`.
+
+Named local presets for text/image watermarks, page numbers and six-zone headers/footers. Choose to load a draft, save under a unique name or delete explicitly. Atomic writes preserve active preferences on failure; malformed preset entries do not reset other valid settings. Page scope stays explicit and image files remain path references. Published 0.38.0 packages join migration regression. Office version probes run headlessly with a cancellable 30-second cold-start bound; conversion and security guards remain enforced.
+
+PR #13 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.39.0.md).
+
+## [0.38.0] - 2026-10-20
+
+[0.38.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.38.0) under `lmdanavanem`, source `82a231fe6e423023030e099780d9a55aeebac72f`.
+
+Six header/footer zones through Page numbers and the headers-footers CLI command. Absolute page/count placeholders, margins, size and selected pages respect displayed rotation/crop coordinates. Overflow is refused atomically; allowed encryption and copy-only CLI guards remain. Published 0.37.0 packages join migration regression.
+
+PR #12 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.38.0.md).
+
+## [0.37.0] - 2026-10-20
+
+[0.37.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.37.0) under `lmdanavanem`, source `e206f6b8d7e7fe61101005ad86e1d26c40a8e448`.
+
+Image watermarks in Pages and the CLI: transparency, proportional width, angle, seven positions and margins. Rotated/cropped pages fit on both axes. Atomic selected-page edits, one desktop Undo and copy-only CLI output preserve allowed encryption. Published 0.36.0 packages join upgrade baselines.
+
+PR #11 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.37.0.md).
+
+## [0.36.0] - 2026-10-20
+
+[0.36.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.36.0) under `lmdanavanem`, source `1c48cf33db3d77c728dd6ed556ff357d55a84bbb`.
+
+Configurable keyboard shortcuts in Help and the palette: filter, assign, conflict refusal, disable and restore. Cancellable drafts, atomic preferences and consistent labels. Text input and reserved keys are preserved; published 0.35.0 packages join upgrade baselines.
+
+PR #10 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.36.0.md).
+
+## [0.35.0] - 2026-10-20
+
+[0.35.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.35.0) under `lmdanavanem`, source `aab39beaffa88a7a970441f647498920e432bf27`.
+
+Visual signatures: optional drawn-stroke smoothing, paper-shadow reduction and the `prepare-signature-image` PNG command. Previews bind to prepared pixels; original points and source files are retained, with explicit drawing budgets. Published 0.34.0 packages join the upgrade baselines.
+
+PR #9 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.35.0.md).
+
+## [0.34.0] - 2026-10-20
+
+[0.34.0 published as stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.34.0) under `lmdanavanem`, source `521618f4aab6cd17f7f829bc739bb3f7a93c9c5e`.
+
+Inspect the saved PDF from Properties and the `inspect` JSON command: seven declaration categories, source SHA256, explicit partial results, encrypted input and stale-reply refusal. The saved-revision guard hashes disk bytes in chunks.
+
+PR #8 merged after exact-head CI/CodeQL.
+
+[Release notes, validation and limits](docs/RELEASE_0.34.0.md).
+
+## [0.33.0] - 2026-10-20
+
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.33.0) under `lmdanavanem`, release `417802490`, immutable source `c5dcd31cd1b93b601b3e1d0e28a98e99400f48cb`.
+
+Preserve imported PDF 2.0 bookmarks containing tabs/line breaks while retaining strict new-title validation. Integrate egui/eframe 0.37 together and fix Back/Forward position after destination zoom changes. Add seven pinned licensed PDF Association examples, 64 bounded PDF/CMS mutations, executable guard controls and command measurements. The public 0.32.0 becomes an additional upgrade baseline.
+
+PR #4, #5, #7 merged; #6 incorporated through #7 and closed.
+
+[Release notes, validation and limits](docs/RELEASE_0.33.0.md).
+
+## [0.32.0] - 2026-10-19
+
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.32.0) under `lmdanavanem`, release `417623635`, immutable source `8c492db35f1712648d5472593146077230befb7c`.
+
+Drag one object or the selected group in the Objects panel, with an insertion line, page-cache/context guards, Escape and one Undo step. New `reorder-objects` JSON command shares the explicit final destination, relative order, permission, atomic-save and password safeguards.
+
+[Release notes, validation and limits](docs/RELEASE_0.32.0.md).
+
+## [0.31.0] - 2026-10-19
+
+Published as [stable Latest](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.31.0) under `lmdanavanem`, release `417463135`, immutable source `362c7f3979533000e454769e48a8cfbd4084dc0d`.
+
+Local comparison of two saved PDFs (text, geometry and previews), explicit physical alignment and stale-preview refusal. Literal search across selected files, excerpts/page navigation, progress, cancellation and explicit partial results. New `compare` and `search-files` JSON commands; EN/FR interface.
+
+[Release notes, validation and limits](docs/RELEASE_0.31.0.md).
 
 ## [0.30.0] - 2026-10-17
 
@@ -498,7 +805,7 @@ Advanced annotations, new visual identity and open-source release preparation.
   actions are never run.
 - **Reply threads and review statuses** in the Comments panel (indented replies, status Accepted / Rejected /
   Cancelled / Completed, remembered author, date, thread deletion), written according to the PDF standard (display
-  in Acrobat / Foxit not verified).
+  in other PDF readers not verified).
 - CLI: `annotations`, `annotate` (`ink`, `square`, `circle`, `line`, `arrow`, `freetext`, `link`), `reply`,
   `review-state`, `annotation-delete` (41 commands).
 - Fixture `annotated.pdf` (12 annotations from several producers); 40 more tests (207 in total).
@@ -645,7 +952,6 @@ AcroForm forms (the "fill" half), AES-256 encryption and normalized passwords, d
 
 Backlog wave 1, delivered in slices with independent review: "All tools" hub, advanced content editing,
 continuous view, then fixes from the adversarial review and hardened distribution.
-
 
 ### Added (continuous view, SUNI-012b)
 - **Continuous scrolling**: all pages stacked in a single scroll area (default mode); **Single Page** remains

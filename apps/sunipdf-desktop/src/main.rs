@@ -2,8 +2,11 @@
 
 mod annot_adv;
 mod annotate;
+mod annotation_library;
+mod annotation_register;
 mod annotation_rich;
 mod app;
+mod boundary_fill_ui;
 mod brand;
 mod certificate;
 mod dialog;
@@ -14,32 +17,62 @@ mod form_builder;
 mod forms;
 mod icons;
 mod inline_text;
+mod issue_report_ui;
+mod library_store;
+mod local_review;
 #[cfg(target_os = "macos")]
 mod mac_menu;
 #[cfg(target_os = "macos")]
 mod mac_open;
+#[cfg(test)]
+mod measure_integration_tests;
+mod measure_tools;
+mod measurement_area_ui;
+mod measurement_geometry;
+mod measurement_saved;
+mod measurement_scales_ui;
+mod measurement_shapes_ui;
 mod objects;
 mod ocr;
 mod office;
 mod organize;
 mod pagesetup;
+mod plan_links_ui;
+mod plan_set_view;
+mod plan_sets;
+mod plan_zones_ui;
 mod printing;
 mod processing;
+mod quantity_table;
+mod quantity_workbook_ui;
+mod reader_layout;
+#[cfg(all(test, windows))]
+mod reader_ui_evidence;
 mod reading;
 mod recovery;
 mod redact;
+mod revision_outlines_ui;
+mod revision_overlay;
+mod revision_transfer_ui;
 mod settings;
 mod shell;
+mod shortcut_defaults;
+mod shortcuts;
 mod sign;
+mod stamp_presets;
 mod tabs;
 mod theme;
+mod tool_hub;
 mod tools;
 mod updater;
 mod view;
+mod visual_search_ui;
 mod worker;
 mod workspace;
+mod workspace_table;
 
 fn main() -> eframe::Result<()> {
+    initialize_dll_search().map_err(|error| eframe::Error::AppCreation(Box::new(error)))?;
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     // Chemins absolus dès l'entrée : fichiers récents et titres ne dépendent pas du dossier courant.
     let initial_files: Vec<std::path::PathBuf> = std::env::args_os()
@@ -65,6 +98,20 @@ fn main() -> eframe::Result<()> {
         options,
         Box::new(move |cc| Ok(Box::new(app::SuniApp::new(cc, initial_files)))),
     )
+}
+
+fn initialize_dll_search() -> std::io::Result<()> {
+    #[cfg(windows)]
+    {
+        use windows_sys::Win32::System::LibraryLoader::{
+            SetDefaultDllDirectories, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS,
+        };
+        // Remove the working directory and PATH before any runtime library is loaded.
+        if unsafe { SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS) } == 0 {
+            return Err(std::io::Error::last_os_error());
+        }
+    }
+    Ok(())
 }
 
 fn renderer(requested: Option<&str>) -> eframe::Renderer {

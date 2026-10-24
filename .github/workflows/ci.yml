@@ -6,54 +6,120 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Classify exact documentation change
+        id: changes
+        run: python .\scripts\ci-docs.py classify
+      - name: Documentation CI boundary regression
+        run: |
+          python .\scripts\test-ci-docs.py
+          if ($LASTEXITCODE -ne 0) { throw 'Documentation CI boundary regression failed.' }
+          python .\scripts\package-guides.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged guide regression failed.' }
+      - name: Validate actual packaged guides and documentation
+        run: |
+          python .\scripts\ci-docs.py validate | Tee-Object -FilePath target/ci-docs-validation.json
+          if ($LASTEXITCODE -ne 0) { throw 'Repository documentation validation failed.' }
+      - name: Documentation validation evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: documentation-validation-evidence
+          path: |
+            target/ci-docs-changes.json
+            target/ci-docs-validation.json
+          if-no-files-found: ignore
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        if: steps.changes.outputs.docs_only != 'true'
         with:
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        if: steps.changes.outputs.docs_only != 'true'
         with:
           cache-on-failure: true
       - name: Cache pinned offline OCR runtime
+        if: steps.changes.outputs.docs_only != 'true'
         id: ocr_runtime
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: third_party/ocr/win-x64
           key: windows-ocr-x64-${{ hashFiles('scripts/fetch-ocr.ps1') }}
       - name: PDFium (x64)
+        if: steps.changes.outputs.docs_only != 'true'
         run: .\scripts\fetch-pdfium.ps1 -Arch x64
       - name: Offline OCR (x64, including English and French)
+        if: steps.changes.outputs.docs_only != 'true'
         run: .\scripts\fetch-ocr.ps1 -Arch x64
       - name: Save verified OCR build before application checks
-        if: steps.ocr_runtime.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+        if: steps.changes.outputs.docs_only != 'true' && steps.ocr_runtime.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: third_party/ocr/win-x64
           key: windows-ocr-x64-${{ hashFiles('scripts/fetch-ocr.ps1') }}
       - name: Translation catalog parity
+        if: steps.changes.outputs.docs_only != 'true'
         run: .\scripts\check-i18n.ps1
+      - name: Packaged documentation links
+        if: steps.changes.outputs.docs_only != 'true'
+        run: python .\scripts\package-guides.py --self-test
+      - name: WiX download checksum guard self-test
+        if: steps.changes.outputs.docs_only != 'true'
+        run: .\scripts\package-msi.ps1 -SelfTest
       - name: Format
+        if: steps.changes.outputs.docs_only != 'true'
         run: cargo fmt --all -- --check
       - name: Clippy
+        if: steps.changes.outputs.docs_only != 'true'
         run: cargo clippy --workspace --all-targets --locked --keep-going -j 2 -- -D warnings
       - name: Tests
+        if: steps.changes.outputs.docs_only != 'true'
         id: workspace_tests
         run: |
           cargo test --workspace --locked -j 2 --no-fail-fast 2>&1 | Tee-Object -FilePath target/workspace-tests.log
           if ($LASTEXITCODE -ne 0) { throw 'Workspace tests failed.' }
+      - name: Bounded layout and register performance evidence
+        if: steps.changes.outputs.docs_only != 'true' && steps.workspace_tests.outcome == 'success'
+        run: |
+          python .\scripts\run-performance-evidence.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Performance evidence boundary tests failed.' }
+          python .\scripts\run-performance-evidence.py
+          if ($LASTEXITCODE -ne 0) { throw 'Performance evidence failed.' }
+      - name: Performance measurement evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: performance-windows-x64
+          path: target/performance-evidence/
+          if-no-files-found: warn
+      - name: Reader interface layout and DX12 software rendering
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        run: .\scripts\run-reader-ui-evidence.ps1
+      - name: Reader interface evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: reader-ui-evidence
+          path: target/reader-ui-evidence/
+          if-no-files-found: error
       - name: Pinned independent font reader
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: |
           .\scripts\fetch-test-mupdf.ps1
           python .\scripts\test-font-reader.py --mutool target/test-mupdf/1.28.5/mutool.exe --directory target/font-embedding-evidence
           if ($LASTEXITCODE -ne 0) { throw 'Independent font reader regression failed.' }
       - name: Independent font reader evidence
-        if: always()
-        uses: actions/upload-artifact@v7
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: font-independent-reader-evidence
           path: |
@@ -62,30 +128,30 @@ jobs:
             target/font-embedding-evidence/
           if-no-files-found: ignore
       - name: Native DX12 software renderer and texture limits
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\run-built-ci-test.ps1 -TestName native_wgpu
       - name: Native renderer evidence
-        if: always()
-        uses: actions/upload-artifact@v7
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: native-wgpu-evidence
           path: target/native-wgpu-evidence/
           if-no-files-found: ignore
       - name: Pinned independent QPDF checker
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\fetch-qpdf.ps1
       - name: Independent feature-reader checker self-test
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: python .\scripts\test-feature-reader.py --self-test
       - name: Rich annotation and document structure independent readers
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: |
           .\scripts\fetch-test-mupdf.ps1
           python .\scripts\test-feature-reader.py
           if ($LASTEXITCODE -ne 0) { throw 'Independent feature reader regression failed.' }
       - name: Independent feature reader evidence
-        if: always()
-        uses: actions/upload-artifact@v7
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: feature-independent-reader-evidence
           path: |
@@ -93,22 +159,47 @@ jobs:
             target/feature-030-evidence/
           if-no-files-found: ignore
       - name: QPDF archive checksum self-test
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\fetch-qpdf.ps1 -SelfTest
       - name: Synthetic corpus and generated PDF structural checks
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\run-built-ci-test.ps1 -TestName qpdf_corpus
       - name: Real corpus checksum self-test
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\fetch-regression-corpus.ps1 -SelfTest
       - name: Pinned licensed real PDF corpus
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\fetch-regression-corpus.ps1
       - name: Real PDFs and independent output regression
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\run-built-ci-test.ps1 -TestName real_corpus
+      - name: Pinned PDF 2.0 interoperability corpus
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        run: |
+          .\scripts\fetch-regression-corpus.ps1 -Interop -SelfTest
+          .\scripts\fetch-regression-corpus.ps1 -Interop
+      - name: PDF 2.0 text, pixels, annotations and immutable sources
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        run: .\scripts\run-built-ci-test.ps1 -TestName interop_corpus
+      - name: Interoperability and bounded mutation evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: interoperability-and-mutation-evidence
+          path: |
+            target/interop-corpus-report.json
+            target/adversarial-corpus-report.json
+          if-no-files-found: error
+      - name: Restore pinned Office MSI only
+        id: office_installer_cache
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: target/test-office-installer/installer.msi
+          key: windows-x64-office-msi-v1-${{ hashFiles('scripts/test-libreoffice.json', 'scripts/fetch-test-libreoffice.ps1') }}
       - name: Pinned local Office converter on disposable runner
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        id: office_converter
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         run: |
           pwsh -NoProfile -File .\scripts\fetch-test-libreoffice.ps1 -SelfTest
           if ($LASTEXITCODE -ne 0) { throw 'Office converter setup self-test failed.' }
@@ -116,8 +207,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Office converter installation failed.' }
           $proof = Get-Content -Raw target/office-converter-provenance.json | ConvertFrom-Json
           if ($proof.source_revision -ne $env:GITHUB_SHA -or -not (Test-Path -LiteralPath $proof.installed_path)) { throw 'Installed Office converter provenance is missing or invalid.' }
+      - name: Save verified pinned Office MSI only
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.office_converter.outcome == 'success' && steps.office_installer_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: target/test-office-installer/installer.msi
+          key: ${{ steps.office_installer_cache.outputs.cache-primary-key }}
       - name: Measured licensed Office exports and local converter profiles
-        if: always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
         env:
           SUNIPDF_REQUIRE_OFFICE_CONVERTER: '1'
         run: |
@@ -125,8 +222,8 @@ jobs:
           .\scripts\run-built-ci-test.ps1 -TestName office_fidelity_corpus
           if ($LASTEXITCODE -ne 0) { throw 'Office regression failed.' }
       - name: Office regression evidence
-        if: always()
-        uses: actions/upload-artifact@v7
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: office-regression-evidence
           path: |
@@ -134,32 +231,93 @@ jobs:
             target/office-converter-provenance.json
           if-no-files-found: ignore
       - name: Real corpus regression evidence
-        if: always()
-        uses: actions/upload-artifact@v7
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: real-corpus-evidence
           path: target/regression-corpus-report.json
           if-no-files-found: ignore
       - name: Update helper checks
+        if: steps.changes.outputs.docs_only != 'true'
         run: .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
       - name: "Portable x64 package (including licenses and notices)"
+        if: steps.changes.outputs.docs_only != 'true' && github.event_name != 'pull_request'
         run: .\scripts\package-portable.ps1 -Arch x64
+      - name: Select executable for CLI regressions
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          if ($env:GITHUB_EVENT_NAME -eq 'pull_request') {
+            cargo build -p sunipdf-cli --locked -j 2
+            if ($LASTEXITCODE -ne 0) { throw 'Pull request CLI build failed.' }
+            $cli = Join-Path (Get-Location) 'target/debug/sunipdf-cli.exe'
+          } else {
+            $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+            $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          }
+          if (-not (Test-Path -LiteralPath $cli -PathType Leaf)) { throw 'Regression CLI is missing.' }
+          "SUNIPDF_QA_CLI=$cli" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: PDF inspection regression
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          python .\scripts\test-pdf-inspection.py --cli "$env:SUNIPDF_QA_CLI" --report target\pdf-inspection-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'PDF inspection regression failed.' }
+      - name: PDF inspection evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: pdf-inspection-evidence
+          path: target/pdf-inspection-report.json
+          if-no-files-found: ignore
+      - name: Visual signature preparation regression
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r scripts/qa-image-requirements.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned test-only image reader installation failed.' }
+          python .\scripts\test-signature-preparation.py --cli "$env:SUNIPDF_QA_CLI" --report target\visual-signature-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'Visual signature preparation failed.' }
+      - name: Visual signature preparation evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: visual-signature-evidence
+          path: target/visual-signature-report.json
+          if-no-files-found: ignore
+      - name: Page decorations regression
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          python .\scripts\test-page-decorations.py --cli "$env:SUNIPDF_QA_CLI" --report target\page-decorations-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'Page decorations failed.' }
+      - name: Page decorations evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: page-decoration-evidence
+          path: target/page-decorations-report.json
+          if-no-files-found: ignore
+      - name: Release native-library loading boundary
+        if: steps.changes.outputs.docs_only != 'true' && github.event_name != 'pull_request'
+        run: .\scripts\test-release-native-loading.ps1
       - name: Test-only software OpenGL checksum self-test
+        if: steps.changes.outputs.docs_only != 'true'
         run: .\scripts\fetch-test-opengl.ps1 -SelfTest
       - name: Test-only software OpenGL for the isolated application
+        if: steps.changes.outputs.docs_only != 'true' && github.event_name != 'pull_request'
         run: .\scripts\fetch-test-opengl.ps1
       - name: Real isolated portable upgrades, rollback and close cancellation
+        if: steps.changes.outputs.docs_only != 'true' && github.event_name != 'pull_request'
         run: .\scripts\test-portable-update.ps1 -Package (Get-ChildItem dist\*-win-x64-portable.zip | Select-Object -First 1 -ExpandProperty FullName)
       - name: Portable update regression evidence
-        if: always()
-        uses: actions/upload-artifact@v7
+        if: steps.changes.outputs.docs_only != 'true' && always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: portable-update-evidence
           path: target/portable-update-*.json
           if-no-files-found: ignore
       - name: MSI x64 package
+        if: steps.changes.outputs.docs_only != 'true' && github.event_name != 'pull_request'
         run: .\scripts\package-msi.ps1 -Arch x64
       - name: Real MSI installation and upgrade on disposable runner
+        if: steps.changes.outputs.docs_only != 'true' && github.event_name != 'pull_request'
         run: |
           $msi = Get-ChildItem dist\*.msi | Select-Object -First 1 -ExpandProperty FullName
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.8.0
@@ -177,14 +335,48 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.20.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.21.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.21.1
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.30.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.30.1
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.31.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.32.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.33.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.34.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.35.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.36.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.37.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.38.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.39.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.40.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.41.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.42.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.43.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.44.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.45.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.46.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.47.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.48.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.49.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.50.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.51.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.60.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.61.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.62.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.63.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.64.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.67.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.69.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.70.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.71.0
       - name: MSI upgrade regression evidence
-        if: always()
-        uses: actions/upload-artifact@v7
+        if: steps.changes.outputs.docs_only != 'true' && always() && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: msi-upgrade-evidence
           path: target/msi-upgrade-*/*.log
           if-no-files-found: ignore
-      - uses: actions/upload-artifact@v7
+      - name: Qualified Windows packages
+        if: steps.changes.outputs.docs_only != 'true' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: sunipdf-win-x64-portable
           path: |

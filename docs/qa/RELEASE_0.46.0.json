@@ -1,0 +1,492 @@
+{
+  "version": "0.46.0",
+  "source": "3e6763964d6b06f004a09fd7473ddf5bb4a6417f",
+  "tag": "v0.46.0",
+  "release_id": 420401213,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.46.0",
+  "published_at": "2026-10-22T07:36:27Z",
+  "verified_at": "2026-10-22T07:39:02.0652398Z",
+  "author": "lmdanavanem",
+  "stable_latest_verified": true,
+  "workflows": [
+    {
+      "name": "ci",
+      "id": 39738061382,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061382",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 119688354369,
+          "name": "windows",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061382/job/119688354369"
+        }
+      ]
+    },
+    {
+      "name": "release",
+      "id": 39738073755,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39738073755",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 119688391709,
+          "name": "build (arm64)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39738073755/job/119688391709"
+        },
+        {
+          "id": 119688392422,
+          "name": "build (x64)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39738073755/job/119688392422"
+        },
+        {
+          "id": 119699792199,
+          "name": "publish",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39738073755/job/119699792199"
+        }
+      ]
+    },
+    {
+      "name": "codeql",
+      "id": 39738061664,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061664",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 119688360653,
+          "name": "Analyze (rust)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061664/job/119688360653"
+        },
+        {
+          "id": 119688360913,
+          "name": "Analyze (actions)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061664/job/119688360913"
+        },
+        {
+          "id": 119688360919,
+          "name": "Analyze (python)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39738061664/job/119688360919"
+        }
+      ]
+    }
+  ],
+  "qualification": {
+    "tests": {
+      "passed": 732,
+      "failed": 0,
+      "ignored": 10
+    },
+    "portable": {
+      "scenarios": 38,
+      "upgrades": 34,
+      "guards": 4
+    },
+    "msi": {
+      "baselines": 32,
+      "logs": 160
+    },
+    "i18n": 1348,
+    "open_code_scanning_alerts": 0
+  },
+  "assets": [
+    {
+      "id": 665059432,
+      "name": "SuniPDF-0.46.0-win-arm64-portable.zip",
+      "size": 26302089,
+      "sha256": "3543236107d1a0021797e840fec8cd529e6058d4f3196ea456c3d381c9133194",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 665059433,
+      "name": "SuniPDF-0.46.0-win-arm64-portable.zip.sha256",
+      "size": 105,
+      "sha256": "29ddc18c11112ad23a1efd968e67dbdc2b649d92d0a5382c3d0891691673f318",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 665059426,
+      "name": "SuniPDF-0.46.0-win-x64-portable.zip",
+      "size": 28066181,
+      "sha256": "1bc8a9880905e6b18421f9083928220ec74b9e419cdbd106f8c0699347ad6c79",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 665059425,
+      "name": "SuniPDF-0.46.0-win-x64-portable.zip.sha256",
+      "size": 103,
+      "sha256": "fec43c6edbad0dc988e3ea8bfb8dbc0a7f448140624a8c94abc3dd28adc9236e",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 665059430,
+      "name": "SuniPDF-0.46.0-win-x64.msi",
+      "size": 25980928,
+      "sha256": "1a41ad4823ea8048c23c33b5419bc8023dbb192e67dc6f822a5fbc2d0e86fbb6",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 665059427,
+      "name": "SuniPDF-0.46.0-win-x64.msi.sha256",
+      "size": 94,
+      "sha256": "c17d268aa6a2b5f318155e876305f9e08560356bee5672ff4e41e45c7e92505c",
+      "public_unauthenticated": true
+    }
+  ],
+  "zip_metadata": [
+    {
+      "architecture": "x64",
+      "product_version": "0.46.0",
+      "entries": 60,
+      "expanded_bytes": 94303970
+    },
+    {
+      "architecture": "arm64",
+      "product_version": "0.46.0",
+      "entries": 60,
+      "expanded_bytes": 86420207
+    }
+  ],
+  "msi_metadata": {
+    "ProductLanguage": "1033",
+    "ProductVersion": "0.46.0",
+    "ProductName": "SuniPDF"
+  },
+  "public_verification": {
+    "public_unauthenticated": true,
+    "gui_version": "0.46.0",
+    "cli_version": "sunipdf-cli 0.46.0",
+    "cli_sha256": "c85fb26846df2ced56b3f95aeadf81c1b6038ce602311006f1d1dc4935b9bf2e",
+    "cli_calls": 32,
+    "expected_cli_calls": 32,
+    "command_scenarios": [
+      "version",
+      "quantity-help",
+      "quantity-fields-help",
+      "create-count",
+      "create-measurement",
+      "read-initial-table",
+      "set-quantity-fields",
+      "read-priced-table",
+      "export-csv",
+      "filter-and-group",
+      "export-json",
+      "set-explicit-zero-price",
+      "read-zero-versus-missing",
+      "read-measurement-record",
+      "convert-measurement-unit",
+      "read-converted-cost",
+      "clear-quantity-fields",
+      "read-cleared-table",
+      "reject-stale-row",
+      "reject-existing-pdf",
+      "reject-existing-csv",
+      "reject-invalid-fields",
+      "protect-no-copy-aes256",
+      "read-protected-permissions",
+      "reject-user-copy-export",
+      "reject-owner-copy-export",
+      "edit-no-copy-without-export",
+      "read-preserved-permissions",
+      "protect-no-annotate-aes128",
+      "reject-user-annotation-edit",
+      "reject-owner-annotation-edit",
+      "empty-filter-is-not-missing-data"
+    ],
+    "cli_results": [
+      {
+        "scenario": "version",
+        "command": "--version",
+        "exit_code": 0,
+        "stdout_sha256": "7bd4c4431f324a75c3bec3798a5d55faa1602044c81111abe493e9c98810dd51",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "quantity-help",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "566909a92d00697e8bf28dd069f4812d257a0f5f3a51f0ec55ab6c28795f9369",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "quantity-fields-help",
+        "command": "set-quantity-fields",
+        "exit_code": 0,
+        "stdout_sha256": "dfb7e856408603ff638bc327caf97b64b440c2e652c26e1b251e0891f146981c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "create-count",
+        "command": "count",
+        "exit_code": 0,
+        "stdout_sha256": "661099e297624025791238d201e1278250b88091b776df6352049ed082b2df92",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "create-measurement",
+        "command": "measure",
+        "exit_code": 0,
+        "stdout_sha256": "88ffb15d46a96f6c7cf42bbf60955d3f276d6b56af9208268d697b1efec0661f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-initial-table",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "6832fc0f9decd9676a235e5f6d5a0b99869a56318cc5add8baa3c7ffd29cb75c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "set-quantity-fields",
+        "command": "set-quantity-fields",
+        "exit_code": 0,
+        "stdout_sha256": "70f2fc1b67879b94f68b2c19565c568132f86c6a2ce00190f10cceda096099e9",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-priced-table",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "9c650f84d3a875e37182d79d43fe33bf7424811db9a05b6d2113a79710e42e2d",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "export-csv",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "bb848a5b0e4acc2a9032c132896fc8dc087741c6291dac3f01e1f9ba2e80190a",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "filter-and-group",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "736974c7bef77d8ab17f310bd71abb310ffcb544fa1a0ccfb03e3a47ecc7c997",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "export-json",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "49cb28c82b64b64704746961f320caeaac6b28e150122c2dfb7b9e0abc0a67a6",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "set-explicit-zero-price",
+        "command": "set-quantity-fields",
+        "exit_code": 0,
+        "stdout_sha256": "e4c679e1e444c3d545be302840c4c5290ef867616b9cf40e4ab1d9306edcda6f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-zero-versus-missing",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "fe47634ae04ec65c34ecd53b21f31ad2a56b3ca9d9833009cec81c009465cf6b",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-measurement-record",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "d90826fa959ce0668f89c44e3252aadcfb6c565db6b3d0db3dc37852b537648e",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "convert-measurement-unit",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "2767b8acf24157a8f3c416c47a20e5a176cb63bff375c41291de755e299c139c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-converted-cost",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "ef3d0ea48802db829ec0ff0af964c649e82c3de091552fd9f38d58f9d7263b33",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "clear-quantity-fields",
+        "command": "clear-quantity-fields",
+        "exit_code": 0,
+        "stdout_sha256": "110952a852b731083099d852198726215d93e89556e7c999532fc9711c801e80",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-cleared-table",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "ef3ee36cdcf88375e288453a118c3306a23f18c58e7406dad38b720cd3f021ea",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "reject-stale-row",
+        "command": "set-quantity-fields",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "8e4a20070498537ebccab001d723160579c79efedb036eb1c4470f0d3522136a"
+      },
+      {
+        "scenario": "reject-existing-pdf",
+        "command": "set-quantity-fields",
+        "exit_code": 6,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "d19e6242d3b265c0f94779c945bb925482ea7dd3a25fbfdcfa494f36b8e529b9"
+      },
+      {
+        "scenario": "reject-existing-csv",
+        "command": "quantity-table",
+        "exit_code": 6,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "156b96b0bdcd48304c9f615467f4cc411e75778cd5fbb7aee9360746af721c3d"
+      },
+      {
+        "scenario": "reject-invalid-fields",
+        "command": "set-quantity-fields",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "73ed9d33c9f9e69f64bddd103c1eba56bb0d26d2dc6edb8f8f998ef994d4899f"
+      },
+      {
+        "scenario": "protect-no-copy-aes256",
+        "command": "protect",
+        "exit_code": 0,
+        "stdout_sha256": "fadca4c9a36896ec3bff72ee67f97e45fb2d20c61bf85e63111efccdac8dc296",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-protected-permissions",
+        "command": "properties",
+        "exit_code": 0,
+        "stdout_sha256": "3018405e39cc8299cb8713bbddf6c3f37f93e365362b0400fc1688657eb0913c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "reject-user-copy-export",
+        "command": "quantity-table",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "ef621b585df45bbaba1c994e4bce14771aa7286f30250598dcc950c6400bf9d8"
+      },
+      {
+        "scenario": "reject-owner-copy-export",
+        "command": "quantity-table",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "ef621b585df45bbaba1c994e4bce14771aa7286f30250598dcc950c6400bf9d8"
+      },
+      {
+        "scenario": "edit-no-copy-without-export",
+        "command": "set-quantity-fields",
+        "exit_code": 0,
+        "stdout_sha256": "1e080517d2859f3b21e74a397eef39c33298b0d028ef13497624bf7e55b5e92b",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-preserved-permissions",
+        "command": "properties",
+        "exit_code": 0,
+        "stdout_sha256": "259ad6d88f251c400b91c7d9732c786d5e23722b6c39d1e3327e668a52b2ac5f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "protect-no-annotate-aes128",
+        "command": "protect",
+        "exit_code": 0,
+        "stdout_sha256": "9a40dedbdb641936e9762ac49e37406d44c060816e865893069fe1f8fe5a3385",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "reject-user-annotation-edit",
+        "command": "set-quantity-fields",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "8e4a20070498537ebccab001d723160579c79efedb036eb1c4470f0d3522136a"
+      },
+      {
+        "scenario": "reject-owner-annotation-edit",
+        "command": "set-quantity-fields",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "8e4a20070498537ebccab001d723160579c79efedb036eb1c4470f0d3522136a"
+      },
+      {
+        "scenario": "empty-filter-is-not-missing-data",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "3a99e091fa8c53c62f7984e8d1757a0d8e9cbdc3940589377f90135242048830",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "feature": "quantity_table",
+    "features": {
+      "quantity_schema": true,
+      "count_and_measurement_verified": true,
+      "typed_fields_round_trip": true,
+      "exact_line_cost": true,
+      "source_identity_in_exports": true,
+      "filters_and_grouping_reproduced": true,
+      "csv_formula_guard": true,
+      "json_export_readback": true,
+      "zero_distinct_from_missing": true,
+      "unit_conversion_preserves_price_basis": true,
+      "clear_preserves_quantity": true,
+      "annotation_identity_preserved": true,
+      "stale_edit_refused": true,
+      "existing_pdf_refused": true,
+      "existing_csv_refused": true,
+      "invalid_fields_refused": true,
+      "aes256_copy_guard_user_owner": true,
+      "aes128_annotation_guard_user_owner": true,
+      "encrypted_edit_without_content_export": true,
+      "encryption_permissions_preserved": true,
+      "source_files_unchanged": true,
+      "empty_filtered_table_verified": true
+    },
+    "quantity_schema": "sunipdf-quantity-table",
+    "quantity_version": 1,
+    "dist_verified": true,
+    "saved_reopened": true,
+    "original_unchanged": true
+  },
+  "dist_copies_verified": true,
+  "pr_integration": "PR_INTEGRATION_0.46.0.json",
+  "aec_card_count": 24,
+  "aec_status": {
+    "AEC-001": "In progress",
+    "AEC-002": "In progress",
+    "AEC-003": "In progress",
+    "AEC-004": "In progress",
+    "AEC-005": "Done",
+    "AEC-006": "In progress",
+    "AEC-007": "In progress",
+    "AEC-008": "Planned",
+    "AEC-009": "Planned",
+    "AEC-010": "Planned",
+    "AEC-011": "Planned",
+    "AEC-012": "Planned",
+    "AEC-013": "Planned",
+    "AEC-014": "Planned",
+    "AEC-015": "Planned",
+    "AEC-016": "Planned",
+    "AEC-017": "Planned",
+    "AEC-018": "Planned",
+    "AEC-019": "Planned",
+    "AEC-022": "Planned",
+    "AEC-023": "Planned",
+    "AEC-024": "Planned",
+    "AEC-025": "Planned",
+    "AEC-026": "In progress"
+  },
+  "limits": [
+    "Public smoke checks did not install the app or qualify native GUI interaction or ARM64 execution.",
+    "Windows packages remain unsigned; no independent publication key is configured.",
+    "Arbitrary formulas, tax calculation, currency exchange, automatic symbol recognition, cross-document aggregation and the remaining full estimating acceptance criteria stay open. Angles are visible but excluded from additive quantities and pricing. Packages remain unsigned; native ARM64, accessibility and hardware qualification remain open."
+  ]
+}

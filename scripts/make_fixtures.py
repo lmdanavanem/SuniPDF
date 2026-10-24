@@ -107,7 +107,7 @@ def boxes(path):
 
 def annotated(path):
     """Annotations de plusieurs producteurs (indices 0..11 de la page 1, dans cet ordre) :
-    0 Square (Acrobat, /AP, /T Alice) · 1 Ink (/AP) · 2 FreeText (/AP) · 3 Highlight (sans /AP) ·
+    0 Square (external editor, /AP, /T Alice) · 1 Ink (/AP) · 2 FreeText (/AP) · 3 Highlight (sans /AP) ·
     4 Text note (/Popup 19) · 5 Text réponse (IRT 4, /T Bob, UTF-16BE) · 6 Text état (IRT 4, Review/Accepted) ·
     7 Link URI · 8 Square sans /AP (entre deux liens) · 9 Link /Dest page 2 · 10 Link Launch · 11 Popup (parent 4).
     Page 2 : 792x612. Aucune annotation n'a de /NM SuniPDF."""

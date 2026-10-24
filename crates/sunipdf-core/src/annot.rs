@@ -276,7 +276,7 @@ impl Document<'_> {
         // Les boîtes de caractères de PDFium sont en espace utilisateur.
         let geo = geometry_of(&page)?;
         let text = page.text()?;
-        // ponytail: parcours de tous les caractères de la page (précis, O(n)) plutôt que
+        // parcours de tous les caractères de la page (précis, O(n)) plutôt que
         // `chars_inside_rect`, imprécis sur les bords.
         let (l, r) = (rect.left.min(rect.right), rect.left.max(rect.right));
         let (b, t) = (rect.bottom.min(rect.top), rect.bottom.max(rect.top));
@@ -328,6 +328,7 @@ impl Document<'_> {
         rects: &[PointRect],
         rgb: (u8, u8, u8),
     ) -> Result<(), EngineError> {
+        self.require_annotation_permission()?;
         if rects.is_empty() {
             return Err(EngineError::Other("empty selection".into()));
         }
@@ -373,6 +374,7 @@ impl Document<'_> {
         y: f32,
         text: &str,
     ) -> Result<(), EngineError> {
+        self.require_annotation_permission()?;
         let mut page = self.page_handle(page_index)?;
         let geo = geometry_of(&page)?;
         let mut note = page.annotations_mut().create_text_annotation(text)?;
@@ -432,6 +434,7 @@ impl Document<'_> {
         page_index: usize,
         index: usize,
     ) -> Result<(), EngineError> {
+        self.require_annotation_permission()?;
         let mut page = self.page_handle(page_index)?;
         {
             let annotations = page.annotations_mut();

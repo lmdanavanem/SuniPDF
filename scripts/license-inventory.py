@@ -17,6 +17,7 @@ import zipfile
 
 INVENTORY = 'licenses/dependency-inventory.json'
 TEXTS = 'licenses/dependency-licenses.txt'
+REPORT_FONTS = ('NotoSansJP-Regular.otf', 'Ubuntu-Light.ttf')
 LEGAL_NAME = re.compile(r'(?i)^(licen[cs]e|copying|copyright|notice|unlicense)([._-]|$)')
 # The pinned PDFium 7881 FreeType notice contains a literal Latin-1 copyright sign.
 # Its original bytes remain in the package; only the combined UTF-8 text is decoded.
@@ -74,7 +75,7 @@ def windows_ids(metadata):
     return selected
 
 
-def rust_inventory(root, metadata, target_metadata):
+def rust_inventory(root, metadata, target_metadata, distribution='Windows'):
     locked = tomllib.loads((root / 'Cargo.lock').read_text(encoding='utf-8'))['package']
     by_key = {(p['name'], p['version'], p.get('source') or ''): p for p in metadata['packages']}
     overrides = {(p['name'], p['version']): p for p in read_json(root / 'assets/licenses/upstream-sources.json')['packages']}
@@ -163,18 +164,114 @@ def rust_inventory(root, metadata, target_metadata):
         selected_targets = sorted(arch for arch, ids in active.items() if package['id'] in ids)
         unavailable = override.get('unavailable') if override else None
         if (not evidence or unavailable) and selected_targets:
-            raise ValueError(f'Full license text unavailable for Windows distribution: {key[0]} {key[1]}')
+            raise ValueError(f'Full license text unavailable for {distribution} distribution: {key[0]} {key[1]}')
         packages.append({
             'name': key[0], 'version': key[1], 'source': lock.get('source', 'workspace'),
             'archiveSha256': lock.get('checksum'), 'repository': package.get('repository'),
             'declaredLicense': license_expression, 'licenseFile': Path(package['license_file']).name if package.get('license_file') else None,
-            'windowsNormalOrBuildTargets': selected_targets,
+            ('windowsNormalOrBuildTargets' if distribution == 'Windows' else 'linuxNormalOrBuildTargets'): selected_targets,
             'texts': sorted(evidence, key=lambda item: (item['source'], item['textSha256'])),
             'unavailable': unavailable if unavailable else (None if evidence else 'No full license text in the resolved source'),
             'distributionChoice': override.get('distribution_choice') if override else None,
             'sourceRevisionNotice': override.get('upstream_revision_unavailable') if override else None,
         })
     return packages, texts
+
+
+LINUX_DOC = 'usr/share/doc/sunipdf'
+LINUX_INVENTORY = LINUX_DOC + '/licenses/dependency-inventory.json'
+
+
+def linux_payload(stage):
+    files = {}
+    for path in sorted(stage.rglob('*')):
+        if path.is_symlink():
+            raise ValueError('Linked Linux package resource is not allowed')
+        if path.is_file():
+            relative = path.relative_to(stage).as_posix()
+            if relative != LINUX_INVENTORY and not relative.startswith('DEBIAN/'):
+                files[relative] = {'sha256': digest(path.read_bytes()), 'bytes': path.stat().st_size}
+    return files
+
+
+def verify_linux(stage):
+    inventory = read_json(stage / LINUX_INVENTORY)
+    if inventory.get('platform') != 'linux' or inventory.get('architecture') != 'amd64':
+        raise ValueError('Unexpected Linux inventory platform or architecture')
+    if linux_payload(stage) != inventory['payloadFiles']:
+        raise ValueError('Linux package payload or notice checksum differs')
+    return inventory
+
+
+def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version, cargo_version):
+    packages, texts = rust_inventory(root, metadata, {'x86_64-unknown-linux-gnu': target_metadata}, 'Linux')
+    notices = stage / LINUX_DOC / 'licenses'
+    notices.mkdir(parents=True, exist_ok=True)
+    components = []
+    icon_font = portable_icon_inventory(root, stage, texts, LINUX_DOC + '/licenses')
+    report_fonts = report_font_inventory(root, stage, texts, LINUX_DOC + '/licenses')
+
+    def include(source, filename, component):
+        destination = notices / filename
+        destination.write_bytes(source.read_bytes())
+        content = legal_text(destination)
+        text_id = digest(content.encode('utf-8'))
+        relative = destination.relative_to(stage).as_posix()
+        texts.setdefault(text_id, {'text': content, 'sources': set()})['sources'].add(relative)
+        component.setdefault('texts', []).append({'path': relative, 'textSha256': text_id})
+
+    pdfium_root = root / 'third_party/pdfium/linux-x64'
+    library = stage / 'usr/lib/sunipdf/libpdfium.so'
+    if digest(library.read_bytes()) != 'f728930966f503652b92acc89b9374a2eeca00ce42e26dccd3e4b5c5161b2d64':
+        raise ValueError('Linux PDFium binary differs from the pinned distribution')
+    if (pdfium_root / 'VERSION').read_text().splitlines() != ['MAJOR=151', 'MINOR=0', 'BUILD=7881', 'PATCH=0']:
+        raise ValueError('Unexpected Linux PDFium version')
+    native = read_json(root / 'assets/licenses/native-components.json')['pdfium']
+    originals = {path.name: path for path in (pdfium_root / 'licenses').iterdir() if path.is_file()}
+    originals['pdfium-binaries-MIT.txt'] = pdfium_root / 'LICENSE'
+    if set(originals) != {name for component in native['components'] for name in component['files']}:
+        raise ValueError('Linux PDFium legal notice set differs from the reviewed inventory')
+    for component in native['components']:
+        entry = dict(component, scope='usr/lib/sunipdf/libpdfium.so')
+        for filename in component['files']:
+            include(originals[filename], filename, entry)
+        components.append(entry)
+    for name in ('LICENSE-MIT', 'LICENSE-APACHE'):
+        entry = {'name': 'SuniPDF ' + name, 'scope': 'Application'}
+        include(root / name, name, entry)
+        components.append(entry)
+    for kind, version_file, legal_files in (
+        ('Rust', rust_version, [('share/doc/rust/COPYRIGHT-library.html', 'rust-standard-library.html'), ('share/doc/rust/COPYRIGHT.html', 'rust-build-toolchain.html')]),
+        ('Cargo', cargo_version, [('share/doc/cargo/' + name, 'cargo-' + name + '.txt') for name in ('LICENSE-MIT', 'LICENSE-APACHE', 'LICENSE-THIRD-PARTY')]),
+    ):
+        version = read_plain_text(version_file).strip()
+        revision = re.search(r'^commit-hash: ([0-9a-f]{40})$', version, re.M)
+        if not revision:
+            raise ValueError('Actual Linux toolchain revision is unavailable: ' + kind)
+        entry = {'name': kind, 'revision': revision[1], 'scope': 'Rust standard library and build-tool notices; compiler tools are not shipped'}
+        for relative, filename in legal_files:
+            include(sysroot / relative, filename, entry)
+        (notices / (kind.lower() + '-toolchain.txt')).write_text(version + '\n', encoding='utf-8')
+        components.append(entry)
+    body = ('SuniPDF Linux locked-source license and notice texts\n\n'
+            'OR denotes alternatives; AND denotes cumulative terms. Original expressions and full terms are retained.\n'
+            'Other-platform and build/development sources are included for completeness; target membership is recorded separately.\n\n')
+    body += '\n'.join(f"{package['name']} {package['version']} | {package['declaredLicense']} | {package['source']}" for package in packages) + '\n'
+    for text_id, entry in sorted(texts.items()):
+        body += '\n' + '=' * 78 + '\nSHA256 (LF-normalized text): ' + text_id + '\n' + '\n'.join(sorted(entry['sources'])) + '\n\n' + entry['text'].rstrip('\n') + '\n'
+    (notices / 'dependency-licenses.txt').write_text(body, encoding='utf-8', newline='\n')
+    inventory = {
+        'schema': 1, 'platform': 'linux', 'architecture': 'amd64',
+        'cargoLockSha256': digest((root / 'Cargo.lock').read_bytes()),
+        'coverage': 'All locked source license terms, Linux normal/build membership, bundled PDFium and fonts; system dependencies are installed by apt, not bundled',
+        'rustPackages': packages, 'nativeAndPackagingComponents': components,
+        'embeddedFontSources': font_inventory(metadata) + [icon_font] + report_fonts,
+        'systemDependencies': [{'name': name, 'bundled': False, 'noticePath': '/usr/share/doc/' + name + '/copyright'} for name in ('tesseract-ocr', 'tesseract-ocr-eng', 'tesseract-ocr-fra')],
+        'texts': [{'sha256': key, 'sources': sorted(value['sources'])} for key, value in sorted(texts.items())],
+        'payloadFiles': linux_payload(stage),
+    }
+    (stage / LINUX_INVENTORY).write_text(json.dumps(inventory, indent=2, ensure_ascii=False) + '\n', encoding='utf-8', newline='\n')
+    return verify_linux(stage)
 
 
 def machine(path):
@@ -355,12 +452,9 @@ def toolchain_inventory(root, stage, arch, texts, sysroot, rust_version, cargo_v
     return components
 
 
-def generate(root, stage, arch, metadata, target_metadata, sysroot, rust_version, cargo_version):
-    packages, texts = rust_inventory(root, metadata, target_metadata)
-    components = bundled_inventory(root, stage, arch, texts)
-    components.extend(toolchain_inventory(root, stage, arch, texts, sysroot, rust_version, cargo_version))
+def font_inventory(metadata):
     fonts = []
-    font_licenses = {'Ubuntu-Light.ttf': ('Ubuntu-font-1.0', 'UFL.txt'), 'Hack-Regular.ttf': ('MIT AND Bitstream-Vera', 'Hack-Regular.txt'), 'NotoEmoji-Regular.ttf': ('OFL-1.1', 'OFL.txt'), 'emoji-icon-font.ttf': ('MIT', 'emoji-icon-font-mit-license.txt')}
+    font_licenses = {'Ubuntu-Light.ttf': ('Ubuntu-font-1.0', 'UFL.txt'), 'Hack-Regular.ttf': ('MIT AND Bitstream-Vera', 'Hack-Regular.txt'), 'NotoEmoji-Regular.ttf': ('OFL-1.1', 'OFL.txt'), 'emoji-icon-font.ttf': ('MIT', 'emoji-icon-font-mit-license.txt'), 'egui-icons.ttf': ('MIT', 'emoji-icon-font-mit-license.txt')}
     for package in metadata['packages']:
         if package['name'] != 'epaint_default_fonts':
             continue
@@ -368,14 +462,74 @@ def generate(root, stage, arch, metadata, target_metadata, sysroot, rust_version
         if {path.name for path in directory.glob('*.ttf')} != set(font_licenses):
             raise ValueError('Default font source set differs from the reviewed inventory')
         for filename, (license_expression, notice) in sorted(font_licenses.items()):
-            fonts.append({'name': filename, 'version': 'epaint_default_fonts ' + package['version'], 'sha256': digest((directory / filename).read_bytes()), 'license': license_expression, 'noticeSource': 'epaint_default_fonts@' + package['version'] + '/fonts/' + notice, 'scope': 'Desktop default-font source; notices retained even if a font is optimized out of the executable'})
+            legal_text(inside(directory / notice, directory))
+            entry = {'name': filename, 'version': 'epaint_default_fonts ' + package['version'], 'sha256': digest((directory / filename).read_bytes()), 'license': license_expression, 'noticeSource': 'epaint_default_fonts@' + package['version'] + '/fonts/' + notice, 'scope': 'Desktop default-font source; notices retained even if a font is optimized out of the executable'}
+            if filename == 'egui-icons.ttf':
+                legal_text(inside(directory / 'egui-icons.txt', directory))
+                entry['modificationNoticeSource'] = 'epaint_default_fonts@' + package['version'] + '/fonts/egui-icons.txt'
+            fonts.append(entry)
+    return fonts
+
+
+def portable_icon_inventory(root, stage, texts, relative_notices='licenses'):
+    subprocess.check_output([sys.executable, str(root / 'scripts/prepare-icon-font.py')], text=True)
+    directory = root / 'assets/fonts'
+    entry = read_json(directory / 'icon-provenance.json')
+    notices = stage / relative_notices
+    notices.mkdir(parents=True, exist_ok=True)
+    for name in ('FluentSystemIcons-MIT.txt', 'icon-provenance.json', 'icon-map.json'):
+        (notices / name).write_bytes((directory / name).read_bytes())
+    license_path = notices / entry['licenseFile']
+    content = legal_text(license_path)
+    text_id = digest(content.encode('utf-8'))
+    source = license_path.relative_to(stage).as_posix()
+    texts.setdefault(text_id, {'text': content, 'sources': set()})['sources'].add(source)
+    return dict(entry, scope='Portable desktop toolbar icon font embedded in every desktop binary',
+                texts=[{'textSha256': text_id, 'source': source}],
+                provenance=(notices / 'icon-provenance.json').relative_to(stage).as_posix())
+
+
+def report_font_inventory(root, stage, texts, relative_notices='licenses'):
+    directory = root / 'crates/sunipdf-core/tests/fixtures/fonts'
+    provenance = read_json(directory / 'source-provenance.json')
+    notices = inside(stage / relative_notices, stage)
+    notices.mkdir(parents=True, exist_ok=True)
+    fonts = []
+    for filename in REPORT_FONTS:
+        evidence = provenance[filename]
+        font = inside(directory / filename, directory)
+        if digest(font.read_bytes()) != evidence['sha256']:
+            raise ValueError('Embedded report font differs from its reviewed source: ' + filename)
+        license_path = inside(directory / evidence['licenseFile'], directory)
+        if digest(license_path.read_bytes()) != evidence['licenseSha256']:
+            raise ValueError('Embedded report font terms differ: ' + filename)
+        content = legal_text(license_path)
+        target = notices / ('report-font-' + license_path.name)
+        target.write_bytes(license_path.read_bytes())
+        text_id = digest(content.encode('utf-8'))
+        source = target.relative_to(stage).as_posix()
+        texts.setdefault(text_id, {'text': content, 'sources': set()})['sources'].add(source)
+        fonts.append(dict(evidence, name=filename,
+                          scope='Original font source embedded in the shared report renderer for desktop and CLI',
+                          texts=[{'textSha256': text_id, 'source': source}]))
+    return fonts
+
+
+def generate(root, stage, arch, metadata, target_metadata, sysroot, rust_version, cargo_version):
+    packages, texts = rust_inventory(root, metadata, target_metadata)
+    components = bundled_inventory(root, stage, arch, texts)
+    components.extend(toolchain_inventory(root, stage, arch, texts, sysroot, rust_version, cargo_version))
+    fonts = font_inventory(metadata) + [portable_icon_inventory(root, stage, texts)] + report_font_inventory(root, stage, texts)
     fixture_root = root / 'crates/sunipdf-core/tests/fixtures/fonts'
     test_fonts = []
     for filename, evidence in sorted(read_json(fixture_root / 'source-provenance.json').items()):
         font = inside(fixture_root / filename, fixture_root)
         if digest(font.read_bytes()) != evidence['sha256']:
             raise ValueError('Licensed font fixture differs from its reviewed source: ' + filename)
-        entry = dict(evidence, name=filename, scope='Development regression fixture only; font file is not shipped in product packages')
+        scope = ('Regression fixture also embedded in the shared report renderer; see embeddedFontSources'
+                 if filename in REPORT_FONTS else
+                 'Development regression fixture only; font file is not shipped in product packages')
+        entry = dict(evidence, name=filename, scope=scope)
         entry['texts'] = []
         for key in ('licenseFile', 'noticeFile'):
             if key not in evidence:
@@ -450,6 +604,75 @@ def record_wix(stage, provenance):
 
 
 class InventoryTests(unittest.TestCase):
+    def test_report_fonts_ship_original_terms_in_windows_and_linux_packages(self):
+        root = Path(__file__).resolve().parents[1]
+        source = root / 'crates/sunipdf-core/tests/fixtures/fonts'
+        for destination in ('licenses', LINUX_DOC + '/licenses'):
+            with self.subTest(destination=destination), tempfile.TemporaryDirectory() as directory:
+                texts = {}
+                entries = report_font_inventory(root, Path(directory), texts, destination)
+                self.assertEqual({entry['name'] for entry in entries}, set(REPORT_FONTS))
+                for entry in entries:
+                    notice = entry['texts'][0]
+                    self.assertEqual((Path(directory) / notice['source']).read_bytes(),
+                                     (source / entry['licenseFile']).read_bytes())
+                    self.assertEqual(digest((source / entry['name']).read_bytes()), entry['sha256'])
+                    self.assertIn(notice['textSha256'], texts)
+
+    def test_report_fonts_refuse_changed_source_terms_and_missing_notice(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fonts = root / 'crates/sunipdf-core/tests/fixtures/fonts'
+            fonts.mkdir(parents=True)
+            font = fonts / REPORT_FONTS[0]
+            notice = fonts / 'terms.txt'
+            font.write_bytes(b'original font')
+            notice.write_bytes(b'Full original font terms')
+            evidence = {'sha256': digest(font.read_bytes()), 'licenseFile': notice.name,
+                        'licenseSha256': digest(notice.read_bytes())}
+            (fonts / 'source-provenance.json').write_text(json.dumps({REPORT_FONTS[0]: evidence}))
+            with patch(__name__ + '.REPORT_FONTS', (REPORT_FONTS[0],)):
+                font.write_bytes(b'changed font')
+                with self.assertRaisesRegex(ValueError, 'reviewed source'):
+                    report_font_inventory(root, root / 'stage', {})
+                font.write_bytes(b'original font')
+                notice.write_bytes(b'changed terms')
+                with self.assertRaisesRegex(ValueError, 'terms differ'):
+                    report_font_inventory(root, root / 'stage', {})
+                notice.unlink()
+                with self.assertRaises(FileNotFoundError):
+                    report_font_inventory(root, root / 'stage', {})
+
+    def test_portable_icon_font_covers_all_application_icons_and_ships_full_terms(self):
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory)
+            texts = {}
+            entry = portable_icon_inventory(root, stage, texts)
+            self.assertEqual(entry['license'], 'MIT')
+            self.assertEqual(digest((stage / 'licenses/FluentSystemIcons-MIT.txt').read_bytes()), entry['licenseSha256'])
+            self.assertEqual(len(read_json(stage / 'licenses/icon-map.json')['mapping']), 80)
+            self.assertIn(entry['texts'][0]['textSha256'], texts)
+
+    def test_linux_inventory_detects_changed_or_added_installed_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            stage = Path(directory)
+            (stage / LINUX_DOC / 'licenses').mkdir(parents=True)
+            (stage / LINUX_DOC / 'copyright').write_text('Full terms')
+            inventory = {'platform': 'linux', 'architecture': 'amd64', 'payloadFiles': linux_payload(stage)}
+            (stage / LINUX_INVENTORY).write_text(json.dumps(inventory))
+            self.assertEqual(verify_linux(stage), inventory)
+            (stage / 'DEBIAN').mkdir()
+            (stage / 'DEBIAN/control').write_text('Package control is not installed')
+            self.assertEqual(verify_linux(stage), inventory)
+            (stage / LINUX_DOC / 'copyright').write_text('Changed terms')
+            with self.assertRaisesRegex(ValueError, 'checksum'):
+                verify_linux(stage)
+            (stage / LINUX_DOC / 'copyright').write_text('Full terms')
+            (stage / LINUX_DOC / 'unexpected.txt').write_text('extra')
+            with self.assertRaisesRegex(ValueError, 'checksum'):
+                verify_linux(stage)
+
     def test_reviewed_legacy_notice_preserves_bytes_and_unknown_encoding_fails(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'legacy-license.txt'
@@ -470,6 +693,30 @@ class InventoryTests(unittest.TestCase):
             path = Path(directory) / 'metadata.json'
             path.write_text('{"name":"日本語"}', encoding='utf-16')
             self.assertEqual(read_json(path)['name'], '日本語')
+
+    def test_default_icon_subset_retains_terms_and_refuses_unknown_or_unnoted_fonts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fonts = root / 'fonts'
+            fonts.mkdir()
+            for name in ('Ubuntu-Light.ttf', 'Hack-Regular.ttf', 'NotoEmoji-Regular.ttf', 'emoji-icon-font.ttf', 'egui-icons.ttf'):
+                (fonts / name).write_bytes(b'font source fixture')
+            for name in ('UFL.txt', 'Hack-Regular.txt', 'OFL.txt', 'emoji-icon-font-mit-license.txt', 'egui-icons.txt'):
+                (fonts / name).write_text('Full original terms or modification notice')
+            metadata = {'packages': [{'name': 'epaint_default_fonts', 'version': '0.37.0', 'manifest_path': str(root / 'Cargo.toml')}]}
+            entries = font_inventory(metadata)
+            icon = next(entry for entry in entries if entry['name'] == 'egui-icons.ttf')
+            self.assertEqual(icon['license'], 'MIT')
+            self.assertTrue(icon['noticeSource'].endswith('/emoji-icon-font-mit-license.txt'))
+            self.assertTrue(icon['modificationNoticeSource'].endswith('/egui-icons.txt'))
+            extra = fonts / 'unknown.ttf'
+            extra.write_bytes(b'unknown source')
+            with self.assertRaisesRegex(ValueError, 'source set'):
+                font_inventory(metadata)
+            extra.unlink()
+            (fonts / 'egui-icons.txt').unlink()
+            with self.assertRaises(OSError):
+                font_inventory(metadata)
 
     def test_payload_verification_rejects_modified_missing_and_added_notices(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -525,6 +772,11 @@ class InventoryTests(unittest.TestCase):
                 package['license'] = expression
                 packages, texts = rust_inventory(root, {'packages': [package]}, {'x64': targets, 'arm64': targets})
                 self.assertEqual(packages[0]['declaredLicense'], expression)
+                self.assertEqual(packages[0]['windowsNormalOrBuildTargets'], ['arm64', 'x64'])
+                self.assertNotIn('linuxNormalOrBuildTargets', packages[0])
+                linux, _ = rust_inventory(root, {'packages': [package]}, {'x86_64-unknown-linux-gnu': targets}, 'Linux')
+                self.assertEqual(linux[0]['linuxNormalOrBuildTargets'], ['x86_64-unknown-linux-gnu'])
+                self.assertNotIn('windowsNormalOrBuildTargets', linux[0])
                 self.assertEqual(len(packages[0]['texts']), 2)
                 self.assertTrue(any('Permission is hereby granted' in value['text'] for value in texts.values()))
                 self.assertTrue(any('TERMS AND CONDITIONS' in value['text'] for value in texts.values()))
@@ -569,6 +821,8 @@ def main():
     parser.add_argument('--root', type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument('--stage', type=Path)
     parser.add_argument('--arch', choices=['x64', 'arm64'])
+    parser.add_argument('--linux', action='store_true', help='Generate or verify the Ubuntu amd64 installed payload')
+    parser.add_argument('--linux-metadata', type=Path, help='Locked Cargo metadata filtered to x86_64-unknown-linux-gnu')
     parser.add_argument('--metadata', type=Path)
     parser.add_argument('--x64-metadata', type=Path)
     parser.add_argument('--arm64-metadata', type=Path)
@@ -584,7 +838,18 @@ def main():
     if args.self_test:
         result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(InventoryTests))
         return 0 if result.wasSuccessful() else 1
-    if args.record_wix:
+    if args.linux:
+        if args.archive or args.msi or args.record_wix or args.arch:
+            parser.error('--linux cannot be combined with Windows packaging options')
+        if not args.stage:
+            parser.error('--linux requires --stage')
+        if args.verify:
+            result = verify_linux(args.stage)
+        else:
+            if not all((args.metadata, args.linux_metadata, args.rust_sysroot, args.rust_version_file, args.cargo_version_file)):
+                parser.error('Linux generation requires metadata, Linux metadata and toolchain provenance')
+            result = generate_linux(args.root.resolve(), args.stage.resolve(), read_json(args.metadata), read_json(args.linux_metadata), args.rust_sysroot, args.rust_version_file, args.cargo_version_file)
+    elif args.record_wix:
         if not args.stage:
             parser.error('--record-wix requires --stage')
         result = record_wix(args.stage, read_json(args.record_wix))

@@ -1,7 +1,5 @@
 # Security
 
-[Français](SECURITY.fr.md)
-
 If you find an exploitable crash, password-protection bypass, incomplete redaction, unsafe update or data leak,
 **do not open a public issue**. Contact the maintainer through the address on
 [@lmdanavanem's GitHub profile](https://github.com/lmdanavanem), or use GitHub's “Report a vulnerability” feature if enabled.

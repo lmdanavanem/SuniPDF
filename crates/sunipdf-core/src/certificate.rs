@@ -8,40 +8,10 @@ use std::collections::HashSet;
 #[cfg(windows)]
 #[path = "certificate_native.rs"]
 mod native;
-// ponytail: no certificate backend off Windows yet; signing refuses and existing signatures read
-// as unverifiable. Add a Security.framework backend for macOS parity.
 #[cfg(not(windows))]
-mod native {
-    use super::{CertificateInfo, SignatureTrust, VerificationOptions};
-    use crate::EngineError;
-
-    pub(super) enum Identity {}
-    impl Identity {
-        pub(super) fn from_pfx(_: &[u8], _: &str) -> Result<Self, EngineError> {
-            Err(EngineError::Other(
-                "certificate signing is not available on this platform".into(),
-            ))
-        }
-        pub(super) fn info(&self) -> Result<CertificateInfo, EngineError> {
-            match *self {}
-        }
-        pub(super) fn sign(&self, _: &[&[u8]]) -> Result<Vec<u8>, EngineError> {
-            match *self {}
-        }
-    }
-    #[cfg(test)]
-    pub(super) fn verify(_: &[u8], _: &[&[u8]]) -> Result<CertificateInfo, u32> {
-        Err(0)
-    }
-    pub(super) fn verify_trust(
-        _: &[u8],
-        _: &[&[u8]],
-        _: VerificationOptions,
-    ) -> Result<(CertificateInfo, SignatureTrust), u32> {
-        Err(0)
-    }
-}
-#[cfg(test)]
+#[path = "certificate_unavailable.rs"]
+mod native;
+#[cfg(all(test, windows))]
 #[path = "../tests/support/certificate_identity.rs"]
 mod test_identity;
 
@@ -59,6 +29,7 @@ pub struct CertificateInfo {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SignatureStatus {
     Valid,
+    WeakDigest,
     ModifiedAfterSigning,
     Invalid,
     Unsupported,
@@ -68,6 +39,7 @@ impl SignatureStatus {
     pub fn id(self) -> &'static str {
         match self {
             Self::Valid => "valid",
+            Self::WeakDigest => "weak_digest",
             Self::ModifiedAfterSigning => "modified_after_signing",
             Self::Invalid => "invalid",
             Self::Unsupported => "unsupported",
@@ -88,6 +60,63 @@ pub struct DigitalSignature {
     pub signed_len: usize,
     pub detail: Option<u32>,
     pub trust: SignatureTrust,
+}
+
+impl DigitalSignature {
+    pub fn identity_trusted(&self) -> bool {
+        self.status == SignatureStatus::Valid
+            && self.certificate.is_some()
+            && self.trust.chain_and_revocation_trusted()
+    }
+
+    pub fn failure_cause(&self) -> Option<&'static str> {
+        match self.status {
+            SignatureStatus::Valid => None,
+            SignatureStatus::WeakDigest => Some("digest_not_allowed"),
+            SignatureStatus::ModifiedAfterSigning => Some("modified_after_signing"),
+            SignatureStatus::Unsupported => Some("unsupported_signature_format"),
+            SignatureStatus::Invalid if self.detail == Some(ATTACHED_CONTENT) => {
+                Some("attached_content_not_allowed")
+            }
+            SignatureStatus::Invalid => Some("signature_mismatch"),
+            SignatureStatus::Unverifiable => Some("verification_unavailable"),
+        }
+    }
+}
+
+// Dedicated policy outcomes must not be confused with a provider's unsupported key algorithm.
+const WEAK_DIGEST: u32 = 0xA0040001;
+const ATTACHED_CONTENT: u32 = 0xA0040002;
+const BAD_CMS: u32 = 0x8009200D;
+
+/// Unauthenticated document/certificate labels are bounded single-line display data.
+pub fn display_declared_text(value: &str) -> String {
+    let mut output = String::new();
+    let mut count = 0;
+    for character in value.chars() {
+        if matches!(character as u32, 0x061C | 0x200E..=0x200F | 0x202A..=0x202E | 0x2066..=0x2069)
+        {
+            continue;
+        }
+        let character = if character.is_whitespace() {
+            ' '
+        } else if character.is_control() {
+            continue;
+        } else {
+            character
+        };
+        if character == ' ' && (output.is_empty() || output.ends_with(' ')) {
+            continue;
+        }
+        if count == 256 {
+            output.pop();
+            output.push('…');
+            break;
+        }
+        output.push(character);
+        count += 1;
+    }
+    output.trim_end().to_string()
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -192,7 +221,7 @@ pub struct SignatureTrust {
     pub network_allowed: bool,
 }
 impl SignatureTrust {
-    pub fn identity_trusted(&self) -> bool {
+    pub fn chain_and_revocation_trusted(&self) -> bool {
         self.chain == ChainTrust::Trusted && self.revocation == RevocationStatus::Good
     }
 }
@@ -210,6 +239,10 @@ pub fn identity_info(pfx: &[u8], password: &str) -> Result<CertificateInfo, Engi
 #[cfg(test)]
 #[path = "certificate_trust_tests.rs"]
 mod trust_tests;
+
+#[cfg(test)]
+#[path = "certificate_security_tests.rs"]
+mod security_tests;
 
 fn text(dict: &Dictionary, key: &[u8]) -> Option<String> {
     dict.get(key)
@@ -301,6 +334,63 @@ fn pdf_space(b: u8) -> bool {
 
 type SignedBytes<'a> = (&'a [u8], &'a [u8], Vec<u8>, usize);
 
+fn detached_cms(cms: &[u8]) -> Result<(), u32> {
+    fn take<'a>(input: &mut &'a [u8], tag: u8) -> Option<&'a [u8]> {
+        if input.first() != Some(&tag) {
+            return None;
+        }
+        let length = *input.get(1)?;
+        let (head, length) = if length < 128 {
+            (2, usize::from(length))
+        } else {
+            let width = usize::from(length & 127);
+            if !(1..=4).contains(&width) || *input.get(2)? == 0 {
+                return None;
+            }
+            let mut length = 0usize;
+            for byte in input.get(2..2 + width)? {
+                length = length.checked_mul(256)?.checked_add(usize::from(*byte))?;
+            }
+            if length < 128 {
+                return None;
+            }
+            (2 + width, length)
+        };
+        let end = head.checked_add(length)?;
+        let value = input.get(head..end)?;
+        *input = input.get(end..)?;
+        Some(value)
+    }
+    if cms.len() > 16 * 1024 * 1024 {
+        return Err(BAD_CMS);
+    }
+    let mut cms = cms;
+    let mut outer = take(&mut cms, 0x30).ok_or(BAD_CMS)?;
+    if !cms.is_empty()
+        || take(&mut outer, 6) != Some(b"\x2a\x86\x48\x86\xf7\x0d\x01\x07\x02".as_slice())
+    {
+        return Err(BAD_CMS);
+    }
+    let mut explicit = take(&mut outer, 0xa0).ok_or(BAD_CMS)?;
+    if !outer.is_empty() {
+        return Err(BAD_CMS);
+    }
+    let mut data = take(&mut explicit, 0x30).ok_or(BAD_CMS)?;
+    if !explicit.is_empty() {
+        return Err(BAD_CMS);
+    }
+    take(&mut data, 2).ok_or(BAD_CMS)?;
+    take(&mut data, 0x31).ok_or(BAD_CMS)?;
+    let mut content = take(&mut data, 0x30).ok_or(BAD_CMS)?;
+    if take(&mut content, 6) != Some(b"\x2a\x86\x48\x86\xf7\x0d\x01\x07\x01".as_slice()) {
+        return Err(BAD_CMS);
+    }
+    if !content.is_empty() {
+        return Err(ATTACHED_CONTENT);
+    }
+    Ok(())
+}
+
 fn signed_data<'a>(input: &'a [u8], dict: &Dictionary) -> Option<SignedBytes<'a>> {
     let range = dict.get(b"ByteRange").ok()?.as_array().ok()?;
     if range.len() != 4 {
@@ -384,13 +474,13 @@ pub fn verify_signatures_with_options(
             .map(|n| String::from_utf8_lossy(n).into_owned())
             .unwrap_or_default();
         let mut result = DigitalSignature {
-            field_name,
+            field_name: display_declared_text(&field_name),
             sub_filter,
             status: SignatureStatus::Unverifiable,
             certificate: None,
-            reason: text(&dict, b"Reason"),
-            location: text(&dict, b"Location"),
-            signing_time: text(&dict, b"M"),
+            reason: text(&dict, b"Reason").map(|value| display_declared_text(&value)),
+            location: text(&dict, b"Location").map(|value| display_declared_text(&value)),
+            signing_time: text(&dict, b"M").map(|value| display_declared_text(&value)),
             signed_len: 0,
             detail: None,
             trust: SignatureTrust {
@@ -420,7 +510,12 @@ pub fn verify_signatures_with_options(
                 Err(code) => {
                     result.detail = Some(code);
                     // CNG can propagate STATUS_INVALID_SIGNATURE through the CryptoAPI call.
-                    result.status = if matches!(code, 0x80091007 | 0x80090006 | 0xC000A000) {
+                    result.status = if code == WEAK_DIGEST {
+                        SignatureStatus::WeakDigest
+                    } else if matches!(
+                        code,
+                        ATTACHED_CONTENT | 0x80091007 | 0x80090006 | 0xC000A000
+                    ) {
                         SignatureStatus::Invalid
                     } else {
                         SignatureStatus::Unverifiable
@@ -469,7 +564,9 @@ pub fn sign_pdf(
     options: &CertSignOptions,
 ) -> Result<Vec<u8>, EngineError> {
     let prev = lopdf::Document::load_mem(input).map_err(lopdf_err)?;
-    if prev.is_encrypted() {
+    // An empty user password is decrypted while loading: /Encrypt disappears, but its
+    // security state remains. These inputs are still encrypted PDFs, not signing candidates.
+    if prev.is_encrypted() || prev.encryption_state.is_some() {
         return Err(EngineError::Other(
             "signing encrypted PDFs is not supported".into(),
         ));
@@ -635,8 +732,8 @@ mod tests {
         }
     }
 
-    #[test]
     #[cfg(windows)]
+    #[test]
     fn native_ephemeral_pfx_signs_and_verifies() {
         let bytes = test_identity::identity();
         let identity = native::Identity::from_pfx(&bytes, "test-only").unwrap();

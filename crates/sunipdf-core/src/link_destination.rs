@@ -256,6 +256,15 @@ impl<'a> Resolver<'a> {
                         None,
                     ));
                 }
+                b"GoToR" => {
+                    if annotation.has(b"AA") {
+                        return Err(invalid("additional remote actions"));
+                    }
+                    return Ok((
+                        LinkTarget::RemotePage(crate::plan_links::parse_remote_action(action)?),
+                        None,
+                    ));
+                }
                 b"GoTo" => action.get(b"D").map_err(crate::security::lopdf_err)?,
                 _ => return Err(invalid("unsupported action")),
             }
@@ -420,7 +429,10 @@ impl Document<'_> {
         &self,
         target: &LinkTarget,
     ) -> Result<Option<Destination>, EngineError> {
-        if matches!(target, LinkTarget::Uri(_) | LinkTarget::Unsupported) {
+        if matches!(
+            target,
+            LinkTarget::Uri(_) | LinkTarget::RemotePage(_) | LinkTarget::Unsupported
+        ) {
             return Ok(None);
         }
         let pdf = crate::security::load(&self.snapshot()?, self.password())?;

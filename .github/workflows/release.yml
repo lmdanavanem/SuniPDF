@@ -1,4 +1,4 @@
-# Livraison Windows : portable ZIP x64 + ARM64, MSI x64 (WiX 3 préinstallé sur windows-latest).
+# Release packages: Windows portable ZIPs and MSI, plus Ubuntu amd64 DEB.
 # Déclenchée par un tag v* ou à la main. Les tests tournent avant tout empaquetage (x64) ; l'ARM64 est
 # compilé mais jamais exécuté sur du matériel ARM64 : il est publié comme tel.
 name: release
@@ -11,6 +11,11 @@ permissions:
   contents: read
 
 jobs:
+  linux:
+    uses: ./.github/workflows/linux.yml
+    permissions:
+      contents: read
+
   build:
     runs-on: windows-latest
     strategy:
@@ -18,19 +23,19 @@ jobs:
       matrix:
         arch: [x64, arm64]
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
           targets: aarch64-pc-windows-msvc
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           shared-key: ${{ matrix.arch == 'x64' && 'windows' || '' }}
           key: ${{ matrix.arch == 'arm64' && 'arm64' || '' }}
           cache-on-failure: true
       - name: Cache pinned offline OCR runtime
         id: ocr_runtime
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: third_party/ocr/win-${{ matrix.arch }}
           key: windows-ocr-${{ matrix.arch }}-${{ hashFiles('scripts/fetch-ocr.ps1') }}
@@ -38,13 +43,14 @@ jobs:
         run: .\scripts\fetch-ocr.ps1 -Arch ${{ matrix.arch }}
       - name: Save verified OCR build before application checks
         if: steps.ocr_runtime.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: third_party/ocr/win-${{ matrix.arch }}
           key: windows-ocr-${{ matrix.arch }}-${{ hashFiles('scripts/fetch-ocr.ps1') }}
       - name: Format and Clippy (x64)
         if: matrix.arch == 'x64'
         run: |
+          .\scripts\package-msi.ps1 -SelfTest
           cargo fmt --all -- --check
           if ($LASTEXITCODE -ne 0) { throw 'Formatting check failed.' }
           cargo clippy --workspace --all-targets --locked --keep-going -j 2 -- -D warnings
@@ -55,9 +61,35 @@ jobs:
         run: |
           .\scripts\fetch-pdfium.ps1 -Arch x64
           .\scripts\check-i18n.ps1
+          python .\scripts\package-guides.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged documentation link checks failed.' }
           cargo test --workspace --locked -j 2 --no-fail-fast 2>&1 | Tee-Object -FilePath target/workspace-tests.log
           if ($LASTEXITCODE -ne 0) { throw 'Workspace tests failed.' }
           .\apps\sunipdf-desktop\src\update-helper.ps1 -SelfTest
+      - name: Bounded layout and register performance evidence (x64)
+        if: matrix.arch == 'x64' && steps.workspace_tests.outcome == 'success'
+        run: |
+          python .\scripts\run-performance-evidence.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Performance evidence boundary tests failed.' }
+          python .\scripts\run-performance-evidence.py
+          if ($LASTEXITCODE -ne 0) { throw 'Performance evidence failed.' }
+      - name: Performance measurement evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: performance-windows-x64
+          path: target/performance-evidence/
+          if-no-files-found: warn
+      - name: Reader interface layout and DX12 software rendering (x64)
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome == 'success'
+        run: .\scripts\run-reader-ui-evidence.ps1
+      - name: Reader interface evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: reader-ui-evidence
+          path: target/reader-ui-evidence/
+          if-no-files-found: warn
       - name: Pinned independent QPDF checker (x64)
         if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\fetch-qpdf.ps1
@@ -72,7 +104,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Independent feature reader regression failed.' }
       - name: Independent feature reader evidence (x64)
         if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: feature-independent-reader-evidence
           path: |
@@ -87,7 +119,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Independent font reader regression failed.' }
       - name: Independent font reader evidence (x64)
         if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: font-independent-reader-evidence
           path: |
@@ -100,7 +132,7 @@ jobs:
         run: .\scripts\run-built-ci-test.ps1 -TestName native_wgpu
       - name: Native renderer evidence (x64)
         if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: native-wgpu-evidence
           path: target/native-wgpu-evidence/
@@ -114,7 +146,32 @@ jobs:
       - name: Real PDFs and independent output regression (x64)
         if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: .\scripts\run-built-ci-test.ps1 -TestName real_corpus
+      - name: Pinned PDF 2.0 interoperability corpus (x64)
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
+        run: |
+          .\scripts\fetch-regression-corpus.ps1 -Interop -SelfTest
+          .\scripts\fetch-regression-corpus.ps1 -Interop
+      - name: PDF 2.0 text, pixels, annotations and immutable sources (x64)
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
+        run: .\scripts\run-built-ci-test.ps1 -TestName interop_corpus
+      - name: Interoperability and bounded mutation evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: interoperability-and-mutation-evidence
+          path: |
+            target/interop-corpus-report.json
+            target/adversarial-corpus-report.json
+          if-no-files-found: error
+      - name: Restore pinned Office MSI only (x64)
+        id: office_installer_cache
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: target/test-office-installer/installer.msi
+          key: windows-x64-office-msi-v1-${{ hashFiles('scripts/test-libreoffice.json', 'scripts/fetch-test-libreoffice.ps1') }}
       - name: Pinned local Office converter on disposable runner (x64)
+        id: office_converter
         if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         run: |
           pwsh -NoProfile -File .\scripts\fetch-test-libreoffice.ps1 -SelfTest
@@ -123,6 +180,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Office converter installation failed.' }
           $proof = Get-Content -Raw target/office-converter-provenance.json | ConvertFrom-Json
           if ($proof.source_revision -ne $env:GITHUB_SHA -or -not (Test-Path -LiteralPath $proof.installed_path)) { throw 'Installed Office converter provenance is missing or invalid.' }
+      - name: Save verified pinned Office MSI only (x64)
+        if: always() && !cancelled() && matrix.arch == 'x64' && steps.office_converter.outcome == 'success' && steps.office_installer_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: target/test-office-installer/installer.msi
+          key: ${{ steps.office_installer_cache.outputs.cache-primary-key }}
       - name: Measured licensed Office exports and local converter profiles (x64)
         if: always() && !cancelled() && matrix.arch == 'x64' && steps.workspace_tests.outcome != 'skipped'
         env:
@@ -133,7 +196,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Office regression failed.' }
       - name: Office regression evidence (x64)
         if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: office-regression-evidence
           path: |
@@ -142,13 +205,60 @@ jobs:
           if-no-files-found: ignore
       - name: Real corpus regression evidence (x64)
         if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: real-corpus-evidence
           path: target/regression-corpus-report.json
           if-no-files-found: ignore
       - name: Portable (${{ matrix.arch }})
         run: .\scripts\package-portable.ps1 -Arch ${{ matrix.arch }}
+      - name: Packaged PDF inspection regression (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          python .\scripts\test-pdf-inspection.py --cli $cli --report target\pdf-inspection-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged PDF inspection regression failed.' }
+      - name: PDF inspection evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: pdf-inspection-evidence
+          path: target/pdf-inspection-report.json
+          if-no-files-found: ignore
+      - name: Packaged visual signature preparation regression (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          python -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r scripts/qa-image-requirements.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned test-only image reader installation failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          python .\scripts\test-signature-preparation.py --cli $cli --report target\visual-signature-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged visual signature preparation failed.' }
+      - name: Visual signature preparation evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: visual-signature-evidence
+          path: target/visual-signature-report.json
+          if-no-files-found: ignore
+      - name: Packaged page decorations regression (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          python .\scripts\test-page-decorations.py --cli $cli --report target\page-decorations-report.json
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged page decorations failed.' }
+      - name: Page decorations evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: page-decoration-evidence
+          path: target/page-decorations-report.json
+          if-no-files-found: ignore
+      - name: Release native-library loading boundary (x64)
+        if: matrix.arch == 'x64'
+        run: .\scripts\test-release-native-loading.ps1
       - name: Test-only software OpenGL checksum self-test (x64)
         if: matrix.arch == 'x64'
         run: .\scripts\fetch-test-opengl.ps1 -SelfTest
@@ -160,7 +270,7 @@ jobs:
         run: .\scripts\test-portable-update.ps1 -Package (Get-ChildItem dist\*-win-x64-portable.zip | Select-Object -First 1 -ExpandProperty FullName)
       - name: Portable update regression evidence (x64)
         if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: portable-update-evidence
           path: target/portable-update-*.json
@@ -187,9 +297,41 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.20.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.21.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.21.1
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.30.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.30.1
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.31.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.32.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.33.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.34.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.35.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.36.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.37.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.38.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.39.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.40.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.41.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.42.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.43.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.44.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.45.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.46.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.47.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.48.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.49.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.50.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.51.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.60.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.61.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.62.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.63.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.64.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.67.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.69.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.70.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.71.0
       - name: MSI upgrade regression evidence (x64)
         if: always() && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: release-msi-upgrade-evidence
           path: target/msi-upgrade-*/*.log
@@ -209,7 +351,7 @@ jobs:
           # La signature modifie le fichier : recalculer l'empreinte publiée.
           $hash = (Get-FileHash $msi -Algorithm SHA256).Hash
           Set-Content -Path "$msi.sha256" -Value "$hash  $(Split-Path -Leaf $msi)" -Encoding ascii
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: sunipdf-${{ matrix.arch }}
           path: |
@@ -217,17 +359,17 @@ jobs:
             dist/*.sha256
             dist/*.msi
   publish:
-    needs: build
+    needs: [build, linux]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: artifacts
           pattern: sunipdf-*
-      - uses: softprops/action-gh-release@v3
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           files: artifacts/**/*
           draft: true
@@ -235,3 +377,4 @@ jobs:
           body: |
             Windows x64 packages (portable ZIP and MSI) tested in CI. The ARM64 ZIP is built in CI but
             has not been run on ARM64 hardware. SHA256 checksums are included (.sha256).
+            The Ubuntu amd64 DEB is built on Ubuntu 22.04 and checked on Ubuntu 22.04 and 24.04.

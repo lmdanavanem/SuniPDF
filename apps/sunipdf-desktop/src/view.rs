@@ -115,6 +115,85 @@ pub struct ViewState {
     pub follow_thumb: bool,
     /// (décalage, hauteur) du panneau des miniatures à l'image précédente.
     pub thumb_view: Option<(f32, f32)>,
+    geometry: GeometryCache,
+}
+
+/// Document geometry is immutable between epochs. Scrolling changes neither page sizes nor
+/// layout; retain them by reference instead of scanning and allocating for every frame.
+#[derive(Default)]
+struct GeometryCache {
+    source: Option<(u64, usize, ViewRotation)>,
+    sizes: Arc<[PageSize]>,
+    display: Arc<[PageSize]>,
+    zoom: Option<(ZoomKey, (f32, bool))>,
+    layout: Option<(LayoutKey, Arc<Layout>)>,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+struct ZoomKey {
+    zoom: Zoom,
+    mode: ViewMode,
+    current: usize,
+    avail: Vec2,
+    ppp: f32,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+struct LayoutKey {
+    first: usize,
+    count: usize,
+    scale: f32,
+    avail: Vec2,
+    mode: ViewMode,
+    rotation: ViewRotation,
+}
+
+impl GeometryCache {
+    fn pages(&mut self, epoch: u64, pages: &[PageSize], rotation: ViewRotation) -> Arc<[PageSize]> {
+        let key = (epoch, pages.len(), rotation);
+        if self.source != Some(key) {
+            self.sizes = Arc::from(pages);
+            self.display = pages.iter().map(|size| rotation.size(*size)).collect();
+            self.source = Some(key);
+            self.zoom = None;
+            self.layout = None;
+        }
+        self.sizes.clone()
+    }
+
+    fn zoom(&mut self, mut key: ZoomKey) -> (f32, bool) {
+        // Continuous layouts deliberately use the largest page, independent of navigation.
+        if key.mode != ViewMode::Single {
+            key.current = 0;
+        }
+        if let Some((previous, value)) = self.zoom {
+            if previous == key {
+                return value;
+            }
+        }
+        let wanted = effective_zoom(key.zoom, key.mode, &self.display, key.current, key.avail);
+        let value = clamp_zoom(wanted, &self.display, key.ppp, key.mode);
+        self.zoom = Some((key, value));
+        value
+    }
+
+    fn layout(&mut self, key: LayoutKey) -> Arc<Layout> {
+        if let Some((previous, layout)) = &self.layout {
+            if *previous == key {
+                return layout.clone();
+            }
+        }
+        let layout = Arc::new(Layout::for_rotation(
+            &self.sizes[key.first..key.first + key.count],
+            key.first,
+            key.scale,
+            key.avail,
+            key.mode,
+            key.rotation,
+        ));
+        self.layout = Some((key, layout.clone()));
+        layout
+    }
 }
 
 impl ViewState {
@@ -143,12 +222,14 @@ impl ViewState {
             hover_page: None,
             follow_thumb: false,
             thumb_view: None,
+            geometry: GeometryCache::default(),
         }
     }
 
     /// Le moteur a vidé sa liste (`invalidate`) : tout est à redemander.
     pub fn bump_epoch(&mut self) {
         self.epoch += 1;
+        self.geometry = GeometryCache::default();
         self.sent.clear();
         self.failed.clear();
     }
@@ -537,7 +618,7 @@ pub fn clamp_zoom(z: f32, pages: &[PageSize], ppp: f32, mode: ViewMode) -> (f32,
         let total: f32 = pages.iter().map(|s| s.height_pt).sum::<f32>().max(1.0);
         hi = hi.min(MAX_CONTENT_PX / (total * SCREEN_PER_PDF_POINT));
     }
-    // ponytail: marges et intervalles ignorés dans la borne de hauteur (quelques px par page).
+    // marges et intervalles ignorés dans la borne de hauteur (quelques px par page).
     let clamped = z.clamp(0.05f32.min(hi), hi);
     (clamped, clamped < z - 1e-4)
 }
@@ -920,6 +1001,9 @@ impl SuniApp {
     /// disparaîtrait au défilement) et celle de l'éditeur de texte posé sur la page.
     fn pinned_pages(&self) -> Vec<usize> {
         let mut v: Vec<usize> = self.annotate.drag.map(|d| d.page).into_iter().collect();
+        if let Some(draft) = &self.annotate.measure.geometry {
+            v.push(draft.page);
+        }
         if let Some(drag) = self.form_builder.drag {
             v.push(drag.page);
         }
@@ -955,7 +1039,11 @@ impl SuniApp {
             self.status_msg = Some(tr(self.lang(), "reading.rotation_reset").to_string());
         }
         let Some(doc) = &self.document else { return };
-        let sizes = doc.info.page_sizes.clone();
+        let sizes = self.view.geometry.pages(
+            self.view.epoch,
+            &doc.info.page_sizes,
+            self.view.reading.rotation,
+        );
         let count = sizes.len();
         if count == 0 {
             return;
@@ -964,7 +1052,6 @@ impl SuniApp {
         let name = file_name(&doc.info.path);
         let mode = self.view.mode;
         let rotation = self.view.reading.rotation;
-        let display_sizes: Vec<_> = sizes.iter().map(|s| rotation.size(*s)).collect();
         let window = match mode {
             ViewMode::Continuous | ViewMode::TwoPage | ViewMode::Book => 0..count,
             ViewMode::Single => current..current + 1,
@@ -981,8 +1068,13 @@ impl SuniApp {
 
         // 1. Zoom (molette ancrée sur le pointeur), plafonné.
         self.apply_wheel_zoom(ctx);
-        let wanted = effective_zoom(self.zoom, mode, &display_sizes, current, avail);
-        let (z, limited) = clamp_zoom(wanted, &display_sizes, ppp, mode);
+        let (z, limited) = self.view.geometry.zoom(ZoomKey {
+            zoom: self.zoom,
+            mode,
+            current,
+            avail,
+            ppp,
+        });
         if limited && matches!(self.zoom, Zoom::Fixed(_)) {
             self.zoom = Zoom::Fixed(z);
             self.status_msg = Some(tr(self.lang(), "status.zoom_limit").to_string());
@@ -999,18 +1091,20 @@ impl SuniApp {
         let scale = scale_milli as f32 / 1000.0;
 
         // 2. Mise en page, 3. décalage imposé (requête, ancre de zoom) seulement cette image.
-        let layout = Layout::for_rotation(
-            &sizes[window.clone()],
-            window.start,
-            k,
+        let layout = self.view.geometry.layout(LayoutKey {
+            first: window.start,
+            count: window.len(),
+            scale: k,
             avail,
             mode,
             rotation,
-        );
+        });
         let forced = self.resolve_scroll(&layout, &sizes[window.clone()], avail, k);
         let pinned = self.pinned_pages();
 
         // 4. Zone de défilement : seules les pages visibles sont dessinées.
+        // PDF navigation and hit testing use bounded document coordinates, without elastic overscroll.
+        ui.spacing_mut().scroll.kinetic.rubber_band = false;
         let mut area = egui::ScrollArea::both()
             .id_salt("doc-scroll")
             .auto_shrink([false, false]);
@@ -1048,9 +1142,12 @@ impl SuniApp {
         });
 
         // 5. Après la zone : état, page courante, tuiles voulues, mémoire.
-        let viewport = Rect::from_min_size(out.state.offset.to_pos2(), out.inner_rect.size());
+        let viewport = Rect::from_min_size(
+            out.state.unclamped_offset().to_pos2(),
+            out.inner_rect.size(),
+        );
         let v = &mut self.view;
-        v.offset = out.state.offset;
+        v.offset = out.state.unclamped_offset();
         v.inner = out.inner_rect;
         v.k_prev = Some(k);
         v.avail_prev = avail;
@@ -1058,12 +1155,15 @@ impl SuniApp {
         v.wheel_anchor = None;
         if let Some(lock) = &mut v.nav_lock {
             if forced.is_some() || lock.expected_y.is_none() {
-                lock.expected_y = Some(out.state.offset.y);
-            } else if !lock_still_valid(lock.expected_y, out.state.offset.y) {
+                lock.expected_y = Some(out.state.unclamped_offset().y);
+            } else if !lock_still_valid(lock.expected_y, out.state.unclamped_offset().y) {
                 v.nav_lock = None;
             }
         }
-        if mode != ViewMode::Single && self.view.nav_lock.is_none() {
+        if mode != ViewMode::Single
+            && self.view.nav_lock.is_none()
+            && self.annotate.measure.geometry.is_none()
+        {
             self.track_page(layout.dominant(viewport.min.y, viewport.max.y));
         }
         if let Some(doc) = &self.document {
@@ -1097,10 +1197,33 @@ impl SuniApp {
             // Maj lue au moment du clic (`self.edit.shift` n'est pas mis à jour si `handle_input`
             // est sorti plus tôt).
             let shift = ctx.input(|i| i.modifiers.shift);
-            self.handle_page_event(page, ev, shift);
+            if self.library.placing.is_some() {
+                if let DragEvent::Click(point) = ev {
+                    self.library_click(page, point);
+                }
+            } else if self.annotate.tool == crate::annotate::Tool::Measure {
+                if self.annotate.measure.geometry.is_some() {
+                    self.measurement_geometry_event(page, ev);
+                } else {
+                    match ev {
+                        DragEvent::Click(point) => {
+                            self.measurement_click(ctx, page, point, shift, false);
+                        }
+                        DragEvent::DoubleClick(point) => {
+                            self.measurement_click(ctx, page, point, shift, true);
+                        }
+                        _ => {}
+                    }
+                }
+            } else {
+                self.handle_page_event(page, ev, shift);
+            }
         }
         self.form_builder_pointer(ctx, &layout, out.inner_rect);
-        if !self.form_builder.drawing && self.annotate.adv.free_text.is_none() {
+        if !self.form_builder.drawing
+            && self.annotate.adv.free_text.is_none()
+            && self.library.placing.is_none()
+        {
             self.reading_pointer(ctx, &layout, out.inner_rect);
             self.object_bar(ctx, doc_rect);
             self.annot_bar(ctx, doc_rect);
@@ -1145,6 +1268,8 @@ impl SuniApp {
         self.paint_selection(&overlay_painter, source_rect, s.page, h);
         self.paint_object_selection(&overlay_painter, source_rect, s.page, h);
         self.paint_annot_adv(&overlay_painter, source_rect, s.page, h);
+        self.paint_measurement(&overlay_painter, source_rect, s.page, h);
+        self.paint_library_placement(&overlay_painter, source_rect, s.page, h);
         self.paint_redact_marks(&overlay_painter, source_rect, s.page, h);
         self.form_builder.paint(
             &overlay_painter,
@@ -1177,7 +1302,7 @@ impl SuniApp {
 
         let interact = ui.interact(
             s.rect,
-            egui::Id::new(("page-interact", s.page)),
+            egui::Id::unique(("page-interact", s.page)),
             egui::Sense::click_and_drag(),
         );
         let alt = tr_args(
@@ -1200,7 +1325,7 @@ impl SuniApp {
             ),
             None => alt,
         };
-        interact.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &alt));
+        interact.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Image, true, &alt));
         let (rect, zoom) = (s.rect, self.effective_zoom);
         let to_pdf = |pos: Pos2| {
             let source = s
@@ -1209,8 +1334,9 @@ impl SuniApp {
             crate::annotate::to_pdf(rect.min + source.to_vec2(), source_rect, zoom, h)
         };
         let mut event = None;
+        let geometry_editing = self.annotate.measure.geometry.is_some();
         if interact.drag_started()
-            && (!self.form_builder.drawing
+            && ((!self.form_builder.drawing && !geometry_editing)
                 || interact.drag_started_by(egui::PointerButton::Primary))
         {
             // Origine réelle de la pression : le glissement n'est détecté qu'après le seuil.
@@ -1218,12 +1344,17 @@ impl SuniApp {
                 .input(|i| i.pointer.press_origin())
                 .or_else(|| interact.interact_pointer_pos());
             event = origin.map(|p| DragEvent::Start(to_pdf(p)));
-        } else if interact.dragged() {
+        } else if interact.dragged()
+            && (!geometry_editing || interact.dragged_by(egui::PointerButton::Primary))
+        {
             event = interact
                 .interact_pointer_pos()
                 .map(|p| DragEvent::Move(to_pdf(p)));
-        } else if interact.drag_stopped() {
+        } else if interact.drag_stopped()
+            && (!geometry_editing || interact.drag_stopped_by(egui::PointerButton::Primary))
+        {
             if let Some(pt) = interact.interact_pointer_pos().map(to_pdf) {
+                self.measurement_geometry_move(s.page, pt);
                 if let Some(drag) = self.annotate.drag.as_mut().filter(|d| d.page == s.page) {
                     drag.current = pt;
                     let drag = *drag;
@@ -1245,14 +1376,26 @@ impl SuniApp {
             self.view.hover_page = Some(s.page);
         }
         let hover = interact.hover_pos().map(to_pdf);
+        self.library_hover(s.page, hover);
+        if self.annotate.tool == crate::annotate::Tool::Measure {
+            self.measurement_hover(s.page, hover, ui.input(|i| i.modifiers.shift));
+        }
         if let Some(pt) = hover {
             // Fantôme de la signature ou de la date à placer, sous le pointeur.
             self.paint_placing(&painter, s.rect, s.page, h, pt);
         }
-        interact.on_hover_cursor(self.page_cursor(s.page, hover));
+        interact.on_hover_cursor(if self.library.placing.is_some() {
+            egui::CursorIcon::Crosshair
+        } else {
+            self.page_cursor(s.page, hover)
+        });
         // Champs de formulaire : créés après le widget de la page pour avoir la priorité du clic ;
         // éditeur et liste de choix de cette page par-dessus.
-        if !self.form_builder.drawing && self.annotate.adv.free_text.is_none() {
+        if !self.form_builder.drawing
+            && self.annotate.adv.free_text.is_none()
+            && self.annotate.tool != crate::annotate::Tool::Measure
+            && self.library.placing.is_none()
+        {
             if let Some((field, widget)) = self.forms_overlay(ui, &painter, s.rect, s.page, h) {
                 self.forms_activate(s.page, field, widget);
             }
@@ -1543,7 +1686,7 @@ impl SuniApp {
     }
 
     /// Un appui sur une page la rend courante (Pivoter, Supprimer, panneau Objets la visent).
-    fn make_current(&mut self, page: usize) {
+    pub(crate) fn make_current(&mut self, page: usize) {
         if self.view.mode == ViewMode::Single
             || self.document.as_ref().is_none_or(|d| d.page == page)
         {
@@ -1733,6 +1876,7 @@ impl SuniApp {
                 self.annotate.selection = None;
                 match self.annotate.tool {
                     crate::annotate::Tool::Note
+                    | crate::annotate::Tool::Count
                     | crate::annotate::Tool::AddText
                     | crate::annotate::Tool::AddImage => {
                         self.finish_drag(crate::annotate::Drag {
@@ -1747,7 +1891,9 @@ impl SuniApp {
                 }
             }
             DragEvent::DoubleClick(pt) => {
-                if matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
+                if self.annotate.tool == crate::annotate::Tool::Count {
+                    self.place_count_marker(page, pt);
+                } else if matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
                     self.edit_double_click(page, pt);
                 } else {
                     self.adv_double_click(page, pt);
@@ -2270,7 +2416,11 @@ mod tests {
         app.navigate_reading_history(true);
         frame(&mut app);
         assert_eq!(app.effective_zoom, 1.0);
-        assert!((app.view.offset - original).length() < 1.0);
+        assert!(
+            (app.view.offset - original).length() < 1.0,
+            "back: original {original:?}, restored {:?}, destination {destination:?}",
+            app.view.offset
+        );
         app.navigate_reading_history(false);
         frame(&mut app);
         assert_eq!(app.effective_zoom, 2.0);
@@ -2557,6 +2707,150 @@ mod tests {
             };
             assert!((focus.x - 120.0).abs() < 0.001);
             assert!((focus.y - 600.0).abs() < 0.001);
+        }
+    }
+
+    #[test]
+    fn geometry_handles_use_transformed_page_coordinates_and_capture_release_position() {
+        use crate::measurement_saved::MeasurementPageData;
+        use sunipdf_core::measurement::{
+            Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit,
+        };
+        for rotation in [
+            ViewRotation::Upright,
+            ViewRotation::Clockwise,
+            ViewRotation::UpsideDown,
+            ViewRotation::Counterclockwise,
+        ] {
+            for pointer_button in [
+                egui::PointerButton::Primary,
+                egui::PointerButton::Secondary,
+                egui::PointerButton::Middle,
+            ] {
+                let (mut app, requests, _) = crate::app::tests::test_app();
+                let ctx = egui::Context::default();
+                app.document.as_mut().unwrap().info.form = sunipdf_core::FormKind::None;
+                app.document.as_mut().unwrap().info.page_sizes = vec![letter()];
+                app.open_measurements(&ctx);
+                app.effective_zoom = 0.8;
+                let k = app.effective_zoom * SCREEN_PER_PDF_POINT;
+                let record = MeasurementRecord {
+                    validity: sunipdf_core::measurement::MeasurementValidity::Current,
+                    index: 0,
+                    annotation_id: Some("rotated-measurement".into()),
+                    measurement: Measurement {
+                        holes: Vec::new(),
+                        depth: None,
+                        kind: MeasurementKind::Length,
+                        points: vec![(200.0, 500.0), (300.0, 500.0)],
+                        calibration: [(30.0, 40.0), (130.0, 40.0)],
+                        known_distance: 10.0,
+                        unit: MeasurementUnit::Metres,
+                        precision: 2,
+                    },
+                };
+                app.request_measurement_page(0);
+                let Request::MeasurementPage {
+                    page,
+                    epoch,
+                    generation,
+                } = requests.recv().unwrap()
+                else {
+                    panic!("page query")
+                };
+                app.on_measurement_page(
+                    page,
+                    epoch,
+                    generation,
+                    Ok(MeasurementPageData::new(
+                        Ok(None),
+                        Ok(vec![record.clone()]),
+                        true,
+                    )),
+                );
+                assert!(app.start_measurement_geometry(0, record));
+                let size = rotation.size(letter());
+                let slot = Slot {
+                    page: 0,
+                    rect: Rect::from_min_size(
+                        pos2(50.0, 60.0),
+                        vec2(size.width_pt * k, size.height_pt * k),
+                    ),
+                    rotation,
+                    size_pt: letter(),
+                    page_px: None,
+                    scale_milli: 800,
+                    limits: TileLimits::default(),
+                    current: true,
+                    total: 1,
+                    name: "plan.pdf",
+                };
+                let screen = |x: f32, y: f32| {
+                    slot.rect.min
+                        + rotation
+                            .point(pos2(x * k, (792.0 - y) * k), vec2(612.0 * k, 792.0 * k))
+                            .to_vec2()
+                };
+                let start = screen(300.0, 500.0);
+                let moved = screen(320.0, 510.0);
+                let released = screen(365.0, 535.0);
+                let button = |pos, pressed| egui::Event::PointerButton {
+                    pos,
+                    button: pointer_button,
+                    pressed,
+                    modifiers: egui::Modifiers::NONE,
+                };
+                let frames = [
+                    vec![],
+                    vec![],
+                    vec![egui::Event::PointerMoved(start), button(start, true)],
+                    vec![egui::Event::PointerMoved(moved)],
+                    // No move-only frame at the final coordinate: Stop must capture it.
+                    vec![egui::Event::PointerMoved(released), button(released, false)],
+                ];
+                for (index, events) in frames.into_iter().enumerate() {
+                    let mut output = ctx.run_ui(
+                        egui::RawInput {
+                            screen_rect: Some(Rect::from_min_size(
+                                Pos2::ZERO,
+                                vec2(1500.0, 1300.0),
+                            )),
+                            time: Some(1.0 + index as f64 * 0.1),
+                            events,
+                            ..Default::default()
+                        },
+                        |ui| {
+                            if let Some((page, event)) = app.paint_slot(&ctx, ui, &slot) {
+                                app.measurement_geometry_event(page, event);
+                            }
+                        },
+                    );
+                    output.textures_delta.clear();
+                }
+                let draft = app.annotate.measure.geometry.as_ref().unwrap();
+                if pointer_button != egui::PointerButton::Primary {
+                    assert_eq!(
+                        draft.replacement.points,
+                        vec![(200.0, 500.0), (300.0, 500.0)]
+                    );
+                    assert!(!app.finish_measurement_geometry());
+                    assert!(requests.try_recv().is_err());
+                    continue;
+                }
+                assert!((draft.replacement.points[1].0 - 365.0).abs() < 0.001);
+                assert!((draft.replacement.points[1].1 - 535.0).abs() < 0.001);
+                assert_eq!(draft.replacement.points[0], (200.0, 500.0));
+                assert!(!app.dirty);
+                assert!(requests.try_recv().is_err(), "pointer edits remain local");
+                assert!(
+                    app.finish_measurement_geometry(),
+                    "release clears the captured vertex"
+                );
+                assert!(matches!(
+                    requests.recv().unwrap(),
+                    Request::PreviewMeasurementEdit { .. }
+                ));
+            }
         }
     }
 
@@ -3037,5 +3331,140 @@ mod tests {
                 start.elapsed() / 100
             );
         }
+    }
+
+    #[test]
+    fn geometry_cache_reuses_scroll_frames_and_invalidates_each_layout_input() {
+        let pages = vec![letter(); 5000];
+        let mut cache = GeometryCache::default();
+        let original = cache.pages(3, &pages, ViewRotation::Upright);
+        let key = LayoutKey {
+            first: 0,
+            count: pages.len(),
+            scale: 1.0,
+            avail: vec2(1000.0, 800.0),
+            mode: ViewMode::Continuous,
+            rotation: ViewRotation::Upright,
+        };
+        let layout = cache.layout(key);
+        for scroll in 0..1000 {
+            assert!(Arc::ptr_eq(
+                &original,
+                &cache.pages(3, &pages, ViewRotation::Upright)
+            ));
+            let current = cache.layout(key);
+            assert!(Arc::ptr_eq(&layout, &current));
+            let top = scroll as f32 * 300.0;
+            assert_eq!(
+                current.visible(top, top + 800.0),
+                layout.visible(top, top + 800.0)
+            );
+        }
+        for changed in [
+            LayoutKey { scale: 2.0, ..key },
+            LayoutKey {
+                avail: vec2(700.0, 600.0),
+                ..key
+            },
+            LayoutKey {
+                mode: ViewMode::Book,
+                ..key
+            },
+            LayoutKey {
+                first: 100,
+                count: 1,
+                mode: ViewMode::Single,
+                ..key
+            },
+        ] {
+            let actual = cache.layout(changed);
+            assert!(!Arc::ptr_eq(&layout, &actual));
+            let expected = Layout::for_rotation(
+                &pages[changed.first..changed.first + changed.count],
+                changed.first,
+                changed.scale,
+                changed.avail,
+                changed.mode,
+                changed.rotation,
+            );
+            assert_eq!(actual.content, expected.content);
+            assert_eq!(
+                actual.page_rect(changed.first),
+                expected.page_rect(changed.first)
+            );
+        }
+        let replaced = cache.pages(4, &pages, ViewRotation::Upright);
+        assert!(
+            !Arc::ptr_eq(&original, &replaced),
+            "same length does not identify the document"
+        );
+        assert!(cache.layout.is_none());
+    }
+
+    #[test]
+    fn cached_fit_and_clamp_match_uncached_results_for_modes_rotations_and_dpi() {
+        let pages = [letter(), landscape(), letter()];
+        let mut cache = GeometryCache::default();
+        for rotation in [
+            ViewRotation::Upright,
+            ViewRotation::Clockwise,
+            ViewRotation::UpsideDown,
+            ViewRotation::Counterclockwise,
+        ] {
+            cache.pages(1, &pages, rotation);
+            for mode in [
+                ViewMode::Single,
+                ViewMode::Continuous,
+                ViewMode::TwoPage,
+                ViewMode::Book,
+            ] {
+                for zoom in [Zoom::FitPage, Zoom::FitWidth, Zoom::Fixed(32.0)] {
+                    for current in 0..pages.len() {
+                        let key = ZoomKey {
+                            zoom,
+                            mode,
+                            current,
+                            avail: vec2(900.0, 700.0),
+                            ppp: 1.5,
+                        };
+                        let wanted = effective_zoom(zoom, mode, &cache.display, current, key.avail);
+                        assert_eq!(
+                            cache.zoom(key),
+                            clamp_zoom(wanted, &cache.display, key.ppp, mode)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// CI measurement, without machine-dependent timing assertions.
+    #[test]
+    #[ignore]
+    fn performance_cached_layout_5000_pages() {
+        let pages = vec![letter(); 5000];
+        let mut cache = GeometryCache::default();
+        cache.pages(1, &pages, ViewRotation::Upright);
+        let key = LayoutKey {
+            first: 0,
+            count: pages.len(),
+            scale: 1.0,
+            avail: vec2(1000.0, 800.0),
+            mode: ViewMode::Continuous,
+            rotation: ViewRotation::Upright,
+        };
+        cache.layout(key);
+        let mut times = Vec::new();
+        for i in 0..1000 {
+            let start = std::time::Instant::now();
+            let layout = cache.layout(key);
+            std::hint::black_box(layout.visible(i as f32 * 300.0, i as f32 * 300.0 + 800.0));
+            times.push(start.elapsed());
+        }
+        times.sort();
+        println!(
+            "cached_layout pages=5000 samples=1000 p95_us={}",
+            times[949].as_micros()
+        );
     }
 }

@@ -1,0 +1,81 @@
+{
+  "source": "1c48cf33db3d77c728dd6ed556ff357d55a84bbb",
+  "targetRelease": "0.36.0",
+  "updated": false,
+  "deferredByUser": true,
+  "lastRecordedReadback": {
+    "source": "aab39beaffa88a7a970441f647498920e432bf27",
+    "targetRelease": "0.35.0",
+    "updated": false,
+    "deferredByUser": true,
+    "lastRecordedReadback": {
+      "source": "521618f4aab6cd17f7f829bc739bb3f7a93c9c5e",
+      "targetRelease": "0.34.0",
+      "updated": false,
+      "deferredByUser": true,
+      "lastRecordedReadback": {
+        "source": "c5dcd31cd1b93b601b3e1d0e28a98e99400f48cb",
+        "targetRelease": "0.33.0",
+        "project": "https://github.com/users/lmdanavanem/projects/1",
+        "updated": false,
+        "verifiedAt": "2026-10-19T21:19:43.985Z",
+        "totalItems": 43,
+        "uniqueVisibleItemTitles": 43,
+        "aggregate": {
+          "Todo": 18,
+          "In Progress": 0,
+          "Done": 25
+        },
+        "unsavedChanges": false,
+        "views": [
+          {
+            "view": "Bugs",
+            "filter": "category:Bug ",
+            "items": 8,
+            "Todo": 0,
+            "In Progress": 0,
+            "Done": 8
+          },
+          {
+            "view": "Roadmap",
+            "filter": "category:Roadmap",
+            "items": 24,
+            "Todo": 10,
+            "In Progress": 0,
+            "Done": 14
+          },
+          {
+            "view": "Suggestions",
+            "filter": "category:Suggestion",
+            "items": 11,
+            "Todo": 8,
+            "In Progress": 0,
+            "Done": 3
+          }
+        ],
+        "updatedItems": [],
+        "unavailableReason": "The connected Chrome session is signed out of GitHub and the repository token lacks Project access. The user explicitly requested continuing the release without Projects for now; no permission scopes were expanded.",
+        "intendedUpdates": [
+          {
+            "title": "[P1] Expand the licensed real, hostile and large PDF regression corpus",
+            "status": "In Progress",
+            "qualification": "Partial first preparation lot; original acceptance criteria remain open."
+          },
+          {
+            "title": "[P1] Fuzz PDF and CMS boundaries and publish hardware benchmarks",
+            "status": "In Progress",
+            "qualification": "Deterministic mutation smoke and CI command measurements only; coverage-guided fuzzing and physical-device benchmarks remain open."
+          }
+        ],
+        "notes": "Read-only public DOM snapshots verified all 43 unique item titles and all three saved filters before the user explicitly deferred Project edits. No project description or status was changed and no issue/conversation comment was created. This is a readback with deferred edits, not successful Project synchronization.",
+        "deferredByUser": true
+      },
+      "evidenceInheritedFrom": "docs/qa/PROJECT_UPDATE_0.33.0.json",
+      "notes": "Project edits remain deferred at the explicit request of the owner. This release did not reread or change Projects; inherited counts are historical, not fresh synchronization."
+    },
+    "evidenceInheritedFrom": "docs/qa/PROJECT_UPDATE_0.34.0.json",
+    "notes": "Project edits remain deferred at the explicit request of the owner. No fresh readback or edit was performed for this release; inherited counts are historical."
+  },
+  "evidenceInheritedFrom": "docs/qa/PROJECT_UPDATE_0.35.0.json",
+  "notes": "Project edits remain deferred at the explicit request of the owner. No fresh readback or edit was performed; inherited counts are historical. The keyboard-shortcut slice of the Explorer/shortcuts Suggestion is implemented, while Explorer and native input qualification remain open."
+}

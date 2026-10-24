@@ -395,6 +395,7 @@ pub fn thread_replies(details: &[AnnotDetail], root: usize) -> Vec<&AnnotDetail>
 pub enum LinkAction {
     GoTo(usize),
     Confirm(String),
+    Remote(sunipdf_core::plan_links::RemotePageTarget),
     Blocked,
     Unsupported,
 }
@@ -404,6 +405,7 @@ pub fn link_action(target: &LinkTarget) -> LinkAction {
         LinkTarget::Page(n) => LinkAction::GoTo(*n),
         LinkTarget::Destination(destination) => LinkAction::GoTo(destination.page),
         LinkTarget::Named(_) => LinkAction::Unsupported,
+        LinkTarget::RemotePage(target) => LinkAction::Remote(target.clone()),
         LinkTarget::Uri(u) if is_safe_external_uri(u) => LinkAction::Confirm(u.trim().to_string()),
         LinkTarget::Uri(_) => LinkAction::Blocked,
         LinkTarget::Unsupported => LinkAction::Unsupported,
@@ -571,6 +573,28 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_action(&mut self) -> bool {
+        if self.annotate.register.dialog_open() {
+            self.status_msg = Some(self.t("quantity.finish_first").into());
+            return true;
+        }
+        if self.annotate.quantities.blocks_document() {
+            self.status_msg = Some(self.t("quantity.finish_first").into());
+            return true;
+        }
+        if self.library.blocks_document() {
+            self.status_msg = Some(self.t("library.finish_first").into());
+            return true;
+        }
+        if self.annotate.measure.saved.dialog_open()
+            || self.annotate.measure.scales_ui.dialog_open()
+        {
+            self.status_msg = Some(self.t("measure.saved.finish_first").into());
+            return true;
+        }
+        if self.annotate.measure.is_active_draft() {
+            self.status_msg = Some(self.t("measure.finish_first").into());
+            return true;
+        }
         if self.annotate.adv.rich.is_some() {
             self.status_msg = Some(self.t("rich.finish_first").into());
             return true;
@@ -587,6 +611,33 @@ impl SuniApp {
     }
 
     pub(crate) fn ink_blocks_command(&self, command: Command) -> bool {
+        if self.annotate.register.dialog_open() {
+            return true;
+        }
+        if self.annotate.quantities.blocks_document() {
+            return true;
+        }
+        if self.library.blocks_document() {
+            return true;
+        }
+        if self.annotate.measure.saved.dialog_open()
+            || self.annotate.measure.scales_ui.dialog_open()
+        {
+            return true;
+        }
+        if self.annotate.measure.is_active_draft() && !self.leaves_measurement_workspace(command) {
+            return !matches!(
+                command,
+                Command::ZoomIn
+                    | Command::ZoomOut
+                    | Command::ActualSize
+                    | Command::FitWidth
+                    | Command::FitPage
+                    | Command::ToggleThumbnails
+                    | Command::ToggleComments
+                    | Command::ToggleTools
+            );
+        }
         if self.annotate.adv.rich.is_some() {
             return true;
         }
@@ -995,6 +1046,7 @@ impl SuniApp {
                 None => {}
             },
             LinkAction::Confirm(u) => self.annotate.adv.url_confirm = Some(u),
+            LinkAction::Remote(target) => self.confirm_remote_plan_link(target),
             LinkAction::Blocked => {
                 self.status_msg = Some(tr(lang, "status.link_blocked").to_string());
             }
@@ -1586,7 +1638,7 @@ impl SuniApp {
         let has_icons = self.has_icons;
         const GAP: f32 = 14.0;
         let max_w = (bounds.width() - 2.0 * GAP - 18.0).max(80.0);
-        let id = egui::Id::new("annot-bar");
+        let id = egui::Id::unique("annot-bar");
         let bar_h = ctx.memory(|m| m.area_rect(id)).map_or(44.0, |r| r.height());
         let pos = match (selected.as_ref(), self.annot_screen_rect()) {
             (Some(_), Some(r)) if r.bottom() + 16.0 + bar_h <= bounds.bottom() - 8.0 => {
@@ -1887,7 +1939,7 @@ impl SuniApp {
         let rect = prompt.screen_rect(page_rect, k, height);
         let (mut submit, mut cancel) = (false, false);
         let mut rich_font = false;
-        egui::Area::new(egui::Id::new("inline-free-text"))
+        egui::Area::new(egui::Id::unique("inline-free-text"))
             .order(egui::Order::Foreground)
             .fixed_pos(rect.min)
             .constrain(true)
@@ -2865,6 +2917,7 @@ mod tests {
                     can_undo: true,
                     can_redo: false,
                     pages_unchanged: true,
+                    measurement_scales_unchanged: false,
                     modified: true,
                     has_signatures: false,
                 }))
@@ -3357,6 +3410,7 @@ mod tests {
                 can_redo: false,
                 modified: true,
                 pages_unchanged: true,
+                measurement_scales_unchanged: false,
                 has_signatures: false,
             }))
             .unwrap();
@@ -3528,6 +3582,7 @@ mod tests {
                     can_undo: true,
                     can_redo: false,
                     pages_unchanged,
+                    measurement_scales_unchanged: false,
                     modified: true,
                     has_signatures: false,
                 }))
@@ -3832,6 +3887,18 @@ mod tests {
     #[test]
     fn a_link_click_never_opens_anything_by_itself() {
         assert_eq!(link_action(&LinkTarget::Page(3)), LinkAction::GoTo(3));
+        let remote = sunipdf_core::plan_links::RemotePageTarget {
+            relative_path: "plans/floor.pdf".into(),
+            page: 2,
+            sheet_id: "floor-sheet".into(),
+            sha256: "a".repeat(64),
+            byte_len: 100,
+        };
+        assert_eq!(
+            link_action(&LinkTarget::RemotePage(remote.clone())),
+            LinkAction::Remote(remote),
+            "local plan links must use manifest confirmation, never the URI launcher"
+        );
         assert_eq!(
             link_action(&LinkTarget::Uri("  https://example.org/a?b=1 ".into())),
             LinkAction::Confirm("https://example.org/a?b=1".into())

@@ -266,6 +266,34 @@ fn shapes_render_real_gaps_and_preserve_custom_patterns_and_encrypted_roles() {
         .unwrap()
         .rgba;
     for aes256 in [false, true] {
+        let denied = security::protect(
+            &original,
+            None,
+            &Protection {
+                user_password: "dash-user".into(),
+                owner_password: "dash-owner".into(),
+                aes256,
+                allow_annotate: false,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let denied_source = temp.path().join(format!("no-annotations-{aes256}.pdf"));
+        std::fs::write(&denied_source, &denied).unwrap();
+        for password in ["dash-user", "dash-owner"] {
+            let out = temp.path().join(format!("denied-{aes256}-{password}.pdf"));
+            let output = annotate(&denied_source, &out, "line")
+                .args(["--dashed", "--password", password])
+                .output()
+                .unwrap();
+            assert!(!output.status.success());
+            assert_eq!(
+                serde_json::from_slice::<serde_json::Value>(&output.stderr).unwrap()["error"],
+                "security_restricted"
+            );
+            assert!(!out.exists());
+        }
+        assert_eq!(std::fs::read(&denied_source).unwrap(), denied);
         let protected = security::protect(
             &original,
             None,
@@ -274,7 +302,7 @@ fn shapes_render_real_gaps_and_preserve_custom_patterns_and_encrypted_roles() {
                 owner_password: "dash-owner".into(),
                 allow_print: false,
                 allow_copy: false,
-                allow_annotate: false,
+                allow_annotate: true,
                 aes256,
                 ..Default::default()
             },
@@ -302,7 +330,7 @@ fn shapes_render_real_gaps_and_preserve_custom_patterns_and_encrypted_roles() {
                 );
                 let properties = after.properties();
                 assert!(properties.encrypted && properties.can_modify);
-                assert!(!properties.can_print && !properties.can_copy && !properties.can_annotate);
+                assert!(!properties.can_print && !properties.can_copy && properties.can_annotate);
                 assert_eq!(after.render_page(0, 1.0).unwrap().rgba, expected_render);
                 for page in 0..before.page_count() {
                     assert_eq!(

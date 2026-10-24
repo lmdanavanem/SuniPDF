@@ -109,6 +109,34 @@ fn retargets_foreign_links_and_preserves_content_forms_and_both_encrypted_roles(
     let before = engine.open(&source, None).unwrap();
     let index = before.page_links(0).unwrap()[0].index;
     for aes256 in [false, true] {
+        let denied = security::protect(
+            &original,
+            None,
+            &Protection {
+                user_password: "link-user".into(),
+                owner_password: "link-owner".into(),
+                aes256,
+                allow_annotate: false,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let denied_source = temp.path().join(format!("no-annotations-{aes256}.pdf"));
+        std::fs::write(&denied_source, &denied).unwrap();
+        for password in ["link-user", "link-owner"] {
+            let out = temp.path().join(format!("denied-{aes256}-{password}.pdf"));
+            let output = cli(&denied_source, &out, index)
+                .args(["--goto-page", "2", "--password", password])
+                .output()
+                .unwrap();
+            assert!(!output.status.success());
+            assert_eq!(
+                serde_json::from_slice::<serde_json::Value>(&output.stderr).unwrap()["error"],
+                "security_restricted"
+            );
+            assert!(!out.exists());
+        }
+        assert_eq!(std::fs::read(&denied_source).unwrap(), denied);
         let protected = security::protect(
             &original,
             None,
@@ -117,7 +145,7 @@ fn retargets_foreign_links_and_preserves_content_forms_and_both_encrypted_roles(
                 owner_password: "link-owner".into(),
                 allow_print: false,
                 allow_copy: false,
-                allow_annotate: false,
+                allow_annotate: true,
                 aes256,
                 ..Default::default()
             },
@@ -145,7 +173,7 @@ fn retargets_foreign_links_and_preserves_content_forms_and_both_encrypted_roles(
                 );
                 let properties = after.properties();
                 assert!(properties.encrypted);
-                assert!(!properties.can_copy && !properties.can_print && !properties.can_annotate);
+                assert!(!properties.can_copy && !properties.can_print && properties.can_annotate);
                 assert!(properties.can_modify);
                 unchanged_except_target(&before, &after, index);
             }

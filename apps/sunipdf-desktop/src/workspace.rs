@@ -1,6 +1,6 @@
 //! Hub « Tous les outils » : regroupe les commandes du registre par tâche (liste),
 //! bascule d'outil (fonctions pures, testables sans fenêtre) et barre contextuelle de l'outil actif.
-//! Le dessin des lignes du panneau et des cartes d'accueil est dans `shell.rs`.
+//! Les familles du panneau sont dans `tool_hub.rs`, les cartes d'accueil dans `shell.rs`.
 
 use crate::annotate::{AnnotateState, Tool};
 use crate::app::SuniApp;
@@ -12,6 +12,18 @@ use egui::Color32;
 use sunipdf_core::Command;
 use sunipdf_i18n::tr;
 
+pub(crate) fn platform_unavailable(command: Command) -> Option<&'static str> {
+    (!cfg!(windows)
+        && matches!(
+            command,
+            Command::PrintDocument
+                | Command::OfficeToPdf
+                | Command::VerifySignatures
+                | Command::SignWithCertificate
+        ))
+    .then_some("platform.windows_only")
+}
+
 /// Ordre des outils tel qu'affiché ; `TABLE[w as usize].ws == w` (testé).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Workspace {
@@ -21,6 +33,10 @@ pub enum Workspace {
     Create,
     Combine,
     Organize,
+    Quantity,
+    Measure,
+    RevisionOverlay,
+    Library,
     Comment,
     ScanOcr,
     Protect,
@@ -48,7 +64,7 @@ pub struct WsInfo {
     pub color: Color32,
     /// `None` = fonction non implémentée : l'outil n'apparaît nulle part (pas de bouton factice).
     pub entry: Option<Entry>,
-    /// Commandes de l'outil, par groupes (séparateurs dans la barre). Une commande n'a qu'un outil.
+    /// Commands grouped by separators. Measure also has a shortcut in Comment.
     pub groups: &'static [&'static [Command]],
 }
 
@@ -60,11 +76,19 @@ impl WsInfo {
     pub fn contains(&self, c: Command) -> bool {
         self.commands().any(|x| x == c)
     }
+
+    fn bar_commands(&self) -> impl Iterator<Item = Command> + '_ {
+        self.commands()
+            .filter(|command| self.ws != Workspace::Measure || *command != C::ToolMeasure)
+    }
 }
 
 use Command as C;
 
-pub static TABLE: [WsInfo; 14] = [
+/// Segoe Fluent Ruler with a readable fallback when the icon font is absent.
+pub const MEASURE_ICON: (&str, &str) = ("\u{ED5E}", "↔");
+
+pub static TABLE: [WsInfo; 18] = [
     WsInfo {
         ws: Workspace::Export,
         name_key: "hub.export.name",
@@ -161,7 +185,49 @@ pub static TABLE: [WsInfo; 14] = [
             ],
             &[C::CropPages, C::ResizePages, C::PageLabels],
             &[C::SplitDocument, C::ExtractPages],
+            &[
+                C::PlanSets,
+                C::RevisionTransfer,
+                C::PlanLinks,
+                C::RevisionOutlines,
+            ],
         ],
+    },
+    WsInfo {
+        ws: Workspace::Quantity,
+        name_key: "quantity.title",
+        desc_key: "quantity.help",
+        icon: (glyph::NUMBERS, "#"),
+        color: theme::CAT_ANNOTATE,
+        entry: Some(Entry::Direct(C::QuantityTable)),
+        groups: &[&[C::QuantityTable]],
+    },
+    WsInfo {
+        ws: Workspace::Measure,
+        name_key: "hub.measure.name",
+        desc_key: "hub.measure.desc",
+        icon: MEASURE_ICON,
+        color: theme::CAT_ANNOTATE,
+        entry: Some(Entry::Mode(C::HubMeasure)),
+        groups: &[&[C::ToolMeasure], &[C::QuantityTable]],
+    },
+    WsInfo {
+        ws: Workspace::RevisionOverlay,
+        name_key: "overlay.title",
+        desc_key: "overlay.description",
+        icon: (glyph::PAGES, "◫"),
+        color: theme::CAT_PAGES,
+        entry: Some(Entry::Direct(C::RevisionOverlay)),
+        groups: &[&[C::RevisionOverlay]],
+    },
+    WsInfo {
+        ws: Workspace::Library,
+        name_key: "library.title",
+        desc_key: "library.description",
+        icon: (glyph::ALL_APPS, "▦"),
+        color: theme::CAT_ANNOTATE,
+        entry: Some(Entry::Direct(C::AnnotationLibrary)),
+        groups: &[&[C::AnnotationLibrary]],
     },
     WsInfo {
         ws: Workspace::Comment,
@@ -171,6 +237,7 @@ pub static TABLE: [WsInfo; 14] = [
         color: theme::CAT_ANNOTATE,
         entry: Some(Entry::Mode(C::HubComment)),
         groups: &[
+            &[C::ToolMeasure],
             &[
                 C::ToolSelect,
                 C::ToolHighlight,
@@ -187,7 +254,19 @@ pub static TABLE: [WsInfo; 14] = [
                 C::ToolAnnotLine,
                 C::ToolLink,
             ],
-            &[C::RichAnnotations, C::EraseInkStrokes],
+            &[
+                C::RichAnnotations,
+                C::AnnotationLibrary,
+                C::ToolCount,
+                C::VisualSearch,
+                C::BoundaryFill,
+                C::AnnotationRegister,
+                C::PlanZones,
+                C::QuantityTable,
+                C::IssueReport,
+                C::QuantityWorkbook,
+                C::EraseInkStrokes,
+            ],
             &[C::ToggleComments, C::CopyText],
         ],
     },
@@ -296,7 +375,7 @@ impl Workspace {
         Self::available().find(|w| w.info().entry == Some(Entry::Mode(c)))
     }
 
-    /// Outil propriétaire (unique) d'une commande du registre.
+    /// Primary workspace of a command; Measure precedes its shortcut in Comment.
     pub fn owner_of(c: Command) -> Option<Workspace> {
         Self::available().find(|w| w.info().contains(c))
     }
@@ -319,6 +398,9 @@ pub fn switch(
     let from = std::mem::replace(&mut a.workspace, to);
     if from == to {
         return;
+    }
+    if from == Some(Workspace::Measure) {
+        a.measure.cancel();
     }
     if from == Some(Workspace::Organize) {
         o.active = false;
@@ -442,12 +524,7 @@ pub fn bar_button(ui: &mut egui::Ui, has_icons: bool, b: BarButton<'_>) -> egui:
     };
     let (rect, resp) = ui.allocate_exact_size(egui::vec2(w, BAR_BUTTON_H), sense);
     resp.widget_info(|| {
-        egui::WidgetInfo::selected(
-            egui::WidgetType::SelectableLabel,
-            b.enabled,
-            b.selected,
-            b.label,
-        )
+        egui::WidgetInfo::selected(egui::Role::Button, b.enabled, b.selected, b.label)
     });
     let resp = resp
         .on_hover_text(b.tooltip.to_string())
@@ -504,8 +581,17 @@ pub fn bar_button(ui: &mut egui::Ui, has_icons: bool, b: BarButton<'_>) -> egui:
 }
 
 impl SuniApp {
+    pub(crate) fn leaves_measurement_workspace(&self, command: Command) -> bool {
+        self.annotate.workspace == Some(Workspace::Measure)
+            && (command == Command::HubLeave
+                || Workspace::from_command(command).is_some_and(|ws| ws != Workspace::Measure)
+                || Tool::from_command(command)
+                    .is_some_and(|tool| !matches!(tool, Tool::Measure | Tool::Select)))
+    }
+
     pub fn enter_workspace(&mut self, ctx: &egui::Context, ws: Workspace) {
-        if self.ink_blocks_action() {
+        if self.ink_blocks_command(ws.activate().unwrap_or(Command::HubLeave)) {
+            self.ink_blocks_action();
             return;
         }
         self.form_builder.cancel();
@@ -519,7 +605,7 @@ impl SuniApp {
         if let Some(first) = ws
             .info()
             .commands()
-            .find(|c| Tool::from_command(*c).is_some())
+            .find(|c| Tool::from_command(*c).is_some() && Workspace::owner_of(*c) == Some(ws))
         {
             self.execute(ctx, first);
         }
@@ -532,7 +618,8 @@ impl SuniApp {
     }
 
     pub fn leave_workspace(&mut self) {
-        if self.ink_blocks_action() {
+        if self.ink_blocks_command(Command::HubLeave) {
+            self.ink_blocks_action();
             return;
         }
         self.form_builder.cancel();
@@ -555,15 +642,24 @@ impl SuniApp {
         match c {
             Command::FullScreenReading => self.reading_full_screen,
             Command::OrganizePages => self.organize.active,
-            Command::ToggleComments => self.annotate.comments_open,
-            Command::ToggleObjects => self.edit.objects_open,
-            Command::ToggleForms => self.forms.panel_open,
+            Command::ToggleComments => {
+                self.context_panel() == Some(crate::reader_layout::ContextPanel::Comments)
+            }
+            Command::ToggleObjects => {
+                self.context_panel() == Some(crate::reader_layout::ContextPanel::Objects)
+            }
+            Command::ToggleForms => {
+                self.context_panel() == Some(crate::reader_layout::ContextPanel::Forms)
+            }
             _ => Tool::from_command(c).is_some_and(|t| t == self.annotate.tool),
         }
     }
 
     pub fn command_enabled(&self, c: Command) -> bool {
-        if self.ink_blocks_command(c) {
+        if platform_unavailable(c).is_some()
+            || self.ink_blocks_command(c)
+            || self.measurement_blocks_panel_command(c)
+        {
             return false;
         }
         let grid_selection = !self.organize.selected.is_empty();
@@ -648,7 +744,7 @@ impl SuniApp {
                 .x
         };
         let spacing = ui.spacing().item_spacing.x;
-        let count = info.commands().count() as f32;
+        let count = info.bar_commands().count() as f32;
         // Marges (6 + 6), retour, pastille, nom (semi-gras, ~8 % plus large), un séparateur de 6 px
         // par groupe, bouton « Quitter l'outil », espacements entre ces éléments, 12 px de sécurité.
         let fixed = 12.0
@@ -662,7 +758,7 @@ impl SuniApp {
             + 4.0 * spacing
             + 12.0;
         let label_w = |tools: bool| -> f32 {
-            info.commands()
+            info.bar_commands()
                 .filter(|c| Tool::from_command(*c).is_some() == tools)
                 .map(|c| width(tr(lang, c.info().label_key), LABEL_FONT) + 10.0)
                 .sum()
@@ -671,7 +767,7 @@ impl SuniApp {
         let tools = label_w(true);
         // Libellé de l'outil de dessin actif, affiché même en icônes seules.
         let active_label: f32 = info
-            .commands()
+            .bar_commands()
             .filter(|c| Tool::from_command(*c) == Some(self.annotate.tool))
             .map(|c| width(tr(lang, c.info().label_key), LABEL_FONT) + 10.0)
             .sum();
@@ -742,8 +838,18 @@ impl SuniApp {
                             ui.spacing_mut().interact_size.y = BAR_BUTTON_H;
                             ui.horizontal(|ui| {
                                 for group in info.groups {
+                                    let commands: Vec<_> = group
+                                        .iter()
+                                        .copied()
+                                        .filter(|command| {
+                                            ws != Workspace::Measure || *command != C::ToolMeasure
+                                        })
+                                        .collect();
+                                    if commands.is_empty() {
+                                        continue;
+                                    }
                                     ui.separator();
-                                    for &c in *group {
+                                    for c in commands {
                                         if self.bar_command(ui, info, c, layout) {
                                             run = Some(c);
                                         }
@@ -777,9 +883,7 @@ impl SuniApp {
             run = Some(Command::HubLeave);
         }
         if back {
-            self.show_tools = true;
-            self.settings.show_tools = true;
-            self.persist_settings();
+            self.set_navigation_panel(Some(crate::reader_layout::NavigationPanel::Tools));
             run = Some(Command::HubLeave);
         }
         if let Some(c) = run {
@@ -792,9 +896,13 @@ impl SuniApp {
         let lang = self.lang();
         let ci = c.info();
         let label = tr(lang, ci.label_key);
-        let tooltip = match ci.shortcut_key {
-            Some(k) => format!("{label}  ({})", tr(lang, k)),
-            None => label.to_string(),
+        let shortcut = self.shortcut_text(ci.command);
+        let tooltip = if let Some(reason) = platform_unavailable(c) {
+            format!("{label}\n{}", tr(lang, reason))
+        } else if shortcut.is_empty() {
+            label.to_string()
+        } else {
+            format!("{label}  ({shortcut})")
         };
         let is_tool = Tool::from_command(c).is_some();
         let selected = self.command_selected(c);
@@ -806,7 +914,10 @@ impl SuniApp {
                 tint: Some(info.color),
                 label,
                 // L'outil de dessin actif garde son libellé même en icônes seules (sauf compact).
-                show_label: if is_tool {
+                show_label: if matches!(c, C::ToolMeasure | C::AnnotationLibrary | C::QuantityTable)
+                {
+                    true
+                } else if is_tool {
                     layout.tool_labels || (selected && !layout.compact)
                 } else {
                     layout.action_labels
@@ -836,6 +947,8 @@ mod tests {
 
     /// Commandes système, de vue ou de navigation : volontairement hors outils.
     const SYSTEM_COMMANDS: &[Command] = &[
+        C::CompareFiles,
+        C::SearchFiles,
         C::RotateViewClockwise,
         C::RotateViewCounterClockwise,
         C::FullScreenReading,
@@ -871,6 +984,7 @@ mod tests {
         C::NextTab,
         C::PrevTab,
         C::About,
+        C::KeyboardShortcuts,
         // Presse-papiers d'objets : clavier, menu Édition, palette et barre d'objet (comme
         // Annuler / Rétablir), pas dans la barre d'outil (DECISIONS.md).
         C::CopyObjects,
@@ -886,6 +1000,7 @@ mod tests {
         C::HubEdit,
         C::HubOrganize,
         C::HubComment,
+        C::HubMeasure,
         C::HubProtect,
         C::HubStamp,
         C::HubRedact,
@@ -924,7 +1039,7 @@ mod tests {
 
     #[test]
     fn available_tools_are_wired() {
-        assert_eq!(Workspace::available().count(), 14);
+        assert_eq!(Workspace::available().count(), 18);
         for ws in Workspace::available() {
             let info = ws.info();
             match info.entry.unwrap() {
@@ -946,6 +1061,68 @@ mod tests {
     }
 
     #[test]
+    fn measurements_have_a_dedicated_workspace_and_a_comment_shortcut() {
+        assert_eq!(Workspace::Measure.activate(), Some(C::HubMeasure));
+        assert_eq!(
+            Workspace::owner_of(C::ToolMeasure),
+            Some(Workspace::Measure)
+        );
+        assert_eq!(
+            Workspace::from_command(C::HubMeasure),
+            Some(Workspace::Measure)
+        );
+        assert_eq!(Workspace::Comment.info().groups[0], &[C::ToolMeasure]);
+        assert_eq!(Workspace::Measure.info().groups[0], &[C::ToolMeasure]);
+        assert!(Workspace::available().any(|w| w == Workspace::Measure));
+    }
+
+    #[test]
+    fn measurement_context_shows_one_title_and_keeps_the_quantity_action() {
+        assert_eq!(
+            Workspace::Measure.info().bar_commands().collect::<Vec<_>>(),
+            vec![C::QuantityTable]
+        );
+        assert!(Workspace::Comment
+            .info()
+            .bar_commands()
+            .any(|c| c == C::ToolMeasure));
+        for lang in Language::ALL {
+            for width in [640.0, 1280.0] {
+                let (mut app, _, _) = crate::app::tests::test_app();
+                app.settings.set_language(lang);
+                let ctx = egui::Context::default();
+                app.has_icons = icons::install(&ctx);
+                ctx.enable_accesskit();
+                app.execute(&ctx, C::HubMeasure);
+                let input = egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(width, 160.0),
+                    )),
+                    ..Default::default()
+                };
+                let mut output = ctx.run_ui(input.clone(), |ui| app.workspace_bar(&ctx, ui));
+                output.textures_delta.clear();
+                let mut output = ctx.run_ui(input, |ui| app.workspace_bar(&ctx, ui));
+                output.textures_delta.clear();
+                let title = tr(lang, Workspace::Measure.info().name_key);
+                assert_eq!(output.shapes.iter().filter(|shape| {
+                    matches!(&shape.shape, egui::Shape::Text(text) if text.galley.text() == title)
+                }).count(), 1);
+                let tree = output.platform_output.accesskit_update.as_ref().unwrap();
+                assert!(!tree.nodes.iter().any(|(_, node)| {
+                    node.role() == egui::accesskit::Role::Button
+                        && node.label() == Some(tr(lang, C::ToolMeasure.info().label_key))
+                }));
+                assert!(tree.nodes.iter().any(|(_, node)| {
+                    node.role() == egui::accesskit::Role::Button
+                        && node.label() == Some(tr(lang, C::QuantityTable.info().label_key))
+                }));
+            }
+        }
+    }
+
+    #[test]
     fn new_hub_tools_open_real_feature_controls() {
         let (mut app, requests, _) = crate::app::tests::test_app();
         let ctx = egui::Context::default();
@@ -959,20 +1136,57 @@ mod tests {
         app.form_builder.visible = false;
         app.execute(&ctx, Workspace::Certificate.activate().unwrap());
         app.execute(&ctx, C::VerifySignatures);
-        assert!(app.certificate.visible);
-        assert!(requests
-            .try_iter()
-            .any(|r| matches!(r, crate::worker::Request::VerifySignatures)));
+        assert_eq!(app.certificate.visible, cfg!(windows));
+        assert_eq!(
+            requests
+                .try_iter()
+                .any(|r| matches!(r, crate::worker::Request::VerifySignatures)),
+            cfg!(windows)
+        );
     }
 
     #[test]
-    fn every_listed_command_is_registered_and_unique() {
+    fn unsupported_platform_commands_are_disabled_and_do_not_dispatch_worker_requests() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        for command in [
+            C::PrintDocument,
+            C::OfficeToPdf,
+            C::VerifySignatures,
+            C::SignWithCertificate,
+        ] {
+            assert_eq!(platform_unavailable(command).is_none(), cfg!(windows));
+            if !cfg!(windows) {
+                assert!(!app.command_enabled(command));
+                app.execute(&egui::Context::default(), command);
+                assert_eq!(
+                    app.status_msg.as_deref(),
+                    Some(app.t("platform.windows_only"))
+                );
+                assert!(!app.dialog_open());
+                assert!(requests.try_recv().is_err());
+            }
+        }
+        for command in [C::ExportOffice, C::SignDocument, C::SignInitials] {
+            assert!(platform_unavailable(command).is_none());
+        }
+    }
+
+    #[test]
+    fn listed_commands_have_unique_owners_except_the_measurement_shortcut() {
         let mut seen = std::collections::HashSet::new();
         for info in &TABLE {
             assert!(info.groups.iter().all(|g| !g.is_empty()));
             for c in info.commands() {
                 let _ = c.info(); // panique si la commande n'est pas au registre
-                assert!(seen.insert(c), "{c:?} appartient à deux outils");
+                let shared_measure_shortcut = matches!(c, C::ToolMeasure | C::AnnotationLibrary)
+                    && info.ws == Workspace::Comment;
+                assert!(
+                    seen.insert(c)
+                        || shared_measure_shortcut
+                        || (c == C::QuantityTable
+                            && matches!(info.ws, Workspace::Measure | Workspace::Comment)),
+                    "{c:?} appartient à deux outils"
+                );
             }
         }
     }

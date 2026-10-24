@@ -1,0 +1,797 @@
+{
+  "version": "0.49.0",
+  "source": "a95774d56c3b9ce02a9743431a5d0c2b079b330e",
+  "tag": "v0.49.0",
+  "release_id": 421060896,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.49.0",
+  "published_at": "2026-10-22T19:15:04Z",
+  "verified_at": "2026-10-22T19:19:56.2709764Z",
+  "author": "lmdanavanem",
+  "stable_latest_verified": true,
+  "workflows": [
+    {
+      "name": "ci",
+      "id": 39831660301,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660301",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 120009081052,
+          "name": "windows",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660301/job/120009081052"
+        }
+      ]
+    },
+    {
+      "name": "release",
+      "id": 39831682434,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39831682434",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 120009151465,
+          "name": "build (arm64)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39831682434/job/120009151465"
+        },
+        {
+          "id": 120009151960,
+          "name": "build (x64)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39831682434/job/120009151960"
+        },
+        {
+          "id": 120029066880,
+          "name": "publish",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39831682434/job/120029066880"
+        }
+      ]
+    },
+    {
+      "name": "codeql",
+      "id": 39831660552,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660552",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "id": 120009092807,
+          "name": "Analyze (rust)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660552/job/120009092807"
+        },
+        {
+          "id": 120009093168,
+          "name": "Analyze (actions)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660552/job/120009093168"
+        },
+        {
+          "id": 120009093264,
+          "name": "Analyze (python)",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39831660552/job/120009093264"
+        }
+      ]
+    }
+  ],
+  "qualification": {
+    "tests": {
+      "passed": 761,
+      "failed": 0,
+      "ignored": 10
+    },
+    "portable": {
+      "scenarios": 41,
+      "upgrades": 37,
+      "guards": 4
+    },
+    "msi": {
+      "baselines": 35,
+      "logs": 175
+    },
+    "i18n": 1397,
+    "open_code_scanning_alerts": 0
+  },
+  "assets": [
+    {
+      "id": 666803389,
+      "name": "SuniPDF-0.49.0-win-arm64-portable.zip",
+      "size": 26418438,
+      "sha256": "8672727337f1e5bd48ca9ebaad648599000872a0b60584b8718369a693a88abf",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 666803386,
+      "name": "SuniPDF-0.49.0-win-arm64-portable.zip.sha256",
+      "size": 105,
+      "sha256": "37d937f1a48dfcb23fb64632c4f396171a32c99703a27fd53830d7a6cafa2089",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 666803388,
+      "name": "SuniPDF-0.49.0-win-x64-portable.zip",
+      "size": 28188091,
+      "sha256": "da7b1ff25b0d7c4b54e477f37e0b95e28877b06f2420e5ef9045838932dc8dc0",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 666803385,
+      "name": "SuniPDF-0.49.0-win-x64-portable.zip.sha256",
+      "size": 103,
+      "sha256": "a131e5ad8d54b1f738b6db005a655e26bf8f95984b11ba3eabc5fa4c727f6762",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 666803384,
+      "name": "SuniPDF-0.49.0-win-x64.msi",
+      "size": 26091520,
+      "sha256": "451ed450f8b9190a2b9c8d8894888497a8c18088245389537ff4eb57b3269fff",
+      "public_unauthenticated": true
+    },
+    {
+      "id": 666803383,
+      "name": "SuniPDF-0.49.0-win-x64.msi.sha256",
+      "size": 94,
+      "sha256": "8348828b832c503d7257156a42e68004fc9fd0296577c808594be2614183a6bc",
+      "public_unauthenticated": true
+    }
+  ],
+  "zip_metadata": [
+    {
+      "architecture": "x64",
+      "product_version": "0.49.0",
+      "entries": 60,
+      "expanded_bytes": 94651991
+    },
+    {
+      "architecture": "arm64",
+      "product_version": "0.49.0",
+      "entries": 60,
+      "expanded_bytes": 86707300
+    }
+  ],
+  "msi_metadata": {
+    "ProductLanguage": "1033",
+    "ProductVersion": "0.49.0",
+    "ProductName": "SuniPDF"
+  },
+  "public_verification": {
+    "public_unauthenticated": true,
+    "gui_version": "0.49.0",
+    "cli_version": "sunipdf-cli 0.49.0",
+    "cli_sha256": "cf1838bee389d26173fd6f8ca01cdffc50ed0867ef45f691d4dd0d8b991d7569",
+    "cli_calls": 63,
+    "expected_cli_calls": 63,
+    "command_scenarios": [
+      "version",
+      "measure-help",
+      "edit-help",
+      "save-page-scale",
+      "read-page-scale",
+      "create-scaled-measurement",
+      "create-independent-measurement",
+      "export-initial-records",
+      "edit-unit-and-precision",
+      "export-converted-records",
+      "edit-explicit-calibration",
+      "export-recalibrated-records",
+      "read-quantity-before-pricing",
+      "set-typed-quantity-fields",
+      "read-priced-quantity",
+      "edit-explicit-geometry",
+      "export-edited-geometry",
+      "read-edited-quantity",
+      "reject-degenerate-geometry",
+      "reject-stale-expected-record",
+      "read-unchanged-page-default",
+      "remove-page-scale",
+      "read-removed-page-scale",
+      "export-after-scale-removal",
+      "create-angle-without-scale",
+      "export-angle-and-existing-records",
+      "vertices-polyline-create",
+      "vertices-polyline-export-original",
+      "vertices-polyline-read-unpriced",
+      "vertices-polyline-set-fields",
+      "vertices-polyline-insert",
+      "vertices-polyline-export-inserted",
+      "vertices-polyline-read-inserted",
+      "vertices-polyline-remove",
+      "vertices-polyline-export-removed",
+      "vertices-polyline-read-removed",
+      "vertices-area-create",
+      "vertices-area-export-original",
+      "vertices-area-read-unpriced",
+      "vertices-area-set-fields",
+      "vertices-area-insert",
+      "vertices-area-export-inserted",
+      "vertices-area-read-inserted",
+      "vertices-area-remove",
+      "vertices-area-export-removed",
+      "vertices-area-read-removed",
+      "vertices-perimeter-create",
+      "vertices-perimeter-export-original",
+      "vertices-perimeter-read-unpriced",
+      "vertices-perimeter-set-fields",
+      "vertices-perimeter-insert",
+      "vertices-perimeter-export-inserted",
+      "vertices-perimeter-read-inserted",
+      "vertices-perimeter-remove",
+      "vertices-perimeter-export-removed",
+      "vertices-perimeter-read-removed",
+      "vertices-reject-polyline-minimum",
+      "vertices-reject-area-minimum",
+      "vertices-reject-perimeter-minimum",
+      "vertices-reject-maximum",
+      "vertices-reject-length-count",
+      "vertices-reject-angle-count",
+      "vertices-reject-collapsed-deletion"
+    ],
+    "cli_results": [
+      {
+        "scenario": "version",
+        "command": "--version",
+        "exit_code": 0,
+        "stdout_sha256": "b981906fe5f771011e4e95cb81d9d12cf2776b79c7e9a9467be6a567657a9e6f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "measure-help",
+        "command": "measure",
+        "exit_code": 0,
+        "stdout_sha256": "520879d918b34a282028fe67f735508d29cd290838d775bc9be4a317a9f8f868",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "edit-help",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "34fb1eb90969d50a4ce14cf92d7416c46072892eaa28f977a8fed4ddeecb2022",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "save-page-scale",
+        "command": "set-page-calibration",
+        "exit_code": 0,
+        "stdout_sha256": "e6f2cf145f52857055b41c5c65ea9acde6f4982d9927db90a09d2aa7951af8ec",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-page-scale",
+        "command": "page-calibration",
+        "exit_code": 0,
+        "stdout_sha256": "1ade0f0f52d5d68b1527c20e1dc25c73a363f999c31a0feb6056945442a9e76c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "create-scaled-measurement",
+        "command": "measure",
+        "exit_code": 0,
+        "stdout_sha256": "d7aa1b31b5f3a09abe9b716771552055e9874ea94fe374e415281cf5f8343e4f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "create-independent-measurement",
+        "command": "measure",
+        "exit_code": 0,
+        "stdout_sha256": "069b4337af90c92ba73f144589f93db8d840b4e306cc6f1b33977a1dc0bc435e",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "export-initial-records",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "61bf9fe09b32390031ff83ce7db53a151d43f235d209635822ea37c7d313d05d",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "edit-unit-and-precision",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "ed8e46ec382b353015046c677a7538ed3f10009fd259ea30b4bf228ccbf2275f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "export-converted-records",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "b2b7506883bdc5b9dd0b44087b37f8e01e0d31c64afed7bc35d876abc94ab505",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "edit-explicit-calibration",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "e9bb2e0c92d54d324bfc456e22d5a5a316b58da7dcdae88309d70837e5ebc78c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "export-recalibrated-records",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "87d05ef3490d054e19ddd91b7497177b846715a337704ef76fc0a68e6813951f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-quantity-before-pricing",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "44a856f40119573276db7c9a50bb787f3a4126401131af1779ddb64ed050daea",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "set-typed-quantity-fields",
+        "command": "set-quantity-fields",
+        "exit_code": 0,
+        "stdout_sha256": "d338d23215bdb845f979579d85dcdfa5abcdc42cff88289bea0ecae98b8f9173",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-priced-quantity",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "17fc270725d73a07d4b8623f57e6e07412f3aa94a2f1d6cf6b6ba2e6f204a540",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "edit-explicit-geometry",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "815069f5fc6fe881f90374e328427de22a9fa149c452c62c560664c080757609",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "export-edited-geometry",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "35cc5ca4a8c4379c58a19f43c77116d62cfaf10745ccf50f611630d81367492f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-edited-quantity",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "567c08805b4fca0554986a0f9fe54aa7d0811ebd1093804fc01e87f43729d498",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "reject-degenerate-geometry",
+        "command": "edit-measurement",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "38a82991a339d214316c3da1726d73bd26a6d94e5d41650d997306144e62736d"
+      },
+      {
+        "scenario": "reject-stale-expected-record",
+        "command": "edit-measurement",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "3174d3e39fe9d11431f0f73ec015ef4cdedd057fe28ed2f251f4ec5d25a6feba"
+      },
+      {
+        "scenario": "read-unchanged-page-default",
+        "command": "page-calibration",
+        "exit_code": 0,
+        "stdout_sha256": "1ade0f0f52d5d68b1527c20e1dc25c73a363f999c31a0feb6056945442a9e76c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "remove-page-scale",
+        "command": "remove-page-calibration",
+        "exit_code": 0,
+        "stdout_sha256": "923b2dd38ecb6c485e1f610179f7df8afb95da5e69bb8dd0321aba508c77fb77",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "read-removed-page-scale",
+        "command": "page-calibration",
+        "exit_code": 0,
+        "stdout_sha256": "84212be4321f374284215ed626a92f5b727dcfe52262be5298007bf5bd47b41f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "export-after-scale-removal",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "35cc5ca4a8c4379c58a19f43c77116d62cfaf10745ccf50f611630d81367492f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "create-angle-without-scale",
+        "command": "measure",
+        "exit_code": 0,
+        "stdout_sha256": "d2a2996cc434eb4833f1180d827c1c3fb879fa8336a8668c637ee02b06b40380",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "export-angle-and-existing-records",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "d9f9304342fb7c89db30c0c589ce1a21b77478cfcdbcf7dd112d51e789cca21c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-polyline-create",
+        "command": "measure",
+        "exit_code": 0,
+        "stdout_sha256": "21bd0f6f3086074a5197c3e829ec2ad94a56f0ab107c1361dc009e4408b436f4",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-polyline-export-original",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "6589bf47156c6d7eb3b66e7b8b18a903b223d56fbe6deffb064ed07f7f793e6d",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-polyline-read-unpriced",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "50a218ca55c2d5716b8bb0b3c0bb8bafc1b3b1a10a56496b607fed0f9e30fea0",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-polyline-set-fields",
+        "command": "set-quantity-fields",
+        "exit_code": 0,
+        "stdout_sha256": "5942a4ed92b77e334cbd114a81c019644c05daf1f336498c91f96dd0590bf866",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-polyline-insert",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "15cf86df6d0260b3bc63bbf4e6f0b8e3cdca1b96b8213388e89c952348bc0c6d",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-polyline-export-inserted",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "1e03fc8ab0f2f44703c4d16982693cac14d32f266fe0bffaed06fedd55672f22",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-polyline-read-inserted",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "aef2fc947c144ac723f858f832525b6b51cb82cbc7ca58ed9d45170e61215604",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-polyline-remove",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "aa4227442734e192197cbd984cc92d5e874a4b9e0b91c64f835e36e03ca00850",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-polyline-export-removed",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "6589bf47156c6d7eb3b66e7b8b18a903b223d56fbe6deffb064ed07f7f793e6d",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-polyline-read-removed",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "9048f6abf851f583647c8b6aaca8217d8f69485c99bf5dc216a6ba1f357a6fa2",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-area-create",
+        "command": "measure",
+        "exit_code": 0,
+        "stdout_sha256": "f2e08627dcbebf620a866c98302974d61179cdafc09720ecb3011835f55f7cb9",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-area-export-original",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "9851e997cbd0125019c8be94ce3be1d043730f9e23b0cf3a3b87ab622f353945",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-area-read-unpriced",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "85212db622c5749f75dbffb751c444d6e894cd63144df2fa7661a937d321d57c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-area-set-fields",
+        "command": "set-quantity-fields",
+        "exit_code": 0,
+        "stdout_sha256": "061057a2545417fb7a589ea300bf7fdfaac6f8496ada3a246c647cec1cb78241",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-area-insert",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "dc33ccb28c8745b281e1ff75f4ccdf6f49a0c744c1e29d41bb79c4121a014666",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-area-export-inserted",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "8d2b2668919d95f430dcee353e33f7bc5ad3cb9c26012599ad5463365987a69b",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-area-read-inserted",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "b3319f93525bd5071ca50217d9b63d453747f2b7b8eee31b46875192337d7a82",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-area-remove",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "92de8848d82cf867af491332afc1d5bf42b015801feaee76d535f43f575768b4",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-area-export-removed",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "9851e997cbd0125019c8be94ce3be1d043730f9e23b0cf3a3b87ab622f353945",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-area-read-removed",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "b5de6304cf3468eb41a11af07f9e9370ed97e9f0ce78880857ced6eb9359758b",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-perimeter-create",
+        "command": "measure",
+        "exit_code": 0,
+        "stdout_sha256": "882c80bd7affaadd333f387bc47fe429a090e443ab2d0cad1c5be96a0d0f1e3e",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-perimeter-export-original",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "ddba2f546a4b1db65b258464c362fe09ee9450faa475329b2ac96f98bb90d754",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-perimeter-read-unpriced",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "cb70a88ea31254c8f0b64bfe626ffb8f5a67146f6ba14ece027c2d32af629c18",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-perimeter-set-fields",
+        "command": "set-quantity-fields",
+        "exit_code": 0,
+        "stdout_sha256": "fe0d6a9eb8bde90c4cc2ca389237bbcf6b679e4d209f6dcf010f012db530fc75",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-perimeter-insert",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "2307a830947e909beb4b359ad8af6cf127b461dcf4c6d52587d6243d7a192891",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-perimeter-export-inserted",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "34f3e287bf9d804c8f2e9e495b33ac14b2d82c51d4f304ff08619241c9f6ffd0",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-perimeter-read-inserted",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "c75bd6bfaae637dd074bd1b933478d19899f3dd0312196339ed3cca64f01962b",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-perimeter-remove",
+        "command": "edit-measurement",
+        "exit_code": 0,
+        "stdout_sha256": "6ce3ad9b7126c684db1da83bcce4a638a084b7f8548a06e6458948977c799a6b",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-perimeter-export-removed",
+        "command": "measurements",
+        "exit_code": 0,
+        "stdout_sha256": "ddba2f546a4b1db65b258464c362fe09ee9450faa475329b2ac96f98bb90d754",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-perimeter-read-removed",
+        "command": "quantity-table",
+        "exit_code": 0,
+        "stdout_sha256": "bd3b022e706f0e765a217d2bbbb758b287a17bc53da0672c482a8a3f6d88739a",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "scenario": "vertices-reject-polyline-minimum",
+        "command": "edit-measurement",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "38a82991a339d214316c3da1726d73bd26a6d94e5d41650d997306144e62736d"
+      },
+      {
+        "scenario": "vertices-reject-area-minimum",
+        "command": "edit-measurement",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "38a82991a339d214316c3da1726d73bd26a6d94e5d41650d997306144e62736d"
+      },
+      {
+        "scenario": "vertices-reject-perimeter-minimum",
+        "command": "edit-measurement",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "38a82991a339d214316c3da1726d73bd26a6d94e5d41650d997306144e62736d"
+      },
+      {
+        "scenario": "vertices-reject-maximum",
+        "command": "edit-measurement",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "b27b6e0c43a4e2f514cfd7a78fb74ea9f8f03f96805dab72e562e7a2600c11aa"
+      },
+      {
+        "scenario": "vertices-reject-length-count",
+        "command": "edit-measurement",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "38a82991a339d214316c3da1726d73bd26a6d94e5d41650d997306144e62736d"
+      },
+      {
+        "scenario": "vertices-reject-angle-count",
+        "command": "edit-measurement",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "85b54b5b8f53b7b89c0a452117937f5ff181088f1d02ebb369de69e5a6aec60b"
+      },
+      {
+        "scenario": "vertices-reject-collapsed-deletion",
+        "command": "edit-measurement",
+        "exit_code": 1,
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderr_sha256": "38a82991a339d214316c3da1726d73bd26a6d94e5d41650d997306144e62736d"
+      }
+    ],
+    "feature": "measurement_vertices",
+    "vertex_cycles": [
+      {
+        "kind": "polyline",
+        "original_count": 2,
+        "inserted_count": 3,
+        "removed_count": 2,
+        "original_value": 10,
+        "inserted_value": 12.5,
+        "original_cost": "25.00",
+        "inserted_cost": "31.25",
+        "unit": "m",
+        "identity_preserved": true,
+        "own_calibration_preserved": true,
+        "fields_and_price_preserved": true,
+        "reopened": true
+      },
+      {
+        "kind": "area",
+        "original_count": 4,
+        "inserted_count": 5,
+        "removed_count": 4,
+        "original_value": 50,
+        "inserted_value": 54.6875,
+        "original_cost": "125.00",
+        "inserted_cost": "136.72",
+        "unit": "m2",
+        "identity_preserved": true,
+        "own_calibration_preserved": true,
+        "fields_and_price_preserved": true,
+        "reopened": true
+      },
+      {
+        "kind": "perimeter",
+        "original_count": 4,
+        "inserted_count": 5,
+        "removed_count": 4,
+        "original_value": 40,
+        "inserted_value": 42.5,
+        "original_cost": "100.00",
+        "inserted_cost": "106.25",
+        "unit": "m",
+        "identity_preserved": true,
+        "own_calibration_preserved": true,
+        "fields_and_price_preserved": true,
+        "reopened": true
+      }
+    ],
+    "vertex_refusal_scenarios": [
+      "polyline-minimum",
+      "area-minimum",
+      "perimeter-minimum",
+      "maximum",
+      "length-count",
+      "angle-count",
+      "collapsed-deletion"
+    ],
+    "measurement_kind": "length",
+    "measurement_value": 40,
+    "measurement_unit": "m",
+    "dist_verified": true,
+    "saved_reopened": true,
+    "original_unchanged": true,
+    "page_scale_saved_reopened_removed": true,
+    "other_measurements_unchanged": true,
+    "unit_conversion_verified": true,
+    "precision_edit_verified": true,
+    "explicit_recalibration_verified": true,
+    "geometry_edit_verified": true,
+    "stale_expected_record_refused": true,
+    "no_output_on_stale": true,
+    "stable_annotation_identity": true,
+    "page_default_unchanged_by_edits": true,
+    "angle_without_calibration_verified": true,
+    "quantity_fields_preserved": true,
+    "quantity_price_basis_preserved": true,
+    "quantity_totals_recomputed": true,
+    "degenerate_geometry_refused": true,
+    "vertex_insertion_verified": true,
+    "vertex_removal_verified": true,
+    "vertex_counts_reopened_verified": true,
+    "vertex_quantity_totals_recomputed": true,
+    "vertex_minimum_count_refused": true,
+    "vertex_limit_refused": true,
+    "fixed_kind_counts_refused": true,
+    "invalid_vertex_deletion_refused": true,
+    "vertex_calibration_preserved": true
+  },
+  "dist_copies_verified": true,
+  "pr_integration": "PR_INTEGRATION_0.49.0.json",
+  "aec_card_count": 24,
+  "aec_status": {
+    "AEC-001": "In progress",
+    "AEC-002": "In progress",
+    "AEC-003": "In progress",
+    "AEC-004": "In progress",
+    "AEC-005": "Done",
+    "AEC-006": "In progress",
+    "AEC-007": "In progress",
+    "AEC-008": "Planned",
+    "AEC-009": "Planned",
+    "AEC-010": "Planned",
+    "AEC-011": "Planned",
+    "AEC-012": "Planned",
+    "AEC-013": "In progress",
+    "AEC-014": "Planned",
+    "AEC-015": "Planned",
+    "AEC-016": "Planned",
+    "AEC-017": "Planned",
+    "AEC-018": "Planned",
+    "AEC-019": "Planned",
+    "AEC-022": "Planned",
+    "AEC-023": "Planned",
+    "AEC-024": "Planned",
+    "AEC-025": "Planned",
+    "AEC-026": "In progress"
+  },
+  "limits": [
+    "Public smoke checks did not install the app or qualify native GUI interaction or ARM64 execution.",
+    "Windows packages remain unsigned; no independent publication key is configured.",
+    "AEC-002 and AEC-003 remain partial. Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Length and angle measurements retain fixed point counts; measurement types do not change. Vector snapping, batch recalculation, multiple-scale viewports and real-plan qualification remain open. Packages remain unsigned; native ARM64, accessibility, hardware and full 1.0 qualification remain open."
+  ]
+}

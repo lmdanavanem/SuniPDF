@@ -1,0 +1,42 @@
+{
+  "source": "24e3dcd0978fd74fb63d1c43aa8e668f5774fe04",
+  "merged_pull_requests": [
+    {
+      "number": 13,
+      "head": "c341f2abcf7bb5b7aa7373ce1a28c4df81b2d6f5",
+      "merged": true,
+      "merge_commit": "24e3dcd0978fd74fb63d1c43aa8e668f5774fe04",
+      "tree": "36b3c19e50fa0ac1e5e148da8cf434a481fd0da5",
+      "merged_by": "lmdanavanem",
+      "verified_at": "2026-10-20T09:56:47.7779595Z",
+      "checks": [
+        {
+          "name": "windows",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39400872838/job/118554966410"
+        },
+        {
+          "name": "Analyze (python)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39400867236/job/118554954680"
+        },
+        {
+          "name": "Analyze (rust)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39400867236/job/118554954473"
+        },
+        {
+          "name": "Analyze (actions)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39400867236/job/118554954353"
+        }
+      ]
+    }
+  ],
+  "branches_deleted": false,
+  "dirty_secondary_worktree_preserved": true
+}

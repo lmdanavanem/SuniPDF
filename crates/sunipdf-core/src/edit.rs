@@ -123,6 +123,8 @@ pub enum ZOrder {
     Back,
     Forward,
     Backward,
+    /// First final drawing index of the selected block, after removing its original entries.
+    At(usize),
 }
 
 /// Sélection par rectangle : objets entièrement contenus, ou simplement touchés.
@@ -453,6 +455,10 @@ pub(crate) fn reorder_target(count: usize, selected: &[usize], op: ZOrder) -> Ve
                 }
             }
         }
+        ZOrder::At(index) => {
+            order.retain(|i| !sel(i));
+            order.splice(index..index, selected.iter().copied());
+        }
     }
     order
 }
@@ -691,6 +697,7 @@ impl Document<'_> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         {
             let mut page = scratch.page_handle(page_index)?;
@@ -715,6 +722,7 @@ impl Document<'_> {
             drop(object);
             regenerate_content(&mut page)?;
         }
+        self.form_render_need_appearances.set(None);
         self.inner = scratch.inner;
         self.font_cache.clear();
         Ok(())
@@ -1090,9 +1098,20 @@ impl Document<'_> {
         indices: &[usize],
         op: ZOrder,
     ) -> Result<Vec<usize>, EngineError> {
+        if !self.properties().can_modify {
+            return Err(EngineError::SecurityRestricted);
+        }
         let count = self.page_handle(page_index)?.objects().len();
         let selected = checked_indices(indices, count)?;
+        if matches!(op, ZOrder::At(index) if index > count - selected.len()) {
+            return Err(EngineError::Other(
+                "object destination is out of range".into(),
+            ));
+        }
         let target = reorder_target(count, &selected, op);
+        if target.iter().copied().eq(0..count) {
+            return Ok(selected);
+        }
         // Un objet retiré puis réinséré garde son flux d'origine et PDFium dessine flux par flux :
         // l'ordre n'est respecté qu'au sein d'un flux unique, premier plan compris (un objet
         // ajouté par PDFium vit dans son propre flux, ajouté en fin).
@@ -1350,6 +1369,32 @@ mod tests {
             reorder_target(4, &[0, 3], ZOrder::Forward),
             vec![1, 0, 2, 3]
         );
+    }
+
+    #[test]
+    fn arbitrary_object_destinations_preserve_every_small_selection_and_permutation() {
+        for count in 1..=7 {
+            for mask in 1..(1usize << count) {
+                let selected: Vec<_> = (0..count).filter(|i| mask & (1 << i) != 0).collect();
+                for at in 0..=count - selected.len() {
+                    let order = reorder_target(count, &selected, ZOrder::At(at));
+                    assert_eq!(&order[at..at + selected.len()], selected);
+                    let mut unique = order.clone();
+                    unique.sort_unstable();
+                    assert_eq!(unique, (0..count).collect::<Vec<_>>());
+                    assert_eq!(
+                        order
+                            .iter()
+                            .copied()
+                            .filter(|i| !selected.contains(i))
+                            .collect::<Vec<_>>(),
+                        (0..count)
+                            .filter(|i| !selected.contains(i))
+                            .collect::<Vec<_>>()
+                    );
+                }
+            }
+        }
     }
 
     #[test]

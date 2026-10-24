@@ -1,6 +1,6 @@
 # Signature storage and verification decisions
 
-Implementation for the unpublished 0.30.0 batch, 17 October 2026. Test results belong in
+Implementation through 0.30.1. Test results belong in
 `PROJECT_STATUS.md`; this document describes the guarantees and remaining limits.
 
 ## Reusable visual signatures
@@ -40,6 +40,23 @@ Anyone able to operate the already signed-in user session can reuse the images.
 PDF CMS integrity and signer trust are separate results. A valid detached CMS signature proves a
 relationship to the saved byte ranges; it does not itself authenticate an identity. Later revisions,
 malformed byte ranges and unsupported CMS remain separately reported.
+
+Since 0.30.1, integrity requires detached CMS and a SHA-256, SHA-384 or SHA-512 signer digest.
+MD5, SHA-1, other digests and CMS carrying attached content are refused. `identity_trusted` requires
+valid current integrity, a signer certificate and successful chain/revocation checks together.
+The lower-level `SignatureTrust::chain_and_revocation_trusted()` describes only chain/revocation.
+
+The desktop checks the exact loaded/saved byte snapshot. Changed or missing disk files and unsaved
+edits prevent signing/verification until reloading or saving; later disk changes cannot substitute
+the bytes being checked. PDF field, reason, location and signing-time declarations are filtered and
+bounded to 256 characters and shown separately from verifier results. Certificate subject/issuer
+use bounded X.500 names. PFX files are limited to 16 MiB/256 certificates; multiple private-key
+identities are refused rather than silently selecting one.
+
+CLI `signatures` prints its full JSON report before exit code 2 for any failed signature verification.
+An unsigned document retains exit code 0 with both verification flags false. `failure_cause` is a
+machine-readable reason; `declared_signing_time`/`signing_time_source` identify declarative dates.
+The legacy `signing_time` field remains an alias for that declaration.
 
 The default check uses the current Windows trust store, document-signing usage, strong digest and
 certificate policy, and separately reports revocation as good, revoked, offline, unknown or not checked.

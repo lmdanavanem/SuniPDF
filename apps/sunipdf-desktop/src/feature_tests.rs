@@ -29,6 +29,7 @@ fn state(path: PathBuf, modified: bool) -> DocState {
         can_redo: false,
         modified,
         pages_unchanged: true,
+        measurement_scales_unchanged: false,
         has_signatures: false,
     }
 }
@@ -368,6 +369,7 @@ fn page_label_changes_and_undo_redo_preserve_page_history_and_metadata() {
                 can_redo: !labelled,
                 modified: labelled,
                 pages_unchanged: true,
+                measurement_scales_unchanged: false,
                 has_signatures: false,
             }))
             .unwrap();
@@ -696,6 +698,15 @@ fn document_dialogs_reject_file_drops_instead_of_retargeting_pending_actions() {
             app.dirty = true;
         }
         app.execute(&ctx, command);
+        if crate::workspace::platform_unavailable(command).is_some() {
+            assert!(!app.dialog_open());
+            assert!(requests.try_recv().is_err());
+            assert_eq!(
+                app.status_msg.as_deref(),
+                Some(app.t("platform.windows_only"))
+            );
+            continue;
+        }
         assert!(app.dialog_open());
         let mut output = ctx.run_ui(
             egui::RawInput {

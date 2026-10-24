@@ -1,13 +1,328 @@
 # SuniPDF — User Guide
 
-SuniPDF is a PDF reader and editor for Windows 10/11. PDF processing stays local: no account, no telemetry,
+SuniPDF is a PDF reader and editor for Windows 10/11 and Ubuntu Linux. PDF processing stays local: no account, no telemetry,
 no document ever leaves your computer.
 
-This guide covers SuniPDF 0.30.0. Publication status and executed checks are recorded in
-[Project status](PROJECT_STATUS.md). The [release scope](RELEASE_0.30.0.md) lists supported inputs
-and documented refusals; English remains the default language and French is available in Settings.
+This guide describes the workflows in this source revision. [Release qualification](RELEASE_0.67.0.md)
+and [Project status](PROJECT_STATUS.md) distinguish source, native and distributed-package checks.
+English is the default interface language; French is available in Settings.
 
-## New editing and document tools
+Local plan sets, FDF exchange, deducted areas and constant-depth volumes remain included.
+Their source, native development-build workflows and distributed packages have separate recorded qualification.
+Earlier release results do not qualify these packages.
+
+Ubuntu users should start with [installation and platform limits](UBUNTU.md). Native printing, certificate signing and trust verification, protected Office import, and persistent encrypted visual-signature storage currently require Windows. Other workflows below retain their documented document and permission limits.
+
+## Reader controls and tools
+
+Version 0.64 provides [plan-set filtering and grouping](PLAN_SETS.md) and
+[reviewed annotation transfer between revisions](REVISION_TRANSFER.md). Open **Tools → Organize pages**
+or use the command palette. Transfer requires saved sources, explicit page matches and review of
+every destination preview before **Save new copy…**. Existing PDF files remain unchanged.
+[Release notes](RELEASE_0.64.0.md) distinguish native, downloaded CLI and installer evidence.
+
+Choose **Tools** in the main toolbar. The left dock shows one of **Tools**, **Pages** or **Bookmarks**. The tools panel offers five families and a search field; measurements, the library, quantity tables and revision overlays are under **Review & measure**.
+
+Page navigation, zoom and page/width fit are below the PDF. The zoom percentage stays on one line, including **149%**. **Reading options** provides layout modes, view rotation and full-screen reading; narrow windows move whole control groups to another row. The right rail opens panels. View rotation changes reading orientation only; use **Organize pages** for a saved PDF page rotation.
+
+The right side shows one context panel at a time. A measurement draft blocks opening another context panel until it is finished or cancelled. Explicitly leaving the measurement tool or changing tools cancels its local draft and preserves confirmed page scales.
+
+[Full reader layout and tool routes](READER_WORKSPACE.md).
+
+## Plan workspace
+
+Use **Plan links** under **Tools → Organize pages** to find exact sheet references in searchable
+text. Inspect each source and destination preview, choose ambiguous targets explicitly, then save
+a new copy. [Reviewed plan links](PLAN_LINKS.md) explains manifest checks and navigation.
+
+**Revision outlines** compares a selected old/new page pair. Classify each proposed region as a
+content change, rendering noise or uncertain, confirm the decision, and review the actual annotated
+copy before saving. The original PDFs remain unchanged. [Revision outlines](REVISION_OUTLINES.md)
+describes alignment, coverage and editable annotation provenance.
+
+Navigate to a plan page and open **Rooms and zones** under **Tools → Review & measure**. Define
+named rectangles and optional parents, preview their assignments, then apply and save. The register
+and quantity table share zone filters; ambiguous coverage is shown and blocks misleading filtered
+totals. [Rooms and zones](PLAN_ZONES.md) documents hierarchy, stale geometry and CLI exchange.
+
+The annotation register and quantity table can be docked below the PDF or displayed in a floating window.
+Resize the dock and choose its placement; these preferences are saved. Select a row to follow the actual annotation
+and open its contextual properties. Read-only tables can remain open while navigating the document; finish or cancel
+an active field editor before conflicting actions.
+
+Search and annotation inventory show progress and support cancellation between page tasks. A running PDF engine call
+finishes before cancellation is observed. Cached layouts and table results reduce repeated work on unchanged documents.
+
+For multiple scales on one sheet, calibrate a reference inside the intended region, create a named region and place
+its opposite corners. Save the region and the PDF. An unambiguous containing region can be selected automatically;
+overlapping regions or crossing geometry require an explicit choice. Each region, page default and saved measurement
+keeps its own scale. Updating a region affects future drawing.
+
+To change existing measurements across pages, open batch recalibration, select the physical page range and read the
+records. The desktop batch replaces the selected page defaults and can include their supported saved measurements.
+Preview the before/after values, then apply once. One Undo restores the whole batch; named region scales are unchanged.
+The operation refuses stale, signed, protected or unsupported inputs without leaving a partially applied batch.
+Bounds are 512 pages, 4,096 records and 128 MiB per document.
+
+[Scale selection, vector snapping, batch instructions and limits](PLAN_WORKSPACE.md).
+
+## Edit saved measurement vertices
+
+In **Tools → Review & measure → Measurements**, open **Saved measurements** under **Saved data** on the right, then choose **Edit geometry**. Choose a point by its number in **Vertex**, then drag its handle on the original page. The selector distinguishes coincident points. For a polyline, perimeter or polygon area, choose **Add vertex** and click a segment, including a polygon’s closing segment. One successful insertion ends that mode; **Stop adding** cancels the insertion mode. Select a vertex and choose **Remove selected** to remove it.
+
+Choose **Preview** and **Apply to object** to accept the draft. **Adjust vertices** returns from the preview to the edited draft. Cancel or Escape discards it; an applied change has one Undo step. Save the PDF to retain the change.
+
+Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Length and angle measurements keep their original two or three points. The measurement type, calibration, unit and precision stay fixed. Identity, replies and entered quantity fields and prices are retained; measured values and compatible price totals recalculate from the accepted geometry. Invalid or stale edits cannot be applied. The [plan workspace](PLAN_WORKSPACE.md) adds eligible vector snapping and a separate batch recalibration workflow.
+
+[Full workflow and limits](MEASUREMENT_GEOMETRY.md).
+
+## Visual symbol search
+
+In version 0.71 or later, open **Tools → Review & measure → Find symbols**.
+Select a template rectangle, choose the pages and matching settings, then inspect the
+proposed matches. Only explicitly reviewed selections become count markers, in one Undo
+step. Cancelled or limited searches remain incomplete. [Instructions and limits](VISUAL_SEARCH.md).
+
+## Region fill
+
+In version 0.72 or later, open **Tools → Review & measure → Region fill**. Pick an
+enclosed region, close gaps explicitly if needed, then review the actual contour,
+holes and calibrated area preview before creating the measurement. Leaks, ambiguous
+boundaries and partial results cannot be applied. [Instructions and limits](REGION_FILL.md).
+
+## Aligned revision overlays
+
+1. Open **Revision overlay** from **Tools → Review & measure** or **Compare files**. Choose the saved base and revision PDFs, their physical page numbers and any separate passwords. Unsaved tab changes are not included.
+2. Choose **Manual alignment**, set the offsets, clockwise rotation and scale, then choose **Preview**. The base is magenta and the revision cyan; coordinates start at the displayed page’s top-left corner after crop and page rotation.
+3. For **Two-point alignment**, choose **Preview** to load the sources, click two distinct points on the base image and the matching two points on the revision, then preview again. **Reset alignment** clears the points and transform. Preview again after changing opacity, resolution or alignment.
+4. Choose **Export PNG** or **Export report JSON** and a new filename. Both source PDFs must permit copying and still match their recorded hashes. The PDFs remain unchanged; the output is clipped to the base page. Automatic registration and automatic change outlines remain open.
+
+[Full instructions, limits and CLI](REVISION_OVERLAY.md).
+
+## Quantity tables and typed fields
+
+1. Open a PDF, then choose **Quantity table** from **Tools → Review & measure**, the measurement panel’s **Saved data** section or the annotation register. Filter the rows and choose **Subtotal groups**; totals cover all matching rows, including other table pages.
+2. Choose **Edit row** to enter **Unit price**, **Currency code**, **Price per unit** and **Cost decimal places**. A blank price is missing; `0` is an explicit zero. Counts and saved measurements supply the quantities; ordinary annotations do not acquire an inferred quantity, and angles are not priced.
+3. Use **Add custom column** for text, number, date or choice values. Numbers default to **No unit**; select an explicit unit when needed (0.70 or later). A column must keep the same type and unit throughout the PDF. Choose **Apply fields** or **Cancel edit**. Each applied row is one Undo step; finish or cancel the field editor before using Undo/Redo, and save the PDF to retain the fields.
+4. Use **Export CSV** or **Export JSON** and a new filename. Exports include all matching rows and source provenance; copying permission is required. Quantity totals keep units separate, monetary totals keep currency/rounding groups separate, and partial coverage remains visible.
+
+Open **Filters → Custom column** to sort typed quantity fields: numbers sort numerically, dates chronologically and text/choices lexically. Missing values and blank text stay last in both directions; equal values use physical page/index. The annotation register has the same selector for its separate text fields, which remain lexically sorted.
+
+For a calculated report column, open **Custom columns → Formula columns**, enter a name and an expression such as
+`quantity * (1 + [Waste %] / 100)`, select the exact source quantity unit and result precision, then choose
+**Add and preview**. `[Waste %]` must be a typed Number field. Up to eight report columns can use decimal constants,
+`+ - * /`, parentheses, `quantity` and named numeric fields. Numbers without a declared unit are dimensionless; incompatible units,
+missing inputs, division by zero and overflow are shown as errors, never zero. Results use six decimal places per
+arithmetic operation and then the chosen `0`–`6` places, rounding half away from zero.
+
+For an area quantity in `m2`, a numeric `Depth` field of `0.25 m` can supply
+`quantity * [Depth]`, producing a result in `m3`. The formula's selected unit stays
+`m2`, because it describes the source quantity. Exact geometric products and quotients
+work within one unit family; mixed metres/centimetres, inverse units, mass and density
+are refused. Choosing a different custom-field unit does not convert its number or
+change measured geometry. [Unit rules and compatibility](QUANTITY_TABLE.md#numeric-fields-with-declared-units)
+describe the supported cases.
+
+These formulas do not change the PDF, prices or existing subtotals. Configuration stays in the current tab;
+use **Reuse formula configuration → Copy configuration** to keep its JSON, or paste it and choose **Load configuration**
+in another tab. Exports include definitions, calculated values and explicit errors/completeness information.
+
+Formula totals sum the rounded results of all filtered rows, with separate
+groups for each formula, selected group, unit and precision. Read the contributing/error
+counts before using a partial total. When no row succeeds, no total is supplied; missing
+inputs do not become zero. The [subtotal and export specification](QUANTITY_TABLE.md#formula-subtotals-and-coverage)
+describes the new coverage counters and CSV records. These additions do not modify the PDF.
+
+[Full instructions, limits and CLI](QUANTITY_TABLE.md).
+
+## Create an issue or quantity report
+
+In the annotation register, choose **Create report…**. In the quantity table, open
+**Reports and spreadsheets → Create report…**. The command palette also includes
+**Issue and quantity reports**. The report keeps the originating table's current
+search, filters and ordering; check the selected rows before exporting.
+
+Set a title and review the actual PDF pages. The summary separates quantities,
+currencies, missing prices and calculation errors. Issue groups, supported style
+legends and annotation details follow; source identities and settings appear in a
+technical appendix. Missing values never become zero.
+
+Choose PDF, CSV or JSON and a new filename. All three formats use the same selected
+rows and calculations. Changing the document or settings requires a fresh preview.
+The source PDF remains unchanged; the derived report is unencrypted and does not
+inherit its signatures. See [report instructions and limits](ISSUE_REPORTS.md).
+
+## Export and refresh a quantity workbook
+
+In the quantity table, open **Reports and spreadsheets → Spreadsheet…**, or find
+**Quantity workbooks** in the command palette. Review the filtered rows, totals and
+coverage, then export a new XLSX file. The workbook contains values and text, with
+no executable spreadsheet formulas or macros.
+
+Save a separate refresh manifest to compare a later PDF revision. Open that revision,
+load the manifest and review changed, missing, ambiguous and unquantified entries.
+Matching uses unique annotation identities. New identities are excluded until you
+explicitly include them. Export creates a new workbook and preserves the previous
+one; manual edits in an external spreadsheet are not imported.
+
+Use the manifest belonging to the intended revision; it is a comparison baseline,
+not an authenticated proof of origin. See [workbook instructions and limits](QUANTITY_WORKBOOKS.md).
+
+## Reuse local annotation templates
+
+Open **Tools → Review & measure → Annotation library**. Its local file is separate from PDF files and settings.
+
+Choose **Create a template**, prepare a supported new annotation draft, then expand **Save to library**.
+Enter a unique name and choose **Save template**. Credit, source and licence are optional user declarations;
+blank means unknown. Saving a template does not insert it in the PDF. New-draft templates support text with standard
+fonts, polygons/polylines, revision clouds, predefined stamps and PNG image stamps.
+
+To reuse annotations already saved on the current page, choose **Capture from current page**. Select 1–16 supported
+native shapes, lines/arrows, polygons, polylines or clouds, enter a name and declare the source, then choose
+**Save selected annotations as a group**. Relative geometry and supported styles are retained; the originals stay
+unchanged. Unsupported rows remain visible but disabled. Copying permission is required; changed documents or
+stale selections must be refreshed. Existing text, images/stamps, foreign/custom appearances and review threads
+are excluded from this path; new-draft templates retain the types listed above.
+
+Choose **Place on page**, set the scale and click the PDF. Inspect the rendered preview; adjust **Origin X (pt)**,
+**Origin Y (pt)** or **Scale** if needed, then request **Preview** again. Choose **Apply to object** to create the
+annotations, or **Cancel** to discard the placement. A group is applied as one Undo step; save the PDF to retain it.
+To make a group, check at least two entries, choose **Create group**, enter a new name and member offsets, then save.
+
+Import/export, selected-entry deletion, reload and filtering are available in the library. Invalid imports and
+conflicting writes preserve its active contents. Library-file changes have no PDF Undo history; export a copy before
+deleting templates you want to keep. Measurements, page scales, existing PDF identities and review threads are excluded.
+[Full instructions, supported format, bounds and CLI examples](ANNOTATION_LIBRARY.md).
+
+## Measure directly on a PDF
+
+Open a PDF and choose **Tools → Review & measure → Measurements**. Its right-hand panel groups **Create measurement**, **Page scale**, **Drawing** and **Saved data**. Scroll that panel when necessary.
+
+1. Select the unit (`mm`, `cm`, `m`, `in` or `ft`) and 0–4 decimal places. Click **Calibrate this page**,
+   then click two different points spanning a known distance. Enter the real **Known distance** and
+   click **Confirm scale**. Decimal input uses the chosen unit; feet/inches notation such as `10 ft 6 in` or `5' 6 1/2"` converts to that unit.
+2. Choose **Length**, **Polyline length**, **Polygon perimeter**, **Polygon area** or **Angle**, then
+   click the points directly on the PDF. Length opens the preview after two points. Angle uses three
+   points in this order: first arm, vertex, second arm; it does not require a physical calibration.
+   Finish a polyline or polygon with **Preview measurement**, **Enter**, or a double-click on its last
+   point. Polygons close automatically; do not repeat the first point.
+3. Inspect the rendered PDF preview and the value, then click **Apply**. **Cancel** or **Escape** leaves
+   the PDF unchanged. Save to keep the annotation and its calibration. **Undo** removes the annotation
+   and its measurement data together. The tool stays active for the next measurement.
+
+During drawing, **Backspace** or **Undo point** removes the last point. **Shift** constrains a segment
+horizontally or vertically in the displayed page axes. Enable vector snapping to show the nearest eligible
+endpoint or straight-line intersection. Scans, text/image bounds and unsupported clips do not supply snap points;
+dense or excessive geometry can decline snapping. Confirm the intended point and use manual placement when needed.
+**Escape** or **Cancel drawing** discards the draft. Finish or cancel before changing page, document or tool.
+
+Each page has its own session scale. Ordinary annotation edits and normal tab switches retain confirmed
+scales; changes to page geometry, structure or content clear them. When using the page scale, a session scale takes priority over the page's
+saved default. Named regions provide independent scales; choose explicitly when automatic selection is ambiguous.
+Changing units converts the confirmed distance. Saved measurements keep their own
+geometry and scale; recalibrating new measurements does not change existing ones.
+
+To keep a scale across closing/reopening, click **Save scale in PDF** after calibration, then save the
+PDF file. The saved default is reused when valid. **Remove saved scale** removes that page's saved
+default, while retaining any explicitly chosen session scale; save the file to retain the removal.
+**Undo**/**Redo** restores the document state and reloads its saved default; it does not restore a cleared session scale. Saving/removing a default
+requires document-modification permission; measurement creation requires annotation permission.
+Rotation and page reordering preserve eligible defaults. Changed crop bounds, decoded page content or reachable
+resources, unsupported records and non-default `UserUnit` cause a refusal; recalibrate or remove a supported stale
+default. In 0.61.0, new page defaults use version 2 and resource-dependent version-1 defaults require explicit recalibration or removal.
+Page-reference checks are described in [reference migration](#verify-saved-measurement-references).
+Supported stale regions can be explicitly cleared and recreated; malformed or unknown records are refused.
+Unsaved session scales are lost on closing. These checks do not authenticate every plan revision.
+
+Click **Saved measurements** under **Saved data** on the right to inspect the current page. Reading the list leaves the PDF unchanged. It
+shows value/unit, type, annotation index, optional identity, vertex count, precision and known reference
+distance for non-angle measurements, in batches of 50. **View on page** selects the actual annotation and opens
+its comments. **Use this scale** copies a non-angle annotation's calibration to the page's session for
+new measurements, without changing existing records. Reference points outside the page are refused.
+Use **Save scale in PDF** separately to keep this default. **Refresh** rereads the current state; close
+the inspector before drawing or changing documents.
+
+The CLI exposes `page-calibration`, `set-page-calibration` and `remove-page-calibration`.
+`measure --use-page-calibration` uses a valid saved default and converts it to `--unit`; it excludes
+manual `--calibration`/`--known-distance`. Writes always require a new output file, even with `--overwrite`.
+Use password environment/stdin options for protected files. [Examples and bounds](MEASUREMENTS.md#cli-and-quantities).
+
+Choose **Edit measurement** in the inspector to change that annotation's known reference
+distance, unit or precision. Unit changes preserve physical size; reference-distance changes recalculate
+only this measurement. Angles expose precision only. Request a **Preview**, inspect the rendered
+candidate, then **Apply**; **Cancel** changes nothing. One Undo/Redo step restores the previous/replacement
+measurement, including its identity and linked comments. Save the PDF to retain the edit. Measured
+vertices and reference points remain fixed in this scale editor; use **Edit geometry** for supported saved-vertex changes. Changed or unsupported targets are refused.
+
+**Use saved page scale** discards the temporary override when a valid saved default exists. Otherwise
+**Clear temporary scale** discards only the page's temporary scale. Neither control modifies the PDF.
+The manual rich-annotation path now requires an explicit calibration instead of supplying a positive default.
+
+For the CLI `edit-measurement` command, supply a fresh `--expected-record` from `measurements`, the physical
+`--page`, the record's annotation `--index` and a new `--out`. The CLI can replace explicit vertices;
+see the measurement guide for calibration and identity requirements. Export requires copying permission.
+Permitted creation/editing without it returns `measurement: null` and `export_unavailable: true`.
+Resizing content and annotations on measured pages is refused before changes are committed.
+
+Saved-vertex editing, eligible vector snapping, named scale regions and explicit batch recalibration are available
+within their documented limits. Check the known distance and drawing revision; a calculated value does not establish
+physical accuracy. See the [measurement guide](MEASUREMENTS.md) and [plan workspace](PLAN_WORKSPACE.md) for formats,
+permissions and geometry limits. Private real-project plan qualification remains deferred.
+
+### Verify saved measurement references
+
+Page-reference checks are included in 0.62.0. **Saved measurements** distinguishes a record bound to the current
+page from a legacy record with an unverified reference or a record whose page no longer matches.
+The check covers page bounds, user unit, decoded content, reachable resources, initial layer
+visibility and page transparency state. A matching reference does not prove physical accuracy.
+
+Legacy and changed-page measurements remain visible with their historical values and points.
+They cannot supply **Use this scale**, enter **Edit geometry**, or contribute to active quantity
+and cost totals. Editing precision, unit, prices or custom fields alone does not verify a record.
+
+To recalibrate a historical length, polyline, perimeter or area:
+
+1. Close the editor and confirm a known distance on the current page using **Calibrate this page**.
+2. Review every retained measurement point against the current drawing. If the geometry no longer
+   describes the intended object, recreate the measurement instead of certifying the old points.
+3. Open **Saved measurements**, choose **Edit measurement**, then explicitly select
+   **Recalibrate using current page reference**. A saved historical default is not sufficient.
+4. Choose **Preview**, inspect the value and rendered geometry, then **Apply**. The original stays
+   historical until Apply. Save the PDF to retain the replacement; Undo restores its previous state.
+
+Historical angles must be recreated on the current page. Batch recalibration also requires an
+explicit current session reference when historical lengths or areas are selected, marks historical
+before-values in its preview and leaves angles excluded. Recalibration never silently moves vertices.
+
+New saved page defaults use version 3 and named-region references use version 2. Older defaults
+and regions cannot be reused automatically because they do not verify the additional rendering
+state. Explicitly recalibrate or remove supported old records; malformed or unknown records remain
+refused. [Quantity table provenance and export fields](QUANTITY_TABLE.md#measurement-provenance)
+explain historical exclusions, inactive prices and formula errors.
+
+## Prepare a visual signature
+
+In **Fill & Sign**, optionally enable **Smooth strokes** for a drawn signature or **Reduce paper shadows**
+after enabling background removal for an imported photo. Compare the preview before placing it.
+Original strokes and source image files are retained. These are visual marks; certificate signing is separate.
+The CLI can export a separate PNG with `prepare-signature-image`.
+[Instructions, drawing limits and cleanup bounds](VISUAL_SIGNATURE_PREPARATION.md).
+
+## Inspect a saved PDF
+
+Choose **File → Properties** (`Ctrl+D`), expand **Inspect saved PDF**, and choose **Inspect**.
+Save edits first; if the file has changed outside the app, reload it. The report displays the saved
+revision's SHA256 and declarations of JavaScript, automatic/external actions, embedded files, XFA,
+multimedia and signatures. Counts refer to matching dictionaries, including unused objects.
+No action is run and no document is changed. An incomplete report retains partial counts explicitly.
+Metadata drafts in Properties are applied only by **Apply**, independently of inspection.
+
+For automation, use `sunipdf-cli inspect document.pdf` or provide `--password-env NAME` / `--password-stdin`.
+JSON exit `0` means the bounded inventory completed; exit `2` means partial results. Findings do not
+establish file safety or PDF/A/PDF/UA compliance and do not verify signature integrity. Payloads are not
+inspected. The input limit is 128 MiB; object/traversal limits can also produce a refusal or partial result.
+
+## Editing and document tools
 
 - **Edit → Rich annotations** opens guarded controls for embedded-font FreeText, polygons,
   polylines, clouds, stamps and attachments. Preview before applying. **Erase ink strokes** removes
@@ -57,7 +372,10 @@ See [rich annotations](RICH_ANNOTATIONS.md), [redaction](REDACTION.md),
   installed system-wide. Preferences use `%APPDATA%\SuniPDF\settings.json`; update downloads use a temporary folder.
 - **MSI installer**: double-click `SuniPDF-<version>-win-x64.msi`. SuniPDF appears in the Start menu and in
   "Open with" for PDF files; it does not become the default reader without your consent.
-- Uninstall: Windows Settings › Apps, or delete the folder for the portable version.
+- **Ubuntu amd64**: download the DEB for Ubuntu 22.04/24.04 and install it with
+  `sudo apt install ./SuniPDF-0.60.0-linux-amd64.deb`. Start SuniPDF from the application menu.
+  See [Ubuntu installation](UBUNTU.md) for checksums, dependencies and platform limits.
+- Uninstall: Windows Settings › Apps, delete the portable folder, or use `sudo apt remove sunipdf` on Ubuntu.
 
 ## Updates and language
 
@@ -65,11 +383,14 @@ English is the default interface language. French is available in Settings; an e
 From 0.8.2, the application checks GitHub Releases at startup without sending PDF files. Disable automatic checks in About,
 or use **Check for updates** there at any time. A failed automatic check does not block local PDF work.
 
-When a newer version is available, choose **Download update**. After size and SHA256 verification, choose **Close and install**.
+On Windows, when a newer version is available, choose **Download update**. After size and SHA256 verification, choose **Close and install**.
 Save or discard changes in each open document as usual; cancelling or a failed save cancels installation.
 Installed x64 copies use the Windows MSI installer and may show a Windows administrator prompt. Portable x64/ARM64 copies
 replace the application files in their own folder and keep a rollback backup. A failed portable replacement restores the old files.
 Older versions require one manual upgrade to obtain this feature. The updater never restarts the computer automatically.
+
+On Ubuntu, **Download update** opens the release page. Download and verify the DEB, then install it through APT;
+the application does not elevate privileges or configure an APT repository.
 
 ## Home screen
 
@@ -78,33 +399,26 @@ and your recent files. You can also drop a PDF anywhere in the window, or click 
 
 ## All tools
 
-The **All tools** panel on the left (F9, or the button of the same name in the toolbar) lists the tools by
-task: Export a PDF, Fill & Sign, Edit a PDF, Create a PDF, Combine files, Organize pages, Add
-comments, Protect a PDF, Redact a PDF, Compress a PDF, Add a stamp, Scan & OCR, Prepare a form and
-Use a certificate. The **Tools** menu and the Ctrl+K palette give the same access.
-Without an open document, a tool that needs one first asks for a file, then starts.
+Open **Tools** from the main toolbar or press **F9**. The left dock groups tools into **Review & measure**, **Edit & organize**, **Forms & signatures**, **Create & convert** and **Security**. **Search tools** filters localized names, descriptions and family names; **Clear search** restores the list. The Tools menu and **Ctrl+K** command palette remain available. A tool needing a document asks for a file when necessary.
 
-- **Export, Create, Combine, Compress** open their dialog directly.
-- **Fill & Sign, Edit, Organize, Add comments, Protect, Add a stamp** (marked with a › chevron) show a **tool bar** under
-  the toolbar: the tool's buttons, grouped, with their labels when the width allows (otherwise the icon only,
-  the label staying in the tooltip). Actions that need a selection (object, text, grid pages) stay greyed
-  out without one.
-- **Leave tool**: button on the right of the bar, **Esc**, clicking the active tool again in the panel, or the
-  back arrow (which also reopens the panel). Esc first closes what is closer: an open menu or drop-down
-  list, then the search bar, then the selected object, then the tool (one Esc, one effect).
-- Single-letter shortcuts open the matching tool: H, U, X, N, A, D, F open **Add comments**; E, T, I, R, O, L open
-  **Edit a PDF**; S opens the **Sign** dialog; F8 opens **Organize pages** with the grid; V goes back to the reading cursor.
-- Each tab keeps its own active tool.
-- The main toolbar keeps quick access to Open, Save, Undo and Redo.
+**Tools → Review & measure** contains Add comments, Measurements, Quantity table, Annotation library, Revision overlay and Add a stamp. The library can be managed without an open PDF. Fill & Sign continues to provide form filling and visual signatures; certificate signatures use their own tool.
 
-All 14 tools are available in 0.9.0, including **Scan & OCR**, **Prepare a form** and **Use a certificate**.
-Fill & Sign continues to provide form filling and visual signatures; certificate signatures use their own tool.
+**Measurements** uses a scrollable right panel with **Create measurement**, **Page scale**, **Drawing** and **Saved data**. It does not add a horizontal workspace bar. Other tools can expose their existing context bars or dialogs. Actions that require a selection remain disabled without one.
+
+Use **Leave tool**, Escape or the active tool entry to leave a workspace. Escape first closes an open popup or the current draft as applicable; finish or cancel measurement edits before changing tools. Single-letter editing shortcuts and per-tab active tools remain available. The main toolbar keeps generic Open, Save, Undo, Redo and Tools controls.
+
+[Complete tool families and reading controls](READER_WORKSPACE.md).
 
 ## Tabs
 
 Each open PDF gets a tab in the top strip. Click a tab to show it, its cross to close it, the home button to
 go back to the home screen without closing anything. Ctrl+Tab and Ctrl+Shift+Tab cycle through tabs.
 Unsaved changes are flagged with a dot per tab and confirmed one by one when you quit.
+
+If returning to a tab fails, its unsaved document bytes, Undo/Redo history and
+recovery identity remain available. Select the retained tab to retry; the failed attempt
+cancels a pending close/quit action. Register data reloads after switching, obsolete search
+responses are ignored, and page selection/navigation follows edits completed during suspension.
 
 ## Automatic recovery
 
@@ -120,23 +434,16 @@ Disable automatic snapshots with the checkbox in About. **File → Recover docum
 
 ## Reading
 
-By default pages are **stacked**: the mouse wheel, the scroll bar or the keyboard scroll through the whole
-document, and the page that fills the screen becomes the current page (right-rail number, status bar,
-thumbnail, comments panel; Rotate, Delete and Extract act on it; clicking a page makes it current). **F5**, the
-arrows button of the right rail or the View menu switch between **Continuous Scrolling** and **Single Page**;
-the choice is remembered. Only visible pages are rendered: a document of several hundred pages opens and
-scrolls without rendering every page. The View menu also offers **Two pages** (pairs from the first page) and
-**Book view** (cover alone, then pairs). An unpaired last page is centred. Mixed page sizes share one zoom;
-fit width/page uses the widest spread and tallest page in spread views. These modes use the same tile and texture caps.
+By default pages are **stacked**: the mouse wheel, scroll bar or keyboard scrolls the document. The page in view becomes current in the bottom page field, thumbnails and comments; page operations act on that page. **F5**, **Reading options** below the PDF or the View menu switch between **Continuous Scrolling** and **Single Page**. **Two pages** pairs from the first page; **Book view** shows the cover alone, then pairs. An unpaired last page is centred. Only visible pages render; mixed page sizes share one zoom, with fit based on the widest spread and tallest page. These modes retain the existing tile and texture caps.
 
 | Action | How |
 |---|---|
 | Scroll | Mouse wheel; ↑ ↓ arrows (one line); Space / Shift+Space and Page Down / Page Up (one screen; in single-page view, Page Down / Up change page) |
-| Next / previous page | → ← arrows, right-rail buttons |
+| Next / previous page | → ← arrows, buttons below the PDF |
 | First / last page | Home / End |
-| Go to page | Type the number in the right-rail box, then Enter, or click a thumbnail: the page comes to the top of the screen |
+| Go to page | Type the number or a supported page label in the field below the PDF, then Enter, or click a thumbnail: the page comes to the top of the screen |
 | Zoom | Ctrl + mouse wheel (zooms **around the pointer**; touchpad pinch takes the same path, untested), Ctrl + / Ctrl − (around the centre), Ctrl 0 (actual size), zoom list (25 to 1600%), "Width", "Page"; up to 3200% with the wheel, staying sharp (tiled rendering) |
-| Continuous / single page | F5, right-rail button, View menu |
+| Continuous / single page | F5, Reading options below the PDF, View menu |
 | Thumbnails | **Pages** panel on the left (grid button on the right rail); drag a thumbnail to reorder |
 | Bookmarks | F6 or the list button on the right rail |
 | Find | Ctrl+F: type, match case, ▲ ▼, matches highlighted |
@@ -162,7 +469,7 @@ comment. **Advanced annotations**, real PDF annotations (not page content: other
 | **Rectangle, Ellipse, Line or arrow** (annotations) | Drag; colour, width, fill (rectangle and ellipse), opacity, "Arrow" checkbox |
 | **Link** | Draw an area (at least 6 points) then choose "Go to a page" or "Open a web address" (`http`, `https` or `mailto` only) |
 
-**On-page free text — from 0.20.0.** With **Free text box** (F), click the page for a default box or
+**On-page free text.** With **Free text box** (F), click the page for a default box or
 drag its rectangle, then type directly in the anchored multiline editor. Adjust size, text colour,
 background and border with the existing controls (size 6–96 pt, border 0–10 pt). Choose **Add** to create the annotation. To edit one,
 select the FreeText annotation and choose **Edit Text**, or double-click it, then choose **Save**.
@@ -175,12 +482,13 @@ or worker failure retains typed text and style for retry. Text must be nonempty,
 rectangle at least twice the font size wide and at least 2 pt high. A successful Add/Save is one Undo step; save the PDF explicitly
 afterwards. Unsubmitted editor text stays in memory and is absent from crash recovery.
 
-The box can grow downwards for wrapped text. Rendering still uses Helvetica WinAnsi (Latin accents, € and
-common punctuation); unsupported characters appear as "?", while `/Contents` retains the exact text.
-Bold/italic, rich text, CJK and right-to-left layout remain unsupported. Locked annotations and malformed
-free-text borders keep the existing editing restrictions. This editor does not edit PDF page text objects.
+The basic editor uses Helvetica WinAnsi. Choose **Embedded fonts, bold, italic and CJK** to open the rich-annotation
+dialog while retaining the draft text and rectangle. It supports one selected font face, horizontal Latin/CJK text and
+an actual PDF preview; absent glyphs, unsupported shaping or text that does not fit are refused.
+Span-level rich text and right-to-left shaping remain unsupported. Locked annotations and malformed borders retain
+their editing restrictions. This editor does not edit PDF page text objects. See [rich annotations](RICH_ANNOTATIONS.md).
 
-**Grouped drawing — available in 0.18.0.** Draw multiple strokes on one page, then click
+**Grouped drawing.** Draw multiple strokes on one page, then click
 **Finish drawing** to create one annotation and one Undo step, or **Cancel drawing** to discard only that draft.
 Esc also cancels an unsubmitted draft. Colour, width and opacity restyle the whole draft until Finish captures
 them. Finish or cancel before saving/closing, switching document/tool or making a conflicting edit; navigation,
@@ -195,7 +503,7 @@ An annotation created by SuniPDF can be resized and restyled ("Apply to annotati
 applied to it); one written by another application can be moved, commented and deleted (a highlight or a note can
 also be recoloured). A locked annotation cannot be changed.
 
-**Dashed shapes — available in 0.16.0.** For Rectangle, Ellipse, Line or Arrow annotations, choose
+**Dashed shapes.** For Rectangle, Ellipse, Line or Arrow annotations, choose
 **Dashed border** before drawing. On an editable existing SuniPDF shape, change the checkbox and use
 **Apply to annotation**. Checked means 6-point dashes with 3-point gaps; unchecked means solid. Fill stays
 continuous and arrowheads stay solid. A loaded custom pattern is retained when selecting, recolouring, moving,
@@ -215,7 +523,7 @@ to the page; an external link first opens a **confirmation dialog that shows the
 Copy address, Cancel): nothing opens without your agreement, and only `http`, `https` and `mailto` addresses are
 accepted. Actions that launch a program or a script are never run.
 
-**Edit an existing target — available in 0.15.0.** Use **Select an annotation** (A), select the link and choose
+**Edit an existing target.** Use **Select an annotation** (A), select the link and choose
 **Edit target**, or double-click it. Choose an `http`, `https` or `mailto` address, or a physical page number.
 An existing resolved named/XYZ destination prefills its page. Replacing a page target fits the whole page;
 the old detailed position/zoom is not retained, as the dialog explains. An unsupported destination starts with
@@ -231,7 +539,7 @@ Accepted, Rejected, Cancelled, Completed), indented replies. **Reply** adds a re
 status menu changes the thread's state, the bin deletes the annotation and its replies, a click on a card's title
 selects it on the page. The **Author** field (remembered in your preferences, empty by default) is written into the
 annotations, replies and statuses created afterwards. Threads and statuses follow the PDF standard but their display
-in Acrobat or Foxit has not been verified. Every annotation can be undone (Ctrl+Z); a password-protected document
+in other PDF readers has not been verified. Every annotation can be undone (Ctrl+Z); a password-protected document
 stays protected after annotating, and rotated or cropped pages are respected.
 
 ## Editing content
@@ -320,7 +628,7 @@ form (read, never modified) and the presence of **scripts** (JavaScript calculat
 runs them, calculated fields are not updated).
 
 **Forms** menu: **Clear fields** (texts emptied, boxes unchecked, lists deselected; read-only fields and "always
-one choice" radio groups are kept), **Export form values...** (`.xfdf` or `.json`), **Import values into the form...** (`.json`, `.xfdf`, or value-only `.fdf`).
+one choice" radio groups are kept), **Export form values...** (`.xfdf`, `.json`, or value-only `.fdf`), **Import values into the form...** (`.json`, `.xfdf`, or value-only `.fdf`). See [form value exchange](FORM_DATA.md) for button-state handling and format limits.
 The complete GUI import is refused if a field is unknown or a value is invalid; no partial import occurs. An exported
 read-only value can be imported unchanged, and passwords are never exported. The fields panel keeps changes pending:
 choose **Apply changes** for one undo step, **Discard pending changes** to return to current values, or Save to apply
@@ -418,7 +726,7 @@ Use **View** for view-only quarter-turn rotation and full screen. These controls
 starting an editing tool returns to upright view. Back/Forward navigation (Alt+Left/Alt+Right) keeps up to 256 positions
 per tab, including page and scroll anchors. View state/history belongs to each tab and is not PDF content.
 
-### 0.11.0 navigation
+### Navigation
 
 PDF page labels such as `iv`, `1` or `Annexe-É7` appear alongside physical page indices in thumbnails, the status bar
 and accessibility descriptions. Type an exact, case-sensitive, unique label into the page box and press Enter.
@@ -439,7 +747,7 @@ returns through the tab's page, position and zoom history, including destination
 text or form edits before following a destination. Unsupported fit modes, unreadable destination details and
 `/FitH` zero/null positions fall back to the target page without applying destination zoom or position.
 
-### Page-label authoring — available in 0.14.0
+### Page-label authoring
 
 Open **Pages → Page Labels…**, or the Page Labels command in **Organize pages**. Set **First physical page**
 and **Last physical page**: the range includes both ends. Choose decimal, uppercase/lowercase Roman,
@@ -512,8 +820,8 @@ passed. See [Project status](PROJECT_STATUS.md) for evidence and remaining hardw
   extracted under the areas, otherwise nothing is changed: check "Convert redacted pages entirely to images" in
   that case. Ctrl+Z undoes while the document is open; the file only changes when you save (saving with
   unapplied areas asks for confirmation). Limits: text inside a scanned image without OCR cannot be found by
-  searching, bookmarks and attachments are not changed, a digital signature becomes invalid (details:
-  `docs/KNOWN_ISSUES.en.md` A40). From the command line:
+  searching. Review the [redaction workflow and limits](REDACTION.md), including hidden-data cleanup,
+  before sharing a saved copy. From the command line:
   `sunipdf-cli redact input.pdf --text "John Smith" --rect "1:72,500,272,560" --out redacted.pdf`.
 
 ## Saving
@@ -521,6 +829,12 @@ passed. See [Project status](PROJECT_STATUS.md) for evidence and remaining hardw
 Ctrl+S saves to the open file, Ctrl+Shift+S to a new file. Writes are atomic: the original file is never
 left half-written (data is flushed to disk before the replacement). A dot after the tab name signals unsaved
 changes; undoing back to the saved state clears it; SuniPDF asks before closing or quitting.
+
+A failed document restoration retains the current document and password.
+CLI commands also check their no-overwrite policy when creating the final output, so a file
+created while processing is not silently replaced. Commands that allow explicit `--overwrite`
+retain their own source-file restrictions; commands requiring a new copy continue to require one.
+Certificate signing refuses encrypted inputs even when they open without asking for a user password.
 
 ## Printing
 
@@ -560,8 +874,9 @@ streams, actions, attachments and rich text are refused. Referenced document loc
 ## Offline OCR
 
 Open **Scan & OCR**, choose English, French or both, and the current page or all pages, then start recognition.
-The embedded Tesseract 5.5.3 / Leptonica 1.87 runtime and fast `eng`/`fra` models run locally; no model download
-or PDF upload is required. Pages already containing extractable text are skipped. Recognised words become
+Windows packages bundle Tesseract and fast `eng`/`fra` models; Ubuntu uses the local Tesseract and language packages
+installed as dependencies. Recognition runs locally without a model download or PDF upload.
+Pages already containing extractable text are skipped. Recognised words become
 an invisible text layer for search and copy, while the existing page appearance is retained.
 Recognition targets 300 dpi, reduced for large pages (16 million pixels, 8192 pixels per side); very large
 pages are refused. Progress is reported per page. Cancellation or an error leaves the document unchanged;
@@ -659,7 +974,7 @@ sunipdf-cli set-link-target updated-link.pdf --page 1 --index 0 --goto-page 2 --
 **Available in 0.16.0:** add `--dashed` to `annotate --kind square|circle|line|arrow` for the fixed `[6,3]`
 point pattern. `annotations` returns the actual `dash_pattern` array. Without the flag, existing solid behaviour
 stays unchanged. The flag is refused for unsupported annotation kinds; invalid requests leave no output or
-preserve an existing output, including with `--overwrite`. There are still 53 CLI commands.
+preserve an existing output, including with `--overwrite`. Use `sunipdf-cli --help` for the current command list.
 
 ```powershell
 sunipdf-cli annotate input.pdf --kind square --rect 40,40,240,140 --dashed --out dashed.pdf
@@ -700,8 +1015,30 @@ other field kinds reject this flag. Predefined choices are still required.
 
 ## Current limits
 
+PDF password input since 0.30.1: prefer `--password-env NAME` or `--password-stdin` with piped UTF-8
+input. New protection credentials also support `--user-password-env`/`--user-password-stdin` and
+`--owner-password-env`/`--owner-password-stdin`. Only one credential may use stdin per invocation;
+one trailing line ending is removed. Populate environment variables through a suitable secret source
+and clear them afterwards. Literal legacy password arguments remain visible in process/history tools.
+Changing existing encryption requires the current owner password. `signatures` prints its complete
+JSON report then exits with code 2 if verification fails; a PDF with no signatures remains a successful
+listing. [Security behavior and limits](SECURITY_MODEL.md).
+
 Office conversion has the bounded local scope above; editable XFA forms remain unavailable; form scripts are never run. Complex column reading
 order is not inferred. Field creation supports text, checkbox, radio, combo and list widgets; FDF interchange has the value-only limits above. OCR accuracy depends on the scan
 and language; existing text is not replaced. Windows trust, revocation and supported RFC3161 timestamps have explicit results; archival LTV validation and AATL/EUTL qualification remain unsupported.
 Real printer, installation/update and ARM64 hardware validation remain separate from automated tests.
-See `docs/KNOWN_ISSUES.md` and `docs/ROADMAP.md`.
+See [known issues](KNOWN_ISSUES.md) and the [roadmap](ROADMAP.md).
+
+
+## Local comparison and search across selected PDFs
+
+Use **File → Compare PDF files…** or **Edit → Search in PDF files…**. Save current edits before selecting the files. Compare physical page pairs with adjustable starting pages; select a changed pair for three previews. Search results open their physical page. Both operations are read-only, local and cancellable. Partial results never mean the remaining files are clean. See the [complete guide and limits](LOCAL_REVIEW.md), including protected files, image-only pages, JSON commands and preview resolution.
+
+## Reorder objects by dragging
+
+Open the Objects panel with F3. Rows at the top are in front. Drag a row above or below another row; the blue insertion line shows the destination. Dragging a selected row moves the entire selection as one block, keeping its original relative drawing order. Dragging an unselected row moves that object only.
+
+Escape cancels. Dropping outside a valid row, onto a selected row or at the same position does nothing. A drop into another page/document or after an intervening edit is refused. Selection follows the moved objects. Existing forward/backward buttons and keyboard commands remain available; one completed drag uses one Undo step and supports Redo through the existing worker transaction.
+
+[Guide](OBJECT_ORDER.md).

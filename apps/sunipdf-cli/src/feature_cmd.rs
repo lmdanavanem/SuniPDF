@@ -8,6 +8,48 @@ fn failure(message: &str) -> EngineError {
     EngineError::Other(message.into())
 }
 
+pub fn prepare_signature_image(
+    file: &Path,
+    out: &Path,
+    background: &str,
+    threshold: u8,
+    overwrite: bool,
+) -> Result<serde_json::Value, EngineError> {
+    use sunipdf_core::signature_image as sig;
+    if !out
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("png"))
+    {
+        return Err(failure("Choose a PNG output file for the visual signature"));
+    }
+    let source = std::fs::canonicalize(file)?;
+    if out.exists() && std::fs::canonicalize(out)? == source {
+        return Err(failure(
+            "Visual signature preparation cannot replace its input image",
+        ));
+    }
+    let metadata = std::fs::metadata(&source)?;
+    if !metadata.is_file() || metadata.len() > 64 * 1024 * 1024 {
+        return Err(failure(
+            "Visual signature input must be a regular image of at most 64 MiB",
+        ));
+    }
+    let input = sig::load(&source, 1600)?;
+    let prepared = match background {
+        "keep" => input,
+        "threshold" => sig::remove_background(&input, threshold),
+        "adaptive" => sig::remove_uneven_background(&input, threshold)?,
+        _ => return Err(failure("Unknown visual signature background mode")),
+    };
+    let prepared = sig::trim(&prepared, 6)
+        .ok_or_else(|| failure("No visible signature remains; adjust the background settings"))?;
+    crate::output::staged(out, overwrite, |path| sig::save_png(&prepared, path))?;
+    Ok(
+        serde_json::json!({"out":out,"width":prepared.width(),"height":prepared.height(),"background":background,"threshold":if background=="keep" {None}else {Some(threshold)},"input_written":false,"cryptographic_signature":false}),
+    )
+}
+
 fn certificate_json(info: &CertificateInfo, trusted: bool) -> serde_json::Value {
     serde_json::json!({
         "subject":info.subject,"issuer":info.issuer,"serial_hex":info.serial_hex,
@@ -18,12 +60,16 @@ fn certificate_json(info: &CertificateInfo, trusted: bool) -> serde_json::Value 
 
 fn signatures_json(signatures: &[DigitalSignature]) -> serde_json::Value {
     serde_json::json!({
-        "identity_trusted":!signatures.is_empty() && signatures.iter().all(|s| s.status == certificate::SignatureStatus::Valid && s.trust.identity_trusted()),
+        "identity_trusted":!signatures.is_empty() && signatures.iter().all(DigitalSignature::identity_trusted),
+        "verification_failed":signatures.iter().any(|s| s.status != certificate::SignatureStatus::Valid),
+        "verification_passed":!signatures.is_empty() && signatures.iter().all(|s| s.status == certificate::SignatureStatus::Valid),
         "signatures":signatures.iter().map(|s|serde_json::json!({
             "field_name":s.field_name,"sub_filter":s.sub_filter,"status":s.status.id(),
-            "certificate":s.certificate.as_ref().map(|c| certificate_json(c, s.status == certificate::SignatureStatus::Valid && s.trust.identity_trusted())),
+            "certificate":s.certificate.as_ref().map(|c| certificate_json(c, s.identity_trusted())),
             "reason":s.reason,"location":s.location,"signing_time":s.signing_time,
-            "signed_len":s.signed_len,"detail":s.detail,"identity_trusted":s.status == certificate::SignatureStatus::Valid && s.trust.identity_trusted(),
+            "declared_signing_time":s.signing_time,"signing_time_source":"signer_declared",
+            "declared_by_signer":{"field_name":s.field_name,"reason":s.reason,"location":s.location,"signing_time":s.signing_time},
+            "signed_len":s.signed_len,"detail":s.detail,"failure_cause":s.failure_cause(),"identity_trusted":s.identity_trusted(),
             "trust": {
                 "chain":s.trust.chain.id(),"revocation":s.trust.revocation.id(),"chain_detail":s.trust.chain_detail,
                 "network_allowed":s.trust.network_allowed,"ltv":s.trust.ltv.id(),
@@ -101,4 +147,46 @@ pub fn sign(
     sunipdf_core::write_new_copy(out, &signed)?;
     report["out"] = serde_json::json!(out);
     Ok(report)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn signature_json_exposes_rejection_and_marks_signing_time_as_declared() {
+        let mut signature = DigitalSignature {
+            field_name: "Signature".into(),
+            sub_filter: "adbe.pkcs7.detached".into(),
+            status: certificate::SignatureStatus::WeakDigest,
+            certificate: None,
+            reason: None,
+            location: None,
+            signing_time: Some("D:20261019000000Z".into()),
+            signed_len: 100,
+            detail: Some(0x80090008),
+            trust: Default::default(),
+        };
+        let report = signatures_json(&[signature.clone()]);
+        assert_eq!(report["verification_failed"], true);
+        assert_eq!(report["verification_passed"], false);
+        assert_eq!(
+            report["signatures"][0]["failure_cause"],
+            "digest_not_allowed"
+        );
+        assert_eq!(
+            report["signatures"][0]["signing_time_source"],
+            "signer_declared"
+        );
+        assert_eq!(
+            report["signatures"][0]["declared_signing_time"],
+            "D:20261019000000Z"
+        );
+        signature.status = certificate::SignatureStatus::Valid;
+        let report = signatures_json(&[signature]);
+        assert_eq!(report["verification_failed"], false);
+        assert_eq!(report["verification_passed"], true);
+        assert_eq!(report["identity_trusted"], false);
+        assert_eq!(signatures_json(&[])["verification_passed"], false);
+    }
 }

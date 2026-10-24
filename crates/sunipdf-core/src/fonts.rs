@@ -20,50 +20,112 @@ pub struct SystemFont {
 #[cfg(windows)]
 const FONTS_KEY: &str = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts";
 
-/// Polices `.ttf` installées (machine puis utilisateur), triées par nom, sans doublon. Jamais
-/// d'erreur : liste vide si rien n'est lisible.
+/// Installed fonts, sorted by display name without duplicates. Unreadable files are skipped.
 pub fn system_fonts() -> Vec<SystemFont> {
-    let fonts_dir = std::env::var_os("WINDIR")
-        .map(|w| Path::new(&w).join("Fonts"))
-        .unwrap_or_else(|| PathBuf::from(r"C:\Windows\Fonts"));
     #[cfg(windows)]
-    let entries = {
-        use windows::Win32::System::Registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
-        let mut entries = Vec::new();
-        for hive in [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER] {
-            for (name, file) in registry_fonts(hive, FONTS_KEY) {
-                let path = Path::new(&file);
-                let path = if path.is_absolute() {
-                    path.to_path_buf()
-                } else {
-                    fonts_dir.join(path)
-                };
-                entries.push((name, path));
+    {
+        let fonts_dir = std::env::var_os("WINDIR")
+            .map(|w| Path::new(&w).join("Fonts"))
+            .unwrap_or_else(|| PathBuf::from(r"C:\Windows\Fonts"));
+        let entries = {
+            use windows::Win32::System::Registry::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+            let mut entries = Vec::new();
+            for hive in [HKEY_LOCAL_MACHINE, HKEY_CURRENT_USER] {
+                for (name, file) in registry_fonts(hive, FONTS_KEY) {
+                    let path = Path::new(&file);
+                    let path = if path.is_absolute() {
+                        path.to_path_buf()
+                    } else {
+                        fonts_dir.join(path)
+                    };
+                    entries.push((name, path));
+                }
             }
+            entries
+        };
+        collect_system_fonts(entries, &fonts_dir)
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let mut roots = vec![
+            PathBuf::from("/usr/share/fonts"),
+            PathBuf::from("/usr/local/share/fonts"),
+        ];
+        if let Some(home) = std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+        {
+            roots.push(home.join(".local/share/fonts"));
+            roots.push(home.join(".fonts"));
         }
-        entries
-    };
-    // Sans registre : dossiers système, machine puis utilisateur (macOS).
-    #[cfg(not(windows))]
-    let entries = ["/System/Library/Fonts", "/Library/Fonts"]
-        .into_iter()
-        .map(PathBuf::from)
-        .chain(std::env::var_os("HOME").map(|home| PathBuf::from(home).join("Library/Fonts")))
-        .flat_map(|dir| font_files(&dir))
-        .collect();
-    collect_system_fonts(entries, &fonts_dir)
+        let entries = discover_font_files(&roots);
+        // No implicit current-directory fallback when all configured directories are absent.
+        if entries.is_empty() {
+            Vec::new()
+        } else {
+            collect_system_fonts(entries, Path::new("/usr/share/fonts"))
+        }
+    }
+    // System, machine then user folders; no registry on macOS.
+    #[cfg(target_os = "macos")]
+    {
+        let mut roots = vec![
+            PathBuf::from("/System/Library/Fonts"),
+            PathBuf::from("/Library/Fonts"),
+        ];
+        if let Some(home) = std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+        {
+            roots.push(home.join("Library/Fonts"));
+        }
+        let entries = discover_font_files(&roots);
+        if entries.is_empty() {
+            Vec::new()
+        } else {
+            collect_system_fonts(entries, Path::new("/System/Library/Fonts"))
+        }
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+    Vec::new()
 }
 
-/// Fichiers de police d'un dossier, nom = nom de fichier.
-fn font_files(fonts_dir: &Path) -> Vec<(String, PathBuf)> {
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+fn discover_font_files(roots: &[PathBuf]) -> Vec<(String, PathBuf)> {
+    const MAX_ENTRIES: usize = 8192;
+    const MAX_DEPTH: usize = 8;
+    let mut remaining = MAX_ENTRIES;
     let mut entries = Vec::new();
-    if let Ok(dir) = std::fs::read_dir(fonts_dir) {
-        for e in dir.flatten() {
-            let path = e.path();
-            if is_font_file(&path) {
+    let mut pending: Vec<_> = roots
+        .iter()
+        .filter(|path| path.is_absolute())
+        .rev()
+        .map(|path| (path.clone(), 0))
+        .collect();
+    while let Some((directory, depth)) = pending.pop() {
+        if remaining == 0 {
+            break;
+        }
+        if !std::fs::symlink_metadata(&directory).is_ok_and(|m| m.file_type().is_dir()) {
+            continue;
+        }
+        let Ok(children) = std::fs::read_dir(directory) else {
+            continue;
+        };
+        let mut children = children.take(remaining).collect::<Vec<_>>();
+        remaining -= children.len();
+        children.sort_by_key(|entry| entry.as_ref().ok().map(|e| e.file_name()));
+        for child in children.into_iter().flatten() {
+            let Ok(kind) = child.file_type() else {
+                continue;
+            };
+            let path = child.path();
+            if kind.is_dir() && depth < MAX_DEPTH {
+                pending.push((path, depth + 1));
+            } else if kind.is_file() && is_font_file(&path) {
                 let name = path
                     .file_stem()
-                    .map(|s| s.to_string_lossy().into_owned())
+                    .map(|name| name.to_string_lossy().into_owned())
                     .unwrap_or_default();
                 entries.push((name, path));
             }
@@ -74,8 +136,19 @@ fn font_files(fonts_dir: &Path) -> Vec<(String, PathBuf)> {
 
 fn collect_system_fonts(mut entries: Vec<(String, PathBuf)>, fonts_dir: &Path) -> Vec<SystemFont> {
     if entries.is_empty() {
-        // Repli : le dossier des polices.
-        entries = font_files(fonts_dir);
+        // Repli : le dossier des polices, nom = nom de fichier.
+        if let Ok(dir) = std::fs::read_dir(fonts_dir) {
+            for e in dir.flatten() {
+                let path = e.path();
+                if is_font_file(&path) {
+                    let name = path
+                        .file_stem()
+                        .map(|s| s.to_string_lossy().into_owned())
+                        .unwrap_or_default();
+                    entries.push((name, path));
+                }
+            }
+        }
     }
     let mut fonts: Vec<SystemFont> = entries
         .into_iter()
@@ -298,6 +371,44 @@ pub(crate) fn embedding_permissions(fs_type: u16) -> Result<bool, EngineError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[test]
+    fn linux_font_discovery_finds_nested_fonts_without_following_links() {
+        use std::os::unix::fs::symlink;
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("fonts");
+        let nested = root.join("truetype/dejavu");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(nested.join("Readable.ttf"), [1, 2, 3]).unwrap();
+        std::fs::write(nested.join("README"), [1]).unwrap();
+        let outside = temp.path().join("Outside.ttf");
+        std::fs::write(&outside, [1]).unwrap();
+        symlink(&outside, nested.join("Linked.ttf")).unwrap();
+        symlink(&root, nested.join("loop")).unwrap();
+        let linked_root = temp.path().join("linked-root");
+        symlink(&root, &linked_root).unwrap();
+        assert!(discover_font_files(&[linked_root]).is_empty());
+        let entries = discover_font_files(&[root]);
+        assert_eq!(
+            entries,
+            vec![("Readable".into(), nested.join("Readable.ttf"))]
+        );
+        assert_eq!(collect_system_fonts(entries, temp.path()).len(), 1);
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    #[test]
+    fn linux_font_discovery_has_a_depth_bound() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut directory = temp.path().to_path_buf();
+        for level in 0..10 {
+            directory.push(format!("level-{level}"));
+            std::fs::create_dir(&directory).unwrap();
+        }
+        std::fs::write(directory.join("TooDeep.ttf"), [1]).unwrap();
+        assert!(discover_font_files(&[temp.path().to_path_buf()]).is_empty());
+    }
 
     #[test]
     fn font_listing_keeps_sort_precedence_files_and_folder_fallback() {

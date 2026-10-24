@@ -179,6 +179,7 @@ impl<'a> Document<'a> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         scratch.merge_content_streams(page_index)?;
         let (indices, font, size, matrix, color) = {
@@ -354,6 +355,7 @@ impl<'a> Document<'a> {
     ) -> Result<Vec<usize>, EngineError> {
         let (scratch, indices) =
             self.paragraph_candidate(page_index, indices, text, width, leading)?;
+        self.form_render_need_appearances.set(None);
         self.inner = scratch.inner;
         self.font_cache.clear();
         Ok(indices)

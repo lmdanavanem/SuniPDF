@@ -54,6 +54,9 @@ pub(super) struct Identity {
 
 impl Identity {
     pub(super) fn from_pfx(pfx: &[u8], password: &str) -> Result<Self, EngineError> {
+        if pfx.len() > 16 * 1024 * 1024 {
+            return Err(EngineError::Other("certificate file exceeds 16 MiB".into()));
+        }
         if password.contains('\0') {
             return Err(EngineError::Other(
                 "certificate password contains a null character".into(),
@@ -89,11 +92,22 @@ impl Identity {
         };
         let store = Store(imported.map_err(error)?);
         let mut previous = None;
+        let mut selected = None;
+        let mut count = 0usize;
         loop {
             // SAFETY: enumeration releases its previous context and returns a fresh owned context.
             let cert = unsafe { CertEnumCertificatesInStore(store.0, previous) };
             if cert.is_null() {
-                return Err(EngineError::Other("certificate has no private key".into()));
+                break;
+            }
+            count += 1;
+            if count > 256 {
+                unsafe {
+                    let _ = CertFreeCertificateContext(Some(cert));
+                }
+                return Err(EngineError::Other(
+                    "certificate file exceeds 256 identities".into(),
+                ));
             }
             let mut size = 0;
             // SAFETY: the live certificate context is queried for the ephemeral private-key property.
@@ -102,13 +116,28 @@ impl Identity {
             }
             .is_ok()
             {
-                return Ok(Self {
-                    cert: Cert(cert),
-                    _store: store,
-                });
+                if selected.is_some() {
+                    unsafe {
+                        let _ = CertFreeCertificateContext(Some(cert));
+                    }
+                    return Err(EngineError::Other("certificate file contains multiple signing identities; export a single identity".into()));
+                }
+                let duplicate = unsafe { CertDuplicateCertificateContext(Some(cert)) };
+                if duplicate.is_null() {
+                    unsafe {
+                        let _ = CertFreeCertificateContext(Some(cert));
+                    }
+                    return Err(EngineError::Other("cannot retain signing identity".into()));
+                }
+                selected = Some(Cert(duplicate));
             }
             previous = Some(cert.cast_const());
         }
+        Ok(Self {
+            cert: selected
+                .ok_or_else(|| EngineError::Other("certificate has no private key".into()))?,
+            _store: store,
+        })
     }
 
     pub(super) fn info(&self) -> Result<CertificateInfo, EngineError> {
@@ -195,6 +224,8 @@ fn verified_signer(cms: &[u8], parts: &[&[u8]]) -> Result<Cert, u32> {
     if cms.len() > u32::MAX as usize {
         return Err(0x80070057);
     }
+    super::detached_cms(cms)?;
+    trust::allowed_signer_digest(cms)?;
     let (ptrs, sizes) = buffers(parts).map_err(|_| 0x80070057u32)?;
     let para = CRYPT_VERIFY_MESSAGE_PARA {
         cbSize: std::mem::size_of::<CRYPT_VERIFY_MESSAGE_PARA>() as u32,
@@ -224,25 +255,26 @@ fn verified_signer(cms: &[u8], parts: &[&[u8]]) -> Result<Cert, u32> {
 }
 
 fn cert_info(cert: *const CERT_CONTEXT) -> Result<CertificateInfo, EngineError> {
-    let name = |flags| {
+    // SAFETY: callers hold a live certificate context and its CERT_INFO.
+    let info = unsafe { &*(*cert).pCertInfo };
+    let name = |blob: &CRYPT_INTEGER_BLOB| -> Result<String, EngineError> {
         // SAFETY: the caller holds a live context. First query obtains the required UTF-16 length.
-        let n =
-            unsafe { CertGetNameStringW(cert, CERT_NAME_SIMPLE_DISPLAY_TYPE, flags, None, None) };
+        let format = CERT_STRING_TYPE(CERT_X500_NAME_STR.0 | CERT_NAME_STR_REVERSE_FLAG);
+        let n = unsafe { CertNameToStrW(X509_ASN_ENCODING, blob, format, None) };
+        if n == 0 || n > 32_768 {
+            return Err(EngineError::Other("invalid certificate name length".into()));
+        }
         let mut text = vec![0; n as usize];
         // SAFETY: text is initialized and sized according to the native length query.
-        let written = unsafe {
-            CertGetNameStringW(
-                cert,
-                CERT_NAME_SIMPLE_DISPLAY_TYPE,
-                flags,
-                None,
-                Some(&mut text),
-            )
-        };
-        String::from_utf16_lossy(&text[..written.saturating_sub(1) as usize])
+        let written = unsafe { CertNameToStrW(X509_ASN_ENCODING, blob, format, Some(&mut text)) };
+        if written == 0 || written > n {
+            return Err(EngineError::Other("invalid certificate name output".into()));
+        }
+        let name = String::from_utf16(&text[..written.saturating_sub(1) as usize])
+            .map_err(|_| EngineError::Other("invalid certificate name encoding".into()))?;
+        Ok(super::display_declared_text(&name))
     };
     // SAFETY: certificates returned by CryptoAPI have live CERT_INFO and encoded/serial buffers.
-    let info = unsafe { &*(*cert).pCertInfo };
     let encoded = unsafe {
         std::slice::from_raw_parts((*cert).pbCertEncoded, (*cert).cbCertEncoded as usize)
     };
@@ -271,8 +303,8 @@ fn cert_info(cert: *const CERT_CONTEXT) -> Result<CertificateInfo, EngineError> 
             .unwrap_or_default()
     };
     Ok(CertificateInfo {
-        subject: name(0),
-        issuer: name(CERT_NAME_ISSUER_FLAG),
+        subject: name(&info.Subject)?,
+        issuer: name(&info.Issuer)?,
         serial_hex: serial.iter().rev().map(|b| format!("{b:02X}")).collect(),
         sha256_hex: digest.iter().map(|b| format!("{b:02X}")).collect(),
         not_before: date(info.NotBefore),

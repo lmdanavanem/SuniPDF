@@ -61,6 +61,15 @@ impl FindState {
     pub fn reset_in_flight(&mut self) {
         self.in_flight = false;
         self.searched = None;
+        self.progress = None;
+        self.error = None;
+        self.generation = self.generation.wrapping_add(1);
+    }
+
+    pub(crate) fn document_changed(&mut self) {
+        self.reset_in_flight();
+        self.matches.clear();
+        self.current = 0;
     }
 }
 
@@ -73,6 +82,8 @@ pub struct FindState {
     searched: Option<(String, bool)>,
     generation: u64,
     in_flight: bool,
+    progress: Option<(usize, usize)>,
+    error: Option<String>,
     matches: Vec<sunipdf_core::TextMatch>,
     current: usize,
     focus_requested: bool,
@@ -85,133 +96,21 @@ pub struct PaletteState {
     pub focus_requested: bool,
 }
 
-/// Raccourcis qui restent actifs quand un champ de saisie a le clavier (Ctrl seulement).
-const FIELD_SHORTCUTS: &[(Modifiers, Key, Command)] = &[
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::S,
-        Command::SaveAs,
-    ),
-    (Modifiers::COMMAND, Key::O, Command::OpenDocument),
-    (Modifiers::COMMAND, Key::S, Command::Save),
-    (Modifiers::COMMAND, Key::P, Command::PrintDocument),
-    (Modifiers::COMMAND, Key::K, Command::CommandPalette),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::F,
-        Command::ToggleForms,
-    ),
-    (Modifiers::COMMAND, Key::F, Command::Find),
-];
-
-/// Touche de suppression : Suppr, ou ⌫ (Backspace) sur un clavier Mac.
-const DELETE_KEY: Key = if cfg!(target_os = "macos") {
-    Key::Backspace
-} else {
-    Key::Delete
-};
-/// Changer d'onglet : ⌘Tab appartient au système sous macOS, Contrôle y reste.
-const TAB_SWITCH: Modifiers = if cfg!(target_os = "macos") {
-    Modifiers::CTRL
-} else {
-    Modifiers::COMMAND
-};
-
-/// Raccourcis globaux, dans l'ordre de lecture : une combinaison avec Maj précède toujours la
-/// même touche sans Maj (`consume_key` ignore un Maj en trop ; invariant testé).
-const SHORTCUTS: &[(Modifiers, Key, Command)] = &[
-    (Modifiers::COMMAND, Key::O, Command::OpenDocument),
-    (Modifiers::COMMAND, Key::P, Command::PrintDocument),
-    (Modifiers::COMMAND, Key::W, Command::CloseDocument),
-    (Modifiers::COMMAND, Key::Plus, Command::ZoomIn),
-    (Modifiers::COMMAND, Key::Equals, Command::ZoomIn),
-    (Modifiers::COMMAND, Key::Minus, Command::ZoomOut),
-    (Modifiers::COMMAND, Key::Num0, Command::ActualSize),
-    (Modifiers::NONE, Key::PageDown, Command::NextPage),
-    (Modifiers::NONE, Key::ArrowRight, Command::NextPage),
-    (Modifiers::NONE, Key::PageUp, Command::PreviousPage),
-    (Modifiers::NONE, Key::ArrowLeft, Command::PreviousPage),
-    (Modifiers::NONE, Key::Home, Command::FirstPage),
-    (Modifiers::NONE, Key::End, Command::LastPage),
-    (Modifiers::NONE, Key::F4, Command::ToggleThumbnails),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::F,
-        Command::ToggleForms,
-    ),
-    (Modifiers::COMMAND, Key::F, Command::Find),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::S,
-        Command::SaveAs,
-    ),
-    (Modifiers::COMMAND, Key::S, Command::Save),
-    // Après Ctrl+S et Ctrl+Maj+S : `consume_key` exige la même touche Ctrl.
-    (Modifiers::NONE, Key::S, Command::SignDocument),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::R,
-        Command::RotateCounterClockwise,
-    ),
-    (Modifiers::COMMAND, Key::R, Command::RotateClockwise),
-    (Modifiers::COMMAND, DELETE_KEY, Command::DeletePage),
-    (Modifiers::NONE, Key::F9, Command::ToggleTools),
-    (Modifiers::NONE, Key::F8, Command::OrganizePages),
-    (Modifiers::NONE, Key::F7, Command::ToggleComments),
-    (Modifiers::NONE, Key::F6, Command::ToggleBookmarks),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::D,
-        Command::DuplicateObject,
-    ),
-    (Modifiers::COMMAND, Key::D, Command::Properties),
-    (Modifiers::NONE, Key::F3, Command::ToggleObjects),
-    (Modifiers::NONE, Key::V, Command::ToolSelect),
-    (Modifiers::NONE, Key::H, Command::ToolHighlight),
-    (Modifiers::NONE, Key::U, Command::ToolUnderline),
-    (Modifiers::NONE, Key::X, Command::ToolStrikeOut),
-    (Modifiers::NONE, Key::N, Command::ToolNote),
-    (Modifiers::NONE, Key::E, Command::ToolSelectObject),
-    (Modifiers::NONE, Key::T, Command::ToolAddText),
-    (Modifiers::NONE, Key::I, Command::ToolAddImage),
-    (Modifiers::NONE, Key::R, Command::ToolRectangle),
-    (Modifiers::NONE, Key::O, Command::ToolEllipse),
-    (Modifiers::NONE, Key::L, Command::ToolLine),
-    (Modifiers::NONE, Key::A, Command::ToolSelectAnnot),
-    (Modifiers::NONE, Key::D, Command::ToolInk),
-    (Modifiers::NONE, Key::F, Command::ToolFreeText),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::B,
-        Command::RedactApply,
-    ),
-    (Modifiers::NONE, Key::B, Command::ToolRedact),
-    (Modifiers::NONE, DELETE_KEY, Command::DeleteObject),
-    (Modifiers::NONE, Key::F2, Command::EditObjectText),
-    (Modifiers::COMMAND, Key::CloseBracket, Command::BringToFront),
-    (Modifiers::COMMAND, Key::OpenBracket, Command::SendToBack),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::Z,
-        Command::Redo,
-    ),
-    (Modifiers::COMMAND, Key::Z, Command::Undo),
-    (Modifiers::COMMAND, Key::Y, Command::Redo),
-    (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
-        Key::I,
-        Command::InsertPages,
-    ),
-    (Modifiers::COMMAND, Key::K, Command::CommandPalette),
-    (
-        TAB_SWITCH.plus(Modifiers::SHIFT),
-        Key::Tab,
-        Command::PrevTab,
-    ),
-    (TAB_SWITCH, Key::Tab, Command::NextTab),
-];
+#[cfg(test)]
+use crate::shortcut_defaults::DEFAULTS as SHORTCUTS;
 
 pub struct SuniApp {
+    pub review: crate::local_review::ReviewState,
+    pub overlay: crate::revision_overlay::OverlayState,
+    pub plan_zones: crate::plan_zones_ui::PlanZonesState,
+    pub visual_search: crate::visual_search_ui::VisualSearchState,
+    pub boundary_fill: crate::boundary_fill_ui::BoundaryFillState,
+    pub quantity_workbook: crate::quantity_workbook_ui::QuantityWorkbookState,
+    pub issue_report: crate::issue_report_ui::IssueReportState,
+    pub revision_outlines: crate::revision_outlines_ui::OutlineState,
+    pub revision_transfer: crate::revision_transfer_ui::TransferState,
+    pub plan_sets: crate::plan_sets::PlanSetState,
+    pub plan_links: crate::plan_links_ui::PlanLinksState,
     pub processing: crate::processing::ProcessingState,
     pub office: crate::office::OfficeState,
     pub reading_full_screen: bool,
@@ -220,9 +119,10 @@ pub struct SuniApp {
     pub ocr: crate::ocr::OcrState,
     pub form_builder: crate::form_builder::FormBuilderState,
     pub certificate: crate::certificate::CertificateState,
-    has_signatures: bool,
+    pub(crate) has_signatures: bool,
     signed_save_confirm: Option<bool>,
     pub settings: Settings,
+    pub shortcuts: crate::shortcuts::State,
     pub worker: Worker,
     pub engine: EngineState,
     pub document: Option<OpenDocument>,
@@ -276,6 +176,7 @@ pub struct SuniApp {
     pub pagesetup: crate::pagesetup::PageSetupState,
     /// Signature visuelle : boîte, bibliothèque locale (globale, hors onglet) et placement.
     pub sign: crate::sign::SignState,
+    pub library: crate::annotation_library::LibraryState,
     /// Formulaire AcroForm du document actif : champs lus, panneau, saisie en place.
     pub forms: crate::forms::FormsState,
     pub can_undo: bool,
@@ -299,6 +200,17 @@ impl SuniApp {
         let mut app = Self {
             processing: Default::default(),
             office: Default::default(),
+            review: Default::default(),
+            overlay: Default::default(),
+            plan_sets: Default::default(),
+            plan_links: Default::default(),
+            revision_outlines: Default::default(),
+            plan_zones: Default::default(),
+            visual_search: Default::default(),
+            boundary_fill: Default::default(),
+            quantity_workbook: Default::default(),
+            issue_report: Default::default(),
+            revision_transfer: Default::default(),
             reading_full_screen: false,
             recovery,
             printing: Default::default(),
@@ -329,6 +241,7 @@ impl SuniApp {
             edit: Default::default(),
             pagesetup: Default::default(),
             sign: Default::default(),
+            library: Default::default(),
             forms: Default::default(),
             can_undo: false,
             can_redo: false,
@@ -352,6 +265,7 @@ impl SuniApp {
             error: recovery_failed.then_some("error.recovery_failed"),
             password_prompt: None,
             show_about: false,
+            shortcuts: Default::default(),
             pending_files: initial_files,
             thumbnails: HashMap::new(),
             thumbs_pending: HashSet::new(),
@@ -365,6 +279,8 @@ impl SuniApp {
                 searched: None,
                 generation: 0,
                 in_flight: false,
+                progress: None,
+                error: None,
                 matches: Vec::new(),
                 current: 0,
                 focus_requested: false,
@@ -486,6 +402,10 @@ impl SuniApp {
     }
 
     pub fn go_to_page(&mut self, page: usize) {
+        if self.annotate.measure.is_active_draft() {
+            self.status_msg = Some(self.t("measure.finish_first").into());
+            return;
+        }
         if self.edit.paragraph.is_some() {
             self.status_msg = Some(self.t("paragraph.finish_first").into());
             return;
@@ -614,6 +534,82 @@ impl SuniApp {
                     self.engine = EngineState::Ready;
                     self.open_next_pending();
                 }
+                Response::LocalReviewProgress {
+                    done,
+                    total,
+                    page,
+                    pages,
+                } => {
+                    self.review.progress = (done, total, page, pages);
+                }
+                Response::LocalReviewDone(result) => self.on_local_review(ctx, result),
+                Response::RevisionOverlayDone { generation, result } => {
+                    self.on_revision_overlay(ctx, generation, result);
+                }
+                Response::QuantityWorkbook {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_quantity_workbook(epoch, generation, result),
+                Response::QuantityWorkbookProgress {
+                    epoch,
+                    generation,
+                    progress,
+                } => self.on_quantity_workbook_progress(epoch, generation, progress),
+                Response::IssueReport {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_issue_report(ctx, epoch, generation, result),
+                Response::IssueReportProgress {
+                    epoch,
+                    generation,
+                    progress,
+                } => self.on_issue_report_progress(epoch, generation, progress),
+                Response::BoundaryFill {
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_boundary_fill(ctx, epoch, generation, result);
+                }
+                Response::VisualSearch {
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_visual_search(ctx, epoch, generation, result);
+                }
+                Response::PlanZones {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_plan_zones(ctx, epoch, generation, result),
+                Response::PlanLinksDone { generation, result } => {
+                    self.on_plan_links(ctx, generation, result);
+                }
+                Response::RevisionOutlinesProgress {
+                    generation,
+                    progress,
+                } => {
+                    self.on_revision_outlines_progress(generation, progress);
+                }
+                Response::RevisionOutlinesDone { generation, result } => {
+                    self.on_revision_outlines(ctx, generation, *result);
+                }
+                Response::RevisionTransferDone { generation, result } => {
+                    self.on_revision_transfer(ctx, generation, result);
+                }
+                Response::PlanSetDone { generation, result } => {
+                    self.on_plan_set_result(ctx, generation, result);
+                }
+                Response::PlanSetProgress {
+                    generation,
+                    done,
+                    total,
+                } => {
+                    self.on_plan_set_progress(generation, done, total);
+                }
                 Response::EngineFailed(e) => {
                     self.error = Some(error_key(&e));
                     log::error!("moteur indisponible : {e}");
@@ -697,6 +693,9 @@ impl SuniApp {
                         }
                     }
                 }
+                Response::ProtectionAuthorization { epoch, encrypted } => {
+                    self.protection_authorized(epoch, encrypted);
+                }
                 Response::Signatures(result) => {
                     self.certificate.busy = false;
                     match result {
@@ -729,6 +728,8 @@ impl SuniApp {
                     }
                 }
                 Response::SuspendFailed(error) => {
+                    self.plan_sets.navigation_failed();
+                    self.review.pending_page = None;
                     self.opening = None;
                     self.tabs.resuming = None;
                     if let Some(index) = self.tabs.suspending.take() {
@@ -757,12 +758,10 @@ impl SuniApp {
                         .filter(|entry| entry.snapshot == info.path)
                         .cloned();
                     if let Some(entry) = &restored {
-                        info.path = entry.original.clone().unwrap_or_else(|| {
-                            std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
-                                .map(std::path::PathBuf::from)
-                                .unwrap_or_default()
-                                .join("Documents/Recovered.pdf")
-                        });
+                        info.path = entry
+                            .original
+                            .clone()
+                            .unwrap_or_else(crate::recovery::recovered_document_path);
                         self.recovery.pending_restore = None;
                     }
                     self.opening = None;
@@ -788,6 +787,16 @@ impl SuniApp {
                     self.view.request(crate::view::ScrollRequest::Page(0));
                     self.document = Some(OpenDocument { info, page: 0 });
                     self.register_opened_tab(opened_path);
+                    self.finish_plan_set_navigation();
+                    if let Some((path, page)) = self.review.pending_page.take() {
+                        if self
+                            .document
+                            .as_ref()
+                            .is_some_and(|doc| doc.info.path == path)
+                        {
+                            self.go_to_page(page.saturating_sub(1));
+                        }
+                    }
                     self.dirty = restored.is_some();
                     self.worker.send(Request::SetRecovery(self.recovery_slot()));
                     self.status_msg = None;
@@ -812,13 +821,17 @@ impl SuniApp {
                     self.open_next_pending();
                 }
                 Response::OpenFailed { path, error } => {
+                    let plan_navigation = self.plan_set_navigation_failed(&path);
+                    if !matches!(error, EngineError::PasswordRequired) {
+                        self.review.pending_page = None;
+                    }
                     self.opening = None;
                     if let Some(i) = self.tabs.resuming.take() {
                         if i < self.tabs.tabs.len() {
                             self.tabs.tabs.remove(i);
                         }
                     }
-                    if matches!(error, EngineError::PasswordRequired) {
+                    if matches!(error, EngineError::PasswordRequired) && !plan_navigation {
                         let wrong = self
                             .password_prompt
                             .as_ref()
@@ -869,11 +882,34 @@ impl SuniApp {
                     can_undo,
                     can_redo,
                     pages_unchanged,
+                    measurement_scales_unchanged,
                     modified,
                     has_signatures,
                 }) => {
+                    if self.document.is_none() {
+                        self.on_suspending_document_changed(DocState {
+                            info,
+                            can_undo,
+                            can_redo,
+                            pages_unchanged,
+                            measurement_scales_unchanged,
+                            modified,
+                            has_signatures,
+                        });
+                        continue;
+                    }
+                    self.measurement_scale_changed();
+                    self.annotate.register.invalidate();
+                    self.annotate.quantities.invalidate();
+                    self.docinfo.inspection_epoch = None;
+                    self.docinfo.inspection = None;
                     if self.edit.paragraph.as_ref().is_some_and(|d| d.applying) {
                         self.edit.paragraph = None;
+                    }
+                    // A rich commit succeeds with DocumentChanged, before the FIFO
+                    // MutationFinished marker. Close it before advancing the epoch.
+                    if self.annotate.adv.rich.as_ref().is_some_and(|d| d.applying) {
+                        self.annotate.adv.rich = None;
                     }
                     self.form_builder.cancel();
                     self.annotate.adv.free_text = None;
@@ -900,13 +936,11 @@ impl SuniApp {
                     {
                         self.cancel_placing();
                     }
-                    if self.document.is_none() {
-                        continue;
-                    }
                     self.can_undo = can_undo;
                     self.can_redo = can_redo;
                     let count = info.page_count();
                     self.organize.selected.retain(|p| *p < count);
+                    self.organize.anchor = self.organize.anchor.filter(|page| *page < count);
                     if let Some(doc) = &mut self.document {
                         let same_sizes = doc.info.page_sizes == info.page_sizes;
                         doc.info = info;
@@ -915,12 +949,16 @@ impl SuniApp {
                         // Retouche : l'image reste affichée jusqu'aux nouvelles tuiles.
                         self.view
                             .on_document_changed(pages_unchanged, same_sizes, doc.page);
+                        if measurement_scales_unchanged && same_sizes {
+                            self.annotate.measure.advance_epoch(self.view.epoch);
+                        } else {
+                            self.annotate.measure.invalidate(self.view.epoch);
+                        }
                     }
                     self.thumbnails.clear();
                     self.thumbs_pending.clear();
                     self.thumbs_failed.clear();
-                    self.find.searched = None;
-                    self.find.matches.clear();
+                    self.find.document_changed();
                     self.annotate.selection = None;
                     self.annotate.annotations_page = None;
                     // Indices d'annotation et zones de lien : relus ; la sélection est reprise par
@@ -1008,6 +1046,54 @@ impl SuniApp {
                         None => {}
                     }
                 }
+                Response::LibraryCaptureCandidates {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_library_capture_candidates(epoch, generation, result),
+                Response::LibraryEntryCaptured {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_library_entry_captured(epoch, generation, result),
+                Response::QuantityTable {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_quantity_table(epoch, generation, result),
+                Response::QuantityExported {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_quantity_exported(epoch, generation, result),
+                Response::AnnotationRegister {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_annotation_register(epoch, generation, result),
+                Response::AnnotationRegisterProgress {
+                    epoch,
+                    generation,
+                    done,
+                    total,
+                } => {
+                    self.on_annotation_register_progress(epoch, generation, done, total);
+                }
+                Response::RecalibrationPreview {
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_recalibration_preview(epoch, generation, result);
+                }
+                Response::MeasurementPage {
+                    page,
+                    epoch,
+                    generation,
+                    result,
+                } => {
+                    self.on_measurement_page(page, epoch, generation, result);
+                }
                 Response::Annotations {
                     page,
                     list,
@@ -1069,19 +1155,26 @@ impl SuniApp {
                         epoch: self.view.epoch,
                     });
                 }
-                Response::ResumeFailed(error) => {
+                Response::ResumeFailed { error, suspended } => {
                     log::error!("reprise d'onglet impossible : {error}");
-                    self.on_resume_failed();
+                    self.on_resume_failed(suspended);
+                    self.deferred_close = None;
+                    self.cancel_after_save();
                     self.error = Some(error_key(&error));
+                    self.update_title(ctx);
                 }
                 Response::Properties(props) => {
                     self.docinfo.metadata_edit = props.metadata.clone();
                     self.docinfo.properties = Some(props);
                 }
+                Response::Inspection { epoch, result } => self.inspection_received(epoch, result),
                 Response::Bookmarks(list) => {
                     self.docinfo.bookmarks = list;
                 }
                 Response::OperationFailed(e) => {
+                    self.measurement_scale_failed(&e);
+                    self.register_edit_failed(&e);
+                    self.quantity_edit_failed(&e);
                     self.rich_annotation_failed(&e);
                     if let Some(draft) = self.edit.paragraph.as_mut().filter(|d| d.applying) {
                         draft.applying = false;
@@ -1167,9 +1260,28 @@ impl SuniApp {
                 } => {
                     if generation == self.find.generation {
                         self.find.in_flight = false;
+                        self.find.progress = None;
+                        self.find.error = None;
                         self.find.matches = matches;
                         self.find.current = 0;
                         self.go_to_match(0);
+                    }
+                }
+                Response::SearchProgress {
+                    generation,
+                    done,
+                    total,
+                } => {
+                    if generation == self.find.generation && self.find.in_flight {
+                        self.find.progress = Some((done, total));
+                    }
+                }
+                Response::SearchFailed { generation, error } => {
+                    if generation == self.find.generation {
+                        self.find.in_flight = false;
+                        self.find.progress = None;
+                        self.find.matches.clear();
+                        self.find.error = Some(error.to_string());
                     }
                 }
                 Response::MutationFinished => self.worker.finish_mutation(),
@@ -1191,6 +1303,7 @@ impl SuniApp {
 
     pub fn has_unsaved_changes(&self) -> bool {
         self.dirty
+            || self.annotate.measure.is_active_draft()
             || self.annotate.adv.rich.is_some()
             || self.edit.paragraph.is_some()
             || self.forms.has_unsaved_input()
@@ -1245,10 +1358,6 @@ impl SuniApp {
     }
 
     fn start_update_check(&mut self, ctx: &egui::Context, manual: bool) {
-        // ponytail: seuls des paquets Windows sont publiés ; mise à jour macOS (.dmg) à venir.
-        if cfg!(not(any(windows, test))) {
-            return;
-        }
         if manual {
             self.update_errors_visible = true;
         }
@@ -1275,8 +1384,20 @@ impl SuniApp {
                     "updates.available",
                     &[("version", &release.version)],
                 ));
-                download = ui.button(tr(lang, "updates.download")).clicked();
+                download = ui
+                    .button(tr(
+                        lang,
+                        if release.kind == crate::updater::UpdateKind::Deb {
+                            "updates.download_linux"
+                        } else {
+                            "updates.download"
+                        },
+                    ))
+                    .clicked();
                 ui.hyperlink_to(tr(lang, "updates.notes"), &release.notes_url);
+                if release.kind == crate::updater::UpdateKind::Deb {
+                    ui.label(tr(lang, "updates.linux_install"));
+                }
             }
             UpdatePhase::Downloading => {
                 ui.spinner();
@@ -1348,7 +1469,30 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.edit.paragraph.is_some()
+        self.quantity_workbook.open
+            || self.quantity_workbook.busy()
+            || self.issue_report.open
+            || self.issue_report.busy()
+            || self.plan_zones.open
+            || self.visual_search.open
+            || self.boundary_fill.open
+            || self.plan_links.open
+            || self.plan_links.busy()
+            || self.revision_outlines.open
+            || self.revision_outlines.busy()
+            || self.revision_transfer.open
+            || self.revision_transfer.busy()
+            || self.plan_sets.open
+            || self.plan_sets.busy()
+            || self.overlay.open
+            || self.library.blocks_document()
+            || self.review.busy
+            || self.overlay.busy
+            || self.annotate.measure.saved.dialog_open()
+            || self.annotate.measure.scales_ui.dialog_open()
+            || self.annotate.measure.is_active_draft()
+            || (self.annotate.register.dialog_open() || self.annotate.quantities.blocks_document())
+            || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
             || self.processing.busy
             || self.office.busy
@@ -1362,7 +1506,19 @@ impl SuniApp {
     }
 
     fn close_must_wait(&self) -> bool {
-        self.edit.paragraph.is_some()
+        self.quantity_workbook.busy()
+            || self.issue_report.busy()
+            || self.revision_outlines.busy()
+            || self.revision_transfer.busy()
+            || self.plan_links.busy()
+            || self.library.blocks_document()
+            || self.review.busy
+            || self.overlay.busy
+            || self.annotate.measure.saved.dialog_open()
+            || self.annotate.measure.scales_ui.dialog_open()
+            || self.annotate.measure.is_active_draft()
+            || (self.annotate.register.dialog_open() || self.annotate.quantities.blocks_document())
+            || self.edit.paragraph.is_some()
             || self.annotate.adv.rich.is_some()
             || self.ink_draft_active()
             || self.processing.busy
@@ -1396,7 +1552,20 @@ impl SuniApp {
 
     // ----- Entrées ---------------------------------------------------------
 
-    fn handle_input(&mut self, ctx: &egui::Context) {
+    pub(crate) fn handle_input(&mut self, ctx: &egui::Context) {
+        self.validate_measurement_context();
+        self.validate_quantity_context();
+        self.validate_library_context(ctx);
+        if self.annotate.measure.is_active_draft()
+            && !self.dialog_open()
+            && !self.palette.open
+            && !egui::Popup::is_any_open(ctx)
+            && !ctx.egui_wants_keyboard_input()
+            && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape))
+        {
+            self.cancel_measurement();
+            return;
+        }
         self.validate_free_text();
         self.validate_form_builder();
         if self.form_builder.drawing
@@ -1427,7 +1596,10 @@ impl SuniApp {
             self.cancel_ink_draft();
             return;
         }
-        if self.document.is_some() && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::F11)) {
+        if self.document.is_some()
+            && !self.dialog_open()
+            && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::F11))
+        {
             self.execute(ctx, Command::FullScreenReading);
             return;
         }
@@ -1474,11 +1646,11 @@ impl SuniApp {
             // La combinaison avec Maj est lue d'abord (`consume_key` ignore un Maj en trop).
             let mut cmds = Vec::new();
             ctx.input_mut(|i| {
-                for &(m, k, c) in FIELD_SHORTCUTS {
-                    if i.consume_key(m, k) {
-                        cmds.push(c);
-                    }
-                }
+                cmds.extend(
+                    crate::shortcuts::consume(i, &self.settings.shortcuts, true)
+                        .into_iter()
+                        .filter(|c| !self.palette.open || *c == Command::CommandPalette),
+                );
             });
             for c in cmds {
                 self.execute(ctx, c);
@@ -1488,9 +1660,11 @@ impl SuniApp {
         if self.palette.open {
             let mut cmds = Vec::new();
             ctx.input_mut(|i| {
-                if i.consume_key(Modifiers::COMMAND, Key::K) {
-                    cmds.push(Command::CommandPalette);
-                }
+                cmds.extend(
+                    crate::shortcuts::consume(i, &self.settings.shortcuts, true)
+                        .into_iter()
+                        .filter(|c| *c == Command::CommandPalette),
+                );
             });
             for c in cmds {
                 self.execute(ctx, c);
@@ -1636,11 +1810,11 @@ impl SuniApp {
             }
         }
         ctx.input_mut(|i| {
-            for &(m, k, c) in SHORTCUTS {
-                if i.consume_key(m, k) {
-                    commands.push(c);
-                }
-            }
+            commands.extend(crate::shortcuts::consume(
+                i,
+                &self.settings.shortcuts,
+                false,
+            ));
             if i.consume_key(Modifiers::ALT, Key::ArrowLeft) {
                 commands.push(Command::HistoryBack);
             }
@@ -1670,7 +1844,30 @@ impl SuniApp {
     /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
-        self.processing.open
+        self.quantity_workbook.open
+            || self.quantity_workbook.busy()
+            || self.issue_report.open
+            || self.issue_report.busy()
+            || self.plan_zones.open
+            || self.visual_search.open
+            || self.boundary_fill.open
+            || self.plan_links.open
+            || self.plan_links.busy()
+            || self.revision_outlines.open
+            || self.revision_outlines.busy()
+            || self.revision_transfer.open
+            || self.revision_transfer.busy()
+            || self.plan_sets.open
+            || self.plan_sets.busy()
+            || self.library.open
+            || self.review.open
+            || self.overlay.open
+            || self.annotate.measure.saved.dialog_open()
+            || self.annotate.measure.scales_ui.dialog_open()
+            || (self.annotate.register.dialog_open() || self.annotate.quantities.blocks_document())
+            || self.review.busy
+            || self.overlay.busy
+            || self.processing.open
             || self.office.open
             || self.office.busy
             || self.sign.busy
@@ -1683,6 +1880,7 @@ impl SuniApp {
             || self.signed_save_confirm.is_some()
             || self.password_prompt.is_some()
             || self.show_about
+            || self.shortcuts.draft.is_some()
             || self.unsaved_prompt.is_some()
             || self.tools.split_open
             || self.tools.sanitize_open
@@ -1714,6 +1912,14 @@ impl SuniApp {
     }
 
     pub fn execute(&mut self, ctx: &egui::Context, command: Command) {
+        if let Some(reason) = crate::workspace::platform_unavailable(command) {
+            self.status_msg = Some(self.t(reason).to_owned());
+            return;
+        }
+        if self.measurement_blocks_panel_command(command) {
+            self.status_msg = Some(self.t("measure.finish_draft_first").to_owned());
+            return;
+        }
         if self.edit.paragraph.is_some() {
             self.status_msg = Some(self.t("paragraph.finish_first").into());
             return;
@@ -1723,7 +1929,21 @@ impl SuniApp {
             self.ink_blocks_action();
             return;
         }
-        if (self.processing.busy
+        if (self.quantity_workbook.open
+            || self.quantity_workbook.busy()
+            || self.issue_report.open
+            || self.issue_report.busy()
+            || self.review.busy
+            || self.plan_zones.open
+            || self.visual_search.open
+            || self.boundary_fill.open
+            || self.revision_outlines.open
+            || self.revision_outlines.busy()
+            || self.revision_transfer.open
+            || self.revision_transfer.busy()
+            || self.overlay.open
+            || self.overlay.busy
+            || self.processing.busy
             || self.printing.busy
             || self.ocr.busy
             || self.certificate.busy
@@ -1732,10 +1952,30 @@ impl SuniApp {
         {
             return;
         }
+        if command == Command::Quit && self.guard_plan_links_quit() {
+            return;
+        }
+        if command == Command::Quit && self.guard_plan_set_quit() {
+            return;
+        }
         if command == Command::CloseDocument && self.install_on_quit {
             self.cancel_after_save();
         }
         if matches!(command, Command::CloseDocument | Command::Quit) && self.close_must_wait() {
+            if self.quantity_workbook.open || self.quantity_workbook.busy() {
+                self.close_quantity_workbook();
+            }
+            if self.issue_report.open || self.issue_report.busy() {
+                self.close_issue_report();
+            }
+            self.cancel_revision_outlines_for_exit();
+            self.cancel_revision_transfer_for_exit();
+            self.overlay
+                .cancel
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+            self.review
+                .cancel
+                .store(true, std::sync::atomic::Ordering::Relaxed);
             self.processing
                 .cancel
                 .store(true, std::sync::atomic::Ordering::Relaxed);
@@ -1754,6 +1994,34 @@ impl SuniApp {
                 PendingAction::Quit
             });
             return;
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.quantity_workbook.open
+        {
+            self.close_quantity_workbook();
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.issue_report.open {
+            self.close_issue_report();
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.overlay.open {
+            self.overlay.close();
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.boundary_fill.open {
+            self.close_boundary_fill();
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.visual_search.open {
+            self.close_visual_search();
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.plan_zones.open {
+            self.close_plan_zones();
+            return;
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.revision_outlines.open
+        {
+            self.close_revision_outlines();
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.revision_transfer.open
+        {
+            self.close_revision_transfer();
         }
         if command.info().needs_document && self.document.is_none() {
             // L'outil reste utilisable, il commence par ouvrir un fichier.
@@ -1782,9 +2050,25 @@ impl SuniApp {
             self.form_builder.cancel();
         }
         match command {
+            Command::PlanSets => self.open_plan_sets(),
+            Command::PlanLinks => self.open_plan_links(),
+            Command::RevisionOutlines => self.open_revision_outlines(),
+            Command::PlanZones => self.open_plan_zones(),
+            Command::VisualSearch => self.open_visual_search(),
+            Command::BoundaryFill => self.open_boundary_fill(),
+            Command::QuantityWorkbook => self.open_current_quantity_workbook(),
+            Command::IssueReport => self.open_current_issue_report(),
+            Command::RevisionTransfer => self.open_revision_transfer(),
+            Command::CompareFiles => self.open_local_review(true),
+            Command::RevisionOverlay => self.open_revision_overlay(),
+            Command::SearchFiles => self.open_local_review(false),
             Command::CompressImages => self.open_processing(false),
             Command::ProcessFiles => self.open_processing(true),
             Command::RichAnnotations => self.open_rich_annotations(ctx),
+            Command::ToolMeasure => self.open_measurements(ctx),
+            Command::AnnotationLibrary => self.open_annotation_library(),
+            Command::AnnotationRegister => self.open_annotation_register(),
+            Command::QuantityTable => self.open_quantity_table(),
             Command::EraseInkStrokes => self.open_ink_eraser(ctx),
             Command::OfficeToPdf => self.open_office(false),
             Command::ExportOffice => self.open_office(true),
@@ -1920,8 +2204,7 @@ impl SuniApp {
             Command::ViewTwoPage => self.set_view_mode(ViewMode::TwoPage),
             Command::ViewBook => self.set_view_mode(ViewMode::Book),
             Command::ToggleThumbnails => {
-                self.settings.show_thumbnails = !self.settings.show_thumbnails;
-                self.persist_settings();
+                self.toggle_navigation_panel(crate::reader_layout::NavigationPanel::Pages);
             }
             Command::Find => {
                 self.find.open = true;
@@ -1989,7 +2272,7 @@ impl SuniApp {
                     return;
                 };
                 if pages.len() != 1 {
-                    return; // ponytail: un seul déplacement à la fois ; blocs contigus plus tard.
+                    return; // un seul déplacement à la fois ; blocs contigus plus tard.
                 }
                 let count = doc.info.page_count();
                 let to = if command == Command::MovePageLeft {
@@ -2027,8 +2310,7 @@ impl SuniApp {
             Command::SelectAllObjects => self.select_all_objects(ctx),
             Command::ReplaceImage => self.replace_selected_image(),
             Command::ToggleObjects => {
-                self.edit.objects_open = !self.edit.objects_open;
-                self.edit.objects_page = None;
+                self.toggle_context_panel(command);
             }
             Command::CropPages
             | Command::ResizePages
@@ -2039,6 +2321,7 @@ impl SuniApp {
             | Command::ToolUnderline
             | Command::ToolStrikeOut
             | Command::ToolNote
+            | Command::ToolCount
             | Command::ToolSelectObject
             | Command::ToolAddText
             | Command::ToolAddImage
@@ -2057,6 +2340,9 @@ impl SuniApp {
                 self.annotate.clear_reading();
                 self.annotate.tool =
                     crate::annotate::Tool::from_command(command).unwrap_or_default();
+                if command == Command::ToolCount {
+                    self.annotate.register.count_open = true;
+                }
                 self.annotate.drag = None;
                 if !matches!(self.annotate.tool, crate::annotate::Tool::SelectObject) {
                     self.edit.selection = None;
@@ -2086,6 +2372,7 @@ impl SuniApp {
             | Command::HubEdit
             | Command::HubOrganize
             | Command::HubComment
+            | Command::HubMeasure
             | Command::HubProtect
             | Command::HubStamp
             | Command::HubPrepareForm
@@ -2106,10 +2393,7 @@ impl SuniApp {
             Command::InsertDate => self.start_placing_date(),
             Command::ToolFillForm => self.enter_fill_tool(),
             Command::ToggleForms => {
-                self.forms.panel_open = !self.forms.panel_open;
-                if self.forms.panel_open {
-                    self.forms.stale = true;
-                }
+                self.toggle_context_panel(command);
             }
             Command::ClearForm => {
                 self.forms.editing = None;
@@ -2137,24 +2421,34 @@ impl SuniApp {
             Command::ExportImages => self.tool_export_images(),
             Command::Optimize => self.tool_optimize(),
             Command::ToggleBookmarks => {
-                self.docinfo.bookmarks_open = !self.docinfo.bookmarks_open;
+                self.toggle_navigation_panel(crate::reader_layout::NavigationPanel::Bookmarks);
             }
             Command::Properties => {
                 self.docinfo.properties = None;
+                self.docinfo.inspection_epoch = None;
+                self.docinfo.inspection = None;
                 self.docinfo.properties_open = true;
                 self.worker.send(Request::Properties);
             }
             Command::Protect => {
                 self.docinfo.protection = sunipdf_core::Protection::default();
                 self.docinfo.protect_error = None;
-                self.docinfo.protect_open = true;
+                self.docinfo.current_owner = None;
+                self.docinfo.protect_open = false;
+                self.docinfo.protection_epoch = Some(self.view.epoch);
+                self.worker.send(Request::BeginProtection {
+                    epoch: self.view.epoch,
+                });
             }
             Command::Unprotect => {
+                self.docinfo.protection_epoch = None;
+                self.docinfo.current_owner = None;
                 let encrypted = self.docinfo.properties.as_ref().map(|p| p.encrypted);
                 if encrypted == Some(false) {
                     self.error = Some("error.not_encrypted");
                 } else {
                     self.docinfo.unprotect_password.clear();
+                    self.docinfo.unprotect_for_reprotect = false;
                     self.docinfo.unprotect_open = true;
                 }
             }
@@ -2164,8 +2458,7 @@ impl SuniApp {
             }
             Command::Sanitize => self.tools.sanitize_open = true,
             Command::ToggleComments => {
-                self.annotate.comments_open = !self.annotate.comments_open;
-                self.annotate.annotations_page = None;
+                self.toggle_context_panel(command);
             }
             Command::OrganizePages => {
                 self.organize.active = !self.organize.active;
@@ -2188,15 +2481,17 @@ impl SuniApp {
             Command::NextTab => self.next_tab(1),
             Command::PrevTab => self.next_tab(-1),
             Command::ToggleTools => {
-                self.show_tools = !self.show_tools;
-                self.settings.show_tools = self.show_tools;
-                self.persist_settings();
+                self.toggle_navigation_panel(crate::reader_layout::NavigationPanel::Tools);
             }
             Command::CommandPalette => {
                 self.palette.open = !self.palette.open;
                 self.palette.query.clear();
                 self.palette.selected = 0;
                 self.palette.focus_requested = self.palette.open;
+            }
+            Command::KeyboardShortcuts => {
+                self.shortcuts.draft = Some(crate::shortcuts::Draft::new(&self.settings.shortcuts));
+                self.palette.open = false;
             }
             Command::About => self.show_about = true,
         }
@@ -2220,8 +2515,9 @@ impl SuniApp {
                 if separators_before.contains(&info.command) {
                     ui.separator();
                 }
-                let shortcut = info.shortcut_key.map(|k| tr(lang, k)).unwrap_or("");
-                let enabled = !info.needs_document || has_doc;
+                let shortcut = self.shortcut_text(info.command);
+                let unavailable = crate::workspace::platform_unavailable(info.command);
+                let enabled = (!info.needs_document || has_doc) && unavailable.is_none();
                 // Mode de vue actif surligné (les deux entrées partagent F5).
                 let active = has_doc
                     && match info.command {
@@ -2231,7 +2527,17 @@ impl SuniApp {
                         Command::ViewBook => self.view.mode == ViewMode::Book,
                         _ => false,
                     };
-                if menu_item(ui, tr(lang, info.label_key), shortcut, enabled, active) {
+                let clicked = if let Some(reason) = unavailable {
+                    ui.add_enabled(
+                        false,
+                        egui::Button::new(tr(lang, info.label_key)).shortcut_text(&shortcut),
+                    )
+                    .on_disabled_hover_text(tr(lang, reason));
+                    false
+                } else {
+                    menu_item(ui, tr(lang, info.label_key), &shortcut, enabled, active)
+                };
+                if clicked {
                     self.execute(ctx, info.command);
                 }
             }
@@ -2303,7 +2609,7 @@ impl SuniApp {
     }
 
     /// Panneau des miniatures : seules les lignes visibles demandent un rendu (cache côté moteur).
-    fn thumbnails_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub(crate) fn thumbnails_panel(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let lang = self.lang();
         ui.add_space(4.0);
         ui.label(crate::icons::semibold(tr(lang, "panel.thumbnails"), 14.0));
@@ -2361,7 +2667,7 @@ impl SuniApp {
                     let (rect, resp) = ui.allocate_exact_size(size, egui::Sense::click_and_drag());
                     resp.widget_info(|| {
                         egui::WidgetInfo::labeled(
-                            egui::WidgetType::Image,
+                            egui::Role::Image,
                             true,
                             tr_args(lang, "a11y.thumbnail", &[("page", &caption)]),
                         )
@@ -2422,7 +2728,7 @@ impl SuniApp {
                 });
             }
         });
-        self.view.thumb_view = Some((out.state.offset.y, out.inner_rect.height()));
+        self.view.thumb_view = Some((out.state.unclamped_offset().y, out.inner_rect.height()));
         if let Some(page) = clicked {
             self.go_to_page(page);
         }
@@ -2437,8 +2743,9 @@ impl SuniApp {
         let has_icons = self.has_icons;
         let mut step: isize = 0;
         let mut close = false;
-        ui.horizontal(|ui| {
-            ui.label("🔍");
+        let mut cancel = false;
+        ui.horizontal_wrapped(|ui| {
+            ui.label(tr(lang, "find.title"));
             let field = ui.add(
                 egui::TextEdit::singleline(&mut self.find.query)
                     .hint_text(tr(lang, "find.placeholder"))
@@ -2475,6 +2782,12 @@ impl SuniApp {
             if self.find.in_flight {
                 ui.spinner();
                 ui.label(tr(lang, "find.searching"));
+                if let Some((done, total)) = self.find.progress {
+                    ui.label(format!("{done} / {total}"));
+                }
+                cancel = ui.button(tr(lang, "find.cancel")).clicked();
+            } else if let Some(error) = &self.find.error {
+                ui.colored_label(theme::palette(ui.visuals().dark_mode).error, error);
             } else if self.find.searched.is_some() {
                 if has_matches {
                     ui.label(tr_args(
@@ -2506,6 +2819,10 @@ impl SuniApp {
             self.close_find();
             return;
         }
+        if cancel {
+            self.cancel_search();
+            return;
+        }
         // Échap d'une boîte de dialogue ou de la palette (dessinées après) ne ferme pas la recherche.
         if !self.dialog_open() && !self.palette.open && ui.input(|i| i.key_pressed(Key::Escape)) {
             self.close_find();
@@ -2520,26 +2837,40 @@ impl SuniApp {
     }
 
     pub fn close_find(&mut self) {
+        self.cancel_search();
         self.find.open = false;
         self.find.matches.clear();
         self.find.searched = None;
         self.find.in_flight = false;
     }
 
+    fn cancel_search(&mut self) {
+        if self.find.in_flight {
+            self.worker.send(Request::CancelSearch {
+                generation: self.find.generation,
+            });
+        }
+        self.find.generation = self.find.generation.wrapping_add(1);
+        self.find.in_flight = false;
+        self.find.progress = None;
+        self.find.error = None;
+    }
+
     fn request_search_if_needed(&mut self) {
         let wanted = (self.find.query.clone(), self.find.match_case);
-        if self.find.in_flight
-            || self.find.searched.as_ref() == Some(&wanted)
-            || self.document.is_none()
-        {
+        if self.find.searched.as_ref() == Some(&wanted) || self.document.is_none() {
             return;
         }
         if wanted.0.trim().is_empty() {
+            self.cancel_search();
             self.find.matches.clear();
             self.find.searched = Some(wanted);
             return;
         }
-        self.find.generation += 1;
+        self.find.generation = self.find.generation.wrapping_add(1);
+        self.find.error = None;
+        self.find.progress = None;
+        self.find.matches.clear();
         self.find.in_flight = true;
         self.find.searched = Some(wanted.clone());
         self.worker.send(Request::Search {
@@ -2841,6 +3172,7 @@ impl SuniApp {
             });
         } else if cancel {
             self.password_prompt = None;
+            self.review.pending_page = None;
             self.cancel_after_save();
         }
     }
@@ -2972,6 +3304,12 @@ impl SuniApp {
 
 impl eframe::App for SuniApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.render_ui(ui);
+    }
+}
+
+impl SuniApp {
+    pub(crate) fn render_ui(&mut self, ui: &mut egui::Ui) {
         if self.settings.autosave && self.has_unsaved_changes() {
             ui.ctx()
                 .request_repaint_after(std::time::Duration::from_secs(5));
@@ -2989,7 +3327,7 @@ impl eframe::App for SuniApp {
                 self.lang(),
                 self.document.is_some(),
                 blocked,
-                FIELD_SHORTCUTS,
+                &crate::shortcuts::field_bindings(&self.settings.shortcuts),
             );
             for command in crate::mac_menu::take() {
                 self.execute(&ctx, command);
@@ -3028,7 +3366,12 @@ impl eframe::App for SuniApp {
                     .frame(chrome(p.surface))
                     .show(ui, |ui| self.update_controls(&ctx, ui));
             }
-            if self.document.is_some() && self.annotate.workspace.is_some_and(|w| w.is_mode()) {
+            if self.document.is_some()
+                && self
+                    .annotate
+                    .workspace
+                    .is_some_and(|w| w.is_mode() && w != crate::workspace::Workspace::Measure)
+            {
                 // Hauteur fixe : pas de saut quand les libellés apparaissent ou disparaissent.
                 egui::Panel::top("workspace")
                     .exact_size(48.0)
@@ -3039,6 +3382,11 @@ impl eframe::App for SuniApp {
                     )
                     .show(ui, |ui| self.workspace_bar(&ctx, ui));
             }
+            if self.library.placing.is_some() {
+                egui::Panel::top("library-placement")
+                    .frame(chrome(p.surface))
+                    .show(ui, |ui| self.library_placement_bar(ui));
+            }
             if self.find.open && self.document.is_some() {
                 egui::Panel::top("find")
                     .frame(chrome(p.chrome))
@@ -3047,37 +3395,33 @@ impl eframe::App for SuniApp {
             egui::Panel::bottom("status")
                 .frame(chrome(p.chrome))
                 .show(ui, |ui| self.status_bar(ui));
-            if self.show_tools {
-                egui::Panel::left("tools")
-                    .resizable(true)
-                    .default_size(250.0)
-                    .frame(
-                        egui::Frame::new()
-                            .fill(p.surface)
-                            .inner_margin(egui::Margin::symmetric(8, 4)),
-                    )
-                    .show(ui, |ui| self.tools_panel(&ctx, ui));
+            if self.document.is_some() {
+                egui::Panel::bottom("reader-controls")
+                    .frame(chrome(p.surface))
+                    .show(ui, |ui| self.reader_bar(&ctx, ui));
+                egui::Panel::right("rail")
+                    .resizable(false)
+                    .exact_size(48.0)
+                    .frame(egui::Frame::new().fill(p.surface).inner_margin(4))
+                    .show(ui, |ui| self.right_rail(&ctx, ui));
+                if !self.organize.active {
+                    self.annotation_register_dock(&ctx, ui);
+                    self.quantity_table_dock(&ctx, ui);
+                }
             }
-            if self.document.is_some() && self.docinfo.bookmarks_open && !self.organize.active {
-                egui::Panel::left("bookmarks")
-                    .resizable(true)
-                    .default_size(220.0)
-                    .frame(
-                        egui::Frame::new()
-                            .fill(p.chrome)
-                            .inner_margin(egui::Margin::symmetric(8, 4)),
-                    )
-                    .show(ui, |ui| {
-                        ui.add_enabled_ui(
-                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
-                            |ui| self.bookmarks_panel(&ctx, ui),
-                        );
-                    });
-            }
-            if self.document.is_some() && self.annotate.comments_open && !self.organize.active {
+            let context_panel = self.context_panel();
+            let reserved_width = if self.navigation_panel().is_some() {
+                380.0
+            } else {
+                220.0
+            };
+            let context_max_width = (ui.available_width() - reserved_width).clamp(240.0, 380.0);
+            self.measurement_dock(&ctx, ui);
+            if context_panel == Some(crate::reader_layout::ContextPanel::Comments) {
                 egui::Panel::right("comments")
                     .resizable(true)
-                    .default_size(280.0)
+                    .default_size(280.0_f32.min(context_max_width))
+                    .size_range(240.0..=context_max_width)
                     .frame(
                         egui::Frame::new()
                             .fill(p.chrome)
@@ -3085,15 +3429,18 @@ impl eframe::App for SuniApp {
                     )
                     .show(ui, |ui| {
                         ui.add_enabled_ui(
-                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            !self.ink_draft_active()
+                                && !self.annotate.measure.is_active_draft()
+                                && self.annotate.adv.free_text.is_none(),
                             |ui| self.comments_panel(&ctx, ui),
                         );
                     });
             }
-            if self.document.is_some() && self.edit.objects_open && !self.organize.active {
+            if context_panel == Some(crate::reader_layout::ContextPanel::Objects) {
                 egui::Panel::right("objects")
                     .resizable(true)
-                    .default_size(260.0)
+                    .default_size(260.0_f32.min(context_max_width))
+                    .size_range(240.0..=context_max_width)
                     .frame(
                         egui::Frame::new()
                             .fill(p.chrome)
@@ -3101,15 +3448,18 @@ impl eframe::App for SuniApp {
                     )
                     .show(ui, |ui| {
                         ui.add_enabled_ui(
-                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            !self.ink_draft_active()
+                                && !self.annotate.measure.is_active_draft()
+                                && self.annotate.adv.free_text.is_none(),
                             |ui| self.objects_panel(&ctx, ui),
                         );
                     });
             }
-            if self.document.is_some() && self.forms.panel_open && !self.organize.active {
+            if context_panel == Some(crate::reader_layout::ContextPanel::Forms) {
                 egui::Panel::right("forms")
                     .resizable(true)
-                    .default_size(300.0)
+                    .default_size(300.0_f32.min(context_max_width))
+                    .size_range(240.0..=context_max_width)
                     .frame(
                         egui::Frame::new()
                             .fill(p.chrome)
@@ -3117,33 +3467,17 @@ impl eframe::App for SuniApp {
                     )
                     .show(ui, |ui| {
                         ui.add_enabled_ui(
-                            !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                            !self.ink_draft_active()
+                                && !self.annotate.measure.is_active_draft()
+                                && self.annotate.adv.free_text.is_none(),
                             |ui| self.forms_panel(&ctx, ui),
                         );
                     });
             }
-            if self.document.is_some() {
-                egui::Panel::right("rail")
-                    .resizable(false)
-                    .default_size(48.0)
-                    .frame(egui::Frame::new().fill(p.surface).inner_margin(4))
-                    .show(ui, |ui| self.right_rail(&ctx, ui));
-                if self.settings.show_thumbnails && !self.organize.active {
-                    egui::Panel::left("thumbnails")
-                        .resizable(true)
-                        .default_size(170.0)
-                        .frame(egui::Frame::new().fill(p.chrome).inner_margin(6))
-                        .show(ui, |ui| {
-                            ui.add_enabled_ui(
-                                !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
-                                |ui| self.thumbnails_panel(&ctx, ui),
-                            );
-                        });
-                }
-            }
+            self.navigation_dock(&ctx, ui);
         }
         if self.reading_full_screen {
-            egui::Area::new(egui::Id::new("reading_exit"))
+            egui::Area::new(egui::Id::unique("reading_exit"))
                 .anchor(egui::Align2::RIGHT_TOP, [-12.0, 12.0])
                 .order(egui::Order::Foreground)
                 .show(&ctx, |ui| {
@@ -3175,7 +3509,9 @@ impl eframe::App for SuniApp {
                 }
                 if !self.reading_full_screen {
                     ui.add_enabled_ui(
-                        !self.ink_draft_active() && self.annotate.adv.free_text.is_none(),
+                        !self.ink_draft_active()
+                            && !self.annotate.measure.is_active_draft()
+                            && self.annotate.adv.free_text.is_none(),
                         |ui| self.forms_bar(&ctx, ui),
                     );
                 }
@@ -3204,6 +3540,7 @@ impl eframe::App for SuniApp {
         if ctx.input(|i| i.viewport().close_requested())
             && (self.has_unsaved_changes()
                 || self.any_background_dirty().is_some()
+                || self.plan_sets.needs_close_guard()
                 || self.close_must_wait())
             && !self.allow_close
         {
@@ -3217,6 +3554,16 @@ impl eframe::App for SuniApp {
         self.unsaved_dialog(&ctx);
         self.signed_save_dialog(&ctx);
         self.feature_dialogs(&ctx);
+        self.revision_overlay_dialog(&ctx);
+        self.revision_outlines_dialog(&ctx);
+        self.plan_zones_dialog(&ctx);
+        self.visual_search_dialog(&ctx);
+        self.boundary_fill_dialog(&ctx);
+        self.issue_report_dialog(&ctx);
+        self.quantity_workbook_dialog(&ctx);
+        self.revision_transfer_dialog(&ctx);
+        self.plan_sets_dialog(&ctx);
+        self.plan_links_dialog(&ctx);
         self.autosave_tick();
         self.split_dialog(&ctx);
         self.flatten_dialog(&ctx);
@@ -3229,11 +3576,18 @@ impl eframe::App for SuniApp {
         self.text_prompt_dialog(&ctx);
         self.paragraph_dialog(&ctx);
         self.rich_annotation_dialog(&ctx);
+        self.annotation_library_dialog(&ctx);
+        self.saved_measurements_dialog(&ctx);
+        self.measurement_scale_dialogs(&ctx);
+        self.annotation_register_dialog(&ctx);
+        self.quantity_table_dialog(&ctx);
+        self.count_marker_dialog(&ctx);
         self.page_setup_dialog(&ctx);
         self.note_dialog(&ctx);
         self.adv_dialogs(&ctx);
         self.password_dialog(&ctx);
         self.about_dialog(&ctx);
+        self.shortcut_dialog(&ctx);
         self.update_install_dialog(&ctx);
         self.command_palette(&ctx);
         self.focus_last_frame = ctx.memory(|m| m.focused().is_some());
@@ -3294,6 +3648,12 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::FormXfa => "error.form_xfa",
         EngineError::RedactionIncomplete => "error.redact_incomplete",
         EngineError::Cancelled => "error.cancelled",
+        EngineError::Other(message) if message == crate::worker::CERTIFICATE_SOURCE_CHANGED => {
+            "error.certificate_source_changed"
+        }
+        EngineError::Other(message) if message == crate::worker::CERTIFICATE_SAVE_FIRST => {
+            "error.certificate_save_first"
+        }
         EngineError::Other(_) => "error.unknown",
     }
 }
@@ -3311,6 +3671,17 @@ pub(crate) mod tests {
         let mut app = SuniApp {
             processing: Default::default(),
             office: Default::default(),
+            review: Default::default(),
+            overlay: Default::default(),
+            plan_sets: Default::default(),
+            plan_links: Default::default(),
+            revision_outlines: Default::default(),
+            plan_zones: Default::default(),
+            visual_search: Default::default(),
+            boundary_fill: Default::default(),
+            quantity_workbook: Default::default(),
+            issue_report: Default::default(),
+            revision_transfer: Default::default(),
             reading_full_screen: false,
             recovery: Default::default(),
             printing: Default::default(),
@@ -3331,6 +3702,7 @@ pub(crate) mod tests {
             error: None,
             password_prompt: None,
             show_about: false,
+            shortcuts: Default::default(),
             pending_files: vec![],
             thumbnails: HashMap::new(),
             thumbs_pending: HashSet::new(),
@@ -3370,6 +3742,7 @@ pub(crate) mod tests {
             edit: Default::default(),
             pagesetup: Default::default(),
             sign: Default::default(),
+            library: Default::default(),
             forms: Default::default(),
             can_undo: false,
             can_redo: false,
@@ -3394,6 +3767,147 @@ pub(crate) mod tests {
             }],
             form: sunipdf_core::FormKind::AcroForm,
         }
+    }
+
+    #[test]
+    fn document_edits_discard_obsolete_search_results_and_allow_a_fresh_query() {
+        for suspended in [false, true] {
+            let (mut app, requests, responses) = test_app();
+            let ctx = egui::Context::default();
+            let info = app.document.as_ref().unwrap().info.clone();
+            app.find.open = true;
+            app.find.query = "before edit".into();
+            app.request_search_if_needed();
+            let generation = app.find.generation;
+            app.find.matches.push(sunipdf_core::TextMatch {
+                page: 0,
+                rects: vec![],
+            });
+            if suspended {
+                assert!(app.suspend_active());
+            }
+            responses
+                .send(Response::DocumentChanged(DocState {
+                    info,
+                    can_undo: true,
+                    can_redo: false,
+                    pages_unchanged: true,
+                    measurement_scales_unchanged: false,
+                    modified: true,
+                    has_signatures: false,
+                }))
+                .unwrap();
+            app.handle_responses(&ctx);
+            if suspended {
+                responses
+                    .send(Response::SuspendFailed(EngineError::InvalidFormat))
+                    .unwrap();
+                app.handle_responses(&ctx);
+            }
+            responses
+                .send(Response::SearchResults {
+                    generation,
+                    matches: vec![sunipdf_core::TextMatch {
+                        page: 0,
+                        rects: vec![],
+                    }],
+                })
+                .unwrap();
+            app.handle_responses(&ctx);
+            assert!(app.find.matches.is_empty());
+            assert!(!app.find.in_flight);
+            assert_eq!(app.find.query, "before edit");
+            let _ = requests.try_iter().collect::<Vec<_>>();
+            app.request_search_if_needed();
+            assert!(requests.try_iter().any(|request| matches!(
+                request,
+                Request::Search { generation: next, query, .. }
+                    if next != generation && query == "before edit"
+            )));
+        }
+    }
+
+    #[test]
+    fn find_supersedes_work_and_ignores_late_cancelled_responses() {
+        let (mut app, requests, responses) = test_app();
+        let ctx = egui::Context::default();
+        app.find.open = true;
+        app.find.query = "first".into();
+        app.request_search_if_needed();
+        let first = app.find.generation;
+        assert!(
+            matches!(requests.recv().unwrap(), Request::Search { generation, query, .. } if generation == first && query == "first")
+        );
+        app.find.query = "second".into();
+        app.request_search_if_needed();
+        let second = app.find.generation;
+        assert_ne!(first, second);
+        assert!(
+            matches!(requests.recv().unwrap(), Request::Search { generation, query, .. } if generation == second && query == "second")
+        );
+        responses
+            .send(Response::SearchFailed {
+                generation: first,
+                error: EngineError::Other("obsolete".into()),
+            })
+            .unwrap();
+        responses
+            .send(Response::SearchProgress {
+                generation: second,
+                done: 2,
+                total: 20,
+            })
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert!(app.find.in_flight && app.find.error.is_none());
+        assert_eq!(app.find.progress, Some((2, 20)));
+        app.cancel_search();
+        assert!(
+            matches!(requests.recv().unwrap(), Request::CancelSearch { generation } if generation == second)
+        );
+        responses
+            .send(Response::SearchFailed {
+                generation: second,
+                error: EngineError::Other("late".into()),
+            })
+            .unwrap();
+        responses
+            .send(Response::SearchProgress {
+                generation: second,
+                done: 10,
+                total: 20,
+            })
+            .unwrap();
+        responses
+            .send(Response::SearchResults {
+                generation: second,
+                matches: vec![],
+            })
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert!(!app.find.in_flight && app.find.error.is_none() && app.find.progress.is_none());
+        app.request_search_if_needed();
+        assert!(
+            requests.try_recv().is_err(),
+            "cancel does not restart the same query"
+        );
+        app.find.query.clear();
+        app.request_search_if_needed();
+        assert!(
+            requests.try_recv().is_err(),
+            "empty query does not start work"
+        );
+        app.find.query = "new search".into();
+        app.request_search_if_needed();
+        assert!(
+            matches!(requests.recv().unwrap(), Request::Search { query, .. } if query == "new search")
+        );
+        app.close_find();
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::CancelSearch { .. }
+        ));
+        assert!(!app.find.open && !app.find.in_flight);
     }
 
     #[test]
@@ -3710,23 +4224,30 @@ pub(crate) mod tests {
     }
 
     fn organize_frame(app: &mut SuniApp, ctx: &egui::Context, offset: f32) {
-        let mut out = ctx.run_ui(
-            egui::RawInput {
-                screen_rect: Some(egui::Rect::from_min_size(
-                    egui::Pos2::ZERO,
-                    egui::vec2(900.0, 600.0),
-                )),
-                ..Default::default()
-            },
-            |ui| {
-                let id = ui.make_persistent_id(egui::IdSalt::new("scroll_area"));
-                let mut state = egui::scroll_area::State::load(ctx, id).unwrap_or_default();
-                state.offset.y = offset;
-                state.store(ctx, id);
-                app.organize_grid(ctx, ui);
-            },
-        );
-        out.textures_delta.clear();
+        for scroll in [true, false] {
+            let mut out = ctx.run_ui(
+                egui::RawInput {
+                    events: vec![egui::Event::PointerMoved(egui::pos2(450.0, 300.0))],
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(900.0, 600.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| {
+                    let id = ui.make_persistent_id(egui::IdSalt::new("scroll_area"));
+                    let current = egui::scroll_area::State::load(ctx, id)
+                        .unwrap_or_default()
+                        .clamped_offset()
+                        .y;
+                    ui.input_mut(|input| {
+                        input.smooth_scroll_delta.y = if scroll { current - offset } else { 0.0 }
+                    });
+                    app.organize_grid(ctx, ui);
+                },
+            );
+            out.textures_delta.clear();
+        }
     }
 
     fn sidebar_frame(app: &mut SuniApp, ctx: &egui::Context) {
@@ -4120,7 +4641,8 @@ pub(crate) mod tests {
     fn clicking_active_tab_cross_closes_the_document() {
         let (mut app, requests, _responses) = test_app();
         let ctx = egui::Context::default();
-        click_tab_control(&mut app, &ctx, "✕", 0);
+        let close_label = app.t("tabs.close").to_owned();
+        click_tab_control(&mut app, &ctx, &close_label, 0);
         assert!(
             requests.try_iter().any(|r| matches!(r, Request::Close)),
             "the tab cross must deliver the close action"
@@ -4183,9 +4705,11 @@ pub(crate) mod tests {
             let (mut app, requests, responses) = test_app();
             add_background_tab(&mut app, dirty);
             let ctx = egui::Context::default();
-            click_tab_control(&mut app, &ctx, "✕", 1);
+            let close_label = app.t("tabs.close").to_owned();
+            click_tab_control(&mut app, &ctx, &close_label, 1);
             responses
                 .send(Response::Suspended(crate::worker::SuspendedDoc {
+                    signature_source: None,
                     bytes: vec![],
                     password: None,
                     path: PathBuf::from("test/first.pdf"),
@@ -4203,6 +4727,7 @@ pub(crate) mod tests {
                     can_redo: false,
                     modified: dirty,
                     pages_unchanged: false,
+                    measurement_scales_unchanged: false,
                     has_signatures: false,
                 }))
                 .unwrap();
@@ -4238,6 +4763,7 @@ pub(crate) mod tests {
             dirty,
             ui: Some(second_ui),
             doc: Some(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/second.pdf"),
@@ -4270,7 +4796,8 @@ pub(crate) mod tests {
         assert!(requests
             .try_iter()
             .any(|r| matches!(r, Request::Save { .. })));
-        click_tab_control(&mut app, &ctx, "✕", 1);
+        let close_label = app.t("tabs.close").to_owned();
+        click_tab_control(&mut app, &ctx, &close_label, 1);
         responses
             .send(Response::Saved {
                 path: PathBuf::from("test/first.pdf"),
@@ -4438,6 +4965,7 @@ pub(crate) mod tests {
                 dirty: false,
                 ui: Some(second_ui),
                 doc: Some(crate::worker::SuspendedDoc {
+                    signature_source: None,
                     bytes: vec![],
                     password: None,
                     path: PathBuf::from("test/second.pdf"),
@@ -4490,6 +5018,7 @@ pub(crate) mod tests {
                     can_redo: false,
                     modified: false,
                     pages_unchanged: false,
+                    measurement_scales_unchanged: false,
                     has_signatures: false,
                 }))
                 .unwrap();
@@ -4511,6 +5040,7 @@ pub(crate) mod tests {
             can_redo: false,
             modified,
             pages_unchanged: false,
+            measurement_scales_unchanged: false,
             has_signatures: false,
         })
     }
@@ -4632,6 +5162,7 @@ pub(crate) mod tests {
             dirty: true,
             ui: Some(second_ui),
             doc: Some(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/second.pdf"),
@@ -4709,6 +5240,7 @@ pub(crate) mod tests {
             dirty: false,
             ui: Some(second_ui),
             doc: Some(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/second.pdf"),
@@ -4743,6 +5275,7 @@ pub(crate) mod tests {
         }
         responses
             .send(Response::Suspended(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/first.pdf"),
@@ -4760,6 +5293,7 @@ pub(crate) mod tests {
                 can_redo: false,
                 modified: false,
                 pages_unchanged: false,
+                measurement_scales_unchanged: false,
                 has_signatures: false,
             }))
             .unwrap();
@@ -4885,6 +5419,7 @@ pub(crate) mod tests {
         );
         responses
             .send(Response::Suspended(crate::worker::SuspendedDoc {
+                signature_source: None,
                 bytes: vec![],
                 password: None,
                 path: PathBuf::from("test/first.pdf"),
@@ -4902,6 +5437,7 @@ pub(crate) mod tests {
                 can_redo: false,
                 modified: true,
                 pages_unchanged: false,
+                measurement_scales_unchanged: false,
                 has_signatures: false,
             }))
             .unwrap();
@@ -5029,7 +5565,7 @@ pub(crate) mod tests {
     /// Ctrl+Maj+Z annule au lieu de rétablir (constats des revues).
     #[test]
     fn shift_shortcuts_precede_their_plain_variant() {
-        for (name, table) in [("field", FIELD_SHORTCUTS), ("global", SHORTCUTS)] {
+        for (name, table) in [("global", SHORTCUTS)] {
             for (i, (m, k, c)) in table.iter().enumerate() {
                 if !m.shift {
                     continue;
@@ -5050,31 +5586,6 @@ pub(crate) mod tests {
         assert!(pos(Command::DuplicateObject) < pos(Command::Properties));
         assert!(pos(Command::Redo) < pos(Command::Undo));
         assert!(pos(Command::RotateCounterClockwise) < pos(Command::RotateClockwise));
-        assert_eq!(FIELD_SHORTCUTS[0].2, Command::SaveAs);
-        // Le scénario réel : Ctrl+Maj+S avec un champ focalisé donne « Enregistrer sous ».
-        let ctx = egui::Context::default();
-        let input = egui::RawInput {
-            events: vec![egui::Event::Key {
-                key: Key::S,
-                physical_key: None,
-                pressed: true,
-                repeat: false,
-                modifiers: Modifiers::COMMAND | Modifiers::SHIFT,
-            }],
-            ..Default::default()
-        };
-        let mut seen = Vec::new();
-        let mut out = ctx.run_ui(input, |ui| {
-            ui.ctx().input_mut(|i| {
-                for &(m, k, c) in FIELD_SHORTCUTS {
-                    if i.consume_key(m, k) {
-                        seen.push(c);
-                    }
-                }
-            });
-        });
-        out.textures_delta.clear();
-        assert_eq!(seen, vec![Command::SaveAs]);
     }
 
     #[test]

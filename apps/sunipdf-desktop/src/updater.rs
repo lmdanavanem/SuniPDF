@@ -1,4 +1,5 @@
-//! Checks public releases without sending document data; installation starts only after Quit accepts.
+//! Checks platform-specific releases without document data. Windows installs after Quit accepts;
+//! Ubuntu opens the official release page for installation with the user's package manager.
 
 use semver::Version;
 use serde::Deserialize;
@@ -6,6 +7,7 @@ use sha2::{Digest, Sha256};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+#[cfg(windows)]
 use std::process::Command;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::{Duration, Instant};
@@ -18,8 +20,11 @@ const MAX_PACKAGE_BYTES: u64 = 256 * 1024 * 1024;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UpdateKind {
+    #[cfg(any(windows, test))]
     Msi,
+    #[cfg(any(windows, test))]
     Portable,
+    Deb,
 }
 
 #[derive(Clone, Debug)]
@@ -31,14 +36,18 @@ pub struct Release {
     asset_url: String,
     sha256: String,
     size: u64,
+    #[cfg_attr(not(windows), allow(dead_code))]
     arch: String,
 }
 
 #[derive(Debug)]
 pub struct PreparedUpdate {
     pub release: Release,
+    #[cfg_attr(not(windows), allow(dead_code))]
     workspace: Option<TempDir>,
+    #[cfg_attr(not(windows), allow(dead_code))]
     package: PathBuf,
+    #[cfg_attr(not(windows), allow(dead_code))]
     target: PathBuf,
 }
 
@@ -96,6 +105,10 @@ impl Updater {
             return;
         };
         let release = release.clone();
+        if release.kind == UpdateKind::Deb {
+            ctx.open_url(egui::OpenUrl::new_tab(release.notes_url));
+            return;
+        }
         self.start(ctx, Phase::Downloading, move || {
             download_release(release).map(Phase::Ready)
         });
@@ -136,6 +149,7 @@ impl Updater {
     }
 
     /// Called only after all document-save and close confirmations have succeeded.
+    #[cfg(windows)]
     pub fn launch_prepared(&mut self) -> Result<(), String> {
         let Phase::Ready(prepared) = &mut self.phase else {
             return Err("Download and verify the update before installing it.".into());
@@ -157,6 +171,9 @@ impl Updater {
             .arg(match prepared.release.kind {
                 UpdateKind::Msi => "Msi",
                 UpdateKind::Portable => "Portable",
+                UpdateKind::Deb => {
+                    return Err("Install Ubuntu updates with your package manager.".into())
+                }
             })
             .arg("-ParentPid")
             .arg(std::process::id().to_string())
@@ -180,17 +197,26 @@ impl Updater {
         }
         Ok(())
     }
+
+    #[cfg(not(windows))]
+    pub fn launch_prepared(&mut self) -> Result<(), String> {
+        Err("Install Ubuntu updates with your package manager.".into())
+    }
 }
 
 fn check_latest() -> Result<Phase, String> {
+    #[cfg(windows)]
     let exe = fs::canonicalize(std::env::current_exe().map_err(|e| e.to_string())?)
         .map_err(|e| format!("Could not locate this application: {e}"))?;
     let arch = architecture(std::env::consts::ARCH)?;
+    #[cfg(windows)]
     let kind = if arch == "x64" && is_installed(&exe) {
         UpdateKind::Msi
     } else {
         UpdateKind::Portable
     };
+    #[cfg(not(windows))]
+    let kind = UpdateKind::Deb;
     let mut response = https_get(
         LATEST_URL,
         "application/vnd.github+json",
@@ -206,10 +232,15 @@ fn check_latest() -> Result<Phase, String> {
 }
 
 fn architecture(arch: &str) -> Result<&'static str, String> {
-    match arch {
-        "x86_64" => Ok("x64"),
-        "aarch64" => Ok("arm64"),
-        _ => Err("Updates are only available for Windows x64 and ARM64.".into()),
+    architecture_for(std::env::consts::OS, arch)
+}
+
+fn architecture_for(platform: &str, arch: &str) -> Result<&'static str, String> {
+    match (platform, arch) {
+        ("windows", "x86_64") => Ok("x64"),
+        ("windows", "aarch64") => Ok("arm64"),
+        ("linux", "x86_64") => Ok("amd64"),
+        _ => Err("Updates are available for Windows x64/ARM64 and Ubuntu amd64.".into()),
     }
 }
 
@@ -239,7 +270,14 @@ fn parse_release(
     if body.len() as u64 > MAX_RELEASE_BYTES {
         return Err("The release response is too large.".into());
     }
-    if !matches!(arch, "x64" | "arm64") || (kind == UpdateKind::Msi && arch != "x64") {
+    let supported_architecture = match kind {
+        #[cfg(any(windows, test))]
+        UpdateKind::Msi => arch == "x64",
+        #[cfg(any(windows, test))]
+        UpdateKind::Portable => matches!(arch, "x64" | "arm64"),
+        UpdateKind::Deb => arch == "amd64",
+    };
+    if !supported_architecture {
         return Err("No installer is available for this architecture.".into());
     }
     let response: ReleaseResponse =
@@ -259,8 +297,11 @@ fn parse_release(
     }
     let version = version.to_string();
     let asset_name = match kind {
+        #[cfg(any(windows, test))]
         UpdateKind::Msi => format!("SuniPDF-{version}-win-{arch}.msi"),
+        #[cfg(any(windows, test))]
         UpdateKind::Portable => format!("SuniPDF-{version}-win-{arch}-portable.zip"),
+        UpdateKind::Deb => format!("SuniPDF-{version}-linux-{arch}.deb"),
     };
     let mut assets = response.assets.into_iter().filter(|a| a.name == asset_name);
     let asset = assets
@@ -377,6 +418,9 @@ fn read_bounded(reader: impl Read, limit: u64) -> Result<Vec<u8>, String> {
 }
 
 fn download_release(release: Release) -> Result<PreparedUpdate, String> {
+    if release.kind == UpdateKind::Deb || !cfg!(windows) {
+        return Err("Download Ubuntu updates from the official release page and install them with your package manager.".into());
+    }
     let workspace = tempfile::Builder::new()
         .prefix("SuniPDF-update-")
         .tempdir()
@@ -464,6 +508,7 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
+#[cfg(windows)]
 fn is_installed(exe: &Path) -> bool {
     let default_install = ["ProgramW6432", "ProgramFiles"]
         .into_iter()
@@ -495,6 +540,7 @@ fn is_installed(exe: &Path) -> bool {
     same_file(Path::new(path), exe)
 }
 
+#[cfg(windows)]
 fn same_file(left: &Path, right: &Path) -> bool {
     match (fs::canonicalize(left), fs::canonicalize(right)) {
         (Ok(left), Ok(right)) => {
@@ -527,6 +573,7 @@ fn ordinary_path(path: &Path) -> PathBuf {
     path.to_owned()
 }
 
+#[cfg(windows)]
 fn powershell() -> Result<Command, String> {
     #[cfg(windows)]
     {
@@ -540,8 +587,6 @@ fn powershell() -> Result<Command, String> {
         command.creation_flags(0x0800_0000);
         Ok(command)
     }
-    #[cfg(not(windows))]
-    Err("Automatic installation is only supported on Windows.".into())
 }
 
 #[cfg(test)]
@@ -554,6 +599,7 @@ mod tests {
         let name = match kind {
             UpdateKind::Msi => format!("SuniPDF-{version}-win-{arch}.msi"),
             UpdateKind::Portable => format!("SuniPDF-{version}-win-{arch}-portable.zip"),
+            UpdateKind::Deb => format!("SuniPDF-{version}-linux-{arch}.deb"),
         };
         json!({
             "tag_name":tag,"draft":false,"prerelease":false,
@@ -577,6 +623,7 @@ mod tests {
             ("x64", UpdateKind::Msi),
             ("x64", UpdateKind::Portable),
             ("arm64", UpdateKind::Portable),
+            ("amd64", UpdateKind::Deb),
         ] {
             let release = parse(release_body("v0.10.0", arch, kind), "0.9.0", arch, kind)
                 .unwrap()
@@ -616,6 +663,48 @@ mod tests {
         )
         .is_err());
         assert!(architecture("x86").is_err());
+    }
+
+    #[test]
+    fn ubuntu_updates_never_select_windows_packages_or_unsupported_architectures() {
+        assert_eq!(architecture_for("linux", "x86_64").unwrap(), "amd64");
+        assert!(architecture_for("linux", "aarch64").is_err());
+        assert!(architecture_for("macos", "x86_64").is_err());
+        for kind in [UpdateKind::Msi, UpdateKind::Portable] {
+            assert!(parse(
+                release_body("v0.52.0", "x64", kind),
+                "0.51.0",
+                "amd64",
+                UpdateKind::Deb
+            )
+            .is_err());
+            assert!(parse(
+                release_body("v0.52.0", "amd64", kind),
+                "0.51.0",
+                "amd64",
+                kind
+            )
+            .is_err());
+        }
+        let release = parse(
+            release_body("v0.52.0", "amd64", UpdateKind::Deb),
+            "0.51.0",
+            "amd64",
+            UpdateKind::Deb,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(release.asset_name, "SuniPDF-0.52.0-linux-amd64.deb");
+        let ctx = egui::Context::default();
+        let mut updater = Updater {
+            phase: Phase::Available(release),
+            ..Default::default()
+        };
+        let mut output = ctx.run_ui(egui::RawInput::default(), |_| updater.download(&ctx));
+        output.textures_delta.clear();
+        assert!(matches!(updater.phase, Phase::Available(_)));
+        assert!(updater.rx.is_none());
+        assert!(output.platform_output.commands.iter().any(|command| matches!(command, egui::OutputCommand::OpenUrl(url) if url.url == format!("{RELEASES_URL}/tag/v0.52.0"))));
     }
 
     #[test]

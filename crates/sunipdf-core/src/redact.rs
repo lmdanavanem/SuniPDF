@@ -28,7 +28,7 @@ use std::sync::{
 
 /// Marge ajoutée autour d'une occurrence de texte (points).
 const TEXT_PAD_PT: f32 = 1.0;
-/// ponytail: plafond fixe (~120 Mo RVB) du rendu d'une page caviardée ; à rendre réglable si des plans
+/// plafond fixe (~120 Mo RVB) du rendu d'une page caviardée ; à rendre réglable si des plans
 /// A0 à haute résolution l'exigent.
 const RASTER_MAX_PIXELS: f32 = 40_000_000.0;
 const JPEG_QUALITY: u8 = 90;
@@ -203,6 +203,7 @@ impl<'a> Document<'a> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         })
     }
 
@@ -299,6 +300,7 @@ impl<'a> Document<'a> {
         appearance: &RedactAppearance,
         author: Option<&str>,
     ) -> Result<(), EngineError> {
+        self.require_annotation_permission()?;
         let groups = group_marks(marks, self.page_count())?;
         if author.is_some_and(|a| a.len() > 4096 || a.chars().any(char::is_control)) {
             return Err(EngineError::Other("invalid redaction author".into()));
@@ -309,7 +311,7 @@ impl<'a> Document<'a> {
         let existing = self.redaction_marks()?;
         let mut scratch = self.redaction_scratch(self.snapshot()?)?;
         for (page, rects) in groups {
-            scratch.edit_pdf(page, |pdf, page_id, geo| {
+            scratch.edit_annotation_pdf(page, |pdf, page_id, geo| {
                 for rect in rects {
                     if existing.contains(&RedactMark { page, rect }) {
                         continue;
@@ -908,6 +910,108 @@ pub(crate) struct Sanitized {
     pub fields_removed: usize,
 }
 
+fn strip_replacement_text(
+    object: &mut Object,
+    depth: usize,
+    nodes: &mut usize,
+) -> Result<bool, EngineError> {
+    *nodes += 1;
+    if depth > 32 || *nodes > 1_000_000 {
+        return Err(EngineError::RedactionIncomplete);
+    }
+    let dictionary = match object {
+        Object::Array(values) => {
+            let mut changed = false;
+            for value in values {
+                changed |= strip_replacement_text(value, depth + 1, nodes)?;
+            }
+            return Ok(changed);
+        }
+        Object::Dictionary(dictionary) => dictionary,
+        Object::Stream(stream) => &mut stream.dict,
+        _ => return Ok(false),
+    };
+    let mut changed = dictionary.remove(b"ActualText").is_some();
+    changed |= dictionary.remove(b"Alt").is_some();
+    for (_, value) in dictionary.iter_mut() {
+        changed |= strip_replacement_text(value, depth + 1, nodes)?;
+    }
+    Ok(changed)
+}
+
+fn clean_replacement_text(doc: &mut lopdf::Document) -> Result<bool, EngineError> {
+    let mut programs: BTreeSet<_> = doc
+        .get_pages()
+        .values()
+        .flat_map(|page| doc.get_page_contents(*page))
+        .collect();
+    for (&id, object) in &doc.objects {
+        let Ok(stream) = object.as_stream() else {
+            continue;
+        };
+        let subtype = stream
+            .dict
+            .get(b"Subtype")
+            .ok()
+            .and_then(|value| doc.dereference(value).ok())
+            .and_then(|(_, value)| value.as_name().ok());
+        if subtype == Some(b"Form".as_slice()) || stream.dict.has(b"PatternType") {
+            programs.insert(id);
+        }
+    }
+    let mut changed = false;
+    let mut nodes = 0;
+    let mut total = 0usize;
+    for id in programs {
+        let stream = doc
+            .get_object(id)
+            .and_then(Object::as_stream)
+            .map_err(|_| EngineError::RedactionIncomplete)?;
+        let content = stream
+            .get_plain_content_with_limit(8 * 1024 * 1024)
+            .map_err(|_| EngineError::RedactionIncomplete)?;
+        total = total
+            .checked_add(content.len())
+            .ok_or(EngineError::RedactionIncomplete)?;
+        if total > 256 * 1024 * 1024 {
+            return Err(EngineError::RedactionIncomplete);
+        }
+        let mut decoded =
+            Content::decode_strict(&content).map_err(|_| EngineError::RedactionIncomplete)?;
+        if decoded.operations.len() > 100_000 {
+            return Err(EngineError::RedactionIncomplete);
+        }
+        let inline_image = decoded
+            .operations
+            .iter()
+            .any(|operation| operation.operator == "BI");
+        let mut altered = false;
+        for operation in &mut decoded.operations {
+            for operand in &mut operation.operands {
+                altered |= strip_replacement_text(operand, 0, &mut nodes)?;
+            }
+        }
+        if altered {
+            // The generic encoder cannot safely regenerate inline image syntax.
+            if inline_image {
+                return Err(EngineError::RedactionIncomplete);
+            }
+            let content = decoded
+                .encode()
+                .map_err(|_| EngineError::RedactionIncomplete)?;
+            doc.get_object_mut(id)
+                .and_then(Object::as_stream_mut)
+                .map_err(|_| EngineError::RedactionIncomplete)?
+                .set_plain_content(content);
+            changed = true;
+        }
+    }
+    for object in doc.objects.values_mut() {
+        changed |= strip_replacement_text(object, 0, &mut nodes)?;
+    }
+    Ok(changed)
+}
+
 /// Catégories de `/Resources` filtrées.
 const RESOURCE_KINDS: [&[u8]; 7] = [
     b"XObject",
@@ -1346,7 +1450,7 @@ pub(crate) fn sanitize(
             doc.delete_object(*id);
         }
     }
-    if !terminals.is_empty() {
+    if clean_hidden || !terminals.is_empty() {
         // /XFA garde une copie XML des valeurs.
         let acro = doc
             .catalog()
@@ -1371,7 +1475,7 @@ pub(crate) fn sanitize(
     }
 
     // B4. Ressources retirées que plus aucune page ne dessine : détachées de tout l'arbre des pages
-    //     (un dictionnaire partagé les garderait sinon atteignables). ponytail: O(candidats × pages),
+    //     (un dictionnaire partagé les garderait sinon atteignables). O(candidats × pages),
     //     ressources effectives clonées à chaque fois ; à mettre en cache si un gros document le montre.
     let page_ids: Vec<ObjectId> = pages.values().copied().collect();
     let mut nodes: BTreeSet<ObjectId> = BTreeSet::new();
@@ -1418,6 +1522,7 @@ pub(crate) fn sanitize(
 
     // B5. Informations cachées.
     if clean_hidden {
+        clean_replacement_text(&mut doc)?;
         crate::security::strip_metadata_in(&mut doc);
         let catalog = doc.catalog_mut().map_err(lopdf_err)?;
         for key in [b"StructTreeRoot".as_slice(), b"MarkInfo", b"PieceInfo"] {
@@ -1427,8 +1532,15 @@ pub(crate) fn sanitize(
 
     // B6. Ramasse-miettes et réécriture complète (un seul xref, aucune révision antérieure).
     doc.prune_objects();
+    let bytes = crate::security::save(doc)?;
+    if clean_hidden {
+        let mut reopened = crate::security::load(&bytes, password)?;
+        if clean_replacement_text(&mut reopened)? {
+            return Err(EngineError::RedactionIncomplete);
+        }
+    }
     Ok(Sanitized {
-        bytes: crate::security::save(doc)?,
+        bytes,
         annotations_removed,
         fields_removed: terminals.len(),
     })
@@ -1544,6 +1656,102 @@ mod tests {
 
     fn zone_page0() -> BTreeMap<usize, Vec<PointRect>> {
         BTreeMap::from([(0, vec![rect(50.0, 50.0, 100.0, 100.0)])])
+    }
+
+    #[test]
+    fn hidden_cleanup_removes_xfa_without_removing_any_widget() {
+        for inline in [false, true] {
+            let mut doc = build(
+                &[b"0 0 10 10 re f"],
+                |_, _| Dictionary::new(),
+                Dictionary::new(),
+            );
+            let template = doc.add_object(Stream::new(
+                Dictionary::new(),
+                b"<template><script>XFA-TEMPLATE-REMOVED</script></template>".to_vec(),
+            ));
+            let datasets = doc.add_object(Stream::new(
+                Dictionary::new(),
+                b"<datasets>XFA-DATASETS-REMOVED</datasets>".to_vec(),
+            ));
+            let form = dictionary! {"Fields"=>Vec::<Object>::new(),"XFA"=>vec![
+            Object::string_literal("template"),Object::Reference(template),
+            Object::string_literal("datasets"),Object::Reference(datasets)]};
+            let form = if inline {
+                Object::Dictionary(form)
+            } else {
+                Object::Reference(doc.add_object(form))
+            };
+            doc.catalog_mut().unwrap().set("AcroForm", form);
+            let input = bytes_of(&mut doc);
+            let kept = sanitize(&input, None, &zone_page0(), false).unwrap();
+            assert!(contains(&kept.bytes, "XFA-DATASETS-REMOVED"));
+            let cleaned = sanitize(&input, None, &zone_page0(), true).unwrap();
+            assert_eq!(cleaned.fields_removed, 0);
+            for marker in ["XFA-TEMPLATE-REMOVED", "XFA-DATASETS-REMOVED"] {
+                assert!(!contains(&cleaned.bytes, marker));
+            }
+            let parsed = crate::security::load(&cleaned.bytes, None).unwrap();
+            let form = parsed.catalog().unwrap().get(b"AcroForm").unwrap();
+            assert!(!deref_dict(&parsed, form).unwrap().has(b"XFA"));
+        }
+    }
+
+    #[test]
+    fn hidden_cleanup_removes_replacement_text_from_retained_content_and_resources() {
+        let mut doc = build(
+            &[b"/Span << /ActualText (INLINE-ACTUAL-REMOVED) /Alt (INLINE-ALT-REMOVED) >> BDC 200 200 10 10 re f EMC"],
+            |_, _| Dictionary::new(), Dictionary::new());
+        let property = doc.add_object(dictionary! {"ActualText"=>Object::string_literal("NAMED-ACTUAL-REMOVED"),"Alt"=>Object::string_literal("NAMED-ALT-REMOVED")});
+        let form = doc.add_object(Stream::new(dictionary! {"Type"=>"XObject","Subtype"=>"Form","BBox"=>vec![0.into(),0.into(),10.into(),10.into()],"Resources"=>dictionary! {"Properties"=>dictionary! {"P"=>property}}},
+            b"/Span /P BDC /Span << /ActualText (FORM-ACTUAL-REMOVED) /Alt (FORM-ALT-REMOVED) >> BDC 0 0 10 10 re f EMC EMC".to_vec()));
+        let page = doc.get_pages()[&1];
+        doc.get_dictionary_mut(page).unwrap().set(
+            "Resources",
+            dictionary! {"XObject"=>dictionary! {"F"=>form}},
+        );
+        doc.add_page_contents(page, b"q /F Do Q".to_vec()).unwrap();
+        let input = bytes_of(&mut doc);
+        let markers = [
+            "INLINE-ACTUAL-REMOVED",
+            "INLINE-ALT-REMOVED",
+            "NAMED-ACTUAL-REMOVED",
+            "NAMED-ALT-REMOVED",
+            "FORM-ACTUAL-REMOVED",
+            "FORM-ALT-REMOVED",
+        ];
+        let kept = sanitize(&input, None, &zone_page0(), false).unwrap();
+        for marker in markers {
+            assert!(contains(&kept.bytes, marker));
+        }
+        let cleaned = sanitize(&input, None, &zone_page0(), true).unwrap();
+        for marker in markers {
+            assert!(!contains(&cleaned.bytes, marker));
+        }
+        let mut parsed = crate::security::load(&cleaned.bytes, None).unwrap();
+        assert!(!clean_replacement_text(&mut parsed).unwrap());
+        let operations = Content::decode_strict(&parsed.get_page_content(page))
+            .unwrap()
+            .operations;
+        assert!(operations
+            .iter()
+            .any(|operation| operation.operator == "re"));
+        assert!(operations
+            .iter()
+            .any(|operation| operation.operator == "Do"));
+    }
+
+    #[test]
+    fn hidden_cleanup_refuses_ambiguous_inline_image_regeneration() {
+        let mut doc = build(
+            &[b"/Span << /ActualText (PRIVATE) >> BDC BI /W 1 /H 1 /BPC 8 /CS /G ID x EI EMC"],
+            |_, _| Dictionary::new(),
+            Dictionary::new(),
+        );
+        assert!(matches!(
+            clean_replacement_text(&mut doc),
+            Err(EngineError::RedactionIncomplete)
+        ));
     }
 
     fn shared_images(page2: &'static [u8]) -> Vec<u8> {

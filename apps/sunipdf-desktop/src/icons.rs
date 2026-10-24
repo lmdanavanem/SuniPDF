@@ -1,7 +1,6 @@
-//! Polices : Segoe UI (texte) et Segoe Fluent Icons / MDL2 (icônes), chargées depuis
-//! `C:\Windows\Fonts` à l'exécution. Absentes → polices egui par défaut, icônes remplacées
-//! par leur libellé textuel. Aucune police n'est embarquée dans le binaire Windows.
-//! macOS : San Francisco (système) et `assets/fonts/SuniPDF-Icons.ttf` embarquée (MIT, 15 Ko).
+//! Windows system typography with a bundled, MIT-licensed portable icon fallback.
+//! The portable font maps the same application codepoints to Fluent System Icons.
+//! macOS: San Francisco (system font) for text, the bundled icon font for icons.
 
 use egui::{FontData, FontDefinitions, FontFamily, RichText};
 use std::sync::Arc;
@@ -103,7 +102,7 @@ pub mod glyph {
     pub const SELECT_ANNOT: &str = "\u{E7C9}";
 }
 
-/// Installe les polices système si elles existent. Renvoie `true` si la police d'icônes est disponible.
+/// Install system typography when available and always provide the application's icon family.
 pub fn install(ctx: &egui::Context) -> bool {
     let mut fonts = FontDefinitions::default();
     let (regular, semibold_font, icons) = system_fonts();
@@ -127,15 +126,17 @@ pub fn install(ctx: &egui::Context) -> bool {
     fonts
         .families
         .insert(FontFamily::Name(SEMIBOLD.into()), semibold);
-    let has_icons = icons.is_some();
-    if let Some(data) = icons {
-        fonts.font_data.insert("SegoeIcons".into(), Arc::new(data));
-        fonts
-            .families
-            .insert(FontFamily::Name(ICONS.into()), vec!["SegoeIcons".into()]);
-    }
+    let icon_data = icons.unwrap_or_else(|| {
+        FontData::from_static(include_bytes!("../../../assets/fonts/SuniPDF-Icons.ttf"))
+    });
+    fonts
+        .font_data
+        .insert("SuniPDFIcons".into(), Arc::new(icon_data));
+    fonts
+        .families
+        .insert(FontFamily::Name(ICONS.into()), vec!["SuniPDFIcons".into()]);
     ctx.set_fonts(fonts);
-    has_icons
+    true
 }
 
 /// Texte, texte semi-gras et icônes : Segoe, lues dans `%WINDIR%\Fonts`.
@@ -151,8 +152,8 @@ fn system_fonts() -> (Option<FontData>, Option<FontData>, Option<FontData>) {
     (load("segoeui.ttf"), load("seguisb.ttf"), icons)
 }
 
-/// macOS : San Francisco (police variable du système, graisses 400 et 590) et Fluent UI System
-/// Icons recollée sur les points de code Segoe par `scripts/make_mac_icons.py`.
+/// macOS : San Francisco (police variable du système, graisses 400 et 590) ; pas de police
+/// d'icônes système, `install` prend la police embarquée.
 #[cfg(target_os = "macos")]
 fn system_fonts() -> (Option<FontData>, Option<FontData>, Option<FontData>) {
     let sf = std::fs::read("/System/Library/Fonts/SFNS.ttf").ok();
@@ -163,8 +164,7 @@ fn system_fonts() -> (Option<FontData>, Option<FontData>, Option<FontData>) {
             data
         })
     };
-    let icons = FontData::from_static(include_bytes!("../../../assets/fonts/SuniPDF-Icons.ttf"));
-    (weight(400.0), weight(590.0), Some(icons))
+    (weight(400.0), weight(590.0), None)
 }
 
 /// Icône de taille `size`, ou `fallback` (texte) si la police d'icônes manque.

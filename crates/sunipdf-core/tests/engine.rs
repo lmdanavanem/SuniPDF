@@ -509,8 +509,8 @@ fn rotate_delete_and_save_atomically() {
     again.save_as(&out).unwrap();
     assert_eq!(engine.open(&out, None).unwrap().page_count(), 1);
     // Un enregistrement vers un dossier impossible échoue proprement, sans fichier temporaire.
-    let bad = Path::new("Z:\\sunipdf-no-such-drive\\x.pdf");
-    assert!(matches!(again.save_as(bad), Err(EngineError::Io(_))));
+    let bad = out.join("x.pdf");
+    assert!(matches!(again.save_as(&bad), Err(EngineError::Io(_))));
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -572,6 +572,66 @@ fn insert_move_and_snapshot_restore() {
     enc.restore(snap).unwrap();
     assert_eq!(enc.page_count(), 1);
     let _ = std::fs::remove_dir_all(dir);
+}
+
+#[test]
+fn failed_password_restore_preserves_the_live_document_and_later_save() {
+    use sunipdf_core::{security, Protection};
+    let engine = engine();
+    let temp = tempfile::tempdir().unwrap();
+    let input = std::fs::read(fixture("acroform.pdf")).unwrap();
+    for aes256 in [false, true] {
+        let protected = security::protect(
+            &input,
+            None,
+            &Protection {
+                user_password: "reader".into(),
+                owner_password: "owner".into(),
+                aes256,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let path = temp.path().join(format!("restore-{aes256}.pdf"));
+        let mut doc = engine.open_bytes(protected, Some("reader"), &path).unwrap();
+        let fields = doc.form_info().unwrap();
+        let sizes = doc.info().page_sizes.clone();
+        let text = doc.page_text(0).unwrap();
+        let before = doc.snapshot().unwrap();
+        for (bytes, password) in [
+            (b"not a PDF".to_vec(), Some("replacement".into())),
+            (before.clone(), Some("incorrect".into())),
+            (before.clone(), None),
+        ] {
+            assert!(doc.restore_with_password(bytes, password).is_err());
+            assert_eq!(doc.password(), Some("reader"));
+            assert_eq!(doc.info().path, path);
+            assert_eq!(doc.info().page_sizes, sizes);
+            assert_eq!(doc.form_info().unwrap(), fields);
+            assert_eq!(doc.page_text(0).unwrap(), text);
+        }
+
+        doc.save_as(&path).unwrap();
+        assert!(matches!(
+            engine.open(&path, None),
+            Err(EngineError::PasswordRequired)
+        ));
+        let reopened = engine.open(&path, Some("reader")).unwrap();
+        assert_eq!(reopened.form_info().unwrap(), fields);
+        assert_eq!(reopened.page_text(0).unwrap(), text);
+
+        // Protection Undo/Redo still changes the credentials only with its complete document.
+        let clear = security::unprotect(&before, "owner").unwrap();
+        doc.restore_with_password(clear, None).unwrap();
+        assert_eq!(doc.password(), None);
+        assert!(!doc.is_encrypted());
+        assert_eq!(doc.form_info().unwrap(), fields);
+        doc.restore_with_password(before, Some("reader".into()))
+            .unwrap();
+        assert_eq!(doc.password(), Some("reader"));
+        assert!(doc.is_encrypted());
+        assert_eq!(doc.form_info().unwrap(), fields);
+    }
 }
 
 #[test]
@@ -996,6 +1056,15 @@ fn images_to_pdf_export_images_and_optimize() {
     assert_eq!(exported.len(), 2);
     let back = image::open(&exported[1]).unwrap();
     assert_eq!((back.width(), back.height()), (792, 612));
+    std::fs::write(&exported[0], b"existing image output").unwrap();
+    let replaced = engine
+        .open(&fixture("two-pages.pdf"), None)
+        .unwrap()
+        .export_images(&dir.join("png"), 72.0, true)
+        .unwrap();
+    assert_eq!(replaced, exported);
+    let back = image::open(&replaced[0]).unwrap();
+    assert_eq!((back.width(), back.height()), (612, 792));
 
     // Optimisation : fichier valide, même contenu, pas plus gros qu'un simple aller-retour.
     let res =
@@ -1288,20 +1357,25 @@ fn edit_resize_style_text_size_and_fonts() {
         .into_iter()
         .find(|o| o.text.as_deref() == Some("Times italique"))
         .unwrap();
-    assert!(
-        t.font_name
-            .as_deref()
-            .unwrap_or("")
-            .to_lowercase()
-            .contains("times"),
-        "{:?}",
-        t.font_name
-    );
+    // PDFium can report a platform substitute's family (for example Chrom Serif).
+    // Verify the requested PDF font, independently of its installed display name.
+    let snapshot = lopdf::Document::load_mem(&doc.snapshot().unwrap()).unwrap();
+    let page_id = snapshot.get_pages()[&1];
+    assert!(snapshot
+        .get_page_fonts(page_id)
+        .unwrap()
+        .values()
+        .any(|font| font
+            .get(b"BaseFont")
+            .and_then(lopdf::Object::as_name)
+            .is_ok_and(|name| name == b"Times-Italic")));
+    assert!(t.font_name.as_deref().is_some_and(|name| !name.is_empty()));
     assert_eq!(t.fill_rgb, Some((200, 0, 0)));
     let h1 = t.bounds.top - t.bounds.bottom;
     doc.set_text_size(0, t.index, 20.0).unwrap();
     let t2 = doc.object_info(0, t.index).unwrap();
     assert!((t2.font_size - 20.0).abs() < 0.5, "{t2:?}");
+    assert_eq!(t2.font_name, t.font_name);
     let h2 = t2.bounds.top - t2.bounds.bottom;
     assert!((h2 / h1 - 2.0).abs() < 0.2, "{h1} → {h2}");
     assert!(doc.set_text_size(0, index, 20.0).is_err(), "pas un texte");
@@ -1449,6 +1523,43 @@ fn stamps_reject_line_breaks_without_mutation() {
             assert_same_pdf_contents(&before, &doc.snapshot().unwrap());
         }
     }
+}
+
+#[test]
+fn text_stamps_refuse_partial_edits_invalid_margins_and_overflow_atomically() {
+    use sunipdf_core::Stamp;
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let before = doc.snapshot().unwrap();
+    let base = Stamp {
+        text: "Review {n}".into(),
+        ..Default::default()
+    };
+    assert!(doc.stamp_pages(Some(&[0, 99]), &base).is_err());
+    assert_same_pdf_contents(&before, &doc.snapshot().unwrap());
+    for margin_pt in [f32::NAN, f32::INFINITY, -1.0, 9999.0] {
+        assert!(doc
+            .stamp_pages(
+                None,
+                &Stamp {
+                    margin_pt,
+                    ..base.clone()
+                }
+            )
+            .is_err());
+        assert_same_pdf_contents(&before, &doc.snapshot().unwrap());
+    }
+    assert!(doc
+        .stamp_pages(
+            None,
+            &Stamp {
+                text: "W".repeat(300),
+                ..base.clone()
+            }
+        )
+        .is_err());
+    assert_same_pdf_contents(&before, &doc.snapshot().unwrap());
+    assert_eq!(doc.stamp_pages(Some(&[0, 0]), &base).unwrap(), 1);
 }
 
 #[test]
@@ -2435,17 +2546,19 @@ fn existing_text_rejects_missing_glyphs_without_mutation() {
     assert_eq!(std::fs::read(fixture("two-pages.pdf")).unwrap(), original);
 }
 
+fn unicode_system_font() -> sunipdf_core::fonts::SystemFont {
+    let fonts = sunipdf_core::fonts::system_fonts();
+    ["Arial", "Segoe UI", "DejaVuSans", "LiberationSans-Regular"]
+        .iter()
+        .find_map(|name| fonts.iter().find(|font| font.name == *name))
+        .cloned()
+        .expect("Unicode font tests require Arial, Segoe UI, DejaVu Sans or Liberation Sans")
+}
+
 #[test]
 fn existing_text_keeps_embedded_unicode_font_when_updated() {
     use sunipdf_core::TextStyle;
-    let fonts = sunipdf_core::fonts::system_fonts();
-    let Some(font) = ["Arial", "Segoe UI"]
-        .iter()
-        .find_map(|name| fonts.iter().find(|font| font.name == *name))
-    else {
-        eprintln!("Arial/Segoe UI unavailable: embedded font check skipped");
-        return;
-    };
+    let font = unicode_system_font();
     let engine = engine();
     let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
     doc.add_text(
@@ -2455,6 +2568,7 @@ fn existing_text_keeps_embedded_unicode_font_when_updated() {
         "Привет",
         &TextStyle {
             font_file: Some(font.path.clone()),
+            font_face_index: font.face_index,
             ..Default::default()
         },
     )
@@ -2511,15 +2625,7 @@ fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
             1
         );
     }
-    let fonts = sunipdf_core::fonts::system_fonts();
-    let Some(font) = ["Arial", "Segoe UI"]
-        .iter()
-        .find_map(|n| fonts.iter().find(|f| f.name == *n))
-        .or(fonts.first())
-    else {
-        eprintln!("aucune police TrueType système : test ignoré");
-        return;
-    };
+    let font = unicode_system_font();
     let engine = engine();
     let dir = temp_dir("fonts");
     let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
@@ -2527,6 +2633,7 @@ fn system_font_embeds_unicode_and_rejects_missing_glyphs() {
     let style = TextStyle {
         size_pt: 18.0,
         font_file: Some(font.path.clone()),
+        font_face_index: font.face_index,
         ..Default::default()
     };
     assert_eq!(
@@ -5786,7 +5893,7 @@ fn existing_annotations_move_restyle_and_delete_without_touching_the_others() {
     let img0 = doc.render_page(0, 1.0).unwrap();
     let red0 = pixel_box(&img0, is_red).unwrap();
 
-    // (a) Déplacement du carré d'Acrobat (+30, −20) : /Rect et rendu suivent, le reste est intact.
+    // (a) Déplacement du carré du lecteur externe (+30, −20) : /Rect et rendu suivent, le reste est intact.
     doc.move_annotation(0, 0, 30.0, -20.0).unwrap();
     let after = doc.annotation_details(0).unwrap();
     assert!(near(after[0].rect, rect(130.0, 480.0, 230.0, 540.0), 0.01));

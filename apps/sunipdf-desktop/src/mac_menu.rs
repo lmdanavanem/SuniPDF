@@ -42,8 +42,11 @@ static HAS_DOCUMENT: AtomicBool = AtomicBool::new(false);
 static BLOCKED: AtomicBool = AtomicBool::new(false);
 static CONTEXT: OnceLock<egui::Context> = OnceLock::new();
 
+/// Barre construite : langue et raccourcis utilisés, cible des actions.
+type Built = (Language, Vec<(Modifiers, Key, Command)>, Retained<Target>);
+
 thread_local! {
-    static BUILT: RefCell<Option<(Language, Retained<Target>)>> = const { RefCell::new(None) };
+    static BUILT: RefCell<Option<Built>> = const { RefCell::new(None) };
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -109,7 +112,7 @@ define_class!(
     }
 );
 
-/// À chaque image : état des entrées, et reconstruction si la langue a changé.
+/// À chaque image : état des entrées, et reconstruction si la langue ou les raccourcis ont changé.
 pub fn sync(
     ctx: &egui::Context,
     lang: Language,
@@ -124,11 +127,14 @@ pub fn sync(
         return;
     };
     BUILT.with_borrow_mut(|built| {
-        if built.as_ref().is_some_and(|(l, _)| *l == lang) {
+        if built
+            .as_ref()
+            .is_some_and(|(l, s, _)| *l == lang && s.as_slice() == shortcuts)
+        {
             return;
         }
         let target = match built.take() {
-            Some((_, target)) => target,
+            Some((_, _, target)) => target,
             None => {
                 let this = Target::alloc(mtm).set_ivars(());
                 // SAFETY: NSObject's `init` has this signature.
@@ -136,7 +142,7 @@ pub fn sync(
             }
         };
         build(mtm, lang, shortcuts, &target);
-        *built = Some((lang, target));
+        *built = Some((lang, shortcuts.to_vec(), target));
     });
 }
 

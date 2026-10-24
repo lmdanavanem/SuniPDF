@@ -19,6 +19,21 @@ fn png(image: &RgbaImage) -> Vec<u8> {
 }
 
 #[test]
+#[cfg(not(windows))]
+fn unavailable_encrypted_library_never_writes_or_removes_files() {
+    let dir = tempfile::tempdir().unwrap();
+    let absent = dir.path().join("not-created");
+    assert!(save(&absent, "signature-1700000000000.png", &mark(40)).is_err());
+    assert!(!absent.exists());
+    let existing = dir.path().join("signature-1700000000000.png");
+    let original = png(&mark(40));
+    std::fs::write(&existing, &original).unwrap();
+    assert!(load(dir.path(), &existing).is_err());
+    assert!(delete(dir.path(), &existing).is_err());
+    assert_eq!(std::fs::read(existing).unwrap(), original);
+}
+
+#[test]
 #[cfg(windows)]
 fn saved_signature_is_dpapi_protected_round_trips_and_deletes() {
     let dir = tempfile::tempdir().unwrap();

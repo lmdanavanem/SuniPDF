@@ -163,6 +163,7 @@ impl Document<'_> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         for (done, &(page, rect)) in targets.iter().enumerate() {
             check_cancel()?;
@@ -170,6 +171,7 @@ impl Document<'_> {
             progress(done + 1, targets.len());
         }
         check_cancel()?;
+        self.form_render_need_appearances.set(None);
         self.inner = scratch.inner;
         self.font_cache.clear();
         Ok(targets.len())
@@ -186,7 +188,6 @@ pub fn rasterize_strokes(
     pen_px: f32,
     rgb: (u8, u8, u8),
 ) -> RgbaImage {
-    // ponytail: polyligne brute ; lissage (Chaikin) si les courbes rapides paraissent anguleuses.
     let w = width as usize;
     let mut alpha = vec![0u8; w * height as usize];
     let r = (pen_px / 2.0).max(0.5);
@@ -232,16 +233,68 @@ pub fn rasterize_strokes(
 }
 
 /// Rend transparent le fond clair : alpha = min(alpha, rampe(seuil − luminance)). Les couleurs
-/// d'origine sont conservées (encre bleue, par exemple).
+/// d'origine restent visibles (encre bleue, par exemple) ; les pixels invisibles sont effacés.
 pub fn remove_background(img: &RgbaImage, threshold: u8) -> RgbaImage {
-    // ponytail: seuil global ; seuil adaptatif si les photos à ombre portée posent problème.
     let mut out = img.clone();
     for p in out.pixels_mut() {
         let luma = (299 * p[0] as i32 + 587 * p[1] as i32 + 114 * p[2] as i32) / 1000;
         let a = ((threshold as i32 - luma) * 255 / RAMP).clamp(0, 255) as u8;
         p[3] = p[3].min(a);
+        if p[3] == 0 {
+            p.0[..3].fill(0);
+        }
     }
     out
+}
+
+/// Normalize slowly changing paper illumination before applying the existing soft threshold.
+/// Intended for thin dark ink on light paper; the caller must preview the result.
+pub fn remove_uneven_background(img: &RgbaImage, threshold: u8) -> Result<RgbaImage, EngineError> {
+    let (width, height) = img.dimensions();
+    if width == 0 || height == 0 || u64::from(width) * u64::from(height) > 4_000_000 {
+        return Err(EngineError::Other(
+            "Signature cleanup requires 1 to 4000000 pixels".into(),
+        ));
+    }
+    let stride = width as usize + 1;
+    let mut sums = vec![0u64; stride * (height as usize + 1)];
+    for y in 0..height as usize {
+        let mut row = 0u64;
+        for x in 0..width as usize {
+            let p = img.get_pixel(x as u32, y as u32);
+            let luma = if p[3] <= EMPTY_ALPHA {
+                255
+            } else {
+                (299 * u64::from(p[0]) + 587 * u64::from(p[1]) + 114 * u64::from(p[2])) / 1000
+            };
+            row += luma;
+            sums[(y + 1) * stride + x + 1] = sums[y * stride + x + 1] + row;
+        }
+    }
+    let radius = (width.min(height) / 16).max(1);
+    let mut out = img.clone();
+    for (x, y, p) in out.enumerate_pixels_mut() {
+        let (left, top) = (
+            x.saturating_sub(radius) as usize,
+            y.saturating_sub(radius) as usize,
+        );
+        let (right, bottom) = (
+            (x.saturating_add(radius).saturating_add(1)).min(width) as usize,
+            (y.saturating_add(radius).saturating_add(1)).min(height) as usize,
+        );
+        let sum = sums[bottom * stride + right] + sums[top * stride + left]
+            - sums[top * stride + right]
+            - sums[bottom * stride + left];
+        let paper = (sum / ((right - left) * (bottom - top)) as u64).max(64);
+        let luma = (299 * u64::from(p[0]) + 587 * u64::from(p[1]) + 114 * u64::from(p[2])) / 1000;
+        let normalized = (luma * 255 / paper).min(255) as i32;
+        let alpha = ((i32::from(threshold) - normalized) * 255 / RAMP).clamp(0, 255) as u8;
+        p[3] = p[3].min(alpha);
+        if p[3] == 0 {
+            p.0[..3].fill(0);
+        }
+    }
+    Ok(out)
 }
 
 /// Vrai si aucun pixel n'est visible (même seuil que `trim`) : poser l'image donnerait un objet
@@ -303,6 +356,79 @@ pub fn save_png(img: &RgbaImage, path: &Path) -> Result<(), EngineError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn uneven_paper_cleanup_removes_a_gradient_but_retains_blue_ink_and_existing_alpha() {
+        let input = RgbaImage::from_fn(240, 120, |x, y| {
+            let paper = (120 + x / 2) as u8;
+            if (59..=61).contains(&y) && (20..220).contains(&x) {
+                image::Rgba([20, 40, 100, if x < 120 { 255 } else { 110 }])
+            } else {
+                image::Rgba([paper, paper, paper, 255])
+            }
+        });
+        let original = input.clone();
+        let global = remove_background(&input, 200);
+        assert_eq!(
+            global.get_pixel(10, 10)[3],
+            255,
+            "global threshold retains the paper shadow"
+        );
+        let adaptive = remove_uneven_background(&input, 200).unwrap();
+        for x in 0..240 {
+            assert_eq!(adaptive.get_pixel(x, 10).0, [0, 0, 0, 0]);
+        }
+        for x in 20..220 {
+            assert_eq!(
+                adaptive.get_pixel(x, 60).0,
+                [20, 40, 100, if x < 120 { 255 } else { 110 }]
+            );
+        }
+        assert_eq!(input, original);
+    }
+
+    #[test]
+    fn background_cleanup_clears_invisible_rgb_and_never_increases_opacity() {
+        let input = RgbaImage::from_fn(64, 32, |x, y| {
+            image::Rgba([(x * 3) as u8, (y * 7) as u8, 220, ((x + y) % 256) as u8])
+        });
+        for cleaned in [
+            remove_background(&input, 200),
+            remove_uneven_background(&input, 200).unwrap(),
+        ] {
+            for (before, after) in input.pixels().zip(cleaned.pixels()) {
+                assert!(after[3] <= before[3]);
+                if after[3] == 0 {
+                    assert_eq!(after.0, [0, 0, 0, 0]);
+                } else {
+                    assert_eq!(&after.0[..3], &before.0[..3]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn adaptive_cleanup_bounds_empty_large_and_single_pixel_inputs() {
+        assert!(remove_uneven_background(&RgbaImage::new(0, 0), 200).is_err());
+        assert!(remove_uneven_background(&RgbaImage::new(2001, 2000), 200).is_err());
+        assert_eq!(
+            remove_uneven_background(
+                &RgbaImage::from_pixel(1, 1, image::Rgba([0, 0, 0, 255])),
+                200
+            )
+            .unwrap()
+            .get_pixel(0, 0)
+            .0,
+            [0, 0, 0, 255]
+        );
+        assert!(is_blank(
+            &remove_uneven_background(
+                &RgbaImage::from_pixel(1, 1, image::Rgba([230, 230, 230, 255])),
+                200
+            )
+            .unwrap()
+        ));
+    }
 
     #[test]
     fn placement_keeps_size_aspect_and_fits_each_page() {

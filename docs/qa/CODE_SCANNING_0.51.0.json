@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "version": "0.51.0",
+  "source": "527c91f1e82a6832f4e1ae55610a4caf67dc12c9",
+  "alerts": [
+    {
+      "number": 195,
+      "rule": "rust/hard-coded-cryptographic-value",
+      "path": "crates/sunipdf-core/tests/certificates.rs",
+      "line": 231,
+      "source": "527c91f1e82a6832f4e1ae55610a4caf67dc12c9",
+      "state": "dismissed",
+      "reason": "used in tests",
+      "reviewer": "lmdanavanem",
+      "reviewed_at": "2026-10-23T00:42:39Z",
+      "comment": "Test-only Linux refusal check (certificates.rs:231, source 527c91f). Invalid synthetic identity; the unavailable provider ignores both inputs and returns an error before import/signing. No production secret or default. Keep the test and scanning enabled.",
+      "url": "https://github.com/lmdanavanem/SuniPDF/security/code-scanning/195",
+      "function": "unavailable_certificate_provider_never_claims_trust_and_keeps_signature_detection",
+      "scope_evidence": "Cargo integration test; #[cfg(not(windows))] #[test]; unavailable provider refuses before identity import or signing."
+    },
+    {
+      "number": 196,
+      "rule": "rust/hard-coded-cryptographic-value",
+      "path": "crates/sunipdf-core/tests/certificates.rs",
+      "line": 235,
+      "source": "527c91f1e82a6832f4e1ae55610a4caf67dc12c9",
+      "state": "dismissed",
+      "reason": "used in tests",
+      "reviewer": "lmdanavanem",
+      "reviewed_at": "2026-10-23T00:42:40Z",
+      "comment": "Test-only Linux refusal check (certificates.rs:235, source 527c91f). Invalid synthetic identity; the unavailable provider ignores both inputs and returns an error before import/signing. No production secret or default. Keep the test and scanning enabled.",
+      "url": "https://github.com/lmdanavanem/SuniPDF/security/code-scanning/196",
+      "function": "unavailable_certificate_provider_never_claims_trust_and_keeps_signature_detection",
+      "scope_evidence": "Cargo integration test; #[cfg(not(windows))] #[test]; unavailable provider refuses before identity import or signing."
+    }
+  ]
+}

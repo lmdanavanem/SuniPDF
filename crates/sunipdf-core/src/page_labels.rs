@@ -478,11 +478,13 @@ impl Document<'_> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         let result = edit(&mut candidate)?;
         let mut pdf = crate::security::load(&candidate.snapshot()?, candidate.password())?;
         preserve_labels(&mut pdf, sources, provenance)?;
         candidate.commit_page_labels(crate::security::save(pdf)?)?;
+        self.form_render_need_appearances.set(None);
         self.inner = candidate.inner;
         self.info = candidate.info;
         self.page_rotations = candidate.page_rotations;
@@ -589,8 +591,10 @@ impl Document<'_> {
             page_rotations: self.page_rotations.clone(),
             password: self.password.clone(),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
         };
         candidate.refresh_page_sizes()?;
+        self.form_render_need_appearances.set(None);
         self.inner = candidate.inner;
         self.info = candidate.info;
         self.page_rotations = candidate.page_rotations;

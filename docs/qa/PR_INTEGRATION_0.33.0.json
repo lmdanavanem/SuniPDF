@@ -1,0 +1,136 @@
+{
+  "source": "c5dcd31cd1b93b601b3e1d0e28a98e99400f48cb",
+  "merged_pull_requests": [
+    {
+      "number": 4,
+      "head": "194494c01cf73ebbaab4a061464a6ca05434817e",
+      "merged": true,
+      "merge_commit": "dca3f8d3ed4dd0cdcc47d2877e8201739921b5a7",
+      "merged_by": "lmdanavanem",
+      "verified_at": "2026-10-19T20:28:11.4064692Z",
+      "checks": [
+        {
+          "name": "windows",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39316441632/job/118279037786"
+        },
+        {
+          "name": "Analyze (rust)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39316433771/job/118279018151"
+        },
+        {
+          "name": "Analyze (python)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39316433771/job/118279018021"
+        },
+        {
+          "name": "Analyze (actions)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39316433771/job/118279017362"
+        }
+      ]
+    },
+    {
+      "number": 5,
+      "head": "e6720291d2ab26d95dc522ee0b1607c85fd7c064",
+      "merged": true,
+      "merge_commit": "cdf47a2a690a1d0f19e09701a4c5eda8388b2b87",
+      "merged_by": "lmdanavanem",
+      "verified_at": "2026-10-19T20:35:32.6145316Z",
+      "checks": [
+        {
+          "name": "windows",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39316262343/job/118278431794"
+        },
+        {
+          "name": "Analyze (python)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39316257732/job/118278426073"
+        },
+        {
+          "name": "Analyze (actions)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39316257732/job/118278425948"
+        },
+        {
+          "name": "Analyze (rust)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39316257732/job/118278425605"
+        }
+      ]
+    },
+    {
+      "number": 7,
+      "head": "f2ceb99103587bc5d934e90e204fed30a95999f3",
+      "merged": true,
+      "merge_commit": "c5dcd31cd1b93b601b3e1d0e28a98e99400f48cb",
+      "tree": "b33a13c2d3a314091c2e87795c27c6ec5e815169",
+      "merged_by": "lmdanavanem",
+      "verified_at": "2026-10-19T22:06:30.2319381Z",
+      "checks": [
+        {
+          "name": "windows",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39329529780/job/118323921142"
+        },
+        {
+          "name": "Analyze (rust)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39329525021/job/118323908473"
+        },
+        {
+          "name": "Analyze (actions)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39329525021/job/118323908362"
+        },
+        {
+          "name": "Analyze (python)",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/39329525021/job/118323907943"
+        }
+      ]
+    }
+  ],
+  "incorporated_pull_request": {
+    "number": 6,
+    "state": "closed",
+    "merged": false,
+    "incorporated_by": 7,
+    "source": "c5dcd31cd1b93b601b3e1d0e28a98e99400f48cb",
+    "verified_at": "2026-10-19T22:06:32.0813516Z"
+  },
+  "historical_pull_requests": [
+    {
+      "number": 1,
+      "already_merged": true
+    },
+    {
+      "number": 2,
+      "already_merged": true
+    },
+    {
+      "number": 3,
+      "already_merged": true
+    }
+  ],
+  "historical_local_branches_already_integrated": [
+    "fix/p1-document-preservation",
+    "release/0.30.0"
+  ],
+  "dirty_secondary_worktree_preserved": true,
+  "branches_deleted": false
+}

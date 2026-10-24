@@ -3,7 +3,9 @@
 use crate::dialog::{self, Spec};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use sunipdf_core::{Document, EngineError, PageSize};
+#[cfg(any(windows, test))]
+use sunipdf_core::PageSize;
+use sunipdf_core::{Document, EngineError};
 use sunipdf_i18n::{tr, tr_args, Language};
 
 #[derive(Default)]
@@ -59,8 +61,10 @@ impl PrintState {
 }
 
 pub struct PrintJob {
+    #[cfg(windows)]
     dc: usize,
     pub pages: Vec<usize>,
+    #[cfg(windows)]
     output: Option<Vec<u16>>,
 }
 
@@ -73,6 +77,7 @@ fn failure(message: &str) -> EngineError {
     EngineError::Other(message.into())
 }
 
+#[cfg(any(windows, test))]
 fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
     if cancel.load(Ordering::Relaxed) {
         Err(EngineError::Cancelled)
@@ -81,6 +86,7 @@ fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
     }
 }
 
+#[cfg(any(windows, test))]
 fn selected_pages(
     count: usize,
     current: usize,
@@ -112,6 +118,7 @@ fn selected_pages(
 }
 
 #[derive(Debug)]
+#[cfg(any(windows, test))]
 struct Layout {
     scale: f32,
     render_width: u32,
@@ -122,6 +129,7 @@ struct Layout {
     height: i32,
 }
 
+#[cfg(any(windows, test))]
 fn layout(size: PageSize, printable: (i32, i32), dpi: (i32, i32)) -> Result<Layout, EngineError> {
     if !(size.width_pt.is_finite()
         && size.height_pt.is_finite()
@@ -521,6 +529,11 @@ mod tests {
             height_pt: 792.0,
         };
         let l = layout(size, (4800, 6600), (600, 600)).unwrap();
+        assert!(l.scale.is_finite() && l.scale > 0.0 && l.scale <= 300.0 / 72.0);
+        assert_eq!(
+            sunipdf_core::tiles::page_pixels(size, l.scale),
+            Some((l.render_width, l.render_height))
+        );
         assert!(l.x >= 0 && l.y >= 0 && l.width <= 4800 && l.height <= 6600);
         assert!((l.width as f32 / l.height as f32 - size.width_pt / size.height_pt).abs() < 0.001);
         let l = layout(size, (4800, 3300), (600, 300)).unwrap();

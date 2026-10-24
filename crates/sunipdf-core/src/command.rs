@@ -3,6 +3,18 @@
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
+    QuantityWorkbook,
+    IssueReport,
+    PlanZones,
+    VisualSearch,
+    BoundaryFill,
+    PlanSets,
+    PlanLinks,
+    RevisionOutlines,
+    RevisionTransfer,
+    CompareFiles,
+    RevisionOverlay,
+    SearchFiles,
     HubCompress,
     CompressImages,
     ProcessFiles,
@@ -96,10 +108,12 @@ pub enum Command {
     HubEdit,
     HubOrganize,
     HubComment,
+    HubMeasure,
     HubProtect,
     HubStamp,
     HubLeave,
     About,
+    KeyboardShortcuts,
     ToggleObjects,
     CopyObjects,
     CutObjects,
@@ -132,6 +146,11 @@ pub enum Command {
     ToolAnnotLine,
     ToolLink,
     RichAnnotations,
+    AnnotationLibrary,
+    ToolMeasure,
+    ToolCount,
+    AnnotationRegister,
+    QuantityTable,
     EraseInkStrokes,
     /// Caviardage irréversible : marquer des zones, marquer un texte, effacer les marques, appliquer.
     ToolRedact,
@@ -184,12 +203,148 @@ macro_rules! cmd {
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
     cmd!(
+        QuantityWorkbook,
+        "tools.quantity_workbook",
+        "quantity_workbook.title",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        IssueReport,
+        "tools.issue_report",
+        "issue_report.title",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        BoundaryFill,
+        "tools.boundary_fill",
+        "boundary_fill.title",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        VisualSearch,
+        "tools.visual_search",
+        "visual_search.title",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        PlanZones,
+        "tools.plan_zones",
+        "zones.title",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        RevisionOutlines,
+        "file.revision_outlines",
+        "outlines.title",
+        None,
+        false,
+        File
+    ),
+    cmd!(
+        PlanLinks,
+        "file.plan_links",
+        "plan_links.title",
+        None,
+        false,
+        File
+    ),
+    cmd!(
+        RevisionTransfer,
+        "file.revision_transfer",
+        "transfer.title",
+        None,
+        false,
+        File
+    ),
+    cmd!(
+        PlanSets,
+        "file.plan_sets",
+        "plan_sets.title",
+        None,
+        false,
+        File
+    ),
+    cmd!(
+        RevisionOverlay,
+        "file.revision_overlay",
+        "overlay.title",
+        None,
+        false,
+        File
+    ),
+    cmd!(
+        AnnotationLibrary,
+        "annotations.library",
+        "library.title",
+        None,
+        false,
+        Edit
+    ),
+    cmd!(
+        CompareFiles,
+        "file.compare",
+        "review.compare",
+        None,
+        false,
+        File
+    ),
+    cmd!(
+        SearchFiles,
+        "edit.search_files",
+        "review.search",
+        None,
+        false,
+        Edit
+    ),
+    cmd!(
+        ToolMeasure,
+        "annotations.measure",
+        "measure.tool",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
         RichAnnotations,
         "annotations.rich",
         "menu.rich_annotations",
         None,
         true,
         Edit
+    ),
+    cmd!(
+        ToolCount,
+        "annotations.count",
+        "register.count_tool",
+        None,
+        true,
+        Edit
+    ),
+    cmd!(
+        QuantityTable,
+        "annotations.quantities",
+        "quantity.title",
+        None,
+        true,
+        View
+    ),
+    cmd!(
+        AnnotationRegister,
+        "annotations.register",
+        "register.title",
+        None,
+        true,
+        View
     ),
     cmd!(
         EraseInkStrokes,
@@ -1189,6 +1344,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         Security
     ),
     cmd!(
+        HubMeasure,
+        "hub.measure",
+        "hub.measure.name",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
         HubPrepareForm,
         "hub.prepare_form",
         "hub.prepare_form.name",
@@ -1204,6 +1367,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         None,
         true,
         Tools
+    ),
+    cmd!(
+        KeyboardShortcuts,
+        "help.shortcuts",
+        "shortcuts.title",
+        None,
+        false,
+        Help
     ),
     cmd!(About, "help.about", "menu.help.about", None, false, Help),
 ];
@@ -1255,15 +1426,66 @@ mod tests {
         for info in REGISTRY {
             let _ = info.command.info();
         }
-        assert_eq!(Command::in_menu(Menu::File).count(), 9);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 12);
+        assert_eq!(Command::in_menu(Menu::File).count(), 15);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 18);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }
 
     #[test]
-    fn hub_ids_use_hub_prefix() {
+    fn tools_keep_hub_ids_and_explicit_document_workflow_ids() {
         for info in Command::in_menu(Menu::Tools) {
-            assert!(info.id.starts_with("hub."), "{}", info.id);
+            match info.command {
+                Command::BoundaryFill => {
+                    assert_eq!(info.id, "tools.boundary_fill");
+                    assert!(info.needs_document);
+                    assert_eq!(Command::from_id(info.id), Some(Command::BoundaryFill));
+                }
+                Command::VisualSearch => {
+                    assert_eq!(info.id, "tools.visual_search");
+                    assert!(info.needs_document);
+                    assert_eq!(Command::from_id(info.id), Some(Command::VisualSearch));
+                }
+                Command::PlanZones => {
+                    assert_eq!(info.id, "tools.plan_zones");
+                    assert!(info.needs_document);
+                    assert_eq!(Command::from_id(info.id), Some(Command::PlanZones));
+                }
+                Command::IssueReport => {
+                    assert_eq!(info.id, "tools.issue_report");
+                    assert!(info.needs_document);
+                    assert_eq!(Command::from_id(info.id), Some(Command::IssueReport));
+                }
+                Command::QuantityWorkbook => {
+                    assert_eq!(info.id, "tools.quantity_workbook");
+                    assert!(info.needs_document);
+                    assert_eq!(Command::from_id(info.id), Some(Command::QuantityWorkbook));
+                }
+                _ => assert!(info.id.starts_with("hub."), "{}", info.id),
+            }
         }
+    }
+
+    #[test]
+    fn annotation_library_is_a_document_independent_edit_command() {
+        let info = Command::AnnotationLibrary.info();
+        assert_eq!(
+            Command::from_id("annotations.library"),
+            Some(Command::AnnotationLibrary)
+        );
+        assert_eq!(info.menu, Menu::Edit);
+        assert!(!info.needs_document);
+    }
+
+    #[test]
+    fn measurement_entries_are_document_commands_with_stable_ids() {
+        assert_eq!(
+            Command::from_id("annotations.measure"),
+            Some(Command::ToolMeasure)
+        );
+        assert_eq!(Command::from_id("hub.measure"), Some(Command::HubMeasure));
+        assert!(Command::ToolMeasure.info().needs_document);
+        assert!(Command::HubMeasure.info().needs_document);
+        assert_eq!(Command::ToolMeasure.info().menu, Menu::Edit);
+        assert_eq!(Command::HubMeasure.info().menu, Menu::Tools);
     }
 }

@@ -91,6 +91,34 @@ fn office_archive_guards_refuse_active_external_malformed_and_disguised_parts() 
 
 #[cfg(windows)]
 #[test]
+fn odf_guards_refuse_inline_binary_and_conditional_expressions() {
+    let dir = tempfile::tempdir().unwrap();
+    let cancel = AtomicBool::new(false);
+    for (kind, media) in [
+        ("odt", "text"),
+        ("ods", "spreadsheet"),
+        ("odp", "presentation"),
+    ] {
+        for body in [
+            "<text:p>Local text</text:p>",
+            "<draw:image><office:binary-data>AQ==</office:binary-data></draw:image>",
+            "<calcext:conditional-formats><calcext:conditional-format><calcext:condition calcext:value='formula-is(1)'/></calcext:conditional-format></calcext:conditional-formats>",
+            "<style:map style:condition='cell-content()&gt;0'/>",
+        ] {
+            let mut archive = crate::export_office::archive::Package::default();
+            archive.part("mimetype", format!("application/vnd.oasis.opendocument.{media}").as_bytes()).unwrap();
+            let xml = format!("<office:document-content xmlns:office='urn:oasis:names:tc:opendocument:xmlns:office:1.0' xmlns:text='urn:oasis:names:tc:opendocument:xmlns:text:1.0' xmlns:draw='urn:oasis:names:tc:opendocument:xmlns:drawing:1.0' xmlns:style='urn:oasis:names:tc:opendocument:xmlns:style:1.0' xmlns:calcext='urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0'><office:body>{body}</office:body></office:document-content>");
+            archive.part("content.xml", xml.as_bytes()).unwrap();
+            let path = dir.path().join(format!("guard.{kind}"));
+            fs::write(&path, archive.finish().unwrap()).unwrap();
+            let result = validate_package(&path, kind, &cancel, dir.path());
+            assert_eq!(result.is_ok(), body.starts_with("<text:p>"), "{kind}: {body}");
+        }
+    }
+}
+
+#[cfg(windows)]
+#[test]
 fn local_process_is_bounded_and_pre_cancel_does_not_launch() {
     let dir = tempfile::tempdir().unwrap();
     let cancel = AtomicBool::new(true);
@@ -120,4 +148,23 @@ fn local_process_is_bounded_and_pre_cancel_does_not_launch() {
     )
     .is_err());
     assert!(start.elapsed() < Duration::from_secs(10));
+    let mut command = Command::new(system_tool("WindowsPowerShell/v1.0/powershell.exe").unwrap());
+    command.args([
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Write-Output 'ready'",
+    ]);
+    assert_eq!(
+        run(
+            command,
+            &cancel,
+            Duration::from_secs(30),
+            &dir.path().join("ready.log"),
+            None
+        )
+        .unwrap()
+        .trim(),
+        "ready"
+    );
 }

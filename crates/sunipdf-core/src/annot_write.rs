@@ -86,7 +86,9 @@ pub enum LinkTarget {
     /// Explicit target-page display coordinates and viewport retention semantics.
     Destination(crate::Destination),
     Uri(String),
-    /// Unsupported action (launch, JavaScript, remote destination): never executed.
+    /// An inert local-file reference. Resolve only through an explicitly selected plan set.
+    RemotePage(crate::plan_links::RemotePageTarget),
+    /// Unsupported action (launch, JavaScript, unrecognized remote destination): never executed.
     Unsupported,
 }
 
@@ -273,7 +275,7 @@ fn floats(d: &lopdf::Document, o: &Object) -> Option<Vec<f32>> {
         .collect()
 }
 
-fn text_of(d: &lopdf::Document, dict: &Dictionary, key: &[u8]) -> Option<String> {
+pub(crate) fn text_of(d: &lopdf::Document, dict: &Dictionary, key: &[u8]) -> Option<String> {
     let o = get(d, dict, key)?;
     let bytes = o.as_str().ok()?;
     // La table PDFDocEncoding de lopdf ignore les sauts de ligne : conservés à part.
@@ -528,8 +530,13 @@ pub(crate) fn load_annot(
     page: ObjectId,
     index: usize,
 ) -> Result<(Slot, Dictionary), EngineError> {
-    let entries = annots_entries(pdf, page);
-    match entries.get(index) {
+    let entry = pdf
+        .get_dictionary(page)
+        .ok()
+        .and_then(|dict| get(pdf, dict, b"Annots"))
+        .and_then(|value| value.as_array().ok())
+        .and_then(|entries| entries.get(index));
+    match entry {
         Some(Object::Reference(id)) => pdf
             .get_dictionary(*id)
             .map(|d| (Slot::Indirect(*id), d.clone()))
@@ -593,6 +600,7 @@ fn write_link_target(
             ("A", Object::Dictionary(action))
         }
         LinkTarget::Uri(_) => return Err(EngineError::Other("unsafe uri".into())),
+        LinkTarget::RemotePage(target) => ("A", crate::plan_links::remote_action(target)?),
         LinkTarget::Unsupported => {
             return Err(EngineError::Other("unsupported link target".into()))
         }
@@ -1207,6 +1215,11 @@ impl Document<'_> {
                 if flags < 0 || flags & (64 | 128 | 512) != 0 {
                     return Err(EngineError::SecurityRestricted);
                 }
+                if dict.has(b"SuniPDFMeasurement") || dict.has(b"Measure") {
+                    return Err(EngineError::Other(
+                        "resizing annotations on a page with measurements is unsupported; keep the original page size or recreate the measurements after resizing".into(),
+                    ));
+                }
                 let rect = dict.get(b"Rect").map_err(lopdf_err)?;
                 dict.set(
                     "Rect",
@@ -1253,7 +1266,23 @@ impl Document<'_> {
         })
     }
 
-    /// Instantané → lopdf → rechargement PDFium. Un document chiffré garde son chiffrement.
+    pub(crate) fn require_annotation_permission(&self) -> Result<(), EngineError> {
+        if !self.properties().can_annotate {
+            return Err(EngineError::SecurityRestricted);
+        }
+        Ok(())
+    }
+
+    pub(crate) fn edit_annotation_pdf<R>(
+        &mut self,
+        page_index: usize,
+        edit: impl FnOnce(&mut lopdf::Document, ObjectId, &PageGeometry) -> Result<R, EngineError>,
+    ) -> Result<R, EngineError> {
+        self.require_annotation_permission()?;
+        self.edit_pdf(page_index, edit)
+    }
+
+    /// Snapshot edit for page-geometry maintenance; annotation writers use `edit_annotation_pdf`.
     pub(crate) fn edit_pdf<R>(
         &mut self,
         page_index: usize,
@@ -1285,7 +1314,7 @@ impl Document<'_> {
             Model::Line { .. } => "Line",
             Model::FreeText { .. } => "FreeText",
         };
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let mut dict = base_annotation(subtype, author)?;
             let mut parsed = Parsed {
                 model,
@@ -1338,7 +1367,7 @@ impl Document<'_> {
         path: &[(f32, f32)],
         radius: f32,
     ) -> Result<(), EngineError> {
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (w, h) = geo.display_size();
             if path.iter().any(|&(x, y)| {
                 !x.is_finite() || !y.is_finite() || x < 0.0 || y < 0.0 || x > w || y > h
@@ -1449,12 +1478,46 @@ impl Document<'_> {
         if rect.right - rect.left < 2.0 || rect.top - rect.bottom < 2.0 {
             return Err(EngineError::Other("invalid rectangle".into()));
         }
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let mut dict = base_annotation("Link", None)?;
             dict.set("Rect", rect_obj(geo.rect_to_user(rect)));
             dict.set("Border", nums(&[0.0, 0.0, 0.0]));
             write_link_target(pdf, &mut dict, target, target_geo)?;
             push_annotation(pdf, page, dict, None)
+        })
+    }
+
+    /// Applies one reviewed page batch with a single PDF rewrite.
+    pub(crate) fn add_plan_link_batch(
+        &mut self,
+        page_index: usize,
+        links: &[(PointRect, crate::plan_links::RemotePageTarget)],
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<Vec<usize>, EngineError> {
+        if links.is_empty() || links.len() > crate::plan_links::MAX_OCCURRENCES {
+            return Err(EngineError::Other("invalid reviewed link batch".into()));
+        }
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
+            let mut indices = Vec::with_capacity(links.len());
+            for (rect, target) in links {
+                if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                    return Err(EngineError::Cancelled);
+                }
+                if ![rect.left, rect.bottom, rect.right, rect.top]
+                    .into_iter()
+                    .all(f32::is_finite)
+                    || rect.right - rect.left < 2.0
+                    || rect.top - rect.bottom < 2.0
+                {
+                    return Err(EngineError::Other("invalid reviewed link rectangle".into()));
+                }
+                let mut dict = base_annotation("Link", None)?;
+                dict.set("Rect", rect_obj(geo.rect_to_user(*rect)));
+                dict.set("Border", nums(&[0.0, 0.0, 0.0]));
+                dict.set("A", crate::plan_links::remote_action(target)?);
+                indices.push(push_annotation(pdf, page, dict, None)?);
+            }
+            Ok(indices)
         })
     }
 
@@ -1466,7 +1529,7 @@ impl Document<'_> {
         target: &LinkTarget,
     ) -> Result<(), EngineError> {
         let target_geo = self.link_target_geometry(target)?;
-        self.edit_pdf(page_index, |pdf, page, _| {
+        self.edit_annotation_pdf(page_index, |pdf, page, _| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             if subtype_of(&dict) != "Link" {
                 return Err(EngineError::Other("annotation is not a link".into()));
@@ -1507,14 +1570,14 @@ impl Document<'_> {
         if !(dx.is_finite() && dy.is_finite()) {
             return Err(EngineError::Other("invalid offset".into()));
         }
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             let st = subtype_of(&dict);
             let c = caps(&st, flags(&dict), text_of(pdf, &dict, b"NM").as_deref());
             if c.locked {
                 return Err(EngineError::SecurityRestricted);
             }
-            if !c.can_move {
+            if !c.can_move || dict.has(b"SuniPDFMeasurement") {
                 return Err(EngineError::Other("annotation cannot be moved".into()));
             }
             if c.ours
@@ -1553,7 +1616,7 @@ impl Document<'_> {
         if to.right - to.left < 4.0 || to.top - to.bottom < 4.0 {
             return Err(EngineError::Other("invalid rectangle".into()));
         }
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             check_unlocked(&dict)?;
             if subtype_of(&dict) == "Link" {
@@ -1582,7 +1645,7 @@ impl Document<'_> {
         style: &AnnotStyle,
     ) -> Result<(), EngineError> {
         let mut markup = false;
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             check_unlocked(&dict)?;
             let st = subtype_of(&dict);
@@ -1633,7 +1696,7 @@ impl Document<'_> {
         text: &str,
         style: &FreeTextStyle,
     ) -> Result<(), EngineError> {
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             check_unlocked(&dict)?;
             let mut parsed = parse_ours(pdf, &dict, geo)?;
@@ -1659,12 +1722,12 @@ impl Document<'_> {
         index: usize,
         text: &str,
     ) -> Result<(), EngineError> {
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, mut dict) = load_annot(pdf, page, index)?;
             check_unlocked(&dict)?;
             let st = subtype_of(&dict);
             let c = caps(&st, flags(&dict), text_of(pdf, &dict, b"NM").as_deref());
-            if !c.can_edit_text {
+            if !c.can_edit_text || dict.has(b"SuniPDFMeasurement") || dict.has(b"SuniPDFCount") {
                 return Err(EngineError::Other(
                     "annotation text cannot be edited".into(),
                 ));
@@ -1693,7 +1756,7 @@ impl Document<'_> {
         page_index: usize,
         index: usize,
     ) -> Result<usize, EngineError> {
-        self.edit_pdf(page_index, |pdf, page, _geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, _geo| {
             let entries = annots_entries(pdf, page);
             let ids: Vec<Option<ObjectId>> =
                 entries.iter().map(|e| e.as_reference().ok()).collect();
@@ -1781,7 +1844,7 @@ impl Document<'_> {
         author: Option<&str>,
         fill: impl FnOnce(&mut Dictionary),
     ) -> Result<usize, EngineError> {
-        self.edit_pdf(page_index, |pdf, page, geo| {
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
             let (slot, pdict) = load_annot(pdf, page, parent)?;
             let Slot::Indirect(parent_id) = slot else {
                 return Err(EngineError::Other("annotation cannot be replied to".into()));
@@ -2004,6 +2067,13 @@ fn detail_of(
             detail.can_edit_text = false;
         }
     }
+    if d.has(b"SuniPDFMeasurement") {
+        detail.can_move = false;
+        detail.can_edit_text = false;
+    }
+    if d.has(b"SuniPDFCount") {
+        detail.can_edit_text = false;
+    }
     if get(pdf, d, b"StateModel").is_some() {
         let state = text_of(pdf, d, b"State").unwrap_or_default();
         detail.status = Some(
@@ -2055,6 +2125,60 @@ fn link_of(
 mod tests {
     use super::*;
     use crate::Rotation;
+
+    #[test]
+    fn annotation_slot_updates_preserve_neighbors_and_support_indirect_arrays() {
+        for indirect_array in [false, true] {
+            for indirect_annotation in [false, true] {
+                let mut pdf = lopdf::Document::with_version("1.7");
+                let mut original = Dictionary::new();
+                original.set("Contents", Object::string_literal("original"));
+                let annotation = if indirect_annotation {
+                    Object::Reference(pdf.add_object(original.clone()))
+                } else {
+                    Object::Dictionary(original.clone())
+                };
+                let entries = Object::Array(vec![annotation, Object::Dictionary(original)]);
+                let entries = if indirect_array {
+                    Object::Reference(pdf.add_object(entries))
+                } else {
+                    entries
+                };
+                let mut page_dict = Dictionary::new();
+                page_dict.set("Annots", entries);
+                let page = pdf.add_object(page_dict);
+                let (slot, mut selected) = load_annot(&pdf, page, 0).unwrap();
+                assert_eq!(matches!(slot, Slot::Indirect(_)), indirect_annotation);
+                selected.set("Contents", Object::string_literal("changed"));
+                assert_eq!(
+                    load_annot(&pdf, page, 0)
+                        .unwrap()
+                        .1
+                        .get(b"Contents")
+                        .unwrap()
+                        .as_str()
+                        .unwrap(),
+                    b"original"
+                );
+                store_annot(&mut pdf, page, slot, selected).unwrap();
+                for (index, expected) in [(0, b"changed".as_slice()), (1, b"original".as_slice())] {
+                    assert_eq!(
+                        load_annot(&pdf, page, index)
+                            .unwrap()
+                            .1
+                            .get(b"Contents")
+                            .unwrap()
+                            .as_str()
+                            .unwrap(),
+                        expected
+                    );
+                }
+                assert!(load_annot(&pdf, page, 2).is_err());
+                pdf.get_dictionary_mut(page).unwrap().set("Annots", 12);
+                assert!(load_annot(&pdf, page, 0).is_err());
+            }
+        }
+    }
 
     #[test]
     fn dates_and_names() {
@@ -2154,7 +2278,7 @@ mod tests {
     fn rights_follow_subtype_producer_and_lock() {
         let c = caps("Square", 4, Some("SuniPDF-00"));
         assert!(c.ours && c.can_move && c.can_resize && c.can_restyle && c.can_edit_text);
-        let c = caps("Square", 4, Some("Acrobat-1"));
+        let c = caps("Square", 4, Some("External-1"));
         assert!(!c.ours && c.can_move && !c.can_resize && !c.can_restyle);
         let c = caps("Highlight", 4, None);
         assert!(!c.can_move && c.can_restyle && c.can_edit_text);

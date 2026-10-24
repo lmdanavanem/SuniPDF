@@ -14,7 +14,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Download pinned public 0.9.0 target without building
         shell: pwsh
         run: |
@@ -39,7 +39,7 @@ jobs:
         run: .\scripts\test-portable-update.ps1 -Package $env:SUNIPDF_TEST_PACKAGE
       - name: Portable update diagnostics
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: update-regression-${{ matrix.os }}
           path: |
@@ -50,7 +50,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Download pinned public MSI and matching payload without building
         shell: pwsh
         run: |
@@ -73,7 +73,7 @@ jobs:
         run: .\scripts\test-msi-upgrade.ps1 -MsiPath $env:SUNIPDF_TEST_MSI
       - name: MSI regression diagnostics
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: msi-regression-diagnostics
           path: target/msi-upgrade-*/*.log

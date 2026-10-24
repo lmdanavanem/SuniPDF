@@ -1,7 +1,5 @@
 # Third-party notices
 
-[Français](THIRD_PARTY_NOTICES.fr.md)
-
 Every portable ZIP and MSI includes `licenses/dependency-inventory.json` and
 `licenses/dependency-licenses.txt`: exact locked Rust versions, source revisions or
 registry archive checksums, declared license expressions and full license, copyright
@@ -21,11 +19,18 @@ omits a full license, reviewed texts are vendored from its exact upstream revisi
 and block generation if selected for either Windows graph. The macOS-only `dispatch`
 package has such a record and is excluded from both Windows graphs.
 
+The 0.33.0 framework inventory refreshes AccessKit and egui/eframe source versions and
+paths. The published VCS object for eight egui 0.37.0 core crates is unavailable upstream;
+their checksum-verified license declarations and the published egui README license grant
+are paired with the full texts from the pinned official 0.37.0 release. Each affected
+entry records this provenance exception; it does not assert a complete source-tree match.
+AccessKit and eframe legal texts use their exact published VCS revisions.
+
 | Component | Evidence in licenses/ |
 |---|---|
 | Rust crates, including egui/eframe/wgpu, PDF bindings, TLS, codecs and XML | Exact inventory and full deduplicated license/NOTICE texts |
-| Ubuntu Light, Hack, Noto Emoji, emoji-icon-font | Source hashes and font notice references; full UFL, MIT/Bitstream Vera, OFL and MIT terms |
-| Fluent UI System Icons (macOS only, renamed subset `assets/fonts/SuniPDF-Icons.ttf`, `scripts/make_mac_icons.py`) | LICENSE-FluentSystemIcons.txt (MIT) in the app bundle |
+| Ubuntu Light, Hack, Noto Emoji, emoji-icon-font and its egui-icons subset | Source hashes and font notice references; full UFL, MIT/Bitstream Vera, OFL and MIT terms, plus the icon-subset modification notice |
+| Ubuntu Light and Noto Sans JP in the shared report renderer | Pinned original font sources and hashes; full `report-font-UFL.txt` and `report-font-NotoSansJP-OFL.txt` in Windows and Linux packages |
 | PDFium 151.0.7881.0 and native libraries | Original pdfium.txt, pdfium-binaries-MIT.txt and all upstream native notices, with revisions and binary hashes |
 | Tesseract 5.5.3 / Leptonica 1.87.0 / pinned English/French tessdata_fast | ocr-tesseract.txt, ocr-leptonica.txt, ocr-tessdata-fast.txt, AUTHORS, COPYRIGHTS, NOTICE, exact source/model revisions and payload hashes |
 | Rust standard library | Actual selected toolchain rust-standard-library.html with full component notices and rust-toolchain.txt revision |
@@ -50,3 +55,9 @@ separate README is excluded from this license-payload comparison.
 The icon uses the author-provided assets/icon/sunipdf-source.png; make_icon.py produces
 PNG/ICO sizes. No additional third-party graphic resource is introduced. New resources
 and models require review of their actual terms before redistribution.
+
+Report rendering uses the same reviewed Ubuntu Light and Noto Sans JP sources as the
+font regression corpus. These two sources are embedded in the desktop and CLI renderer
+and are listed under `embeddedFontSources`, in addition to their test-fixture entries.
+Their original source and license hashes are checked before packaging. Linux retains
+the full notices in `/usr/share/doc/sunipdf/licenses/`; Windows retains them in `licenses/`.

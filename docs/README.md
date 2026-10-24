@@ -1,29 +1,55 @@
 # SuniPDF documentation
 
-English is the primary documentation language. French translations use the `.fr.md` suffix.
-Existing `.en.md` links point to the English documents.
+Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download-0720) or
+[Ubuntu installation](UBUNTU.md). This documentation is maintained in English; the application supports English and French.
 
-| English | Français | Contents |
-|---|---|---|
-| [ARCHITECTURE](ARCHITECTURE.md) | [FR](ARCHITECTURE.fr.md) | Workspace architecture and boundaries |
-| [ENGINEERING_NOTES](ENGINEERING_NOTES.md) | [FR](ENGINEERING_NOTES.fr.md) | Development commands, conventions and verification |
-| [TECH_STACK](TECH_STACK.md) | [FR](TECH_STACK.fr.md) | Rust, egui, PDFium and packaging |
-| [I18N](I18N.md) | [FR](I18N.fr.md) | English and French catalogs |
-| [ACCESSIBILITY](ACCESSIBILITY.md) | [FR](ACCESSIBILITY.fr.md) | Keyboard use, AccessKit and contrast |
-| [FEATURE_MATRIX](FEATURE_MATRIX.md) | [FR](FEATURE_MATRIX.fr.md) | Implemented features and planned work |
-| [ROADMAP](ROADMAP.md) | [FR](ROADMAP.fr.md) | Phases and acceptance criteria |
-| [PROJECT_STATUS](PROJECT_STATUS.md) | [FR](PROJECT_STATUS.fr.md) | Validated changes and test results |
-| [NEXT_TASKS](NEXT_TASKS.md) | [FR](NEXT_TASKS.fr.md) | Prioritized next tasks |
-| [DECISIONS](DECISIONS.md) | [FR](DECISIONS.fr.md) | Architecture decisions |
-| [KNOWN_ISSUES](KNOWN_ISSUES.md) | [FR](KNOWN_ISSUES.fr.md) | Known limits |
-| [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES.md) | [FR](THIRD_PARTY_NOTICES.fr.md) | Dependency licenses and notices |
-| [User guide](USER_GUIDE.en.md) | [FR](USER_GUIDE.fr.md) | Using SuniPDF |
-| [0.30.0 release scope](RELEASE_0.30.0.md) | [FR](RELEASE_0.30.0.fr.md) | Requested P2 batch, validation status and limits |
-| [Font embedding](FONT_EMBEDDING.md) | [FR](FONT_EMBEDDING.fr.md) | Subsetting, eligible faces and embedding restrictions |
-| [Rich annotations](RICH_ANNOTATIONS.md) | [FR](RICH_ANNOTATIONS.fr.md) | Embedded FreeText, shapes, attachments and ink erasing |
-| [Redaction](REDACTION.md) | [FR](REDACTION.fr.md) | Prepared previews, cancellation, persisted marks and safe native text |
-| [Bookmarks and structures](BOOKMARKS_AND_PAGE_STRUCTURE.md) | [FR](BOOKMARKS_AND_PAGE_STRUCTURE.fr.md) | Authoring and preservation during page operations |
-| [Local Office conversion](OFFICE_CONVERSION.md) | [FR](OFFICE_CONVERSION.fr.md) | Converter detection, profiles, supported exports and fidelity |
-| [Signature security](SIGNATURE_SECURITY.md) | [FR](SIGNATURE_SECURITY.fr.md) | DPAPI storage, trust, revocation and timestamps |
-| [Sanitization security model](SECURITY_MODEL.md) | [FR](SECURITY_MODEL.fr.md) | Verified cleanup, protected copies and previous revisions |
-| [Changelog](../CHANGELOG.md) | [FR](../CHANGELOG.fr.md) | Release notes |
+## Use SuniPDF
+
+| Task | Guides |
+|---|---|
+| Read and navigate | [Reader workspace](READER_WORKSPACE.md) · [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) · [Bookmarks and pages](BOOKMARKS_AND_PAGE_STRUCTURE.md) |
+| Measure plans | [Measurements](MEASUREMENTS.md) · [Plan scales, snapping and batches](PLAN_WORKSPACE.md) · [Edit saved vertices](MEASUREMENT_GEOMETRY.md) · [Deducted areas and volumes](MEASUREMENT_VOLUMES.md) · [Region fill](REGION_FILL.md) |
+| Organize and exchange | [Local plan sets](PLAN_SETS.md) · [Reviewed plan links](PLAN_LINKS.md) · [Form values](FORM_DATA.md) |
+| Review and quantify | [Find symbols](VISUAL_SEARCH.md) · [Counts and annotation register](MARKUP_REGISTER.md) · [Quantity tables](QUANTITY_TABLE.md) · [Issue reports](ISSUE_REPORTS.md) · [Quantity workbooks](QUANTITY_WORKBOOKS.md) · [Rooms and zones](PLAN_ZONES.md) · [Revision overlays](REVISION_OVERLAY.md) · [Revision outlines](REVISION_OUTLINES.md) · [Reviewed annotation transfer](REVISION_TRANSFER.md) · [Local comparison and search](LOCAL_REVIEW.md) |
+| Annotate and edit | [Rich annotations](RICH_ANNOTATIONS.md) · [Annotation library](ANNOTATION_LIBRARY.md) · [Object order](OBJECT_ORDER.md) · [Font embedding](FONT_EMBEDDING.md) |
+| Decorate and convert | [Page decorations](PAGE_DECORATIONS.md) · [Office conversion](OFFICE_CONVERSION.md) |
+| Sign and protect | [Visual signatures](VISUAL_SIGNATURE_PREPARATION.md) · [Certificate security](SIGNATURE_SECURITY.md) · [Redaction](REDACTION.md) · [Sanitization](SECURITY_MODEL.md) · [PDF inspection](PDF_INSPECTION.md) |
+
+For supported features and limitations, see the [feature matrix](FEATURE_MATRIX.md) and [known issues](KNOWN_ISSUES.md).
+
+## Develop and contribute
+
+Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECURITY.md).
+
+- [Engineering notes](ENGINEERING_NOTES.md): build commands, conventions and validation.
+- [Architecture](ARCHITECTURE.md), [technology stack](TECH_STACK.md) and [decisions](DECISIONS.md): design and dependencies.
+- [Interface translations](I18N.md) and [accessibility](ACCESSIBILITY.md): application catalogs and interaction requirements.
+- [Third-party notices](THIRD_PARTY_NOTICES.md): licenses and redistribution.
+
+## Roadmap and qualification
+
+- [Roadmap](ROADMAP.md): current priorities.
+- [Plan-workflow backlog](AEC_BACKLOG.md) and [CSV](AEC_BACKLOG.csv): detailed feature tracking.
+- [1.0 release criteria](RELEASE_1.0_CRITERIA.md): remaining acceptance gates.
+- [Conformance and independent readers](CONFORMANCE.md): pinned corpus, validator profiles and appearance checks.
+- [Project status](PROJECT_STATUS.md): verified results and outstanding qualification.
+
+## Releases and history
+
+- [0.72.0 release notes](RELEASE_0.72.0.md) and [qualification evidence](qa/RELEASE_0.72.0.json).
+- [0.71.0 release notes](RELEASE_0.71.0.md) and [qualification evidence](qa/RELEASE_0.71.0.json).
+- [0.70.0 release notes](RELEASE_0.70.0.md) and [qualification evidence](qa/RELEASE_0.70.0.json).
+- [0.69.0 release notes](RELEASE_0.69.0.md) and [qualification evidence](qa/RELEASE_0.69.0.json).
+- [0.67.0 release notes](RELEASE_0.67.0.md) and [qualification evidence](qa/RELEASE_0.67.0.json).
+- [0.64.0 release notes](RELEASE_0.64.0.md) and [qualification evidence](qa/RELEASE_0.64.0.json).
+- [0.63.0 release notes](RELEASE_0.63.0.md) and [qualification evidence](qa/RELEASE_0.63.0.json).
+- [0.62.0 release notes](RELEASE_0.62.0.md) and [qualification evidence](qa/RELEASE_0.62.0.json).
+- [0.61.0 release notes](RELEASE_0.61.0.md) and [qualification evidence](qa/RELEASE_0.61.0.json).
+- [0.60.0 release notes](RELEASE_0.60.0.md) and [qualification evidence](qa/RELEASE_0.60.0.json).
+- [Changelog](../CHANGELOG.md): changes by version and links to earlier release documents.
+- [GitHub Releases](https://github.com/lmdanavanem/SuniPDF/releases): downloadable packages and checksums.
+- [Qualification records](qa/): retained release and regression evidence.
+- [Historical project status](archive/PROJECT_STATUS_PRE_0.60.md): earlier implementation and qualification records.
+- [Code scanning review](CODE_SCANNING_REVIEW.md): dated findings and resolutions.
+
+Historical release documents retain their original paths.

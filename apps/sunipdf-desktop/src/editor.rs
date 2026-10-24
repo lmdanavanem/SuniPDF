@@ -555,6 +555,7 @@ impl SuniApp {
         }
         match self.annotate.tool {
             Tool::Note
+            | Tool::Measure
             | Tool::AddText
             | Tool::AddImage
             | Tool::Rectangle
@@ -1058,6 +1059,7 @@ impl SuniApp {
                 ZOrder::Backward => {
                     Pick::Indices(indices.iter().map(|i| i.saturating_sub(1)).collect())
                 }
+                ZOrder::At(index) => Pick::Indices((index..index + n).collect()),
             };
             self.edit.reselect_many = Some((page, pick));
             self.worker
@@ -1424,7 +1426,7 @@ impl SuniApp {
         const GAP: f32 = 14.0;
         // Écarts de part et d'autre, marges intérieures (8 + 8) et trait du cadre (1 + 1).
         let max_w = (bounds.width() - 2.0 * GAP - 18.0).max(80.0);
-        let id = egui::Id::new("object-bar");
+        let id = egui::Id::unique("object-bar");
         // Barre contextuelle : sous la sélection, ou au-dessus (place laissée à la poignée de
         // rotation) si elle ne tient pas dessous ; sans sélection, en haut à gauche.
         let bar_h = ctx.memory(|m| m.area_rect(id)).map_or(44.0, |r| r.height());
@@ -1466,14 +1468,15 @@ impl SuniApp {
                     .show(ui, |ui| {
                         // Fixe la largeur de coupure (l'Area ne connaît que sa taille précédente).
                         ui.set_max_width(max_w);
+                        let shortcut_bindings = &self.settings.shortcuts;
                         let icon = |ui: &mut egui::Ui, c: Command, enabled: bool| {
                             let (g, f) = crate::shell::command_icon(c);
                             let info = c.info();
-                            let tip = match info.shortcut_key {
-                                Some(key) => {
-                                    format!("{}  ({})", tr(lang, info.label_key), tr(lang, key))
-                                }
-                                None => tr(lang, info.label_key).to_string(),
+                            let shortcut = crate::shortcuts::text_for(shortcut_bindings, lang, c);
+                            let tip = if shortcut.is_empty() {
+                                tr(lang, info.label_key).to_string()
+                            } else {
+                                format!("{}  ({shortcut})", tr(lang, info.label_key))
                             };
                             ui.add_enabled(
                                 enabled,

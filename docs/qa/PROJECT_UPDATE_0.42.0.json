@@ -1,0 +1,9 @@
+{
+  "source": "96ad768b24813e19c01de2881d3cb53c5b2fdc6c",
+  "targetRelease": "0.42.0",
+  "updated": false,
+  "deferredByUser": true,
+  "evidenceInheritedFrom": "docs/qa/PROJECT_UPDATE_0.41.0.json",
+  "freshReadback": false,
+  "note": "Projects updates remain deferred by the owner. Historical item counts are not a current readback."
+}

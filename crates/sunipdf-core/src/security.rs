@@ -281,8 +281,11 @@ pub fn protect(
 ) -> Result<Vec<u8>, EngineError> {
     p.validate()?;
     let mut doc = load(input, current_password)?;
-    // Remplacer la protection existante, pas la superposer.
-    doc.encryption_state = None;
+    if let Some(state) = doc.encryption_state.take() {
+        if !owner_password_matches(&doc, &state, current_password.unwrap_or(""))? {
+            return Err(EngineError::PasswordRequired);
+        }
+    }
     // Les algorithmes R4 dérivent la clé de l'identifiant de fichier : en créer un s'il manque.
     if doc.trailer.get(b"ID").is_err() {
         let mut id = [0u8; 16];
@@ -412,7 +415,7 @@ fn xml_escape(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
-/// Paquet XMP minimal cohérent avec /Info : les lecteurs qui préfèrent XMP (Acrobat, indexeurs)
+/// Paquet XMP minimal cohérent avec /Info : les lecteurs qui préfèrent XMP (lecteurs PDF, indexeurs)
 /// ne montrent plus l'ancien titre ou auteur.
 fn xmp_packet(m: &Metadata) -> String {
     let field = |v: &Option<String>| {
@@ -638,6 +641,8 @@ pub(crate) fn strip_metadata_in(doc: &mut lopdf::Document) {
         };
         dict.remove(b"Metadata");
         dict.remove(b"PieceInfo");
+        dict.remove(b"SuniPDFPageCalibration");
+        dict.remove(b"SuniPDFMeasurementViewports");
     }
 }
 

@@ -76,15 +76,16 @@ fn catalog(language: Language) -> &'static Catalog {
 /// Ctrl+Tab reste sur Contrôle : ⌘Tab appartient au système.
 #[cfg(any(target_os = "macos", test))]
 fn mac_text(text: &str) -> String {
-    // La touche de suppression d'un clavier Mac est ⌫.
+    // Supprimer l'objet : ⌦ (fn+⌫) ; ⌫ seul retire le dernier point d'une mesure.
     if text == "Del" || text == "Suppr" {
-        return "⌫".into();
+        return "⌦".into();
     }
     text.replace("Ctrl+Del", "⌘⌫")
         .replace("Ctrl+Suppr", "⌘⌫")
-        .replace(", Del,", ", ⌫,")
-        .replace(", Suppr,", ", ⌫,")
-        .replace("Del to delete", "⌫ to delete")
+        .replace(", Del,", ", ⌦,")
+        .replace(", Suppr,", ", ⌦,")
+        .replace("Del to delete", "⌦ to delete")
+        .replace("Suppr pour supprimer", "⌦ pour supprimer")
         .replace("Ctrl+Shift+Tab", "⌃⇧Tab")
         .replace("Ctrl+Maj+Tab", "⌃⇧Tab")
         .replace("Ctrl+Tab", "⌃Tab")
@@ -179,7 +180,7 @@ mod tests {
         assert_eq!(mac_text("Ctrl+Maj+S"), "⇧⌘S");
         assert_eq!(mac_text("Ctrl+Shift+Tab · Ctrl+Tab"), "⌃⇧Tab · ⌃Tab");
         assert_eq!(mac_text("Ctrl+click: add, Ctrl+K"), "⌘-click: add, ⌘K");
-        assert_eq!(mac_text("Suppr"), "⌫");
+        assert_eq!(mac_text("Suppr"), "⌦");
         assert_eq!(mac_text("Ctrl+Del"), "⌘⌫");
         assert_eq!(mac_text("Delete page"), "Delete page");
         assert_eq!(

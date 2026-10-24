@@ -10,8 +10,11 @@
 pub mod annot;
 pub mod annot_rich;
 pub mod annot_write;
+pub mod annotation_library;
+pub mod annotation_register;
 mod appearance;
 pub mod bookmarks;
+pub mod boundary_fill;
 pub mod boxes;
 pub mod cache;
 pub mod certificate;
@@ -25,16 +28,41 @@ pub mod export_office;
 mod font_embed;
 pub mod fonts;
 pub mod form_data;
+mod form_fdf;
 pub mod forms;
 pub mod geometry;
+pub mod header_footer;
+mod image_stamp;
+pub mod image_watermark;
+pub mod inspection;
+pub mod issue_report;
+mod issue_report_render;
 mod link_destination;
 pub mod links;
+pub mod local_review;
+pub mod measurement;
+mod measurement_area;
+mod measurement_batch;
+mod measurement_distance;
+mod measurement_shapes;
+mod measurement_snap;
+mod measurement_viewports;
 pub mod ocr;
 pub mod office;
+mod page_calibration;
 pub mod page_labels;
 pub mod pages;
 pub mod paragraph;
+pub mod plan_links;
+pub mod plan_set;
+pub mod plan_zones;
+pub mod quantity_table;
+pub mod quantity_workbook;
+mod quantity_workbook_render;
 pub mod redact;
+pub mod revision_outlines;
+pub mod revision_overlay;
+pub mod revision_transfer;
 pub mod sanitize;
 pub mod security;
 pub mod signature_image;
@@ -42,6 +70,7 @@ pub mod stamp;
 mod structure;
 pub mod text;
 pub mod tiles;
+pub mod visual_search;
 
 pub use annot::{AnnotationInfo, MarkupKind, TextSelection, ANNOTATION_KINDS};
 pub use annot_write::{
@@ -66,6 +95,7 @@ pub use forms::{
 };
 pub use geometry::PageGeometry;
 pub use links::{is_safe_external_uri, Destination, DestinationView, LinkInfo};
+pub use measurement::{MeasurementRecord, MeasurementTarget, PageCalibration};
 pub use page_labels::{PageLabelRange, PageLabelStyle};
 pub use pages::{write_atomic, write_new_copy, Rotation};
 pub use redact::{RedactMark, RedactOptions, RedactReport};
@@ -196,6 +226,9 @@ pub struct Document<'a> {
     password: Option<String>,
     /// Polices système déjà incorporées dans ce document (vidé à chaque rechargement).
     font_cache: std::collections::HashMap<PathBuf, Vec<PdfFontToken>>,
+    /// Rendering may generate form appearances. Cache only the need for an isolated
+    /// copy, never rendered PDF bytes; edits must always render the current document.
+    form_render_need_appearances: std::cell::Cell<Option<bool>>,
 }
 
 /// Forme SASLprep du mot de passe si elle diffère de la saisie (sinon rien à réessayer).
@@ -205,9 +238,10 @@ fn normalized_fallback(password: Option<&str>) -> Option<String> {
     (norm != raw).then_some(norm)
 }
 
-/// Répertoires explorés pour trouver `pdfium.dll`, dans l'ordre.
+/// Directories searched for the platform PDFium library, in order.
 pub fn default_library_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
+    #[cfg(debug_assertions)]
     if let Some(dir) = std::env::var_os("SUNIPDF_PDFIUM_DIR") {
         dirs.push(PathBuf::from(dir));
     }
@@ -217,8 +251,8 @@ pub fn default_library_dirs() -> Vec<PathBuf> {
     {
         dirs.push(dir);
     }
-    // Confort de développement seulement : en version publiée, pdfium.dll est cherché à côté de
-    // l'exécutable (ou dans SUNIPDF_PDFIUM_DIR), jamais dans le répertoire courant ni dans un
+    // Confort de développement seulement : en version publiée, PDFium est cherché à côté de
+    // l'exécutable, jamais dans une variable d'environnement, le répertoire courant ni dans un
     // chemin de la machine de build.
     #[cfg(debug_assertions)]
     {
@@ -230,11 +264,18 @@ pub fn default_library_dirs() -> Vec<PathBuf> {
         } else {
             "x64"
         };
+        let platform = if cfg!(target_os = "linux") {
+            "linux"
+        } else if cfg!(target_os = "macos") {
+            "mac"
+        } else {
+            "win"
+        };
         dirs.push(
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../third_party/pdfium")
-                .join(format!("win-{arch}"))
-                .join("bin"),
+                .join(format!("{platform}-{arch}"))
+                .join(if cfg!(windows) { "bin" } else { "lib" }),
         );
     }
     dirs
@@ -334,6 +375,7 @@ impl Engine {
             pdfium: &self.pdfium,
             password: password.map(str::to_owned),
             font_cache: Default::default(),
+            form_render_need_appearances: Default::default(),
             info: DocumentInfo {
                 path: path.to_path_buf(),
                 title,
@@ -383,6 +425,15 @@ impl Document<'_> {
 
     /// Rend une page à `scale` pixels par point (1.0 = 72 dpi ; 96/72 = 100 % à l'écran).
     pub fn render_page(&self, page_index: usize, scale: f32) -> Result<RenderedPage, EngineError> {
+        self.render_page_impl(page_index, scale, true)
+    }
+
+    fn render_page_impl(
+        &self,
+        page_index: usize,
+        scale: f32,
+        isolate_form_appearances: bool,
+    ) -> Result<RenderedPage, EngineError> {
         let size = self.page_size(page_index)?;
         if !(scale.is_finite() && scale > 0.0) {
             return Err(EngineError::RenderTooLarge);
@@ -394,7 +445,13 @@ impl Document<'_> {
         }
         let index = PdfPageIndex::try_from(page_index)
             .map_err(|_| EngineError::PageOutOfRange(page_index))?;
-        let page = self.inner.pages().get(index)?;
+        let render_copy = if isolate_form_appearances {
+            self.form_render_copy()?
+        } else {
+            None
+        };
+        let render_document = render_copy.as_ref().unwrap_or(&self.inner);
+        let page = render_document.pages().get(index)?;
         let config = PdfRenderConfig::new()
             .set_target_size(width as Pixels, height as Pixels)
             .render_form_data(true)
@@ -416,6 +473,16 @@ impl Document<'_> {
         scale: f32,
         region: PixelRect,
     ) -> Result<RenderedPage, EngineError> {
+        self.render_region_impl(page_index, scale, region, true)
+    }
+
+    pub(crate) fn render_region_impl(
+        &self,
+        page_index: usize,
+        scale: f32,
+        region: PixelRect,
+        include_annotations: bool,
+    ) -> Result<RenderedPage, EngineError> {
         let size = self.page_size(page_index)?;
         let (page_w, page_h) =
             tiles::page_pixels(size, scale).ok_or(EngineError::RenderTooLarge)?;
@@ -430,26 +497,71 @@ impl Document<'_> {
         {
             return Err(EngineError::RenderTooLarge);
         }
+        // PDFium's no-form matrix path ignores set_origin(). For content-only
+        // previews, render the bounded whole page and crop its exact pixels below.
+        // The ordinary reader keeps its existing tiled, origin-based path.
+        if !include_annotations
+            && (page_w > visual_search::MAX_PAGE_SIDE
+                || page_h > visual_search::MAX_PAGE_SIDE
+                || u64::from(page_w) * u64::from(page_h) > visual_search::MAX_PAGE_PIXELS)
+        {
+            return Err(EngineError::RenderTooLarge);
+        }
         let index = PdfPageIndex::try_from(page_index)
             .map_err(|_| EngineError::PageOutOfRange(page_index))?;
-        let page = self.inner.pages().get(index)?;
+        let render_copy = if include_annotations {
+            self.form_render_copy()?
+        } else {
+            None
+        };
+        let render_document = render_copy.as_ref().unwrap_or(&self.inner);
+        let page = render_document.pages().get(index)?;
         // Taille cible = page entière ; l'origine négative place la région en (0, 0) du bitmap.
         let config = PdfRenderConfig::new()
             .set_target_size(page_w as Pixels, page_h as Pixels)
-            .set_origin(-(region.x as Pixels), -(region.y as Pixels))
-            .render_form_data(true)
-            .render_annotations(true);
+            .set_origin(
+                if include_annotations {
+                    -(region.x as Pixels)
+                } else {
+                    0
+                },
+                if include_annotations {
+                    -(region.y as Pixels)
+                } else {
+                    0
+                },
+            )
+            .render_form_data(include_annotations)
+            .render_annotations(include_annotations);
         let mut bitmap = PdfBitmap::empty(
-            region.width as Pixels,
-            region.height as Pixels,
+            if include_annotations {
+                region.width
+            } else {
+                page_w
+            } as Pixels,
+            if include_annotations {
+                region.height
+            } else {
+                page_h
+            } as Pixels,
             PdfBitmapFormat::default(),
         )?;
         page.render_into_bitmap_with_config(&mut bitmap, &config)?;
+        let mut rgba = bitmap.as_rgba_bytes();
+        if !include_annotations && region != PixelRect::new(0, 0, page_w, page_h) {
+            let mut cropped =
+                Vec::with_capacity(region.width as usize * region.height as usize * 4);
+            for row in region.y..region.bottom() {
+                let start = (row as usize * page_w as usize + region.x as usize) * 4;
+                cropped.extend_from_slice(&rgba[start..start + region.width as usize * 4]);
+            }
+            rgba = cropped;
+        }
         Ok(RenderedPage {
             page_index,
-            width: bitmap.width() as u32,
-            height: bitmap.height() as u32,
-            rgba: bitmap.as_rgba_bytes(),
+            width: region.width,
+            height: region.height,
+            rgba,
         })
     }
 }

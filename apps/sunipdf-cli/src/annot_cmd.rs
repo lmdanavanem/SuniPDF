@@ -97,6 +97,11 @@ pub fn link_json(t: &LinkTarget) -> serde_json::Value {
         LinkTarget::Named(name) => serde_json::json!({ "named_destination": name }),
         LinkTarget::Destination(destination) => destination_json(*destination),
         LinkTarget::Uri(u) => serde_json::json!({ "uri": u }),
+        LinkTarget::RemotePage(target) => serde_json::json!({
+            "remote_page": target.page + 1, "relative_path": target.relative_path,
+            "sheet_id": target.sheet_id, "sha256": target.sha256,
+            "byte_len": target.byte_len, "requires_verified_plan_set": true,
+        }),
         LinkTarget::Unsupported => serde_json::json!({ "unsupported": true }),
     }
 }

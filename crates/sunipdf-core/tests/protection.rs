@@ -95,6 +95,57 @@ fn owner_only_protection_keeps_open_access() {
 }
 
 #[test]
+fn replacing_encryption_requires_the_existing_owner_credential() {
+    for aes256 in [false, true] {
+        for user_password in ["", "test-reader"] {
+            let original = Protection {
+                user_password: user_password.into(),
+                owner_password: "test-owner".into(),
+                allow_copy: false,
+                allow_modify: false,
+                allow_print: false,
+                allow_annotate: false,
+                aes256,
+            };
+            let bytes = security::protect(PDF, None, &original).unwrap();
+            let replacement = Protection {
+                user_password: "replacement-reader".into(),
+                owner_password: "replacement-owner".into(),
+                aes256,
+                ..Default::default()
+            };
+            for password in [None, Some(user_password), Some("incorrect-owner")] {
+                assert!(matches!(
+                    security::protect(&bytes, password, &replacement),
+                    Err(EngineError::PasswordRequired)
+                ));
+            }
+            let unchanged = lopdf::Document::load_mem_with_options(
+                &bytes,
+                lopdf::LoadOptions::with_password(user_password),
+            )
+            .unwrap();
+            let permissions = unchanged
+                .encryption_state
+                .as_ref()
+                .unwrap()
+                .permissions()
+                .bits();
+            assert_eq!(permissions & ((1 << 3) | (1 << 4)), 0);
+            let rotated = security::protect(&bytes, Some("test-owner"), &replacement).unwrap();
+            assert!(matches!(
+                security::unprotect(&rotated, "test-owner"),
+                Err(EngineError::PasswordRequired)
+            ));
+            let unprotected = security::unprotect(&rotated, "replacement-owner").unwrap();
+            let parsed = lopdf::Document::load_mem(&unprotected).unwrap();
+            assert!(!parsed.is_encrypted());
+            assert_eq!(parsed.get_pages().len(), 2);
+        }
+    }
+}
+
+#[test]
 fn long_aes256_passwords_round_trip_as_typed() {
     let engine = Engine::new().unwrap();
     for password in ["a".repeat(128), format!("{}é", "a".repeat(126))] {

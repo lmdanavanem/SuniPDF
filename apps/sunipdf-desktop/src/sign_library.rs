@@ -140,6 +140,11 @@ fn store(dir: &Path, path: &Path, png: &[u8]) -> Result<(), EngineError> {
 }
 
 pub(super) fn save(dir: &Path, name: &str, image: &RgbaImage) -> Result<PathBuf, EngineError> {
+    if !cfg!(windows) {
+        return Err(failure(
+            "The encrypted signature library is available on Windows only",
+        ));
+    }
     if dir.components().any(|p| matches!(p, Component::ParentDir)) {
         return Err(failure("signature library path is invalid"));
     }
@@ -195,6 +200,11 @@ fn migrate(dir: &Path, path: &Path, png: &[u8]) -> Result<PathBuf, EngineError> 
 }
 
 pub(crate) fn load(dir: &Path, path: &Path) -> Result<(PathBuf, RgbaImage), EngineError> {
+    if !cfg!(windows) {
+        return Err(failure(
+            "The encrypted signature library is available on Windows only",
+        ));
+    }
     let protected = path.extension().is_some_and(|e| e == "dpapi");
     let bytes = read(dir, path, if protected { MAX_BLOB } else { MAX_BYTES })?;
     if protected {
@@ -208,6 +218,11 @@ pub(crate) fn load(dir: &Path, path: &Path) -> Result<(PathBuf, RgbaImage), Engi
 }
 
 pub(super) fn delete(dir: &Path, path: &Path) -> Result<(), EngineError> {
+    if !cfg!(windows) {
+        return Err(failure(
+            "The encrypted signature library is available on Windows only",
+        ));
+    }
     checked_path(dir, path, true)?;
     std::fs::remove_file(path)?;
     Ok(())

@@ -1,7 +1,11 @@
+#[cfg(windows)]
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+#[cfg(windows)]
+use std::process::Stdio;
+use std::process::{Command, Output};
 
+#[cfg(windows)]
 #[path = "../../../crates/sunipdf-core/tests/support/certificate_identity.rs"]
 mod test_identity;
 
@@ -22,6 +26,16 @@ fn json(output: Output) -> serde_json::Value {
         String::from_utf8_lossy(&output.stderr)
     );
     serde_json::from_slice(&output.stdout).unwrap()
+}
+
+#[cfg(windows)]
+fn failed_signature_report(output: Output) -> serde_json::Value {
+    assert_eq!(output.status.code(), Some(2));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["verification_failed"], true);
+    assert_eq!(report["verification_passed"], false);
+    assert_eq!(report["identity_trusted"], false);
+    report
 }
 
 fn failed(output: Output, out: &Path) -> serde_json::Value {
@@ -128,6 +142,7 @@ fn new_form_fields_are_fillable_after_save_and_invalid_input_creates_no_output()
     assert_eq!(std::fs::read(input).unwrap(), original);
 }
 
+#[cfg(any(windows, target_os = "linux"))]
 #[test]
 fn local_ocr_produces_searchable_text_and_skips_existing_text_byte_for_byte() {
     let temp = tempfile::tempdir().unwrap();
@@ -237,6 +252,7 @@ fn local_ocr_produces_searchable_text_and_skips_existing_text_byte_for_byte() {
     assert_eq!(std::fs::read(input).unwrap(), original);
 }
 
+#[cfg(windows)]
 #[test]
 fn digital_signatures_verify_saved_bytes_and_never_replace_the_source_or_disclose_passwords() {
     let temp = tempfile::tempdir().unwrap();
@@ -301,7 +317,8 @@ fn digital_signatures_verify_saved_bytes_and_never_replace_the_source_or_disclos
     bytes[offset] = b'T';
     std::fs::write(&tampered, bytes).unwrap();
     assert_eq!(
-        json(cli().arg("signatures").arg(&tampered).output().unwrap())["signatures"][0]["status"],
+        failed_signature_report(cli().arg("signatures").arg(&tampered).output().unwrap())
+            ["signatures"][0]["status"],
         "invalid"
     );
     let appended = temp.path().join("appended.pdf");
@@ -309,7 +326,8 @@ fn digital_signatures_verify_saved_bytes_and_never_replace_the_source_or_disclos
     bytes.extend_from_slice(b"\n% changed after signing\n");
     std::fs::write(&appended, bytes).unwrap();
     assert_eq!(
-        json(cli().arg("signatures").arg(&appended).output().unwrap())["signatures"][0]["status"],
+        failed_signature_report(cli().arg("signatures").arg(&appended).output().unwrap())
+            ["signatures"][0]["status"],
         "modified_after_signing"
     );
 
@@ -358,4 +376,37 @@ fn digital_signatures_verify_saved_bytes_and_never_replace_the_source_or_disclos
         &encrypted,
     );
     assert!(error["message"].as_str().unwrap().contains("encrypted"));
+}
+
+#[cfg(not(windows))]
+#[test]
+fn unavailable_certificate_signing_never_creates_output_or_discloses_passwords() {
+    let temp = tempfile::tempdir().unwrap();
+    let certificate = temp.path().join("identity.pfx");
+    std::fs::write(&certificate, b"unsupported certificate backend test input").unwrap();
+    let input = fixture("two-pages.pdf");
+    let original = std::fs::read(&input).unwrap();
+    let output_path = temp.path().join("signed.pdf");
+    let output = cli()
+        .arg("sign")
+        .arg(&input)
+        .arg("--certificate")
+        .arg(certificate)
+        .args([
+            "--certificate-password-env",
+            "SUNIPDF_TEST_CERT_PASSWORD",
+            "--out",
+        ])
+        .arg(&output_path)
+        .env("SUNIPDF_TEST_CERT_PASSWORD", "private test input")
+        .output()
+        .unwrap();
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("private test input"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("private test input"));
+    let error = failed(output, &output_path);
+    assert!(error["message"]
+        .as_str()
+        .unwrap()
+        .contains("unavailable on this platform"));
+    assert_eq!(std::fs::read(input).unwrap(), original);
 }

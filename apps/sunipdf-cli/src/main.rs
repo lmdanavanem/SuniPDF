@@ -2,8 +2,28 @@
 //! Même moteur que l'application de bureau : `sunipdf-core`.
 
 mod annot_cmd;
+mod boundary_fill_cmd;
+mod calibration_cmd;
+mod dimensioned_shape_cmd;
 mod feature_cmd;
+mod issue_report_cmd;
+mod library_cmd;
+mod measurement_cmd;
+mod measurement_workspace_cmd;
+mod output;
+mod overlay_cmd;
+mod password_input;
+mod plan_links_cmd;
+mod plan_set_cmd;
+mod plan_zones_cmd;
+mod quantity_cmd;
+mod quantity_workbook_cmd;
+mod register_cmd;
+mod revision_outlines_cmd;
+mod revision_transfer_cmd;
+mod safe_output;
 mod v010_cmd;
+mod visual_search_cmd;
 
 use clap::{Parser, Subcommand};
 use std::io::Write;
@@ -26,12 +46,183 @@ struct Cli {
     /// anything (exit code 6, error "already_exists").
     #[arg(long, global = true)]
     overwrite: bool,
+    #[command(flatten)]
+    passwords: password_input::PasswordSources,
     #[command(subcommand)]
     command: Command,
 }
 
 #[derive(Subcommand)]
 enum Command {
+    /// Trace an enclosed region and create a calibrated area only after explicit review.
+    RegionFill(boundary_fill_cmd::RegionFillArgs),
+    /// Find local visual symbol candidates and create counts only after explicit review.
+    VisualSearch(visual_search_cmd::VisualSearchArgs),
+    /// Prepare, preview and export source-bound issue reports with actual filtered quantities and legends.
+    IssueReport(issue_report_cmd::IssueReportArgs),
+    /// Export formula-free quantity spreadsheets and review explicit refreshes by annotation ID.
+    QuantityWorkbook(quantity_workbook_cmd::QuantityWorkbookArgs),
+    /// Overlay two explicitly aligned PDF pages as a new PNG or source-bound JSON report.
+    RevisionOverlay(overlay_cmd::OverlayArgs),
+    /// Inspect, preview and transfer compatible annotations between explicitly paired saved revisions.
+    RevisionTransfer(revision_transfer_cmd::RevisionTransferArgs),
+    /// Review raster difference regions and create classified revision outlines in a new PDF copy.
+    RevisionOutlines(revision_outlines_cmd::RevisionOutlinesArgs),
+    /// Inspect and replace named plan zones with conservative markup assignments in a new PDF copy.
+    PlanZones(plan_zones_cmd::PlanZonesArgs),
+    /// Export a filtered quantity and cost table, preserving units, missing values and source identity.
+    QuantityTable(quantity_cmd::TableArgs),
+    /// Replace typed quantity fields and unit price on one expected annotation in a new PDF copy.
+    SetQuantityFields(quantity_cmd::SetArgs),
+    /// Remove quantity fields from one expected annotation in a new PDF copy.
+    ClearQuantityFields(quantity_cmd::TargetArgs),
+    /// Manage local annotation templates and groups, or place them in a new PDF copy.
+    AnnotationLibrary(library_cmd::LibraryArgs),
+    /// Manage explicit local PDF references and indexed sheet metadata without modifying PDFs.
+    PlanSet(plan_set_cmd::PlanSetArgs),
+    /// Inspect and create reviewed links between explicitly indexed local plan sheets.
+    PlanLinks(plan_links_cmd::PlanLinksArgs),
+    /// Place one persistent manual count marker in a new PDF copy.
+    Count(register_cmd::CountArgs),
+    /// Filter/export the document's markup register and count totals, without editing the PDF.
+    AnnotationRegister(register_cmd::RegisterArgs),
+    /// Replace business/custom fields or regroup a count marker in a new PDF copy.
+    AnnotationFields(register_cmd::FieldsArgs),
+    /// Read persisted page calibration as JSON. Existing measurements keep their own scale.
+    PageCalibration(calibration_cmd::ReadArgs),
+    /// Persist a page scale for new measurements in a new PDF copy; never recalculate annotations.
+    SetPageCalibration(calibration_cmd::SetArgs),
+    /// Remove a persisted page scale in a new PDF copy; existing measurements remain unchanged.
+    RemovePageCalibration(calibration_cmd::RemoveArgs),
+    /// Edit one expected measurement in a new PDF copy, preserving its annotation identity.
+    EditMeasurement(measurement_cmd::EditArgs),
+    /// Read named calibrated measurement regions on a page.
+    MeasurementViewports(measurement_workspace_cmd::ViewportsArgs),
+    /// Replace an exact expected region set in a new PDF copy.
+    SetMeasurementViewports(measurement_workspace_cmd::SetViewportsArgs),
+    /// Explicitly clear supported measurement regions, including stale scales, in a new copy.
+    ClearMeasurementViewports(calibration_cmd::RemoveArgs),
+    /// Preview or atomically apply explicit multi-page measurement recalibration.
+    RecalibrateMeasurements(measurement_workspace_cmd::RecalibrateArgs),
+    /// Find a real vector endpoint or straight-segment intersection near a displayed point.
+    MeasurementSnap(measurement_workspace_cmd::SnapArgs),
+    /// Place an axis-aligned rectangle using real dimensions and an explicit scale source.
+    DimensionedRectangle(dimensioned_shape_cmd::RectangleArgs),
+    /// Add a calibrated measurement annotation in a new PDF copy.
+    Measure {
+        file: PathBuf,
+        #[arg(long, value_parser=["length","polyline","perimeter","area","volume","angle"])]
+        kind: String,
+        /// Displayed-page vertices: "x,y x,y ...", in points; angle vertex is the middle point.
+        #[arg(long)]
+        points: String,
+        /// Interior deduction ring: "x,y x,y ...". Repeat for up to 16 disjoint holes in an area or volume.
+        #[arg(long = "hole")]
+        holes: Vec<String>,
+        /// Positive physical depth for a volume; requires an explicit --depth-unit.
+        #[arg(long, requires = "depth_unit")]
+        depth: Option<f64>,
+        /// Unit of --depth, independent of the result unit and the page calibration.
+        #[arg(long, requires = "depth", value_parser = ["mm", "cm", "m", "in", "ft"])]
+        depth_unit: Option<String>,
+        /// Two reference points: "x,y x,y". Required for lengths, areas and volumes unless using a saved scale; angles need none.
+        #[arg(
+            long,
+            requires = "known_distance",
+            conflicts_with = "use_page_calibration"
+        )]
+        calibration: Option<String>,
+        #[arg(
+            long,
+            requires = "calibration",
+            conflicts_with = "use_page_calibration"
+        )]
+        known_distance: Option<f64>,
+        /// Use this page's persisted scale for this new annotation; convert it to --unit.
+        #[arg(long, conflicts_with_all = ["calibration", "known_distance"])]
+        use_page_calibration: bool,
+        #[arg(long, value_parser=["mm","cm","m","in","ft"], default_value="m")]
+        unit: String,
+        #[arg(long, default_value_t=2, value_parser=clap::value_parser!(u8).range(0..=4))]
+        precision: u8,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long)]
+        author: Option<String>,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help=password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Export measurement records with current/stale/legacy validity; refuse unsupported metadata.
+    Measurements {
+        file: PathBuf,
+        #[arg(long)]
+        page: Option<usize>,
+        #[arg(long, help=password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Add an aspect-fitted image Stamp annotation to a new PDF copy.
+    ImageStamp {
+        file: PathBuf,
+        #[arg(long)]
+        image: PathBuf,
+        /// Displayed-page rectangle: left,bottom,right,top, in points.
+        #[arg(long)]
+        rect: String,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        #[arg(long, default_value_t = 1.0)]
+        opacity: f32,
+        #[arg(long)]
+        author: Option<String>,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Prepare a local visual-signature PNG; this does not create a cryptographic signature.
+    PrepareSignatureImage {
+        file: PathBuf,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, default_value = "keep", value_parser = ["keep", "threshold", "adaptive"])]
+        background: String,
+        #[arg(long, default_value_t = 200, value_parser = clap::value_parser!(u8).range(60..=250))]
+        threshold: u8,
+    },
+    /// Inventory stored PDF dictionaries without executing actions or inspecting payload contents.
+    Inspect {
+        file: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Search only explicitly selected PDF files, with per-file failures and bounded page results.
+    SearchFiles {
+        #[arg(required = true, num_args = 1..=64)]
+        files: Vec<PathBuf>,
+        #[arg(long)]
+        query: String,
+        #[arg(long)]
+        match_case: bool,
+        /// One credential for the selected files; prefer --password-env or --password-stdin.
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Compare extracted text and 768-pixel previews of aligned physical pages, without modifying inputs.
+    Compare {
+        left: PathBuf,
+        right: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        left_start: usize,
+        #[arg(long, default_value_t = 1)]
+        right_start: usize,
+        #[arg(long, default_value_t = 200)]
+        max_pages: usize,
+        /// One credential for both files; prefer --password-env or --password-stdin.
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
     /// Add a fillable text, checkbox, radio, combo or list field and save to --out.
     AddFormField {
         file: PathBuf,
@@ -55,7 +246,7 @@ enum Command {
         page: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Add a searchable, invisible text layer using local English/French OCR; existing text is skipped.
@@ -68,7 +259,7 @@ enum Command {
         pages: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Convert a guarded macro-free Office document with an already installed local LibreOffice.
@@ -86,13 +277,13 @@ enum Command {
         format: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Verify digital signatures over the saved PDF bytes; certificate identity is not trusted automatically.
     Signatures {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
         /// Permit Windows certificate-chain, revocation and timestamp network checks for this call.
         #[arg(long)]
@@ -129,7 +320,7 @@ enum Command {
         /// 1-based page number; omit for the whole document.
         #[arg(long)]
         page: Option<usize>,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Merge several PDFs (in order) into one output file.
@@ -147,7 +338,7 @@ enum Command {
         pages: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Split into files of N pages each, written to a directory.
@@ -158,7 +349,7 @@ enum Command {
         every: usize,
         #[arg(long)]
         out_dir: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Rotate pages (1-based list, or "all") by 90, 180 or 270 degrees and save to --out.
@@ -170,7 +361,7 @@ enum Command {
         degrees: i32,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Stamp a single line of text (watermark).
@@ -197,7 +388,56 @@ enum Command {
         bold: bool,
         #[arg(long)]
         out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Add six non-overlapping header/footer zones as a new copy, with per-page template variables.
+    #[command(help_template = STAMP_HELP_TEMPLATE)]
+    HeadersFooters {
+        file: PathBuf,
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long, default_value = "")]
+        header_left: String,
+        #[arg(long, default_value = "")]
+        header_center: String,
+        #[arg(long, default_value = "")]
+        header_right: String,
+        #[arg(long, default_value = "")]
+        footer_left: String,
+        #[arg(long, default_value = "")]
+        footer_center: String,
+        #[arg(long, default_value = "")]
+        footer_right: String,
+        #[arg(long, default_value_t = 10.0)]
+        size: f32,
+        #[arg(long, default_value_t = 28.0)]
+        margin: f32,
         #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Add an editable foreground image watermark to selected pages, as a new copy.
+    ImageWatermark {
+        file: PathBuf,
+        #[arg(long)]
+        image: PathBuf,
+        #[arg(long, default_value = "all")]
+        pages: String,
+        #[arg(long, default_value_t = 30.0)]
+        width_percent: f32,
+        #[arg(long, default_value_t = 0.3)]
+        opacity: f32,
+        #[arg(long, default_value_t = 0.0, allow_negative_numbers = true)]
+        angle: f32,
+        #[arg(long, default_value = "center")]
+        position: String,
+        #[arg(long, default_value_t = 28.0)]
+        margin: f32,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Add single-line page numbers.
@@ -214,7 +454,7 @@ enum Command {
         pages: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Set navigation page labels for a physical page range; visible page content is unchanged.
@@ -234,7 +474,7 @@ enum Command {
         prefix: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Remove all navigation page labels; visible page content is unchanged.
@@ -242,7 +482,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Insert pages of another PDF (1-based list, default all) before page --at (1-based; 0 = append).
@@ -256,7 +496,7 @@ enum Command {
         at: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Move one page (1-based) to a new position (1-based).
@@ -268,25 +508,25 @@ enum Command {
         to: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Print document properties (metadata, version, encryption, permissions) as JSON.
     Properties {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// List existing local named destinations, refusing ambiguous or malformed name trees.
     LinkDestinations {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Print the bookmark tree (title, page, depth) as JSON.
     Bookmarks {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Add a page bookmark to a new copy. Bookmark/page indices start at 1; omit --parent for root.
@@ -300,7 +540,7 @@ enum Command {
         parent: Option<usize>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Rename a bookmark in a new copy, preserving its original action and children.
@@ -312,7 +552,7 @@ enum Command {
         title: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Replace a bookmark action with a local page destination in a new copy.
@@ -324,7 +564,7 @@ enum Command {
         page: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Move a bookmark subtree. --position is the 1-based sibling slot after removing the item.
@@ -338,7 +578,7 @@ enum Command {
         position: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Delete a bookmark and its children in a new copy; the input cannot be replaced.
@@ -348,7 +588,7 @@ enum Command {
         index: usize,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Encrypt with AES-256 (or AES-128 with --aes128): passwords and permissions.
@@ -356,9 +596,9 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long, default_value = "")]
+        #[arg(long, default_value = "", help = password_input::ARGV_USER_PASSWORD_HELP)]
         user_password: String,
-        #[arg(long, default_value = "")]
+        #[arg(long, default_value = "", help = password_input::ARGV_OWNER_PASSWORD_HELP)]
         owner_password: String,
         #[arg(long)]
         no_print: bool,
@@ -370,17 +610,17 @@ enum Command {
         no_annotate: bool,
         #[arg(long)]
         aes128: bool,
-        /// Password of the input file if it is already encrypted.
-        #[arg(long)]
+        /// Owner password of the input file if it is already encrypted.
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
-    /// Remove encryption (owner or user password required).
+    /// Remove encryption (the owner password is required).
     Unprotect {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
-        password: String,
+        #[arg(long, required_unless_present_any = ["password_env", "password_stdin"], help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
     },
     /// Set title, author, subject, keywords (omitted fields are left unchanged; "" clears).
     SetMetadata {
@@ -395,7 +635,7 @@ enum Command {
         subject: Option<String>,
         #[arg(long)]
         keywords: Option<String>,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Remove all document metadata (Info dictionary and XMP stream).
@@ -403,7 +643,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Sanitize hidden structures into a verified new copy; existing files are never replaced.
@@ -411,7 +651,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Irreversibly redact rectangles and/or every occurrence of a text, then save to --out.
@@ -433,7 +673,8 @@ enum Command {
         /// Replace every redacted page by an image of itself (no text left on these pages).
         #[arg(long)]
         rasterize: bool,
-        /// Keep metadata and the structure tree (removed by default).
+        /// Keep hidden metadata, scripts, attachments, bookmarks, named destinations and accessibility data.
+        /// These may retain sensitive content. Removed by default; prefer the default cleanup.
         #[arg(long)]
         keep_hidden_data: bool,
         /// Resolution of the image patches and rasterized pages (72 to 600).
@@ -452,7 +693,7 @@ enum Command {
         /// Save visible, unapplied standard /Redact annotations. This does not remove content.
         #[arg(long)]
         marks_only: bool,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Build a PDF from image files (one page per image).
@@ -472,7 +713,7 @@ enum Command {
         out_dir: PathBuf,
         #[arg(long, default_value_t = 150.0)]
         dpi: f32,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Lossless size optimisation (stream recompression, unused objects removed).
@@ -480,7 +721,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Reduce supported image dimensions/JPEG quality while keeping page text, links and fields.
@@ -494,7 +735,7 @@ enum Command {
         /// New compressed copy; existing files and the input cannot be replaced, even with --overwrite.
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Search text; prints matches (page, rectangles in points, origin bottom-left of the page as
@@ -504,13 +745,13 @@ enum Command {
         query: String,
         #[arg(long)]
         match_case: bool,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Print document information (page count, page sizes, title) as JSON.
     Info {
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// List the content objects of a page (0-based indices, display-space coordinates in points).
@@ -519,7 +760,23 @@ enum Command {
         /// 1-based page number.
         #[arg(long, default_value_t = 1)]
         page: usize,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
+        password: Option<String>,
+    },
+    /// Move content objects together in drawing order, preserving their relative order.
+    ReorderObjects {
+        file: PathBuf,
+        #[arg(long, default_value_t = 1)]
+        page: usize,
+        /// Comma-separated 0-based object indices from `objects`.
         #[arg(long)]
+        objects: String,
+        /// Final 0-based index of the first object in the moved block; 0 is the back.
+        #[arg(long)]
+        at: usize,
+        #[arg(long)]
+        out: PathBuf,
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Add text (one object per line, "\n" separated) with its first baseline at (x, y) points.
@@ -554,7 +811,7 @@ enum Command {
         italic: bool,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Set the opacity (0 to 1) of objects (0-based indices, e.g. "0,3").
@@ -568,7 +825,7 @@ enum Command {
         opacity: f32,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Rotate one object by any angle (degrees, clockwise) around its centre.
@@ -582,7 +839,7 @@ enum Command {
         degrees: f32,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Rotate objects together (clockwise degrees), preserving their relative positions.
@@ -597,7 +854,7 @@ enum Command {
         degrees: f32,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Resize objects together to displayed page bounds, preserving their relative positions.
@@ -613,7 +870,7 @@ enum Command {
         rect: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Copy objects (pasted as one group) to another page, optionally of another file (--into).
@@ -635,7 +892,7 @@ enum Command {
         dy: f32,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Replace the content of an image object with another image file (same frame).
@@ -649,7 +906,7 @@ enum Command {
         image: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Place an image on a page, e.g. a scanned handwritten signature. Visual mark only: this is
@@ -679,7 +936,7 @@ enum Command {
         remove_background: Option<u8>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Crop pages (hides the margins; content stays in the file) or restore them with --reset.
@@ -702,7 +959,7 @@ enum Command {
         reset: bool,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Resize pages: keep the content (anchored top-left) or scale it to fit (centred).
@@ -724,7 +981,7 @@ enum Command {
         annotations: bool,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Insert blank pages before page --at (1-based; 0 = append), sized explicitly or like a page.
@@ -745,7 +1002,7 @@ enum Command {
         like: Option<usize>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// List the installed TrueType (.ttf) system fonts that can be embedded by add-text.
@@ -769,7 +1026,7 @@ enum Command {
         region: Option<sunipdf_core::PixelRect>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// List the AcroForm fields (name, type, value, options, widgets with 1-based pages) as JSON.
@@ -779,15 +1036,15 @@ enum Command {
         /// read-only fields are included with their current value, password fields never).
         #[arg(long)]
         values_only: bool,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
-    /// Export non-password field values as JSON or XFDF (selected by output extension).
+    /// Export non-password field values as JSON, XFDF or FDF (selected by output extension).
     FormExport {
         file: PathBuf,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Fill fields from JSON/XFDF/FDF (--values FILE, "-" = JSON stdin) and/or --set NAME=VALUE
@@ -807,7 +1064,7 @@ enum Command {
         /// Flatten the whole document after filling (fields become page content).
         #[arg(long)]
         flatten: bool,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Flatten form fields and annotations into the page content ("all" or "1,3-5"); flattening
@@ -818,7 +1075,7 @@ enum Command {
         pages: String,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// List the annotations of one page (--page) or of every page as JSON: index (0-based, the
@@ -828,7 +1085,7 @@ enum Command {
         file: PathBuf,
         #[arg(long)]
         page: Option<usize>,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Add a real PDF annotation: ink, square, circle, line, arrow, freetext or link. Coordinates
@@ -889,7 +1146,7 @@ enum Command {
         author: Option<String>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Change an existing link's target without replacing its annotation or appearance.
@@ -922,7 +1179,7 @@ enum Command {
         zoom: Option<f32>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Delete an annotation by index; --thread also deletes its replies and review states.
@@ -936,7 +1193,7 @@ enum Command {
         thread: bool,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Reply to an annotation (comment thread, no icon on the page).
@@ -952,7 +1209,7 @@ enum Command {
         author: Option<String>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
     /// Set the review state of an annotation thread: none, accepted, rejected, cancelled, completed.
@@ -968,7 +1225,7 @@ enum Command {
         author: Option<String>,
         #[arg(long)]
         out: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
 }
@@ -996,7 +1253,8 @@ fn parse_region(spec: &str) -> Result<sunipdf_core::PixelRect, String> {
     }
 }
 
-fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
+fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
+    cli.passwords.apply(&mut cli.command)?;
     if let Command::Fonts { filter } = &cli.command {
         let filter = filter.as_deref().unwrap_or("").to_lowercase();
         return Ok(serde_json::json!(sunipdf_core::fonts::system_fonts()
@@ -1050,6 +1308,23 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
         }
     }
     match &cli.command {
+        Command::AnnotationLibrary(args) => return library_cmd::run(args),
+        Command::PlanSet(args) => return plan_set_cmd::run(args),
+        Command::PlanLinks(args) => return plan_links_cmd::run(args),
+        Command::PrepareSignatureImage {
+            file,
+            out,
+            background,
+            threshold,
+        } => {
+            return feature_cmd::prepare_signature_image(
+                file, out, background, *threshold, overwrite,
+            );
+        }
+        Command::Inspect { file, password } => {
+            return sunipdf_core::inspection::inspect_file(file, password.as_deref())
+                .map(|report| report.json());
+        }
         Command::Signatures {
             file,
             password,
@@ -1081,6 +1356,11 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
     let engine = Engine::new()?;
     match cli.command {
         Command::Commands
+        | Command::AnnotationLibrary(..)
+        | Command::PlanSet(..)
+        | Command::PlanLinks(..)
+        | Command::PrepareSignatureImage { .. }
+        | Command::Inspect { .. }
         | Command::Fonts { .. }
         | Command::Signatures { .. }
         | Command::Sign { .. } => unreachable!(),
@@ -1167,7 +1447,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 multi_select,
                 editable,
             )?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({"out":out,"page":page,"name":name,"kind":kind}))
         }
         Command::Ocr {
@@ -1191,9 +1471,9 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 |_, _| {},
             )?;
             if report.recognized_pages == 0 {
-                sunipdf_core::write_atomic(&out, &std::fs::read(&file)?)?;
+                output::write(&out, &std::fs::read(&file)?, overwrite)?;
             } else {
-                doc.save_as(&out)?;
+                output::save(&doc, &out, overwrite)?;
             }
             Ok(
                 serde_json::json!({"out":out,"recognized_pages":report.recognized_pages,"skipped_pages":report.skipped_pages,"words":report.words}),
@@ -1212,7 +1492,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let mut out = std::io::stdout().lock();
             for p in pages {
                 let text = doc.page_text(p)?;
-                writeln!(out, "{text}").map_err(EngineError::Io)?;
+                writeln!(out, "{}", safe_output::terminal_text(&text)).map_err(EngineError::Io)?;
                 if page.is_none() {
                     writeln!(out, "\u{c}").map_err(EngineError::Io)?;
                 }
@@ -1220,7 +1500,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             Ok(serde_json::Value::Null)
         }
         Command::Merge { inputs, out } => {
-            let pages = engine.merge(&inputs, &out)?;
+            let pages = output::staged(&out, overwrite, |path| engine.merge(&inputs, path))?;
             Ok(serde_json::json!({ "out": out, "page_count": pages }))
         }
         Command::Extract {
@@ -1231,7 +1511,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
         } => {
             let doc = engine.open(&file, password.as_deref())?;
             let selection = parse_pages(&pages, doc.page_count())?;
-            let n = doc.extract_to(&selection, &out)?;
+            let n = output::staged(&out, overwrite, |path| doc.extract_to(&selection, path))?;
             Ok(serde_json::json!({
                 "out": out, "page_count": n, "encryption_removed": false,
                 "encrypted": doc.is_encrypted()
@@ -1268,7 +1548,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 let current = doc.page_rotation(*p)?;
                 doc.set_page_rotation(*p, current.turned(delta))?;
             }
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "rotated": selection.len() }))
         }
         Command::Stamp {
@@ -1302,8 +1582,234 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 margin_pt: 28.0,
             };
             let count = doc.stamp_pages(Some(&selection), &stamp)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "stamped": count }))
+        }
+        Command::HeadersFooters {
+            file,
+            pages,
+            header_left,
+            header_center,
+            header_right,
+            footer_left,
+            footer_center,
+            footer_right,
+            size,
+            margin,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let targets = parse_pages(&pages, doc.page_count())?;
+            let options = sunipdf_core::header_footer::HeaderFooter {
+                zones: [
+                    header_left,
+                    header_center,
+                    header_right,
+                    footer_left,
+                    footer_center,
+                    footer_right,
+                ],
+                style: TextStyle {
+                    size_pt: size,
+                    ..Default::default()
+                },
+                margin_pt: margin,
+            };
+            let count = doc.headers_footers(Some(&targets), &options)?;
+            sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
+            Ok(
+                serde_json::json!({"out":out,"decorated":count,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
+            )
+        }
+        Command::Count(args) => register_cmd::count(&engine, args),
+        Command::RevisionOverlay(args) => overlay_cmd::run(&engine, args),
+        Command::RevisionTransfer(args) => revision_transfer_cmd::run(&engine, args),
+        Command::RevisionOutlines(args) => revision_outlines_cmd::run(&engine, args),
+        Command::PlanZones(args) => plan_zones_cmd::run(&engine, args),
+        Command::VisualSearch(args) => visual_search_cmd::run(&engine, args),
+        Command::RegionFill(args) => boundary_fill_cmd::run(&engine, args),
+        Command::IssueReport(args) => issue_report_cmd::run(&engine, args),
+        Command::QuantityWorkbook(args) => quantity_workbook_cmd::run(&engine, args),
+        Command::QuantityTable(args) => quantity_cmd::table(&engine, args),
+        Command::SetQuantityFields(args) => quantity_cmd::set(&engine, args),
+        Command::ClearQuantityFields(args) => quantity_cmd::clear(&engine, args),
+        Command::AnnotationRegister(args) => register_cmd::register(&engine, args),
+        Command::AnnotationFields(args) => register_cmd::fields(&engine, args),
+        Command::ImageStamp {
+            file,
+            image,
+            rect,
+            page,
+            opacity,
+            author,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let index = doc.add_image_stamp_annotation(
+                page_index(page, doc.page_count())?,
+                annot_cmd::parse_rect(&rect)?,
+                &image,
+                opacity,
+                author.as_deref(),
+            )?;
+            sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
+            Ok(
+                serde_json::json!({"out":out,"page":page,"index":index,"subtype":"Stamp","original_unchanged":true,"encrypted":doc.properties().encrypted}),
+            )
+        }
+        Command::PageCalibration(args) => calibration_cmd::read(&engine, args),
+        Command::SetPageCalibration(args) => calibration_cmd::set(&engine, args),
+        Command::RemovePageCalibration(args) => calibration_cmd::remove(&engine, args),
+        Command::EditMeasurement(args) => measurement_cmd::edit(&engine, args),
+        Command::MeasurementViewports(args) => measurement_workspace_cmd::viewports(&engine, args),
+        Command::SetMeasurementViewports(args) => {
+            measurement_workspace_cmd::set_viewports(&engine, args)
+        }
+        Command::ClearMeasurementViewports(args) => {
+            measurement_workspace_cmd::clear_viewports(&engine, args)
+        }
+        Command::RecalibrateMeasurements(args) => {
+            measurement_workspace_cmd::recalibrate(&engine, args)
+        }
+        Command::MeasurementSnap(args) => measurement_workspace_cmd::snap(&engine, args),
+        Command::DimensionedRectangle(args) => dimensioned_shape_cmd::rectangle(&engine, args),
+        Command::Measure {
+            file,
+            kind,
+            points,
+            holes,
+            depth,
+            depth_unit,
+            calibration,
+            known_distance,
+            use_page_calibration,
+            unit,
+            precision,
+            page,
+            author,
+            out,
+            password,
+        } => {
+            use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementUnit};
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let page_number = page_index(page, doc.page_count())?;
+            let unit = MeasurementUnit::from_id(&unit)
+                .ok_or_else(|| EngineError::Other("invalid measurement unit".into()))?;
+            let kind = MeasurementKind::from_id(&kind)
+                .ok_or_else(|| EngineError::Other("invalid measurement kind".into()))?;
+            let points = measurement_cmd::points(&points, 128)?;
+            let holes = measurement_cmd::holes(&holes, points.len())?;
+            let depth = measurement_cmd::depth(depth, depth_unit.as_deref())?;
+            let (calibration, known_distance) = if use_page_calibration {
+                measurement_cmd::saved_scale(&doc, page_number, unit)?
+            } else if kind == MeasurementKind::Angle && calibration.is_none() {
+                measurement_cmd::angle_scale(&points)?
+            } else {
+                let points = calibration
+                    .as_deref()
+                    .ok_or_else(|| EngineError::Other("calibration requires two points".into()))?;
+                let distance = known_distance.ok_or_else(|| {
+                    EngineError::Other("calibration requires a known distance".into())
+                })?;
+                (
+                    measurement_cmd::points(points, 2)?
+                        .try_into()
+                        .map_err(|_| {
+                            EngineError::Other("calibration requires two points".into())
+                        })?,
+                    distance,
+                )
+            };
+            let measurement = Measurement {
+                kind,
+                points,
+                holes,
+                depth,
+                calibration,
+                known_distance,
+                unit,
+                precision: usize::from(precision),
+            };
+            let index =
+                doc.add_measurement_annotation(page_number, &measurement, author.as_deref())?;
+            let export_unavailable = !doc.properties().can_copy;
+            let exported = if export_unavailable {
+                serde_json::Value::Null
+            } else {
+                // Creation binds this geometry to the current page in the shared engine.
+                // Do not inventory unrelated imported annotations just to report this result.
+                let mut result = measurement.result()?;
+                result["version"] = if measurement.kind == MeasurementKind::Volume
+                    || !measurement.holes.is_empty()
+                {
+                    3.into()
+                } else {
+                    2.into()
+                };
+                result["validity"] = "current".into();
+                result["historical_value"] = serde_json::Value::Null;
+                result["historical_label"] = serde_json::Value::Null;
+                result["historical_area"] = serde_json::Value::Null;
+                result
+            };
+            sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
+            Ok(
+                serde_json::json!({"out":out,"page":page,"index":index,"measurement":exported,"export_unavailable":export_unavailable,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
+            )
+        }
+        Command::Measurements {
+            file,
+            page,
+            password,
+        } => {
+            let doc = engine.open(&file, password.as_deref())?;
+            if !doc.properties().can_copy {
+                return Err(EngineError::SecurityRestricted);
+            }
+            let pages = measurement_cmd::page_selection(page, doc.page_count())?;
+            let mut records = Vec::new();
+            let mut count = 0usize;
+            for page in pages {
+                let measurements = doc.measurements(page)?;
+                count += measurements.len();
+                if count > 4096 {
+                    return Err(EngineError::Other(
+                        "measurement export is limited to 4096 records; select --page".into(),
+                    ));
+                }
+                records.push(serde_json::json!({"page":page+1,"measurements":measurements}));
+            }
+            Ok(serde_json::json!({"pages":records}))
+        }
+        Command::ImageWatermark {
+            file,
+            image,
+            pages,
+            width_percent,
+            opacity,
+            angle,
+            position,
+            margin,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let selection = unique(parse_pages(&pages, doc.page_count())?);
+            let options = sunipdf_core::image_watermark::ImageWatermark {
+                width_percent,
+                opacity,
+                angle,
+                margin_pt: margin,
+                position: StampPosition::from_id(&position)
+                    .ok_or_else(|| EngineError::Other("unknown watermark position".into()))?,
+            };
+            let count = doc.image_watermark(Some(&selection), &image, &options)?;
+            sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
+            Ok(
+                serde_json::json!({"out":out,"watermarked":count,"original_unchanged":true,"foreground":true,"encrypted":doc.properties().encrypted}),
+            )
         }
         Command::PageNumbers {
             file,
@@ -1326,7 +1832,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 ..Stamp::page_numbers(&template, position)
             };
             let count = doc.stamp_pages(Some(&selection), &stamp)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "numbered": count }))
         }
         Command::SetPageLabels {
@@ -1358,7 +1864,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 start,
             };
             doc.set_page_labels(&range)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(
                 serde_json::json!({ "out": out, "from": from, "to": last, "count": range.last - range.first + 1 }),
             )
@@ -1370,7 +1876,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
         } => {
             let mut doc = engine.open(&file, password.as_deref())?;
             doc.reset_page_labels()?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "count": doc.page_count() }))
         }
         Command::Insert {
@@ -1386,7 +1892,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let selection = parse_pages(&pages, src_count)?;
             let at = if at == 0 { doc.page_count() } else { at - 1 };
             let n = doc.insert_pages_from(&from, None, &selection, at)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "inserted": n, "page_count": doc.page_count() }))
         }
         Command::Move {
@@ -1402,7 +1908,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 to.checked_sub(1).ok_or_else(page_zero)?,
             );
             doc.move_page(from, to)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "moved": from + 1, "to": to + 1 }))
         }
         Command::Properties { file, password } => {
@@ -1540,7 +2046,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                     aes256: !aes128,
                 },
             )?;
-            sunipdf_core::write_atomic(&out, &bytes)?;
+            output::write(&out, &bytes, overwrite)?;
             Ok(
                 serde_json::json!({ "out": out, "cipher": if aes128 { "AES-128" } else { "AES-256" } }),
             )
@@ -1551,8 +2057,11 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             password,
         } => {
             let input = std::fs::read(&file)?;
-            let bytes = sunipdf_core::security::unprotect(&input, &password)?;
-            sunipdf_core::write_atomic(&out, &bytes)?;
+            let bytes = sunipdf_core::security::unprotect(
+                &input,
+                password.as_deref().ok_or(EngineError::PasswordRequired)?,
+            )?;
+            output::write(&out, &bytes, overwrite)?;
             Ok(serde_json::json!({ "out": out }))
         }
         Command::SetMetadata {
@@ -1580,7 +2089,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             };
             let input = std::fs::read(&file)?;
             let bytes = sunipdf_core::security::set_metadata(&input, password.as_deref(), &meta)?;
-            sunipdf_core::write_atomic(&out, &bytes)?;
+            output::write(&out, &bytes, overwrite)?;
             Ok(
                 serde_json::json!({ "out": out, "title": meta.title, "author": meta.author, "subject": meta.subject, "keywords": meta.keywords }),
             )
@@ -1592,7 +2101,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
         } => {
             let input = std::fs::read(&file)?;
             let bytes = sunipdf_core::security::strip_metadata(&input, password.as_deref())?;
-            sunipdf_core::write_atomic(&out, &bytes)?;
+            output::write(&out, &bytes, overwrite)?;
             Ok(serde_json::json!({ "out": out }))
         }
         Command::Sanitize {
@@ -1685,7 +2194,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             if remaining > 0 {
                 return Err(EngineError::RedactionIncomplete);
             }
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({
                 "out": out, "marks": r.marks, "pages": r.pages, "objects_removed": r.objects_removed,
                 "annotations_removed": r.annotations_removed, "fields_removed": r.fields_removed,
@@ -1695,7 +2204,9 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             }))
         }
         Command::Images2pdf { images, out, dpi } => {
-            let pages = engine.images_to_pdf(&images, &out, dpi)?;
+            let pages = output::staged(&out, overwrite, |path| {
+                engine.images_to_pdf(&images, path, dpi)
+            })?;
             Ok(serde_json::json!({ "out": out, "page_count": pages }))
         }
         Command::ExportImages {
@@ -1713,7 +2224,9 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             out,
             password,
         } => {
-            let r = sunipdf_core::convert::optimize_file(&file, &out, password.as_deref())?;
+            let r = output::staged(&out, overwrite, |path| {
+                sunipdf_core::convert::optimize_file(&file, path, password.as_deref())
+            })?;
             Ok(
                 serde_json::json!({ "out": out, "before": r.before, "after": r.after,
                 "saved_percent": if r.before > 0 { 100.0 * (1.0 - r.after as f64 / r.before as f64) } else { 0.0 } }),
@@ -1735,6 +2248,42 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 jpeg_quality,
             },
         ),
+        Command::SearchFiles {
+            files,
+            query,
+            match_case,
+            password,
+        } => sunipdf_core::local_review::search_files(
+            &engine,
+            &files,
+            &query,
+            match_case,
+            password.as_deref(),
+            &std::sync::atomic::AtomicBool::new(false),
+            |_, _, _, _| {},
+        )
+        .map(|report| report.json()),
+        Command::Compare {
+            left,
+            right,
+            left_start,
+            right_start,
+            max_pages,
+            password,
+        } => sunipdf_core::local_review::compare_files(
+            &engine,
+            &left,
+            &right,
+            sunipdf_core::local_review::CompareOptions {
+                left_start,
+                right_start,
+                max_pages,
+            },
+            password.as_deref(),
+            &std::sync::atomic::AtomicBool::new(false),
+            |_, _| {},
+        )
+        .map(|report| report.json()),
         Command::Search {
             file,
             query,
@@ -1794,6 +2343,21 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 })).collect::<Vec<_>>(),
             }))
         }
+        Command::ReorderObjects {
+            file,
+            page,
+            objects,
+            at,
+            out,
+            password,
+        } => {
+            let mut doc = engine.open(&file, password.as_deref())?;
+            let p = page_index(page, doc.page_count())?;
+            let indices = parse_indices(&objects)?;
+            let new_indices = doc.reorder_objects(p, &indices, sunipdf_core::ZOrder::At(at))?;
+            output::save(&doc, &out, overwrite)?;
+            Ok(serde_json::json!({ "out": out, "page": page, "new_indices": new_indices }))
+        }
         Command::AddText {
             file,
             page,
@@ -1837,7 +2401,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 ..Default::default()
             };
             let added = doc.add_text(p, x, y, &text.replace("\\n", "\n"), &style)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(
                 serde_json::json!({ "out": out, "added": added, "embedded_font": font_file, "font_face_index": font_face_index }),
             )
@@ -1861,7 +2425,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                     ..Default::default()
                 },
             )?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "objects": indices.len(),
                     "opacity": (opacity.clamp(0.0, 1.0) as f64 * 1000.0).round() / 1000.0 }))
         }
@@ -1877,7 +2441,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let p = page_index(page, doc.page_count())?;
             doc.rotate_object(p, object, degrees)?;
             let angle = doc.object_info(p, object)?.angle_deg;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "angle": angle }))
         }
         Command::RotateObjects {
@@ -1892,7 +2456,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let p = page_index(page, doc.page_count())?;
             let indices = parse_indices(&objects)?;
             doc.rotate_objects(p, &indices, degrees)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({"out":out,"objects":indices.len(),"degrees":degrees}))
         }
         Command::ResizeObjects {
@@ -1908,7 +2472,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let p = page_index(page, doc.page_count())?;
             let indices = parse_indices(&objects)?;
             doc.resize_objects(p, &indices, bounds)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(
                 serde_json::json!({"out":out,"objects":indices.len(),"bounds":[bounds.left,bounds.bottom,bounds.right,bounds.top]}),
             )
@@ -1934,7 +2498,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             };
             let to = page_index(to_page, dest.page_count())?;
             let pasted = dest.paste_objects(to, &clip, dx, dy)?;
-            dest.save_as(&out)?;
+            output::save(&dest, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "copied": clip.count, "pasted_index": pasted }))
         }
         Command::ReplaceImage {
@@ -1949,7 +2513,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let p = page_index(page, doc.page_count())?;
             doc.replace_image(p, object, &image)?;
             let b = doc.object_info(p, object)?.bounds;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "bounds": [b.left, b.bottom, b.right, b.top] }))
         }
         Command::AddImage {
@@ -1991,7 +2555,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                     &std::sync::atomic::AtomicBool::new(false),
                     |_, _| {},
                 )?;
-                doc.save_as(&out)?;
+                output::save(&doc, &out, overwrite)?;
                 return Ok(serde_json::json!({
                     "out": out,
                     "pages": selection.iter().map(|p| p + 1).collect::<Vec<_>>(),
@@ -2005,7 +2569,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 }));
             }
             doc.add_image_data(p, &image::DynamicImage::ImageRgba8(img), x, y, width)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({
                 "out": out,
                 "page": page,
@@ -2046,7 +2610,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                     doc.crop_page(p, margins)?;
                 }
             }
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({
                 "out": out,
                 "cropped": selection.len(),
@@ -2084,7 +2648,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             for &p in &selection {
                 doc.resize_page(p, width * k, height * k, mode)?;
             }
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "resized": selection.len() }))
         }
         Command::InsertBlank {
@@ -2111,7 +2675,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             };
             let at = if at == 0 { doc.page_count() } else { at - 1 };
             doc.insert_blank_pages(at, count, w, h)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "inserted": count, "page_count": doc.page_count() }))
         }
         Command::Render {
@@ -2140,7 +2704,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 image::ImageFormat::Png,
             )
             .map_err(|e| EngineError::Other(e.to_string()))?;
-            sunipdf_core::write_atomic(&out, &png)?;
+            output::write(&out, &png, overwrite)?;
             Ok(serde_json::json!({
                 "out": out,
                 "width": img.width,
@@ -2178,7 +2742,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let info = doc.form_info()?;
             let extension = out.extension().and_then(|s| s.to_str()).unwrap_or("");
             let bytes = form_data::export_values(&info, extension)?;
-            sunipdf_core::write_atomic(&out, &bytes)?;
+            output::write(&out, &bytes, overwrite)?;
             Ok(
                 serde_json::json!({"out":out,"fields":form_data::values_to_json(&info).as_object().map_or(0, |v| v.len())}),
             )
@@ -2308,7 +2872,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                     )))
                 }
             };
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({
                 "out": out,
                 "page": page,
@@ -2336,7 +2900,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let target =
                 annot_cmd::link_target(goto_page, url, named_destination, view, x, y, zoom)?;
             doc.set_link_target(p, index, &target)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({
                 "out": out, "page": page, "index": index,
                 "link": annot_cmd::link_json(&target),
@@ -2358,7 +2922,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
                 doc.delete_annotation(p, index)?;
                 1
             };
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "deleted": deleted }))
         }
         Command::Reply {
@@ -2373,7 +2937,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let mut doc = engine.open(&file, password.as_deref())?;
             let p = page_index(page, doc.page_count())?;
             let reply = doc.add_reply(p, index, &text, author.as_deref())?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "index": reply }))
         }
         Command::ReviewState {
@@ -2390,7 +2954,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let mut doc = engine.open(&file, password.as_deref())?;
             let p = page_index(page, doc.page_count())?;
             doc.set_review_status(p, index, status, author.as_deref())?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "state": status.id() }))
         }
         Command::FillForm {
@@ -2442,7 +3006,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             if flatten {
                 doc.flatten(None)?;
             }
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             let mut unknown = plan.skipped_unknown;
             unknown.extend(report.skipped_unknown);
             let invalid: Vec<serde_json::Value> = plan
@@ -2469,7 +3033,7 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
             let selection = unique(parse_pages(&pages, doc.page_count())?);
             let all = pages.trim().eq_ignore_ascii_case("all");
             let n = doc.flatten(if all { None } else { Some(&selection) })?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "annotations": n, "pages": selection.len() }))
         }
     }
@@ -2479,6 +3043,30 @@ fn run(cli: Cli) -> Result<serde_json::Value, EngineError> {
 /// Chemin de sortie d'une commande qui écrit un seul fichier.
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
+        Command::RevisionOverlay(args) => Some(&args.out),
+        Command::RevisionTransfer(args) => args.output_path(),
+        Command::RevisionOutlines(args) => args.output_path(),
+        Command::PlanZones(args) => args.output_path(),
+        Command::VisualSearch(args) => args.output_path(),
+        Command::RegionFill(args) => args.output_path(),
+        Command::IssueReport(args) => args.output_path(),
+        Command::QuantityWorkbook(args) => args.output_path(),
+        Command::QuantityTable(args) => args.report.out.as_deref(),
+        Command::SetQuantityFields(args) => Some(&args.target.out),
+        Command::ClearQuantityFields(args) => Some(&args.out),
+        Command::AnnotationLibrary(args) => args.output_path(),
+        Command::PlanSet(args) => args.output_path(),
+        Command::PlanLinks(args) => args.output_path(),
+        Command::Count(args) => Some(&args.out),
+        Command::AnnotationFields(args) => Some(&args.out),
+        Command::AnnotationRegister(args) => args.out.as_deref(),
+        Command::SetPageCalibration(args) => Some(&args.out),
+        Command::RemovePageCalibration(args) => Some(&args.out),
+        Command::EditMeasurement(args) => Some(&args.out),
+        Command::DimensionedRectangle(args) => Some(&args.out),
+        Command::SetMeasurementViewports(args) => Some(&args.out),
+        Command::ClearMeasurementViewports(args) => Some(&args.out),
+        Command::RecalibrateMeasurements(args) => args.out.as_deref(),
         Command::Merge { out, .. }
         | Command::BookmarkAdd { out, .. }
         | Command::BookmarkRename { out, .. }
@@ -2487,12 +3075,17 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::BookmarkDelete { out, .. }
         | Command::OfficeToPdf { out, .. }
         | Command::ExportOffice { out, .. }
+        | Command::PrepareSignatureImage { out, .. }
         | Command::AddFormField { out, .. }
         | Command::Ocr { out, .. }
         | Command::Sign { out, .. }
         | Command::Extract { out, .. }
         | Command::Rotate { out, .. }
         | Command::Stamp { out, .. }
+        | Command::ImageWatermark { out, .. }
+        | Command::ImageStamp { out, .. }
+        | Command::Measure { out, .. }
+        | Command::HeadersFooters { out, .. }
         | Command::PageNumbers { out, .. }
         | Command::SetPageLabels { out, .. }
         | Command::ResetPageLabels { out, .. }
@@ -2508,6 +3101,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         | Command::Optimize { out, .. }
         | Command::CompressImages { out, .. }
         | Command::AddText { out, .. }
+        | Command::ReorderObjects { out, .. }
         | Command::SetOpacity { out, .. }
         | Command::RotateObject { out, .. }
         | Command::RotateObjects { out, .. }
@@ -2695,11 +3289,39 @@ fn main() -> ExitCode {
 }
 
 fn cli_main() -> ExitCode {
-    match run(Cli::parse()) {
+    let cli = Cli::parse();
+    let signature_check = matches!(&cli.command, Command::Signatures { .. });
+    let local_review_check = matches!(
+        &cli.command,
+        Command::SearchFiles { .. } | Command::Compare { .. } | Command::Inspect { .. }
+    ) || matches!(&cli.command, Command::PlanSet(args) if args.is_inspection())
+        || matches!(&cli.command, Command::PlanLinks(args) if args.is_inspection())
+        || matches!(
+            &cli.command,
+            Command::RevisionTransfer(..)
+                | Command::RevisionOutlines(..)
+                | Command::PlanZones(..)
+                | Command::VisualSearch(..)
+                | Command::RegionFill(..)
+                | Command::IssueReport(..)
+                | Command::QuantityWorkbook(..)
+                | Command::AnnotationRegister(..)
+                | Command::QuantityTable(..)
+        );
+    match run(cli) {
         Ok(serde_json::Value::Null) => ExitCode::SUCCESS,
         Ok(value) => {
-            println!("{}", serde_json::to_string_pretty(&value).expect("json"));
-            ExitCode::SUCCESS
+            println!(
+                "{}",
+                safe_output::escape_c1(&serde_json::to_string_pretty(&value).expect("json"))
+            );
+            if (signature_check && value["verification_failed"] == true)
+                || (local_review_check && value["complete"] == false)
+            {
+                ExitCode::from(2)
+            } else {
+                ExitCode::SUCCESS
+            }
         }
         Err(e) => {
             // Numéros de page affichés en base 1, comme à la saisie.
@@ -2711,7 +3333,9 @@ fn cli_main() -> ExitCode {
             };
             eprintln!(
                 "{}",
-                serde_json::json!({ "error": e.code(), "message": message })
+                safe_output::escape_c1(
+                    &serde_json::json!({ "error": e.code(), "message": message }).to_string()
+                )
             );
             ExitCode::from(match e {
                 EngineError::PasswordRequired => 3,
@@ -2728,7 +3352,10 @@ fn cli_main() -> ExitCode {
 mod tests {
     use super::*;
 
-    fn parse_cli<const N: usize>(args: [&'static str; N]) -> Result<Cli, clap::Error> {
+    pub(crate) fn parse_cli(
+        args: impl IntoIterator<Item = &'static str>,
+    ) -> Result<Cli, clap::Error> {
+        let args: Vec<_> = args.into_iter().collect();
         // Debug clap parsing needs the same stack allocation as the production CLI thread.
         std::thread::Builder::new()
             .stack_size(16 * 1024 * 1024)
@@ -3003,8 +3630,466 @@ mod tests {
     }
 
     #[test]
+    fn image_stamp_command_keeps_common_password_and_output_flags() {
+        let cli = parse_cli([
+            "sunipdf-cli",
+            "image-stamp",
+            "input.pdf",
+            "--image",
+            "chosen image.png",
+            "--rect",
+            "40,40,240,240",
+            "--opacity",
+            "0.5",
+            "--password-env",
+            "SUNIPDF_STAMP_PASSWORD",
+            "--out",
+            "new copy.pdf",
+            "--overwrite",
+        ])
+        .unwrap();
+        assert!(cli.overwrite);
+        assert_eq!(
+            output_path(&cli.command),
+            Some(std::path::Path::new("new copy.pdf"))
+        );
+        assert!(
+            matches!(cli.command, Command::ImageStamp { page:1, opacity, image, password:None, .. } if opacity==0.5 && image==std::path::Path::new("chosen image.png"))
+        );
+    }
+
+    #[test]
+    fn dimensioned_rectangle_requires_one_scale_and_a_new_output() {
+        let base = [
+            "sunipdf-cli",
+            "dimensioned-rectangle",
+            "source.pdf",
+            "--anchor",
+            "40,80",
+            "--width",
+            "2",
+            "--height",
+            "3",
+            "--out",
+            "new.pdf",
+        ];
+        assert!(parse_cli(base).is_err());
+        for selection in [
+            vec!["--calibration", "40,40 140,40", "--known-distance", "1"],
+            vec![
+                "--calibration",
+                "40,40 140,40",
+                "--known-distance",
+                "100",
+                "--calibration-unit",
+                "cm",
+            ],
+            vec!["--use-page-calibration"],
+            vec!["--region", "detail-a"],
+            vec!["--automatic-scale"],
+        ] {
+            let cli = parse_cli(base.into_iter().chain(selection)).unwrap();
+            assert_eq!(
+                output_path(&cli.command),
+                Some(std::path::Path::new("new.pdf"))
+            );
+            assert!(matches!(
+                cli.command,
+                Command::DimensionedRectangle(dimensioned_shape_cmd::RectangleArgs {
+                    page: 1,
+                    precision: 2,
+                    ..
+                })
+            ));
+        }
+        for invalid in [
+            vec!["--calibration", "40,40 140,40"],
+            vec!["--known-distance", "1", "--use-page-calibration"],
+            vec!["--known-distance", "1", "--region", "detail-a"],
+            vec!["--known-distance", "1", "--automatic-scale"],
+            vec!["--calibration-unit", "cm", "--use-page-calibration"],
+            vec!["--calibration-unit", "cm", "--region", "detail-a"],
+            vec!["--calibration-unit", "cm", "--automatic-scale"],
+            vec!["--use-page-calibration", "--region", "detail-a"],
+            vec!["--automatic-scale", "--region", "detail-a"],
+            vec!["--automatic-scale", "--use-page-calibration"],
+            vec![
+                "--automatic-scale",
+                "--calibration",
+                "40,40 140,40",
+                "--known-distance",
+                "1",
+            ],
+            vec!["--use-page-calibration", "--precision", "5"],
+        ] {
+            assert!(
+                parse_cli(base.into_iter().chain(invalid.iter().copied())).is_err(),
+                "unexpectedly accepted incompatible rectangle arguments: {invalid:?}"
+            );
+        }
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "dimensioned-rectangle",
+            "source.pdf",
+            "--anchor",
+            "40,80",
+            "--width",
+            "2",
+            "--height",
+            "3",
+            "--use-page-calibration",
+        ])
+        .is_err());
+    }
+
+    #[test]
+    fn measurement_commands_require_explicit_geometry_calibration_and_guard_output() {
+        let cli = parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "area",
+            "--points",
+            "40,70 140,70 140,120 40,120",
+            "--calibration",
+            "40,40 140,40",
+            "--known-distance",
+            "10",
+            "--unit",
+            "m",
+            "--out",
+            "new.pdf",
+            "--password-env",
+            "PDF_CREDENTIAL",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&cli.command),
+            Some(std::path::Path::new("new.pdf"))
+        );
+        assert!(matches!(
+            cli.command,
+            Command::Measure {
+                page: 1,
+                precision: 2,
+                ..
+            }
+        ));
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "measurements",
+            "source.pdf",
+            "--password-stdin"
+        ])
+        .is_ok());
+        assert!(parse_cli(["sunipdf-cli", "measure", "source.pdf", "--out", "new.pdf"]).is_err());
+    }
+
+    #[test]
+    fn volume_flags_require_an_explicit_depth_unit_and_keep_holes_distinct() {
+        let creation = [
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "volume",
+            "--points",
+            "40,80 140,80 140,180 40,180",
+            "--use-page-calibration",
+            "--out",
+            "new.pdf",
+        ];
+        let parsed = parse_cli(creation.into_iter().chain([
+            "--hole",
+            "60,100 70,100 70,120 60,120",
+            "--hole",
+            "100,100 110,100 110,120 100,120",
+            "--depth",
+            "20",
+            "--depth-unit",
+            "cm",
+        ]))
+        .unwrap();
+        assert!(
+            matches!(parsed.command, Command::Measure {holes, depth: Some(depth), depth_unit: Some(unit), ..} if holes.len() == 2 && depth == 20.0 && unit == "cm")
+        );
+        for flags in [vec!["--depth", "20"], vec!["--depth-unit", "cm"]] {
+            assert!(parse_cli(creation.into_iter().chain(flags)).is_err());
+        }
+        let editing = [
+            "sunipdf-cli",
+            "edit-measurement",
+            "source.pdf",
+            "--page",
+            "1",
+            "--index",
+            "0",
+            "--expected-record",
+            "expected.json",
+            "--out",
+            "new.pdf",
+        ];
+        for flags in [
+            vec!["--hole", "60,100 80,100 80,150 60,150"],
+            vec!["--clear-holes"],
+            vec!["--kind", "area", "--clear-depth"],
+        ] {
+            assert!(parse_cli(editing.into_iter().chain(flags)).is_ok());
+        }
+        for flags in [
+            vec!["--hole", "60,100 80,100 80,150 60,150", "--clear-holes"],
+            vec!["--depth", "20"],
+            vec!["--depth-unit", "cm"],
+            vec!["--depth", "20", "--depth-unit", "cm", "--clear-depth"],
+        ] {
+            assert!(parse_cli(editing.into_iter().chain(flags)).is_err());
+        }
+    }
+
+    #[test]
+    fn measurement_edit_requires_an_expected_record_and_explicit_change() {
+        let edit = parse_cli([
+            "sunipdf-cli",
+            "edit-measurement",
+            "source.pdf",
+            "--page",
+            "1",
+            "--index",
+            "0",
+            "--expected-record",
+            "record.json",
+            "--unit",
+            "ft",
+            "--precision",
+            "3",
+            "--out",
+            "new.pdf",
+            "--password-stdin",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&edit.command),
+            Some(std::path::Path::new("new.pdf"))
+        );
+        assert!(matches!(
+            edit.command,
+            Command::EditMeasurement(measurement_cmd::EditArgs {
+                index: 0,
+                precision: Some(3),
+                ..
+            })
+        ));
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "edit-measurement",
+            "source.pdf",
+            "--page",
+            "1",
+            "--index",
+            "0",
+            "--expected-record",
+            "record.json",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "edit-measurement",
+            "source.pdf",
+            "--page",
+            "1",
+            "--index",
+            "0",
+            "--unit",
+            "ft",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "angle",
+            "--points",
+            "40,80 40,40 80,40",
+            "--out",
+            "new.pdf",
+        ])
+        .is_ok());
+    }
+
+    #[test]
+    fn page_calibration_commands_require_explicit_pages_and_new_copies() {
+        let read = parse_cli([
+            "sunipdf-cli",
+            "page-calibration",
+            "source.pdf",
+            "--password-stdin",
+        ])
+        .unwrap();
+        assert!(matches!(
+            read.command,
+            Command::PageCalibration(calibration_cmd::ReadArgs { page: None, .. })
+        ));
+        assert!(output_path(&read.command).is_none());
+        let set = parse_cli([
+            "sunipdf-cli",
+            "set-page-calibration",
+            "source.pdf",
+            "--page",
+            "2",
+            "--calibration",
+            "40,40 140,40",
+            "--known-distance",
+            "10",
+            "--unit",
+            "ft",
+            "--out",
+            "new.pdf",
+            "--password-env",
+            "PDF_CREDENTIAL",
+            "--overwrite",
+        ])
+        .unwrap();
+        assert!(set.overwrite);
+        assert_eq!(
+            output_path(&set.command),
+            Some(std::path::Path::new("new.pdf"))
+        );
+        assert!(matches!(
+            set.command,
+            Command::SetPageCalibration(calibration_cmd::SetArgs {
+                page: 2,
+                known_distance: 10.0,
+                ..
+            })
+        ));
+        let remove = parse_cli([
+            "sunipdf-cli",
+            "remove-page-calibration",
+            "source.pdf",
+            "--page",
+            "1",
+            "--out",
+            "new.pdf",
+            "--password-stdin",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&remove.command),
+            Some(std::path::Path::new("new.pdf"))
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "page-calibration",
+            "source.pdf",
+            "--page",
+            "0"
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "remove-page-calibration",
+            "source.pdf",
+            "--page",
+            "1"
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "set-page-calibration",
+            "source.pdf",
+            "--page",
+            "1",
+            "--calibration",
+            "40,40 140,40",
+            "--known-distance",
+            "NaN",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+    }
+
+    #[test]
+    fn measurement_saved_scale_is_explicit_and_conflicts_with_manual_calibration() {
+        let measured = parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "length",
+            "--points",
+            "40,60 140,60",
+            "--use-page-calibration",
+            "--unit",
+            "ft",
+            "--out",
+            "new.pdf",
+        ])
+        .unwrap();
+        assert!(matches!(
+            measured.command,
+            Command::Measure {
+                calibration: None,
+                known_distance: None,
+                use_page_calibration: true,
+                ..
+            }
+        ));
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "length",
+            "--points",
+            "40,60 140,60",
+            "--use-page-calibration",
+            "--known-distance",
+            "10",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "length",
+            "--points",
+            "40,60 140,60",
+            "--use-page-calibration",
+            "--calibration",
+            "40,40 140,40",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "measure",
+            "source.pdf",
+            "--kind",
+            "length",
+            "--points",
+            "40,60 140,60",
+            "--calibration",
+            "40,40 140,40",
+            "--out",
+            "new.pdf",
+        ])
+        .is_err());
+    }
+
+    #[test]
     fn stamp_help_preserves_literal_page_variables() {
-        for command in ["stamp", "page-numbers"] {
+        for command in ["stamp", "page-numbers", "headers-footers"] {
             for flag in ["-h", "--help"] {
                 let error = parse_cli(["sunipdf-cli", command, flag])
                     .err()
@@ -3024,6 +4109,82 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn count_register_commands_require_explicit_output_and_route_credentials_and_filters() {
+        let count = parse_cli([
+            "sunipdf-cli",
+            "count",
+            "plan.pdf",
+            "--group",
+            "Lights",
+            "--point",
+            "80,90",
+            "--out",
+            "copy.pdf",
+            "--password-env",
+            "TEST_PDF_CREDENTIAL",
+        ])
+        .unwrap();
+        assert!(
+            matches!(count.command,Command::Count(args) if args.group=="Lights" && args.size==18.0 && args.page==1)
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "count",
+            "plan.pdf",
+            "--group",
+            "Lights",
+            "--point",
+            "80,90"
+        ])
+        .is_err());
+        let report = parse_cli([
+            "sunipdf-cli",
+            "annotation-register",
+            "plan.pdf",
+            "--page",
+            "2",
+            "--query",
+            "A101",
+            "--count-group",
+            "Lights",
+            "--sort",
+            "count_group",
+            "--descending",
+            "--password-stdin",
+        ])
+        .unwrap();
+        assert!(
+            matches!(report.command,Command::AnnotationRegister(args) if args.page==Some(2) && args.query=="A101" && args.descending)
+        );
+        let fields = parse_cli([
+            "sunipdf-cli",
+            "annotation-fields",
+            "plan.pdf",
+            "--index",
+            "0",
+            "--field",
+            "Room=A101",
+            "--count-group",
+            "Sockets",
+            "--out",
+            "copy.pdf",
+        ])
+        .unwrap();
+        assert_eq!(
+            output_path(&fields.command),
+            Some(std::path::Path::new("copy.pdf"))
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "annotation-register",
+            "plan.pdf",
+            "--sort",
+            "arbitrary"
+        ])
+        .is_err());
     }
 
     #[test]
@@ -3446,5 +4607,72 @@ mod tests {
             Some(PathBuf::from("o.pdf"))
         );
         assert!(parse_cli(["sunipdf-cli", "add-image", "a.pdf", "--out", "o.pdf"]).is_err());
+    }
+
+    #[test]
+    fn image_watermark_cli_participates_in_password_and_output_guards() {
+        let cli = parse_cli([
+            "sunipdf-cli",
+            "--password-env",
+            "TEST_PDF_PASSWORD",
+            "image-watermark",
+            "source.pdf",
+            "--image",
+            "logo.png",
+            "--width-percent",
+            "42",
+            "--angle",
+            "-45",
+            "--out",
+            "copy.pdf",
+        ])
+        .unwrap();
+        assert!(
+            matches!(&cli.command,Command::ImageWatermark {width_percent,angle,..} if *width_percent==42.0 && *angle== -45.0)
+        );
+        assert_eq!(
+            output_path(&cli.command),
+            Some(std::path::Path::new("copy.pdf"))
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "image-watermark",
+            "source.pdf",
+            "--out",
+            "copy.pdf"
+        ])
+        .is_err());
+    }
+
+    #[test]
+    fn header_footer_cli_parses_zones_and_participates_in_output_guard() {
+        let cli = parse_cli([
+            "sunipdf-cli",
+            "headers-footers",
+            "input.pdf",
+            "--header-left",
+            "Report",
+            "--footer-center",
+            "{n} / {total}",
+            "--password-stdin",
+            "--out",
+            "copy.pdf",
+        ])
+        .unwrap();
+        assert!(
+            matches!(&cli.command,Command::HeadersFooters {header_left, footer_center, ..} if header_left=="Report" && footer_center=="{n} / {total}")
+        );
+        assert_eq!(
+            output_path(&cli.command),
+            Some(std::path::Path::new("copy.pdf"))
+        );
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "headers-footers",
+            "input.pdf",
+            "--header-left",
+            "Report"
+        ])
+        .is_err());
     }
 }

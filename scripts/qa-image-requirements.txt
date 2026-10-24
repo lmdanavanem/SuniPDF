@@ -1,0 +1,12 @@
+# Test-only Pillow wheels from https://pypi.org/pypi/pillow/13.0.0/json
+# Reviewed Windows x64 wheels; no source build or unpinned dependency.
+Pillow==13.0.0 \
+    --hash=sha256:d7710eb676e9bb68965cb045be0d333b4c0d7f9dfbaa7fbf121385b1588683d3 \
+    --hash=sha256:ff3fe9eb621fbb9db4c4be33ab946f6bac5f98ab50ca8d3260503653656c961b \
+    --hash=sha256:9dda0788a9932776a75d8bcc020076edc308ce2508b51f6739a45e3158b3fc42 \
+    --hash=sha256:9a635068d9793c7f0d929f39f18b58f1bd86c236e8e7b64167b86af9232ebca0 \
+    --hash=sha256:f7cbb7a64e7ec664775195e4f81923bc8a93d9451b963f844e59118f63147a7a \
+    --hash=sha256:adb3c2124c68e480f4632d06cb7caa3b48a51678475f483b4edb1c6dee29ea43 \
+    --hash=sha256:d4737f50d23ddd11d6685faacbb9252887dde0bc7997127757247983d74399d6 \
+    --hash=sha256:73ee25cf8cf8b75d5a5aeed7cb6588f5e5dbfbb0fde51707b630bbb23897645c \
+    --hash=sha256:567f20f1c75897d7663830da6ea8af719e03d712b1d9ee7f813319f9ece42e5a

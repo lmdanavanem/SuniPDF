@@ -22,7 +22,7 @@ licenses="$app/Contents/Resources/licenses"
 cp LICENSE-MIT LICENSE-APACHE "$licenses/"
 cp "third_party/pdfium/mac-$arch/LICENSE" "$licenses/pdfium-binaries-MIT.txt"
 cp -R "third_party/pdfium/mac-$arch/licenses" "$licenses/pdfium"
-cp assets/fonts/LICENSE-FluentSystemIcons.txt "$licenses/"
+cp assets/fonts/FluentSystemIcons-MIT.txt "$licenses/"
 
 iconset=$(mktemp -d)/SuniPDF.iconset
 mkdir -p "$iconset"
