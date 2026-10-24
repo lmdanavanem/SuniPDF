@@ -31,6 +31,7 @@ mod ocr;
 mod office;
 mod organize;
 mod pagesetup;
+mod plan_links_ui;
 mod plan_sets;
 mod printing;
 mod processing;

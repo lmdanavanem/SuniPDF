@@ -103,6 +103,7 @@ pub struct SuniApp {
     pub review: crate::local_review::ReviewState,
     pub overlay: crate::revision_overlay::OverlayState,
     pub plan_sets: crate::plan_sets::PlanSetState,
+    pub plan_links: crate::plan_links_ui::PlanLinksState,
     pub processing: crate::processing::ProcessingState,
     pub office: crate::office::OfficeState,
     pub reading_full_screen: bool,
@@ -193,6 +194,7 @@ impl SuniApp {
             review: Default::default(),
             overlay: Default::default(),
             plan_sets: Default::default(),
+            plan_links: Default::default(),
             reading_full_screen: false,
             recovery,
             printing: Default::default(),
@@ -527,6 +529,9 @@ impl SuniApp {
                 Response::LocalReviewDone(result) => self.on_local_review(ctx, result),
                 Response::RevisionOverlayDone { generation, result } => {
                     self.on_revision_overlay(ctx, generation, result);
+                }
+                Response::PlanLinksDone { generation, result } => {
+                    self.on_plan_links(ctx, generation, result);
                 }
                 Response::PlanSetDone { generation, result } => {
                     self.on_plan_set_result(ctx, generation, result);
@@ -1397,7 +1402,9 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.plan_sets.open
+        self.plan_links.open
+            || self.plan_links.busy()
+            || self.plan_sets.open
             || self.plan_sets.busy()
             || self.overlay.open
             || self.library.blocks_document()
@@ -1745,7 +1752,9 @@ impl SuniApp {
     /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
-        self.plan_sets.open
+        self.plan_links.open
+            || self.plan_links.busy()
+            || self.plan_sets.open
             || self.plan_sets.busy()
             || self.library.open
             || self.review.open
@@ -1829,6 +1838,9 @@ impl SuniApp {
         {
             return;
         }
+        if command == Command::Quit && self.guard_plan_links_quit() {
+            return;
+        }
         if command == Command::Quit && self.guard_plan_set_quit() {
             return;
         }
@@ -1892,6 +1904,7 @@ impl SuniApp {
         }
         match command {
             Command::PlanSets => self.open_plan_sets(),
+            Command::PlanLinks => self.open_plan_links(),
             Command::CompareFiles => self.open_local_review(true),
             Command::RevisionOverlay => self.open_revision_overlay(),
             Command::SearchFiles => self.open_local_review(false),
@@ -3374,6 +3387,7 @@ impl SuniApp {
         self.feature_dialogs(&ctx);
         self.revision_overlay_dialog(&ctx);
         self.plan_sets_dialog(&ctx);
+        self.plan_links_dialog(&ctx);
         self.autosave_tick();
         self.split_dialog(&ctx);
         self.flatten_dialog(&ctx);
@@ -3484,6 +3498,7 @@ pub(crate) mod tests {
             review: Default::default(),
             overlay: Default::default(),
             plan_sets: Default::default(),
+            plan_links: Default::default(),
             reading_full_screen: false,
             recovery: Default::default(),
             printing: Default::default(),

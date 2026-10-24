@@ -4,6 +4,7 @@
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
     PlanSets,
+    PlanLinks,
     CompareFiles,
     RevisionOverlay,
     SearchFiles,
@@ -194,6 +195,14 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        PlanLinks,
+        "file.plan_links",
+        "plan_links.title",
+        None,
+        false,
+        File
+    ),
     cmd!(
         PlanSets,
         "file.plan_sets",

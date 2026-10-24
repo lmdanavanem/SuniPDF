@@ -50,6 +50,7 @@ mod page_calibration;
 pub mod page_labels;
 pub mod pages;
 pub mod paragraph;
+pub mod plan_links;
 pub mod plan_set;
 pub mod quantity_table;
 pub mod redact;

@@ -86,7 +86,9 @@ pub enum LinkTarget {
     /// Explicit target-page display coordinates and viewport retention semantics.
     Destination(crate::Destination),
     Uri(String),
-    /// Unsupported action (launch, JavaScript, remote destination): never executed.
+    /// An inert local-file reference. Resolve only through an explicitly selected plan set.
+    RemotePage(crate::plan_links::RemotePageTarget),
+    /// Unsupported action (launch, JavaScript, unrecognized remote destination): never executed.
     Unsupported,
 }
 
@@ -598,6 +600,7 @@ fn write_link_target(
             ("A", Object::Dictionary(action))
         }
         LinkTarget::Uri(_) => return Err(EngineError::Other("unsafe uri".into())),
+        LinkTarget::RemotePage(target) => ("A", crate::plan_links::remote_action(target)?),
         LinkTarget::Unsupported => {
             return Err(EngineError::Other("unsupported link target".into()))
         }
@@ -1481,6 +1484,40 @@ impl Document<'_> {
             dict.set("Border", nums(&[0.0, 0.0, 0.0]));
             write_link_target(pdf, &mut dict, target, target_geo)?;
             push_annotation(pdf, page, dict, None)
+        })
+    }
+
+    /// Applies one reviewed page batch with a single PDF rewrite.
+    pub(crate) fn add_plan_link_batch(
+        &mut self,
+        page_index: usize,
+        links: &[(PointRect, crate::plan_links::RemotePageTarget)],
+        cancel: &std::sync::atomic::AtomicBool,
+    ) -> Result<Vec<usize>, EngineError> {
+        if links.is_empty() || links.len() > crate::plan_links::MAX_OCCURRENCES {
+            return Err(EngineError::Other("invalid reviewed link batch".into()));
+        }
+        self.edit_annotation_pdf(page_index, |pdf, page, geo| {
+            let mut indices = Vec::with_capacity(links.len());
+            for (rect, target) in links {
+                if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                    return Err(EngineError::Cancelled);
+                }
+                if ![rect.left, rect.bottom, rect.right, rect.top]
+                    .into_iter()
+                    .all(f32::is_finite)
+                    || rect.right - rect.left < 2.0
+                    || rect.top - rect.bottom < 2.0
+                {
+                    return Err(EngineError::Other("invalid reviewed link rectangle".into()));
+                }
+                let mut dict = base_annotation("Link", None)?;
+                dict.set("Rect", rect_obj(geo.rect_to_user(*rect)));
+                dict.set("Border", nums(&[0.0, 0.0, 0.0]));
+                dict.set("A", crate::plan_links::remote_action(target)?);
+                indices.push(push_annotation(pdf, page, dict, None)?);
+            }
+            Ok(indices)
         })
     }
 

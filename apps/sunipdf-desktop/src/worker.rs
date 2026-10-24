@@ -600,6 +600,10 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    PlanLinks {
+        generation: u64,
+        job: crate::plan_links_ui::Job,
+    },
     PlanSet {
         generation: u64,
         job: crate::plan_sets::Job,
@@ -899,6 +903,10 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    PlanLinksDone {
+        generation: u64,
+        result: Result<crate::plan_links_ui::Outcome, EngineError>,
+    },
     PlanSetProgress {
         generation: u64,
         done: usize,
@@ -1474,7 +1482,7 @@ impl State<'_> {
                     _ => {
                         return Response::OperationFailed(EngineError::Other(
                             "rich annotation preview is stale; preview again".into(),
-                        ))
+                        ));
                     }
                 }
             }
@@ -2298,6 +2306,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         register: None,
         register_turn: false,
     };
+    let mut plan_links = crate::plan_links_ui::WorkerCache::default();
     let mut queue: VecDeque<Request> = VecDeque::new();
     let mut navigation_failed = false;
     loop {
@@ -2350,6 +2359,17 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             state.rectangle_calibration = None;
         }
         let response = match request {
+            Request::PlanLinks { generation, job } => {
+                let mut result = plan_links.run(&engine, job);
+                if let Ok(crate::plan_links_ui::Outcome::Navigate(navigation)) = &mut result {
+                    navigation.active_source = state
+                        .document
+                        .as_ref()
+                        .zip(state.signature_source.as_ref())
+                        .map(|(doc, source)| (doc.info().path.clone(), source.sha256_hex()));
+                }
+                Response::PlanLinksDone { generation, result }
+            }
             Request::PlanSet { generation, job } => {
                 let mut result = crate::plan_sets::run_job(&engine, job, |done, total| {
                     let _ = tx.send(Response::PlanSetProgress {
@@ -2395,7 +2415,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             | Request::ResumeDoc(_)
                 if navigation_failed =>
             {
-                continue
+                continue;
             }
             Request::SetRecovery(slot) => {
                 state.recovery = slot;
@@ -3582,6 +3602,7 @@ mod tests {
         revision_overlay_jobs_preserve_sources_and_guard_exports(&worker);
         quantity_fields_have_history_exports_and_guarded_desktop_controls(&worker);
         protected_plan_sets_use_one_operation_credentials_and_open_verified_bytes(&worker);
+        reviewed_plan_links_preview_both_pages_and_publish_only_fresh_copies(&worker);
         cooperative_search_and_register_publish_complete_generation_scoped_results(&worker);
     }
 
@@ -3690,6 +3711,324 @@ mod tests {
             std::fs::read(source).unwrap(),
             b"changed after the plan-set check"
         );
+    }
+
+    fn reviewed_plan_links_preview_both_pages_and_publish_only_fresh_copies(worker: &Worker) {
+        use crate::plan_links_ui::{Context, Job, Outcome};
+        use lopdf::{dictionary, Object, Stream};
+        use std::sync::atomic::AtomicBool;
+        use sunipdf_core::plan_links::{PlanLinkReview, PlanLinkScanRequest, PlanLinkSelection};
+
+        fn pdf(text: &str, width: i32, height: i32) -> Vec<u8> {
+            let mut pdf = lopdf::Document::with_version("1.7");
+            let pages = pdf.new_object_id();
+            let font = pdf.add_object(
+                dictionary! { "Type" => "Font", "Subtype" => "Type1", "BaseFont" => "Helvetica" },
+            );
+            let contents = pdf.add_object(Stream::new(
+                dictionary! {},
+                format!("BT /F1 12 Tf 30 120 Td ({text}) Tj ET").into_bytes(),
+            ));
+            let page = pdf.add_object(dictionary! { "Type" => "Page", "Parent" => pages, "MediaBox" => vec![0.into(),0.into(),width.into(),height.into()], "Resources" => dictionary! {"Font" => dictionary! {"F1" => font}}, "Contents" => contents });
+            pdf.objects.insert(pages, dictionary! { "Type" => "Pages", "Kids" => vec![Object::Reference(page)], "Count" => 1 }.into());
+            let catalog = pdf.add_object(dictionary! { "Type" => "Catalog", "Pages" => pages });
+            pdf.trailer.set("Root", catalog);
+            let mut bytes = Vec::new();
+            pdf.save_to(&mut bytes).unwrap();
+            bytes
+        }
+        fn run(worker: &Worker, generation: u64, job: Job) -> Result<Outcome, EngineError> {
+            worker.send(Request::PlanLinks { generation, job });
+            match next_response(worker) {
+                Response::PlanLinksDone {
+                    generation: actual,
+                    result,
+                } => {
+                    assert_eq!(actual, generation);
+                    result
+                }
+                _ => panic!("unexpected plan-link response"),
+            }
+        }
+        let cancel = || Arc::new(AtomicBool::new(false));
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("index.pdf");
+        let target = dir.path().join("floor.pdf");
+        let output = dir.path().join("linked.pdf");
+        let manifest = dir.path().join("set.json");
+        let source_bytes = pdf("A-10 A-101 A-10", 600, 300);
+        let target_bytes = pdf("Destination drawing", 300, 600);
+        std::fs::write(&source, &source_bytes).unwrap();
+        std::fs::write(&target, &target_bytes).unwrap();
+        worker.send(Request::PlanSet {
+            generation: 801,
+            job: crate::plan_sets::Job::Add {
+                set: sunipdf_core::plan_set::PlanSet::new("Reviewed links").unwrap(),
+                path: manifest.clone(),
+                sources: vec![source.clone(), target.clone()],
+                password: None,
+                cancel: cancel(),
+            },
+        });
+        let mut set = loop {
+            match next_response(worker) {
+                Response::PlanSetProgress {
+                    generation: 801, ..
+                } => {}
+                Response::PlanSetDone {
+                    generation: 801,
+                    result: Ok(crate::plan_sets::Outcome::Changed { set, report }),
+                } => {
+                    assert!(report.complete());
+                    break set;
+                }
+                _ => panic!("expected indexed test PDFs"),
+            }
+        };
+        let source_id = set
+            .files
+            .iter()
+            .find(|f| f.path == "index.pdf")
+            .unwrap()
+            .id
+            .clone();
+        let target_id = set
+            .files
+            .iter()
+            .find(|f| f.path == "floor.pdf")
+            .unwrap()
+            .id
+            .clone();
+        let sheet = set
+            .sheets
+            .iter_mut()
+            .find(|s| s.file_id == target_id)
+            .unwrap();
+        sheet.number = "A-10".into();
+        let target_sheet_id = sheet.id.clone();
+        sunipdf_core::plan_set::save_new(&set, &manifest, &manifest).unwrap();
+        let manifest_bytes = std::fs::read(&manifest).unwrap();
+        let context = Context {
+            path: manifest.clone(),
+            set,
+        };
+        let scan = PlanLinkScanRequest {
+            source_file_id: source_id,
+            pages: vec![1],
+            target_sheet_ids: vec![target_sheet_id],
+        };
+        let Outcome::Inspected(inspection) = run(
+            worker,
+            802,
+            Job::Inspect {
+                context: context.clone(),
+                scan: scan.clone(),
+                credentials: vec![],
+                cancel: cancel(),
+            },
+        )
+        .unwrap() else {
+            panic!("expected inspection")
+        };
+        assert_eq!(inspection.occurrences.len(), 2);
+        assert!(inspection.complete());
+        assert!(!output.exists());
+        let review = PlanLinkReview {
+            version: 1,
+            manifest_sha256: inspection.manifest_sha256.clone(),
+            source_sha256: inspection.source_sha256.clone(),
+            scan,
+            selections: inspection
+                .occurrences
+                .iter()
+                .map(|o| PlanLinkSelection {
+                    occurrence_id: o.id.clone(),
+                    fingerprint: o.fingerprint.clone(),
+                    target_sheet_id: o.target_sheet_ids[0].clone(),
+                    confirmed: true,
+                })
+                .collect(),
+        };
+        let prepare = || Job::Prepare {
+            context: context.clone(),
+            review: review.clone(),
+            credentials: vec![],
+            cancel: cancel(),
+        };
+        let Outcome::Prepared {
+            token,
+            report,
+            preview,
+        } = run(worker, 803, prepare()).unwrap()
+        else {
+            panic!("expected prepared preview")
+        };
+        assert_eq!(report.created.len(), 2);
+        assert!(preview.image.width > preview.image.height);
+        assert!(preview.image.rgba.chunks_exact(4).any(|p| p[0] < 150));
+        let Outcome::Preview {
+            target: is_target,
+            preview: destination,
+            ..
+        } = run(
+            worker,
+            804,
+            Job::Target {
+                token,
+                index: 0,
+                credentials: vec![],
+                cancel: cancel(),
+            },
+        )
+        .unwrap()
+        else {
+            panic!("expected actual destination image")
+        };
+        assert!(is_target);
+        assert!(destination.image.height > destination.image.width);
+        assert_ne!(preview.image.rgba, destination.image.rgba);
+        assert!(!output.exists());
+        let Outcome::Saved(receipt) = run(
+            worker,
+            805,
+            Job::Save {
+                token,
+                output: output.clone(),
+                cancel: cancel(),
+            },
+        )
+        .unwrap() else {
+            panic!("expected saved copy")
+        };
+        assert_eq!(receipt.report.output_sha256, report.output_sha256);
+        assert_eq!(std::fs::read(&source).unwrap(), source_bytes);
+        assert_eq!(std::fs::read(&target).unwrap(), target_bytes);
+        assert_eq!(std::fs::read(&manifest).unwrap(), manifest_bytes);
+        assert!(
+            run(
+                worker,
+                806,
+                Job::Preview {
+                    token,
+                    page: 1,
+                    credentials: vec![],
+                    cancel: cancel()
+                }
+            )
+            .is_err(),
+            "saved candidates expire"
+        );
+
+        worker.send(Request::Open {
+            path: output.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Links { page: 0 });
+        let Response::Links { list, .. } = next_response(worker) else {
+            panic!("expected reopened links")
+        };
+        assert_eq!(list.len(), 2);
+        assert!(list
+            .iter()
+            .all(|l| matches!(l.target, LinkTarget::RemotePage(_))));
+        let remote = report.created[0].target.clone();
+        let Outcome::Navigate(navigation) = run(
+            worker,
+            807,
+            Job::Navigate {
+                context: context.clone(),
+                source: output.clone(),
+                target: remote.clone(),
+                credentials: vec![],
+                cancel: cancel(),
+            },
+        )
+        .unwrap() else {
+            panic!("expected verified navigation")
+        };
+        assert_eq!(navigation.sheet.bytes, target_bytes);
+        assert_eq!(navigation.sheet.page, 1);
+        assert!(navigation.active_source.is_some());
+        worker.send(Request::OpenPlanSheet(navigation));
+        assert!(
+            matches!(next_response(worker), Response::Opened(doc) if doc.info.path == target.canonicalize().unwrap() && !doc.modified)
+        );
+
+        let Outcome::Prepared { token, .. } = run(worker, 808, prepare()).unwrap() else {
+            panic!("expected prepared preview")
+        };
+        let saved = std::fs::read(&output).unwrap();
+        assert!(run(
+            worker,
+            809,
+            Job::Save {
+                token,
+                output: output.clone(),
+                cancel: cancel()
+            }
+        )
+        .is_err());
+        assert_eq!(std::fs::read(&output).unwrap(), saved);
+        let Outcome::Prepared { token, .. } = run(worker, 810, prepare()).unwrap() else {
+            panic!("expected prepared preview")
+        };
+        std::fs::write(&target, pdf("Changed destination", 300, 600)).unwrap();
+        let refused = dir.path().join("stale.pdf");
+        assert!(run(
+            worker,
+            811,
+            Job::Target {
+                token,
+                index: 0,
+                credentials: vec![],
+                cancel: cancel()
+            }
+        )
+        .is_err());
+        assert!(run(
+            worker,
+            812,
+            Job::Save {
+                token,
+                output: refused.clone(),
+                cancel: cancel()
+            }
+        )
+        .is_err());
+        assert!(!refused.exists());
+        assert!(run(
+            worker,
+            813,
+            Job::Navigate {
+                context: context.clone(),
+                source: output.clone(),
+                target: remote,
+                credentials: vec![],
+                cancel: cancel()
+            }
+        )
+        .is_err());
+        std::fs::write(&target, &target_bytes).unwrap();
+        let Outcome::Prepared { token, .. } = run(worker, 814, prepare()).unwrap() else {
+            panic!("expected prepared preview")
+        };
+        assert!(matches!(
+            run(
+                worker,
+                815,
+                Job::Save {
+                    token,
+                    output: refused.clone(),
+                    cancel: Arc::new(AtomicBool::new(true))
+                }
+            ),
+            Err(EngineError::Cancelled)
+        ));
+        assert!(!refused.exists());
+        assert_eq!(std::fs::read(&source).unwrap(), source_bytes);
+        assert_eq!(std::fs::read(&manifest).unwrap(), manifest_bytes);
+        assert!(!worker.has_pending_mutations());
     }
 
     fn cooperative_search_and_register_publish_complete_generation_scoped_results(worker: &Worker) {

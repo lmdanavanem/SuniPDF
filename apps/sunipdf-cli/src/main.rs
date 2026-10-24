@@ -11,6 +11,7 @@ mod measurement_workspace_cmd;
 mod output;
 mod overlay_cmd;
 mod password_input;
+mod plan_links_cmd;
 mod plan_set_cmd;
 mod quantity_cmd;
 mod register_cmd;
@@ -58,6 +59,8 @@ enum Command {
     AnnotationLibrary(library_cmd::LibraryArgs),
     /// Manage explicit local PDF references and indexed sheet metadata without modifying PDFs.
     PlanSet(plan_set_cmd::PlanSetArgs),
+    /// Inspect and create reviewed links between explicitly indexed local plan sheets.
+    PlanLinks(plan_links_cmd::PlanLinksArgs),
     /// Place one persistent manual count marker in a new PDF copy.
     Count(register_cmd::CountArgs),
     /// Filter/export the document's markup register and count totals, without editing the PDF.
@@ -1286,6 +1289,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
     match &cli.command {
         Command::AnnotationLibrary(args) => return library_cmd::run(args),
         Command::PlanSet(args) => return plan_set_cmd::run(args),
+        Command::PlanLinks(args) => return plan_links_cmd::run(args),
         Command::PrepareSignatureImage {
             file,
             out,
@@ -1333,6 +1337,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         Command::Commands
         | Command::AnnotationLibrary(..)
         | Command::PlanSet(..)
+        | Command::PlanLinks(..)
         | Command::PrepareSignatureImage { .. }
         | Command::Inspect { .. }
         | Command::Fonts { .. }
@@ -3016,6 +3021,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::ClearQuantityFields(args) => Some(&args.out),
         Command::AnnotationLibrary(args) => args.output_path(),
         Command::PlanSet(args) => args.output_path(),
+        Command::PlanLinks(args) => args.output_path(),
         Command::Count(args) => Some(&args.out),
         Command::AnnotationFields(args) => Some(&args.out),
         Command::AnnotationRegister(args) => args.out.as_deref(),
@@ -3253,7 +3259,8 @@ fn cli_main() -> ExitCode {
     let local_review_check = matches!(
         &cli.command,
         Command::SearchFiles { .. } | Command::Compare { .. } | Command::Inspect { .. }
-    ) || matches!(&cli.command, Command::PlanSet(args) if args.is_inspection());
+    ) || matches!(&cli.command, Command::PlanSet(args) if args.is_inspection())
+        || matches!(&cli.command, Command::PlanLinks(args) if args.is_inspection());
     match run(cli) {
         Ok(serde_json::Value::Null) => ExitCode::SUCCESS,
         Ok(value) => {
