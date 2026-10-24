@@ -2,22 +2,19 @@
 
 ## Next development
 
-The 0.73 candidate implements multi-source plan-link batches (AEC-017) and clearer Linux window
-controls. Qualification is in progress. Next development priority: independent synchronized reader views.
-Implementation, source validation, package qualification and native interaction remain separate scopes.
+Priority: independent synchronized reader views. Native plan-link interaction and broader drawing/
+interoperability qualification remain open. Implementation and complete acceptance are tracked separately.
 
 ## Published scope
 
-Updated 2026-10-24T15:11:57.923546Z. [0.72.0](RELEASE_0.72.0.md) adds reviewed region-fill areas: explicit seeds and
-manual closures, actual contours with holes, calibrated previews and complete-only creation with one Undo.
-Published stable with [qualification evidence](qa/RELEASE_0.72.0.json). AEC-012 remains **In progress** pending native interaction and broader
-drawing/interoperability qualification. Resolution, threshold and printed content affect the inferred
-boundary; no physical accuracy is claimed. [Workflow and limits](REGION_FILL.md).
+Updated 2026-10-24T17:32:54.306206Z. [0.73.0](RELEASE_0.73.0.md) adds reviewed multi-source plan-link batches and clearer
+Linux window controls. Published stable with [qualification evidence](qa/RELEASE_0.73.0.json). AEC-017 remains **In progress**.
+Window controls passed native interaction and image review on Ubuntu 22.04 and 24.04 under X11/Openbox/Xvfb with software rendering in the light theme. Dark-theme appearance, Wayland, physical GPUs and Windows interaction were not exercised. This does not qualify the plan-link interface's native workflow.
 
-[0.71.0](RELEASE_0.71.0.md) retains [Find symbols](VISUAL_SEARCH.md) and reviewed count-marker batches.
-AEC-011 remains **In progress** for its outstanding qualification; its historical evidence is separate.
-[0.70.0](RELEASE_0.70.0.md) added declared numeric-field units and explicit workbook field history;
-its [evidence](qa/RELEASE_0.70.0.json) remains separate.
+[0.72 region fill](REGION_FILL.md) and [0.71 Find symbols](VISUAL_SEARCH.md) retain their open native
+and broader-drawing criteria; AEC-012 and AEC-011 remain **In progress**. Their evidence stays with
+[0.72](RELEASE_0.72.0.md) and [0.71](RELEASE_0.71.0.md). [0.70](RELEASE_0.70.0.md) retains declared
+numeric-field units and explicit workbook field history.
 
 AEC-007 remains **In progress**: exact units and bounded geometric formulas are implemented, while native interaction and broader qualification remain open. AEC-018 and AEC-019 also retain their open criteria. Currency exchange, taxes, mass/density and broader estimating workflows remain extensions.
 

@@ -1,8 +1,17 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.72 release scope](RELEASE_0.72.0.md) · Published as a stable release.
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.73 release scope](RELEASE_0.73.0.md) · Published as a stable release.
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
+
+## Published multi-source plan links
+
+AEC-017 remains **In progress**. [0.73.0](RELEASE_0.73.0.md) adds explicit reviews across several
+source PDFs, source/destination previews, all-output preflight and sequential new-copy saves.
+Per-file receipts remain after partial completion; original indexed PDFs remain the destinations.
+Published stable; verified 2026-10-24T17:32:54.306206Z. See [qualification evidence](qa/RELEASE_0.73.0.json) and [workflow limits](PLAN_LINKS.md).
+Native plan-link interaction and broader interoperability remain open. The qualified native Ubuntu
+window-control tests do not close these separate plan-workflow criteria.
 
 ## Published region fill
 
@@ -96,9 +105,8 @@ inspection passed 27 independent assertions. See [qualification limits](RELEASE_
 
 ## Retained from 0.67
 
-AEC-017 provides reviewed links from one indexed source PDF. The 0.73 candidate adds multi-source
-batches with explicit reviews, preflight of every output and retained partial receipts; qualification
-is in progress. AEC-014 provides classified raster proposals and reviewed outlines for one old/new page pair.
+The 0.67 increment provides reviewed links from one indexed source PDF (AEC-017).
+AEC-014 provides classified raster proposals and reviewed outlines for one old/new page pair.
 AEC-010 provides named rectangular zone hierarchies and shared annotation/quantity coverage. All
 three remain **In progress**, with native interaction and broader qualification still open.
 

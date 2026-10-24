@@ -5,14 +5,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+- Add a macOS Apple silicon package: `release.yml` builds `SuniPDF-<version>-macos-arm64.dmg` (desktop app, CLI, pinned PDFium and verified license inventory, ad hoc signed, not notarized), checked by mounting it, running the packaged CLI and starting the app; `scripts/package-macos.sh [--install]` builds it locally. Same interface with San Francisco text and the bundled icon font, native menu bar, PDFs opened from the Finder and an optional default-PDF-app entry; ⌘ and ⌃ stay distinct shortcut modifiers. Printing, certificate signatures, saved visual signatures, OCR, Office import and in-app updates remain unavailable on macOS ([limits](docs/MACOS.md)).
+
+Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.73.0] - 2026-10-24
+
 - Review links across up to 16 indexed source PDFs with explicit per-source destinations, output names and occurrence confirmations.
 - Preflight every batch output, create new copies sequentially and retain completed-file receipts after cancellation or partial failure.
 - Add batch inspection, previews and publication to the CLI while preserving single-source commands.
 - Replace Linux fallback window buttons with round, accessible controls for minimizing, maximizing/restoring and guarded closing; retain native move and resize gestures.
 - Correct the welcome and About descriptions to include Linux.
-- Add a macOS Apple silicon package: `release.yml` builds `SuniPDF-<version>-macos-arm64.dmg` (desktop app, CLI, pinned PDFium and verified license inventory, ad hoc signed, not notarized), checked by mounting it, running the packaged CLI and starting the app; `scripts/package-macos.sh [--install]` builds it locally. Same interface with San Francisco text and the bundled icon font, native menu bar, PDFs opened from the Finder and an optional default-PDF-app entry; ⌘ and ⌃ stay distinct shortcut modifiers. Printing, certificate signatures, saved visual signatures, OCR, Office import and in-app updates remain unavailable on macOS ([limits](docs/MACOS.md)).
 
-Further work remains in the [roadmap](docs/ROADMAP.md).
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.73.0). Source `ecb292f23cf360a2330879ddb6e5ceb4fa59024b`.
+Windows: 1,159 passed, 15 ignored; Linux: 1,140 passed, 10 ignored; zero failures. 9,827 assertions across 668 recorded commands in twelve downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.73.0.json).
+Native Ubuntu/X11 window controls passed. Native plan-link interaction and broader interoperability
+remain open; AEC-017 is **In progress**. [Release scope](docs/RELEASE_0.73.0.md).
 
 ## [0.72.0] - 2026-10-24
 
