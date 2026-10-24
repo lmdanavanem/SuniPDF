@@ -169,6 +169,78 @@ fn rectangle(
 }
 
 impl Document<'_> {
+    /// Resolve an existing current reference for an already reviewed polygon. The
+    /// outer ring must fit the selected region; automatic selection also rejects
+    /// enclosed or crossed regions. Page and Local are explicit overrides.
+    pub fn measurement_reference_for_geometry(
+        &self,
+        page: usize,
+        scale: &RectangleScale,
+        points: &[(f32, f32)],
+    ) -> Result<PageCalibration, EngineError> {
+        self.require_annotation_permission()?;
+        let geo = self.page_geometry(page)?;
+        let (width, height) = geo.display_size();
+        if points.is_empty()
+            || points.len() > crate::measurement::MAX_RING_VERTICES
+            || points.iter().any(|&(x, y)| {
+                !x.is_finite() || !y.is_finite() || x < 0.0 || y < 0.0 || x > width || y > height
+            })
+        {
+            return Err(invalid(
+                "reference requires bounded finite in-page geometry",
+            ));
+        }
+        let source = self.snapshot()?;
+        if source.len() > MAX_SOURCE_BYTES {
+            return Err(invalid("reference source exceeds 128 MiB"));
+        }
+        let pdf = security::load(&source, self.password())?;
+        let page_id = *pdf
+            .get_pages()
+            .get(&(page as u32 + 1))
+            .ok_or(EngineError::PageOutOfRange(page))?;
+        page_provenance(&pdf, page_id, &geo)?;
+        let page_scale = || {
+            self.page_calibration(page)?.ok_or_else(|| {
+                invalid("no saved page scale; calibrate the page or choose a reference")
+            })
+        };
+        let calibration = match scale {
+            RectangleScale::Local(reference) => {
+                if reference.page != page
+                    || !crate::annot_rich::same_document_for_local_reference(
+                        &reference.source,
+                        &source,
+                        self.password(),
+                    )?
+                {
+                    return Err(invalid(
+                        "local reference belongs to another page or document revision; recalibrate",
+                    ));
+                }
+                reference.calibration.clone()
+            }
+            RectangleScale::Page => page_scale()?,
+            RectangleScale::Region(id) => {
+                let regions = self.measurement_viewports(page)?;
+                select_viewport(&regions, points, Some(id))?
+                    .ok_or_else(|| invalid("selected region no longer exists"))?
+                    .calibration
+                    .clone()
+            }
+            RectangleScale::Automatic => {
+                let regions = self.measurement_viewports(page)?;
+                match select_viewport(&regions, points, None)? {
+                    Some(region) => region.calibration.clone(),
+                    None => page_scale()?,
+                }
+            }
+        };
+        calibration.validate_on_page(&geo)?;
+        Ok(calibration)
+    }
+
     /// Capture at the moment the user establishes a new local reference, not later at preview.
     /// Annotation-only edits may reuse it; page content, geometry, scale and protection changes
     /// require explicit recalibration. No PDF metadata is written.

@@ -2,6 +2,7 @@
 //! Même moteur que l'application de bureau : `sunipdf-core`.
 
 mod annot_cmd;
+mod boundary_fill_cmd;
 mod calibration_cmd;
 mod dimensioned_shape_cmd;
 mod feature_cmd;
@@ -53,6 +54,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Trace an enclosed region and create a calibrated area only after explicit review.
+    RegionFill(boundary_fill_cmd::RegionFillArgs),
     /// Find local visual symbol candidates and create counts only after explicit review.
     VisualSearch(visual_search_cmd::VisualSearchArgs),
     /// Prepare, preview and export source-bound issue reports with actual filtered quantities and legends.
@@ -1625,6 +1628,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         Command::RevisionOutlines(args) => revision_outlines_cmd::run(&engine, args),
         Command::PlanZones(args) => plan_zones_cmd::run(&engine, args),
         Command::VisualSearch(args) => visual_search_cmd::run(&engine, args),
+        Command::RegionFill(args) => boundary_fill_cmd::run(&engine, args),
         Command::IssueReport(args) => issue_report_cmd::run(&engine, args),
         Command::QuantityWorkbook(args) => quantity_workbook_cmd::run(&engine, args),
         Command::QuantityTable(args) => quantity_cmd::table(&engine, args),
@@ -3044,6 +3048,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::RevisionOutlines(args) => args.output_path(),
         Command::PlanZones(args) => args.output_path(),
         Command::VisualSearch(args) => args.output_path(),
+        Command::RegionFill(args) => args.output_path(),
         Command::IssueReport(args) => args.output_path(),
         Command::QuantityWorkbook(args) => args.output_path(),
         Command::QuantityTable(args) => args.report.out.as_deref(),
@@ -3297,6 +3302,7 @@ fn cli_main() -> ExitCode {
                 | Command::RevisionOutlines(..)
                 | Command::PlanZones(..)
                 | Command::VisualSearch(..)
+                | Command::RegionFill(..)
                 | Command::IssueReport(..)
                 | Command::QuantityWorkbook(..)
                 | Command::AnnotationRegister(..)

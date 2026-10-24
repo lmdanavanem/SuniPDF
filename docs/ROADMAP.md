@@ -1,15 +1,20 @@
 # Roadmap
 
-## Current development: visual symbol search
+## Current development: region fill
 
 The 0.71 development increment adds local template matching and explicitly reviewed
 count markers under AEC-011. Source, runtime and native qualification are recorded
 separately; the card is not complete merely because its implementation is present.
 See [the workflow](VISUAL_SEARCH.md).
 
-The next implementation priorities are boundary-based region filling (AEC-012),
-multi-source plan-link batches (AEC-017), and independent synchronized reader views.
-These remain planned work, with no publication date claimed.
+The 0.72 development increment implements boundary-based region filling (AEC-012):
+explicit seeds and closures, actual contours with holes, calibrated previews and
+complete-only area creation. Source, independent corpus and native qualification remain
+separate. See [the workflow and limits](REGION_FILL.md).
+
+The next implementation priorities are multi-source plan-link batches (AEC-017) and
+independent synchronized reader views. These remain planned work, with no publication
+date claimed.
 
 ## Published scope
 
