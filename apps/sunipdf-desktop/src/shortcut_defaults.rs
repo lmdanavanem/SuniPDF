@@ -1,6 +1,19 @@
 use egui::{Key, Modifiers};
 use sunipdf_core::Command;
 
+/// ⌘⌫ deletes the page on a Mac keyboard, which has no Delete key by default.
+const DELETE_PAGE_KEY: Key = if cfg!(target_os = "macos") {
+    Key::Backspace
+} else {
+    Key::Delete
+};
+/// ⌘Tab belongs to macOS; Control switches tabs there.
+const TAB_SWITCH: Modifiers = if cfg!(target_os = "macos") {
+    Modifiers::CTRL
+} else {
+    Modifiers::COMMAND
+};
+
 pub const DEFAULTS: &[(Modifiers, Key, Command)] = &[
     (Modifiers::COMMAND, Key::O, Command::OpenDocument),
     (Modifiers::COMMAND, Key::P, Command::PrintDocument),
@@ -36,7 +49,7 @@ pub const DEFAULTS: &[(Modifiers, Key, Command)] = &[
         Command::RotateCounterClockwise,
     ),
     (Modifiers::COMMAND, Key::R, Command::RotateClockwise),
-    (Modifiers::COMMAND, Key::Delete, Command::DeletePage),
+    (Modifiers::COMMAND, DELETE_PAGE_KEY, Command::DeletePage),
     (Modifiers::NONE, Key::F9, Command::ToggleTools),
     (Modifiers::NONE, Key::F8, Command::OrganizePages),
     (Modifiers::NONE, Key::F7, Command::ToggleComments),
@@ -86,9 +99,9 @@ pub const DEFAULTS: &[(Modifiers, Key, Command)] = &[
     ),
     (Modifiers::COMMAND, Key::K, Command::CommandPalette),
     (
-        Modifiers::COMMAND.plus(Modifiers::SHIFT),
+        TAB_SWITCH.plus(Modifiers::SHIFT),
         Key::Tab,
         Command::PrevTab,
     ),
-    (Modifiers::COMMAND, Key::Tab, Command::NextTab),
+    (TAB_SWITCH, Key::Tab, Command::NextTab),
 ];

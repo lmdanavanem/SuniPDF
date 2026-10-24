@@ -169,7 +169,7 @@ def rust_inventory(root, metadata, target_metadata, distribution='Windows'):
             'name': key[0], 'version': key[1], 'source': lock.get('source', 'workspace'),
             'archiveSha256': lock.get('checksum'), 'repository': package.get('repository'),
             'declaredLicense': license_expression, 'licenseFile': Path(package['license_file']).name if package.get('license_file') else None,
-            ('windowsNormalOrBuildTargets' if distribution == 'Windows' else 'linuxNormalOrBuildTargets'): selected_targets,
+            distribution.lower() + 'NormalOrBuildTargets': selected_targets,
             'texts': sorted(evidence, key=lambda item: (item['source'], item['textSha256'])),
             'unavailable': unavailable if unavailable else (None if evidence else 'No full license text in the resolved source'),
             'distributionChoice': override.get('distribution_choice') if override else None,
@@ -180,36 +180,64 @@ def rust_inventory(root, metadata, target_metadata, distribution='Windows'):
 
 LINUX_DOC = 'usr/share/doc/sunipdf'
 LINUX_INVENTORY = LINUX_DOC + '/licenses/dependency-inventory.json'
+# Installed payloads with notices next to the application. On macOS the code signature seals the
+# executables (signing rewrites them after the inventory), so only resources are recorded here.
+UNIX_PLATFORMS = {
+    'linux': {
+        'architecture': 'amd64', 'target': 'x86_64-unknown-linux-gnu', 'distribution': 'Linux',
+        'doc': LINUX_DOC, 'pdfium': 'third_party/pdfium/linux-x64', 'library': 'usr/lib/sunipdf/libpdfium.so',
+        'pinned': ('stage', 'usr/lib/sunipdf/libpdfium.so'),
+        'pdfiumSha256': 'f728930966f503652b92acc89b9374a2eeca00ce42e26dccd3e4b5c5161b2d64',
+        'unrecorded': ('DEBIAN/',),
+        'coverage': 'All locked source license terms, Linux normal/build membership, bundled PDFium and fonts; system dependencies are installed by apt, not bundled',
+        'system': ('tesseract-ocr', 'tesseract-ocr-eng', 'tesseract-ocr-fra'),
+    },
+    'macos': {
+        'architecture': 'arm64', 'target': 'aarch64-apple-darwin', 'distribution': 'macOS',
+        'doc': 'SuniPDF.app/Contents/Resources', 'pdfium': 'third_party/pdfium/mac-arm64',
+        'library': 'SuniPDF.app/Contents/MacOS/libpdfium.dylib',
+        'pinned': ('root', 'third_party/pdfium/mac-arm64/lib/libpdfium.dylib'),
+        'pdfiumSha256': '1bc45b15466b34cef96641ce25c77a876e70010c6b114f909dda2f5325fc5bd7',
+        'unrecorded': ('SuniPDF.app/Contents/MacOS/', 'SuniPDF.app/Contents/_CodeSignature/'),
+        'coverage': 'All locked source license terms, macOS normal/build membership, bundled PDFium and fonts; executables are sealed by the code signature',
+        'system': (),
+    },
+}
 
 
-def linux_payload(stage):
+def linux_payload(stage, platform='linux'):
+    config = UNIX_PLATFORMS[platform]
+    inventory_path = config['doc'] + '/' + INVENTORY
     files = {}
     for path in sorted(stage.rglob('*')):
         if path.is_symlink():
-            raise ValueError('Linked Linux package resource is not allowed')
+            raise ValueError('Linked ' + config['distribution'] + ' package resource is not allowed')
         if path.is_file():
             relative = path.relative_to(stage).as_posix()
-            if relative != LINUX_INVENTORY and not relative.startswith('DEBIAN/'):
+            if relative != inventory_path and not relative.startswith(config['unrecorded']):
                 files[relative] = {'sha256': digest(path.read_bytes()), 'bytes': path.stat().st_size}
     return files
 
 
-def verify_linux(stage):
-    inventory = read_json(stage / LINUX_INVENTORY)
-    if inventory.get('platform') != 'linux' or inventory.get('architecture') != 'amd64':
-        raise ValueError('Unexpected Linux inventory platform or architecture')
-    if linux_payload(stage) != inventory['payloadFiles']:
-        raise ValueError('Linux package payload or notice checksum differs')
+def verify_linux(stage, platform='linux'):
+    config = UNIX_PLATFORMS[platform]
+    inventory = read_json(stage / config['doc'] / INVENTORY)
+    if inventory.get('platform') != platform or inventory.get('architecture') != config['architecture']:
+        raise ValueError('Unexpected ' + config['distribution'] + ' inventory platform or architecture')
+    if linux_payload(stage, platform) != inventory['payloadFiles']:
+        raise ValueError(config['distribution'] + ' package payload or notice checksum differs')
     return inventory
 
 
-def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version, cargo_version):
-    packages, texts = rust_inventory(root, metadata, {'x86_64-unknown-linux-gnu': target_metadata}, 'Linux')
-    notices = stage / LINUX_DOC / 'licenses'
+def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version, cargo_version, platform='linux'):
+    config = UNIX_PLATFORMS[platform]
+    distribution = config['distribution']
+    packages, texts = rust_inventory(root, metadata, {config['target']: target_metadata}, distribution)
+    notices = stage / config['doc'] / 'licenses'
     notices.mkdir(parents=True, exist_ok=True)
     components = []
-    icon_font = portable_icon_inventory(root, stage, texts, LINUX_DOC + '/licenses')
-    report_fonts = report_font_inventory(root, stage, texts, LINUX_DOC + '/licenses')
+    icon_font = portable_icon_inventory(root, stage, texts, config['doc'] + '/licenses')
+    report_fonts = report_font_inventory(root, stage, texts, config['doc'] + '/licenses')
 
     def include(source, filename, component):
         destination = notices / filename
@@ -220,19 +248,20 @@ def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version
         texts.setdefault(text_id, {'text': content, 'sources': set()})['sources'].add(relative)
         component.setdefault('texts', []).append({'path': relative, 'textSha256': text_id})
 
-    pdfium_root = root / 'third_party/pdfium/linux-x64'
-    library = stage / 'usr/lib/sunipdf/libpdfium.so'
-    if digest(library.read_bytes()) != 'f728930966f503652b92acc89b9374a2eeca00ce42e26dccd3e4b5c5161b2d64':
-        raise ValueError('Linux PDFium binary differs from the pinned distribution')
+    pdfium_root = root / config['pdfium']
+    base, pinned = config['pinned']
+    library = (stage if base == 'stage' else root) / pinned
+    if digest(library.read_bytes()) != config['pdfiumSha256']:
+        raise ValueError(distribution + ' PDFium binary differs from the pinned distribution')
     if (pdfium_root / 'VERSION').read_text().splitlines() != ['MAJOR=151', 'MINOR=0', 'BUILD=7881', 'PATCH=0']:
-        raise ValueError('Unexpected Linux PDFium version')
+        raise ValueError('Unexpected ' + distribution + ' PDFium version')
     native = read_json(root / 'assets/licenses/native-components.json')['pdfium']
     originals = {path.name: path for path in (pdfium_root / 'licenses').iterdir() if path.is_file()}
     originals['pdfium-binaries-MIT.txt'] = pdfium_root / 'LICENSE'
     if set(originals) != {name for component in native['components'] for name in component['files']}:
-        raise ValueError('Linux PDFium legal notice set differs from the reviewed inventory')
+        raise ValueError(distribution + ' PDFium legal notice set differs from the reviewed inventory')
     for component in native['components']:
-        entry = dict(component, scope='usr/lib/sunipdf/libpdfium.so')
+        entry = dict(component, scope=config['library'])
         for filename in component['files']:
             include(originals[filename], filename, entry)
         components.append(entry)
@@ -247,13 +276,13 @@ def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version
         version = read_plain_text(version_file).strip()
         revision = re.search(r'^commit-hash: ([0-9a-f]{40})$', version, re.M)
         if not revision:
-            raise ValueError('Actual Linux toolchain revision is unavailable: ' + kind)
+            raise ValueError('Actual ' + distribution + ' toolchain revision is unavailable: ' + kind)
         entry = {'name': kind, 'revision': revision[1], 'scope': 'Rust standard library and build-tool notices; compiler tools are not shipped'}
         for relative, filename in legal_files:
             include(sysroot / relative, filename, entry)
         (notices / (kind.lower() + '-toolchain.txt')).write_text(version + '\n', encoding='utf-8')
         components.append(entry)
-    body = ('SuniPDF Linux locked-source license and notice texts\n\n'
+    body = ('SuniPDF ' + distribution + ' locked-source license and notice texts\n\n'
             'OR denotes alternatives; AND denotes cumulative terms. Original expressions and full terms are retained.\n'
             'Other-platform and build/development sources are included for completeness; target membership is recorded separately.\n\n')
     body += '\n'.join(f"{package['name']} {package['version']} | {package['declaredLicense']} | {package['source']}" for package in packages) + '\n'
@@ -261,17 +290,17 @@ def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version
         body += '\n' + '=' * 78 + '\nSHA256 (LF-normalized text): ' + text_id + '\n' + '\n'.join(sorted(entry['sources'])) + '\n\n' + entry['text'].rstrip('\n') + '\n'
     (notices / 'dependency-licenses.txt').write_text(body, encoding='utf-8', newline='\n')
     inventory = {
-        'schema': 1, 'platform': 'linux', 'architecture': 'amd64',
+        'schema': 1, 'platform': platform, 'architecture': config['architecture'],
         'cargoLockSha256': digest((root / 'Cargo.lock').read_bytes()),
-        'coverage': 'All locked source license terms, Linux normal/build membership, bundled PDFium and fonts; system dependencies are installed by apt, not bundled',
+        'coverage': config['coverage'],
         'rustPackages': packages, 'nativeAndPackagingComponents': components,
         'embeddedFontSources': font_inventory(metadata) + [icon_font] + report_fonts,
-        'systemDependencies': [{'name': name, 'bundled': False, 'noticePath': '/usr/share/doc/' + name + '/copyright'} for name in ('tesseract-ocr', 'tesseract-ocr-eng', 'tesseract-ocr-fra')],
+        'systemDependencies': [{'name': name, 'bundled': False, 'noticePath': '/usr/share/doc/' + name + '/copyright'} for name in config['system']],
         'texts': [{'sha256': key, 'sources': sorted(value['sources'])} for key, value in sorted(texts.items())],
-        'payloadFiles': linux_payload(stage),
+        'payloadFiles': linux_payload(stage, platform),
     }
-    (stage / LINUX_INVENTORY).write_text(json.dumps(inventory, indent=2, ensure_ascii=False) + '\n', encoding='utf-8', newline='\n')
-    return verify_linux(stage)
+    (stage / config['doc'] / INVENTORY).write_text(json.dumps(inventory, indent=2, ensure_ascii=False) + '\n', encoding='utf-8', newline='\n')
+    return verify_linux(stage, platform)
 
 
 def machine(path):
@@ -823,6 +852,7 @@ def main():
     parser.add_argument('--arch', choices=['x64', 'arm64'])
     parser.add_argument('--linux', action='store_true', help='Generate or verify the Ubuntu amd64 installed payload')
     parser.add_argument('--linux-metadata', type=Path, help='Locked Cargo metadata filtered to x86_64-unknown-linux-gnu')
+    parser.add_argument('--macos', action='store_true', help='Generate or verify the macOS arm64 app bundle payload (with --linux-metadata filtered to aarch64-apple-darwin)')
     parser.add_argument('--metadata', type=Path)
     parser.add_argument('--x64-metadata', type=Path)
     parser.add_argument('--arm64-metadata', type=Path)
@@ -838,17 +868,18 @@ def main():
     if args.self_test:
         result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(InventoryTests))
         return 0 if result.wasSuccessful() else 1
-    if args.linux:
-        if args.archive or args.msi or args.record_wix or args.arch:
-            parser.error('--linux cannot be combined with Windows packaging options')
+    if args.linux or args.macos:
+        unix = 'macos' if args.macos else 'linux'
+        if args.archive or args.msi or args.record_wix or args.arch or (args.linux and args.macos):
+            parser.error('--linux and --macos cannot be combined with each other or with Windows packaging options')
         if not args.stage:
-            parser.error('--linux requires --stage')
+            parser.error('--linux/--macos requires --stage')
         if args.verify:
-            result = verify_linux(args.stage)
+            result = verify_linux(args.stage, unix)
         else:
             if not all((args.metadata, args.linux_metadata, args.rust_sysroot, args.rust_version_file, args.cargo_version_file)):
-                parser.error('Linux generation requires metadata, Linux metadata and toolchain provenance')
-            result = generate_linux(args.root.resolve(), args.stage.resolve(), read_json(args.metadata), read_json(args.linux_metadata), args.rust_sysroot, args.rust_version_file, args.cargo_version_file)
+                parser.error('Generation requires metadata, target metadata and toolchain provenance')
+            result = generate_linux(args.root.resolve(), args.stage.resolve(), read_json(args.metadata), read_json(args.linux_metadata), args.rust_sysroot, args.rust_version_file, args.cargo_version_file, unix)
     elif args.record_wix:
         if not args.stage:
             parser.error('--record-wix requires --stage')

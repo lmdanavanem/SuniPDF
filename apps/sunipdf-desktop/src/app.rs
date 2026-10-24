@@ -191,6 +191,8 @@ impl SuniApp {
     pub fn new(cc: &eframe::CreationContext<'_>, initial_files: Vec<PathBuf>) -> Self {
         let mut settings = Settings::load();
         let has_icons = crate::icons::install(&cc.egui_ctx);
+        #[cfg(target_os = "macos")]
+        crate::mac_open::set_context(&cc.egui_ctx);
         settings.dark_theme = crate::appearance_ui::resolved_dark(
             settings.effective_theme_mode(),
             cc.egui_ctx.system_theme(),
@@ -1717,6 +1719,15 @@ impl SuniApp {
                 self.open_path(path, None);
             } else {
                 self.error = Some("error.not_pdf_dropped");
+            }
+        }
+        // Finder : chaque fichier devient un onglet, comme ceux de la ligne de commande.
+        #[cfg(target_os = "macos")]
+        {
+            let mut opened = crate::mac_open::take().into_iter();
+            if let Some(path) = opened.next() {
+                self.pending_files.extend(opened);
+                self.open_path(path, None);
             }
         }
         if self.dialog_open() {
@@ -3427,6 +3438,20 @@ impl SuniApp {
             ctx.request_repaint();
         }
         self.handle_responses(&ctx);
+        #[cfg(target_os = "macos")]
+        {
+            let blocked = self.dialog_open();
+            crate::mac_menu::sync(
+                &ctx,
+                self.lang(),
+                self.document.is_some(),
+                blocked,
+                &crate::shortcuts::field_bindings(&self.settings.shortcuts),
+            );
+            for command in crate::mac_menu::take() {
+                self.execute(&ctx, command);
+            }
+        }
         self.handle_input(&ctx);
         let p = theme::palette_for(&ctx);
         let chrome = |fill: egui::Color32| {

@@ -272,7 +272,9 @@ impl RecoveryState {
 fn default_recovery_directory() -> Option<PathBuf> {
     #[cfg(windows)]
     let root = crate::settings::absolute_path(std::env::var_os("LOCALAPPDATA"));
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
+    let root = crate::settings::application_support();
+    #[cfg(not(any(windows, target_os = "macos")))]
     let root = crate::settings::xdg_directory(
         std::env::var_os("XDG_STATE_HOME"),
         std::env::var_os("HOME"),

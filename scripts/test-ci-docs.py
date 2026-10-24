@@ -243,6 +243,18 @@ class WorkflowBoundaryTests(unittest.TestCase):
         self.assertIn('python3 scripts/test-conformance.py', workflow)
         self.assertIn("ubuntu: ['22.04', '24.04']", workflow)
 
+    def test_macos_reuses_exact_classifier_and_validates_the_built_dmg(self):
+        path = Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'macos.yml'
+        workflow = path.read_text(encoding='utf-8')
+        self.assertNotIn('paths-ignore:', workflow)
+        self.assertIn('fetch-depth: 0', workflow)
+        self.assertIn('docs_only: ${{ steps.changes.outputs.docs_only }}', workflow)
+        self.assertIn('run: python3 scripts/ci-docs.py classify', workflow)
+        self.assertIn("    needs: documentation\n    if: needs.documentation.outputs.docs_only != 'true'\n", workflow)
+        self.assertEqual(workflow.count('    needs: build\n'), 1)
+        self.assertIn('cargo test --workspace --locked --no-fail-fast', workflow)
+        self.assertIn('python3 scripts/test-macos.py', workflow)
+
     def test_required_job_and_every_application_step_have_explicit_boundary(self):
         path = Path(__file__).resolve().parents[1] / '.github' / 'workflows' / 'ci.yml'
         workflow = path.read_text(encoding='utf-8')

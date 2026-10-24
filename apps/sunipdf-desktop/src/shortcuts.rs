@@ -33,6 +33,34 @@ fn text(m: Modifiers, key: Key) -> String {
     )
 }
 
+/// Displayed shortcut; macOS uses its modifier symbols, the stored syntax stays `text`.
+fn display(m: Modifiers, key: Key) -> String {
+    if cfg!(target_os = "macos") {
+        let key = match key {
+            Key::Backspace => "⌫",
+            Key::Delete => "⌦",
+            _ => key.symbol_or_name(),
+        };
+        format!(
+            "{}{}{}{key}",
+            if m.ctrl { "⌃" } else { "" },
+            if m.shift { "⇧" } else { "" },
+            if m.command { "⌘" } else { "" }
+        )
+    } else {
+        text(m, key)
+    }
+}
+
+/// ⌘ and ⌃ are distinct keys on a Mac; elsewhere Ctrl is the command modifier.
+fn command_matches(pressed: Modifiers, binding: Modifiers) -> bool {
+    if cfg!(target_os = "macos") {
+        pressed.command == binding.command && pressed.ctrl == binding.ctrl
+    } else {
+        (pressed.command || pressed.ctrl) == (binding.command || binding.ctrl) && !pressed.mac_cmd
+    }
+}
+
 fn parse(value: &str) -> Result<(Modifiers, Key), Invalid> {
     if value.len() > 64 {
         return Err(Invalid::Syntax);
@@ -123,6 +151,15 @@ fn effective(bindings: &Bindings) -> Vec<Binding> {
     resolve(bindings).unwrap_or_else(|_| DEFAULTS.to_vec())
 }
 
+/// Effective shortcuts that stay active in a text field (macOS menu key equivalents).
+#[cfg(target_os = "macos")]
+pub fn field_bindings(bindings: &Bindings) -> Vec<Binding> {
+    effective(bindings)
+        .into_iter()
+        .filter(|b| field_allowed(b.2))
+        .collect()
+}
+
 fn field_allowed(c: Command) -> bool {
     matches!(
         c,
@@ -155,8 +192,7 @@ pub fn consume(input: &mut egui::InputState, bindings: &Bindings, field: bool) -
                 if *k == key
                     && (modifiers.shift == m.shift || key == Key::Plus)
                     && modifiers.alt == m.alt
-                    && (modifiers.command || modifiers.ctrl) == (m.command || m.ctrl)
-                    && !modifiers.mac_cmd
+                    && command_matches(*modifiers, m)
                 {
                     seen = true;
                     return false;
@@ -201,7 +237,7 @@ pub fn text_for(bindings: &Bindings, lang: sunipdf_i18n::Language, command: Comm
         return effective(bindings)
             .into_iter()
             .filter(|b| b.2 == command)
-            .map(|(m, k, _)| text(m, k))
+            .map(|(m, k, _)| display(m, k))
             .collect::<Vec<_>>()
             .join(" / ");
     }
@@ -258,7 +294,7 @@ impl crate::app::SuniApp {
                             let shortcuts = effective(&draft.bindings)
                                 .into_iter()
                                 .filter(|b| b.2 == info.command)
-                                .map(|(m, k, _)| text(m, k))
+                                .map(|(m, k, _)| display(m, k))
                                 .collect::<Vec<_>>()
                                 .join(" / ");
                             let shortcuts = if shortcuts.is_empty() {
@@ -428,7 +464,14 @@ mod tests {
             app.settings
                 .shortcuts
                 .insert(Command::Save.info().id.into(), Some("Ctrl+J".into()));
-            assert_eq!(app.shortcut_text(Command::Save), "Ctrl+J");
+            assert_eq!(
+                app.shortcut_text(Command::Save),
+                if cfg!(target_os = "macos") {
+                    "⌘J"
+                } else {
+                    "Ctrl+J"
+                }
+            );
             app.settings
                 .shortcuts
                 .insert(Command::Save.info().id.into(), None);
@@ -436,7 +479,14 @@ mod tests {
             app.settings
                 .shortcuts
                 .insert("unknown.command".into(), None);
-            assert_eq!(app.shortcut_text(Command::Save), "Ctrl+S");
+            assert_eq!(
+                app.shortcut_text(Command::Save),
+                if cfg!(target_os = "macos") {
+                    "⌘S"
+                } else {
+                    "Ctrl+S"
+                }
+            );
             app.settings.shortcuts.clear();
         }
     }

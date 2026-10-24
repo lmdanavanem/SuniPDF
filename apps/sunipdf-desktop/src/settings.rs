@@ -12,11 +12,21 @@ pub(crate) fn absolute_path(value: Option<std::ffi::OsString>) -> Option<PathBuf
 }
 
 pub(crate) fn storage_path(root: PathBuf, name: &str) -> PathBuf {
-    root.join(if cfg!(windows) { "SuniPDF" } else { "sunipdf" })
-        .join(name)
+    root.join(if cfg!(any(windows, target_os = "macos")) {
+        "SuniPDF"
+    } else {
+        "sunipdf"
+    })
+    .join(name)
 }
 
-#[cfg(not(windows))]
+/// macOS keeps per-user settings and recovery data in `~/Library/Application Support`.
+#[cfg(target_os = "macos")]
+pub(crate) fn application_support() -> Option<PathBuf> {
+    absolute_path(std::env::var_os("HOME")).map(|home| home.join("Library/Application Support"))
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
 pub(crate) fn xdg_directory(
     configured: Option<std::ffi::OsString>,
     home: Option<std::ffi::OsString>,
@@ -146,7 +156,9 @@ impl Settings {
     pub fn path() -> Option<PathBuf> {
         #[cfg(windows)]
         let root = absolute_path(std::env::var_os("APPDATA"));
-        #[cfg(not(windows))]
+        #[cfg(target_os = "macos")]
+        let root = application_support();
+        #[cfg(not(any(windows, target_os = "macos")))]
         let root = xdg_directory(
             std::env::var_os("XDG_CONFIG_HOME"),
             std::env::var_os("HOME"),
@@ -292,7 +304,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "macos")))]
     fn xdg_paths_require_absolute_roots_and_fall_back_to_home() {
         assert_eq!(
             xdg_directory(

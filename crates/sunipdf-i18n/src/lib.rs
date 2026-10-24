@@ -60,7 +60,40 @@ fn catalog(language: Language) -> &'static Catalog {
         Language::French => &FR,
         Language::English => &EN,
     };
-    cell.get_or_init(|| serde_json::from_str(language.raw()).expect("catalogue i18n JSON invalide"))
+    cell.get_or_init(|| {
+        let catalog: Catalog =
+            serde_json::from_str(language.raw()).expect("catalogue i18n JSON invalide");
+        #[cfg(target_os = "macos")]
+        let catalog = catalog
+            .into_iter()
+            .map(|(key, value)| (key, mac_text(&value)))
+            .collect();
+        catalog
+    })
+}
+
+/// Catalogues écrits pour Windows, lus sous macOS : Ctrl (Commande dans egui) devient ⌘, Maj ⇧.
+/// Ctrl+Tab reste sur Contrôle : ⌘Tab appartient au système.
+#[cfg(any(target_os = "macos", test))]
+fn mac_text(text: &str) -> String {
+    // Supprimer l'objet : ⌦ (fn+⌫) ; ⌫ seul retire le dernier point d'une mesure.
+    if text == "Del" || text == "Suppr" {
+        return "⌦".into();
+    }
+    text.replace("Ctrl+Del", "⌘⌫")
+        .replace("Ctrl+Suppr", "⌘⌫")
+        .replace(", Del,", ", ⌦,")
+        .replace(", Suppr,", ", ⌦,")
+        .replace("Del to delete", "⌦ to delete")
+        .replace("Suppr pour supprimer", "⌦ pour supprimer")
+        .replace("Ctrl+Shift+Tab", "⌃⇧Tab")
+        .replace("Ctrl+Maj+Tab", "⌃⇧Tab")
+        .replace("Ctrl+Tab", "⌃Tab")
+        .replace("Ctrl+Shift+", "⇧⌘")
+        .replace("Ctrl+Maj+", "⇧⌘")
+        .replace("Ctrl+click", "⌘-click")
+        .replace("Ctrl+clic", "⌘-clic")
+        .replace("Ctrl+", "⌘")
 }
 
 /// Traduction d'une clé. Clé inconnue → renvoie la clé (jamais de panique).
@@ -138,6 +171,16 @@ mod tests {
                 "clé {key}"
             );
         }
+    }
+
+    #[test]
+    fn mac_shortcut_labels() {
+        assert_eq!(mac_text("Ctrl+Maj+S"), "⇧⌘S");
+        assert_eq!(mac_text("Ctrl+Shift+Tab · Ctrl+Tab"), "⌃⇧Tab · ⌃Tab");
+        assert_eq!(mac_text("Ctrl+click: add, Ctrl+K"), "⌘-click: add, ⌘K");
+        assert_eq!(mac_text("Suppr"), "⌦");
+        assert_eq!(mac_text("Ctrl+Del"), "⌘⌫");
+        assert_eq!(mac_text("Delete page"), "Delete page");
     }
 
     #[test]

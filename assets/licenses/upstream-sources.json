@@ -317,8 +317,13 @@
       "repo": "SSheldon/rust-dispatch",
       "revision": "82d6c7a5b75dc0c71c3f46f87bb6c16a476f7748",
       "path": "",
-      "texts": [],
-      "unavailable": "Pinned upstream source contains an MIT declaration but no full license text. Not selected for either Windows release target."
+      "texts": [
+        {
+          "source": "Reviewed MIT text (standard MIT terms with the Cargo.toml author Steven Sheldon): the published crate and its pinned upstream source declare MIT without a full license text. Selected for the macOS target through winit.",
+          "sha256": "e353f37b12aefbb9f9b29490e837cfee05d9bda70804b3562839a3285c1df1e5",
+          "file": "assets/licenses/dispatch-0.2.0-MIT.txt"
+        }
+      ]
     },
     {
       "name": "dispatch2",

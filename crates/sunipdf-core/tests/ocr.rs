@@ -1,3 +1,6 @@
+// The bundled or packaged Tesseract exists only on Windows and Linux.
+#![cfg(any(windows, target_os = "linux"))]
+
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};

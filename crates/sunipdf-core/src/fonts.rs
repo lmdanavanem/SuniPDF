@@ -66,11 +66,31 @@ pub fn system_fonts() -> Vec<SystemFont> {
             collect_system_fonts(entries, Path::new("/usr/share/fonts"))
         }
     }
-    #[cfg(not(any(windows, target_os = "linux")))]
+    // System, machine then user folders; no registry on macOS.
+    #[cfg(target_os = "macos")]
+    {
+        let mut roots = vec![
+            PathBuf::from("/System/Library/Fonts"),
+            PathBuf::from("/Library/Fonts"),
+        ];
+        if let Some(home) = std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+        {
+            roots.push(home.join("Library/Fonts"));
+        }
+        let entries = discover_font_files(&roots);
+        if entries.is_empty() {
+            Vec::new()
+        } else {
+            collect_system_fonts(entries, Path::new("/System/Library/Fonts"))
+        }
+    }
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
     Vec::new()
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn discover_font_files(roots: &[PathBuf]) -> Vec<(String, PathBuf)> {
     const MAX_ENTRIES: usize = 8192;
     const MAX_DEPTH: usize = 8;
@@ -352,7 +372,7 @@ pub(crate) fn embedding_permissions(fs_type: u16) -> Result<bool, EngineError> {
 mod tests {
     use super::*;
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     #[test]
     fn linux_font_discovery_finds_nested_fonts_without_following_links() {
         use std::os::unix::fs::symlink;
@@ -377,7 +397,7 @@ mod tests {
         assert_eq!(collect_system_fonts(entries, temp.path()).len(), 1);
     }
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
     #[test]
     fn linux_font_discovery_has_a_depth_bound() {
         let temp = tempfile::tempdir().unwrap();

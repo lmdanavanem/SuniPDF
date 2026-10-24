@@ -1,4 +1,4 @@
-# Release packages: Windows portable ZIPs and MSI, plus Ubuntu amd64 DEB.
+# Release packages: Windows portable ZIPs and MSI, plus Ubuntu amd64 DEB and macOS arm64 DMG.
 # Déclenchée par un tag v* ou à la main. Les tests tournent avant tout empaquetage (x64) ; l'ARM64 est
 # compilé mais jamais exécuté sur du matériel ARM64 : il est publié comme tel.
 name: release
@@ -13,6 +13,11 @@ permissions:
 jobs:
   linux:
     uses: ./.github/workflows/linux.yml
+    permissions:
+      contents: read
+
+  macos:
+    uses: ./.github/workflows/macos.yml
     permissions:
       contents: read
 
@@ -361,7 +366,7 @@ jobs:
             dist/*.sha256
             dist/*.msi
   publish:
-    needs: [build, linux]
+    needs: [build, linux, macos]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -380,3 +385,5 @@ jobs:
             Windows x64 packages (portable ZIP and MSI) tested in CI. The ARM64 ZIP is built in CI but
             has not been run on ARM64 hardware. SHA256 checksums are included (.sha256).
             The Ubuntu amd64 DEB is built on Ubuntu 22.04 and checked on Ubuntu 22.04 and 24.04.
+            The macOS Apple silicon DMG is built and checked on macOS 15. It is ad hoc signed, not notarized:
+            on first launch, allow it in System Settings > Privacy & Security > Open Anyway.

@@ -142,6 +142,7 @@ fn new_form_fields_are_fillable_after_save_and_invalid_input_creates_no_output()
     assert_eq!(std::fs::read(input).unwrap(), original);
 }
 
+#[cfg(any(windows, target_os = "linux"))]
 #[test]
 fn local_ocr_produces_searchable_text_and_skips_existing_text_byte_for_byte() {
     let temp = tempfile::tempdir().unwrap();

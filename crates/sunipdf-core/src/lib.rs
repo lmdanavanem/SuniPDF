@@ -266,6 +266,8 @@ pub fn default_library_dirs() -> Vec<PathBuf> {
         };
         let platform = if cfg!(target_os = "linux") {
             "linux"
+        } else if cfg!(target_os = "macos") {
+            "mac"
         } else {
             "win"
         };
@@ -273,11 +275,7 @@ pub fn default_library_dirs() -> Vec<PathBuf> {
             Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("../../third_party/pdfium")
                 .join(format!("{platform}-{arch}"))
-                .join(if cfg!(target_os = "linux") {
-                    "lib"
-                } else {
-                    "bin"
-                }),
+                .join(if cfg!(windows) { "bin" } else { "lib" }),
         );
     }
     dirs

@@ -21,6 +21,10 @@ mod inline_text;
 mod issue_report_ui;
 mod library_store;
 mod local_review;
+#[cfg(target_os = "macos")]
+mod mac_menu;
+#[cfg(target_os = "macos")]
+mod mac_open;
 #[cfg(test)]
 mod measure_integration_tests;
 mod measure_tools;
@@ -94,6 +98,8 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
     log::info!("Rendering backend: {}", options.renderer);
+    #[cfg(target_os = "macos")]
+    mac_open::install();
     eframe::run_native(
         "SuniPDF",
         options,
