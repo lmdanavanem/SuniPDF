@@ -84,6 +84,87 @@ fn parse_csv(text: &str) -> Vec<Vec<String>> {
 }
 
 #[test]
+fn unit_fields_keep_their_dimensions_in_the_pdf_csv_and_json_report() {
+    let engine = engine();
+    let cancel = AtomicBool::new(false);
+    let mut doc = engine
+        .open_bytes(fixture(1), None, Path::new("units.pdf"))
+        .unwrap();
+    let table = doc.quantity_table().unwrap();
+    doc.set_quantity_fields(&table.target(&table.rows()[0]).unwrap(),
+        &QuantityFields::from_json(br#"{"unit_price":null,"custom":{"Depth":{"type":"number","value":"0.25","unit":"m"}}}"#).unwrap()).unwrap();
+    let mut options = IssueReportOptions::default();
+    options.quantities.filter.kind = "Stamp".into();
+    options.quantities.formulas = sunipdf_core::quantity_table::QuantityOptions::formulas_from_json(
+        br#"[{"name":"Area allowance","expression":"[Depth] * [Depth]","quantity_unit":null,"rounding_decimals":2}]"#).unwrap();
+    let prepared = doc
+        .prepare_issue_report(
+            &doc.quantity_table().unwrap(),
+            &options,
+            None,
+            &cancel,
+            |_| {},
+        )
+        .unwrap();
+    assert_eq!(prepared.model().version, 2);
+    assert_eq!(prepared.model().quantities["version"], 2);
+    assert_eq!(
+        prepared.model().quantities["rows"][0]["fields"]["custom"]["Depth"]["unit"],
+        "m"
+    );
+    assert_eq!(
+        prepared.model().quantities["formula_rows"][0]["values"]["Area allowance"]["unit"],
+        "m2"
+    );
+    let directory = tempfile::tempdir().unwrap();
+    for (format, extension) in [
+        (IssueReportFormat::Pdf, "pdf"),
+        (IssueReportFormat::Csv, "csv"),
+        (IssueReportFormat::Json, "json"),
+    ] {
+        doc.publish_issue_report(
+            &prepared,
+            format,
+            &directory.path().join(format!("units.{extension}")),
+            &cancel,
+        )
+        .unwrap();
+    }
+    let report = engine
+        .open(&directory.path().join("units.pdf"), None)
+        .unwrap();
+    let text = (0..report.page_count())
+        .map(|page| report.page_text(page).unwrap())
+        .collect::<Vec<_>>()
+        .join(" ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(text.contains("Depth (Number): 0.25 m"));
+    assert!(text.contains("Total: 0.06 m²"));
+    let json: Value =
+        serde_json::from_slice(&std::fs::read(directory.path().join("units.json")).unwrap())
+            .unwrap();
+    assert_eq!(json["version"], 2);
+    assert_eq!(
+        json["quantities"]["rows"][0]["fields"]["custom"]["Depth"]["unit"],
+        "m"
+    );
+    let csv = parse_csv(&std::fs::read_to_string(directory.path().join("units.csv")).unwrap());
+    let metadata = csv.iter().find(|row| row[0] == "report").unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(metadata.last().unwrap()).unwrap()["version"],
+        2
+    );
+    let row = csv.iter().find(|row| row[0] == "annotation").unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(row.last().unwrap()).unwrap()["fields"]["custom"]["Depth"]
+            ["unit"],
+        "m"
+    );
+}
+
+#[test]
 fn one_model_keeps_selected_rows_prices_formulas_and_all_three_formats_identical() {
     let engine = engine();
     let cancel = AtomicBool::new(false);

@@ -500,7 +500,7 @@ impl Document<'_> {
         }
         let mut model = IssueReportModel {
             schema: "sunipdf-issue-report",
-            version: 1,
+            version: if quantities["version"] == 2 { 2 } else { 1 },
             title: options.title.clone(),
             selection: options.selection,
             provenance: ReportProvenance {

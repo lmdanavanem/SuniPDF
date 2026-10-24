@@ -41,7 +41,7 @@ pub struct TargetArgs {
 pub struct SetArgs {
     #[command(flatten)]
     pub target: TargetArgs,
-    /// Strict JSON {unit_price:null|{amount:"12.50",currency:"CHF",per_unit:"m",rounding_decimals:2},custom:{...}}.
+    /// Strict JSON fields. Number columns accept an optional exact unit, e.g. {"type":"number","value":"0.25","unit":"m"}; omitted/null means no unit.
     /// Replaces all quantity fields. Custom values have type text, date, number or choice.
     #[arg(long)]
     pub fields: PathBuf,

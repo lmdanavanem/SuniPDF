@@ -1,0 +1,275 @@
+{
+  "schema": "sunipdf-quantity-workbook",
+  "version": 1,
+  "options": {
+    "title": "Quantities / Étage 日本語",
+    "quantities": {
+      "filter": {
+        "query": "",
+        "page": null,
+        "author": "",
+        "modified": "",
+        "review_status": "",
+        "business_status": "",
+        "discipline": "",
+        "kind": "",
+        "count_group": "",
+        "include_replies": false,
+        "custom_sort": null,
+        "zone": null,
+        "zone_status": null
+      },
+      "sort": "page",
+      "descending": false,
+      "group_by": "none",
+      "formulas": [
+        {
+          "name": "Factored",
+          "expression": "quantity * [Factor]",
+          "quantity_unit": "each",
+          "rounding_decimals": 2
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "snapshot_sha256": "815d1b148c49c507add43b1c178d51fd31a440ba1301396ff49748b064be3ec0",
+    "saved_file_sha256": "67fa6823eba967bebdb7d5e7615bb018939b407a6e26b62c58915f1a0150842a",
+    "source_encrypted": false,
+    "source_signature_count": 0
+  },
+  "rows": [
+    {
+      "row": {
+        "register": {
+          "page": 1,
+          "index": 0,
+          "annotation_id": "SuniPDF-QA-A",
+          "kind": "Stamp",
+          "author": "Estimator",
+          "modified": null,
+          "contents": "=HYPERLINK(\"https://invalid.example\",\"retain\") — Étage 日本語",
+          "subject": null,
+          "rect": [
+            40.0,
+            40.0,
+            60.0,
+            60.0
+          ],
+          "parent": null,
+          "is_reply": false,
+          "hidden": false,
+          "locked": false,
+          "review_status": null,
+          "fields": {
+            "business_status": "Open",
+            "discipline": "Electrical",
+            "custom": {
+              "Room": "Z"
+            }
+          },
+          "count_group": "Lighting",
+          "zone": {
+            "status": "unassigned",
+            "zone_id": null,
+            "path": [],
+            "candidates": []
+          }
+        },
+        "quantity": {
+          "value": 1.0,
+          "unit": "each"
+        },
+        "measurement_validity": null,
+        "historical_quantity": null,
+        "fields": {
+          "unit_price": {
+            "amount": "12.5",
+            "currency": "CHF",
+            "per_unit": "each",
+            "rounding_decimals": 2
+          },
+          "custom": {
+            "Factor": {
+              "type": "number",
+              "value": "2"
+            },
+            "Room": {
+              "type": "text",
+              "value": "Z"
+            }
+          }
+        },
+        "line_total": {
+          "amount": "12.50",
+          "currency": "CHF",
+          "rounding_decimals": 2
+        },
+        "editable": true
+      },
+      "formulas": {
+        "Factored": {
+          "value": "2.00",
+          "unit": "each",
+          "error": null
+        }
+      },
+      "comparison_sha256": "b8cf89a01cd7798c0640d7116c3de0f4a9d1ea564157a0b504afe28281fc7065"
+    },
+    {
+      "row": {
+        "register": {
+          "page": 1,
+          "index": 1,
+          "annotation_id": "SuniPDF-QA-B",
+          "kind": "Stamp",
+          "author": "Estimator",
+          "modified": null,
+          "contents": "+SUM(A1) retain",
+          "subject": null,
+          "rect": [
+            80.0,
+            40.0,
+            100.0,
+            60.0
+          ],
+          "parent": null,
+          "is_reply": false,
+          "hidden": false,
+          "locked": false,
+          "review_status": null,
+          "fields": {
+            "business_status": "Open",
+            "discipline": "Electrical",
+            "custom": {
+              "Room": "A"
+            }
+          },
+          "count_group": "Lighting",
+          "zone": {
+            "status": "unassigned",
+            "zone_id": null,
+            "path": [],
+            "candidates": []
+          }
+        },
+        "quantity": {
+          "value": 1.0,
+          "unit": "each"
+        },
+        "measurement_validity": null,
+        "historical_quantity": null,
+        "fields": {
+          "unit_price": {
+            "amount": "7.25",
+            "currency": "CHF",
+            "per_unit": "each",
+            "rounding_decimals": 2
+          },
+          "custom": {
+            "Factor": {
+              "type": "number",
+              "value": "3"
+            },
+            "Room": {
+              "type": "text",
+              "value": "A"
+            }
+          }
+        },
+        "line_total": {
+          "amount": "7.25",
+          "currency": "CHF",
+          "rounding_decimals": 2
+        },
+        "editable": true
+      },
+      "formulas": {
+        "Factored": {
+          "value": "3.00",
+          "unit": "each",
+          "error": null
+        }
+      },
+      "comparison_sha256": "cdfc8fe1476b0fd93364e26714418e645a8979e7577a414c8b6e78e4188f5828"
+    },
+    {
+      "row": {
+        "register": {
+          "page": 2,
+          "index": 0,
+          "annotation_id": "SuniPDF-QA-C",
+          "kind": "Stamp",
+          "author": "Estimator",
+          "modified": null,
+          "contents": "@SUM(A1) other",
+          "subject": null,
+          "rect": [
+            120.0,
+            40.0,
+            140.0,
+            60.0
+          ],
+          "parent": null,
+          "is_reply": false,
+          "hidden": false,
+          "locked": false,
+          "review_status": null,
+          "fields": {
+            "business_status": "Open",
+            "discipline": "Electrical",
+            "custom": {
+              "Room": "M"
+            }
+          },
+          "count_group": "Lighting",
+          "zone": {
+            "status": "unassigned",
+            "zone_id": null,
+            "path": [],
+            "candidates": []
+          }
+        },
+        "quantity": {
+          "value": 1.0,
+          "unit": "each"
+        },
+        "measurement_validity": null,
+        "historical_quantity": null,
+        "fields": {
+          "unit_price": {
+            "amount": "2",
+            "currency": "CHF",
+            "per_unit": "each",
+            "rounding_decimals": 2
+          },
+          "custom": {
+            "Factor": {
+              "type": "number",
+              "value": "4"
+            },
+            "Room": {
+              "type": "text",
+              "value": "M"
+            }
+          }
+        },
+        "line_total": {
+          "amount": "2.00",
+          "currency": "CHF",
+          "rounding_decimals": 2
+        },
+        "editable": true
+      },
+      "formulas": {
+        "Factored": {
+          "value": "4.00",
+          "unit": "each",
+          "error": null
+        }
+      },
+      "comparison_sha256": "d0af03b4d6cde0b9669e789a19c8504c6081846ca0854537a4ab0db57dd8b913"
+    }
+  ],
+  "pending_rows": []
+}

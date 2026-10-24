@@ -8,6 +8,8 @@ The [subtotal and coverage changes](#formula-subtotals-and-coverage)
 and [measurement provenance checks](#measurement-provenance) are included in the published 0.62.0 packages.
 See [qualification scope](RELEASE_0.62.0.md) for exact-source, native and package results.
 
+Optional units on numeric custom fields and geometric formula products require 0.70.0 or later.
+
 ## Open and filter the table
 
 Open a PDF, then choose **Quantity table** from **Tools → Review & measure**, the measurement panel's **Saved data** section, or inside the annotation register. Finish or cancel another active draft first. Reading the table leaves the PDF unchanged.
@@ -22,16 +24,28 @@ Open **Filters → Custom column** to sort by a typed field. Numbers sort numeri
 
 1. Choose **Edit row** on an eligible annotation. Its identity must be unambiguous, its state editable and annotation permission available.
 2. Enter **Unit price**, a three-letter uppercase **Currency code**, **Price per unit** and **Cost decimal places** (`0`–`4`). Use a decimal point, not an expression. A blank price is absent; `0` is a supplied zero price. The price basis must match the quantity dimension: for example, metres can be priced per foot, but an area cannot be priced per metre.
-3. Under **Custom columns**, choose **Add custom column** and provide its name, type and value. Supported types are **Text**, **Number**, **Date (YYYY-MM-DD)** and **Choice**. For a choice, enter the permitted options one per line and enter one of them as the value. A column name must use the same type and choice options everywhere in the PDF. Existing register text fields remain separate from these typed fields.
+3. Under **Custom columns**, choose **Add custom column** and provide its name, type and value. Supported types are **Text**, **Number**, **Date (YYYY-MM-DD)** and **Choice**. Numbers default to **No unit**; select an explicit unit when needed. For a choice, enter the permitted options one per line and enter one of them as the value. A column name must use the same type, unit and choice options everywhere in the PDF. Existing register text fields remain separate from these typed fields.
 4. Choose **Apply fields** to commit the row, or **Cancel edit** to discard the draft. **Remove column** removes that value only when the row is applied. An empty text value remains supplied; removing the column makes it absent. Invalid values or a stale target keep the PDF unchanged and preserve the draft for correction or cancellation.
 
 Each successful row edit is one Undo step. Finish or cancel the row editor before using **Undo** or **Redo**. The read-only docked or floating table can stay open; refresh it to inspect restored values. Save the PDF to retain the fields after reopening. These edits do not change measured vertices, calibration, annotation identity or linked comments. A price cannot be attached to an ordinary annotation without a supported quantity or to an angle; typed custom values can be attached to eligible ordinary annotations.
+
+### Numeric fields with declared units
+
+For example, enter a Number named `Depth`, value `0.25`, unit `m`. This is a user-declared
+value; it does not create a measured quantity, change the plan scale or replace a unit price.
+Choosing a different unit changes the declaration without converting the number. Remove the
+unit explicitly before changing the field to a different type.
+
+The same column cannot mix metres, centimetres and numbers without a unit. Use a separate
+column name for a different definition. A conflicting edit is refused before the PDF changes.
+Sorting remains numeric, and searching can include the displayed unit. Missing fields remain
+absent; an explicit zero or negative value keeps its ordinary decimal meaning.
 
 ## Quantities, costs and missing values
 
 **Not supplied** means absent data; it is not a zero. No manual quantity override is provided here: edit the actual measurement or count markers in their own tools.
 
-Quantity subtotals retain their original units. `m` and `ft`, or `m2` and `ft2`, remain separate even though compatible price-basis conversion exists. There is no combined length/area/count total. Quantity units are `each`, `mm`, `cm`, `m`, `in`, `ft`, `mm2`, `cm2`, `m2`, `in2`, `ft2`; `deg` is display-only for this calculation.
+Quantity subtotals retain their original units. `m` and `ft`, or `m2` and `ft2`, remain separate even though compatible price-basis conversion exists. There is no combined length/area/count total. Quantity units are `each`, `mm`, `cm`, `m`, `in`, `ft`, their square and cubic forms (`mm2` through `ft2`, `mm3` through `ft3`), and `deg`. Angles are display-only for ordinary quantity and price totals.
 
 For each priced row, the quantity is converted to the explicit price unit and quantized to six decimal places. Decimal unit price multiplication then uses checked integer arithmetic. Line cost is rounded to the selected `0`–`4` decimals, half away from zero; subtotals sum these rounded line costs. Monetary groups remain separate by currency code and rounding precision. A currency code is a declaration, not a checked exchange-rate lookup.
 
@@ -44,7 +58,8 @@ Open **Custom columns → Formula columns**, enter a unique column name and expr
 Expressions accept decimal constants, unary signs, `+ - * /`, parentheses, `quantity` and exact case-sensitive numeric field references such as `[Waste %]`. Only typed **Number** fields participate; register text fields and other formula results are not inputs. For example, `quantity * (1 + [Waste %] / 100)` applies a dimensionless allowance to each row's actual quantity.
 
 - `quantity` requires the exact declared unit; metres and feet are not converted by formulas. The existing price-basis conversion is separate.
-- Numeric fields and constants are dimensionless. Addition/subtraction require matching units. Multiplication permits at most one quantity operand; division by a scalar retains the quantity unit, while equal-unit division produces a dimensionless result. Squared/cubed units and inverse units are not inferred.
+- Numeric fields use their explicitly declared unit; fields with **No unit** and constants are dimensionless. Addition/subtraction require identical units. A scalar can multiply a unit-bearing value, and division by a scalar retains the unit. Equal-unit division produces a dimensionless result.
+- Products and quotients within one exact geometric family support length, area and volume: `m * m` gives `m2`, `m2 * m` gives `m3`, and `m3 / m` gives `m2`. The same rules apply separately to `mm`, `cm`, `in` and `ft`. Mixed families such as `m * cm`, inverse units and powers above three are refused. Counts and angles do not implicitly become dimensionless; mass and density units are unsupported.
 - Arithmetic uses checked decimal values with six fractional places. Multiplication/division round half away from zero at each operation; the final result uses the selected `0`–`6` decimal places with the same rule. Intermediate values must remain within the supported one-trillion absolute limit.
 - Missing fields/quantities, nonnumeric fields, incompatible units, division by zero and overflow produce explicit cell errors. They never become zero. Formula subtotals are separate from the existing quantity/cost totals.
 
@@ -68,6 +83,13 @@ sunipdf-cli quantity-table plan.pdf --sort-custom "Waste %" --formulas formulas.
 ```
 
 For a scalar-only expression such as `[Allowance] * 2`, `quantity_unit` can be `null` in JSON. Formula definitions are a separate report configuration, not a new type accepted by `set-quantity-fields`.
+
+`quantity_unit` constrains the source `quantity` keyword, not the result or every custom field.
+With a current `8 m2` area and `Depth = 0.25 m`, `quantity * [Depth]` produces `2 m3`;
+set `quantity_unit` to `m2`. A formula using only custom fields can leave it `null`.
+For example, `[Length] * [Width]` with `2 m` and `3 m` produces `6 m2`, without
+creating a measured annotation quantity. A field in centimetres would require a separate,
+explicitly consistent configuration; formulas do not silently convert it to metres.
 
 ## Formula subtotals and coverage
 
@@ -93,7 +115,8 @@ Angles remain excluded from ordinary additive quantity and price totals, but an 
 formula can explicitly evaluate a current angle or dimensionless fields on those rows.
 Historical measurement quantities produce `unverified_quantity` when a formula uses `quantity`.
 
-JSON keeps schema version `1` and adds `summary.formula_groups`. Each group contains
+JSON includes `summary.formula_groups`. Its schema is version `2` when selected rows contain
+unit-bearing custom fields, otherwise version `1`. Each group contains
 `formula_name`, `group`, `matched_rows`, `contributing_rows`, `error_rows`, `errors`, `complete`
 and `totals`. Each total records `unit`, `rounding_decimals`, decimal-string `amount` and
 `contributing_rows`. `formula_subtotal_policy` identifies
@@ -146,7 +169,7 @@ neither contributes to ordinary quantity or monetary totals. Custom fields and s
 still be corrected or removed, but those edits do not establish page provenance.
 
 A formula that reads `quantity` returns `unverified_quantity` for a historical measurement.
-A formula that uses only valid dimensionless fields can still evaluate on the same row. An
+A formula that uses only valid custom fields can still evaluate on the same row. An
 inventory with `complete: true` therefore does not imply that every measurement is current or
 that formula or monetary coverage is complete. Ordinary explicit count markers keep their
 existing behavior; they do not require measurement provenance.
@@ -166,7 +189,7 @@ in a batch, one incompatible or overflowing row rejects the entire operation. Co
 the price explicitly before retrying a change that requires a different price basis. Compatible
 unit conversions, such as metres to feet, retain the stored price and its original price unit.
 
-Quantity reports remain schema version `1` with the additional fields above. The separate
+Quantity reports preserve the coverage fields above in schema versions `1` and `2`. The separate
 measurement-record JSON is version `2`: non-current records export `value: null` and `label: null`,
 with the old result in `historical_value` and `historical_label`. Consumers must check validity
 instead of treating a historical number as a current result. These checks establish bounded
@@ -178,7 +201,20 @@ Choose **Export CSV** or **Export JSON** and a new filename. Export includes all
 
 The export contains a `source_sha256` for the document snapshot, filter/sort/group options, row data and coverage indicators. This is traceability data, not a certificate of physical accuracy or a signature. A pending desktop edit or export is refused if its source snapshot has changed. The CLI requires an exact current row through `--expected-record`; it captures the source for the operation after comparing that row and page. This argument is not an independent expected-file-hash option.
 
-JSON uses schema `sunipdf-quantity-table`, version `1`, with `rows` and `summary`. `complete: true` describes successful bounded table construction; individual monetary totals still have their own `complete` coverage flags. CSV includes `row`, `quantity_subtotal`, `cost_subtotal` and `metadata` records, typed custom-column data and spreadsheet-formula neutralization for text cells. Keep the metadata record when processing the export elsewhere.
+JSON uses schema `sunipdf-quantity-table`, with `rows` and `summary`. Selected unit-bearing custom fields require version `2`; otherwise version `1` is retained. `complete: true` describes successful bounded table construction; individual monetary totals still have their own `complete` coverage flags. CSV includes `row`, `quantity_subtotal`, `cost_subtotal` and `metadata` records, typed custom-column data and spreadsheet-formula neutralization for text cells. Keep the metadata record when processing the export elsewhere.
+
+CSV gives a unit-bearing column separate `custom:NAME:value` and `custom:NAME:unit` cells,
+alongside its type. Numeric cells keep their raw decimal value. Columns without declared units
+retain their earlier two-cell type/value layout. PDF reports and workbook previews show the
+unit beside the value; JSON and XLSX preserve the full typed field.
+
+PDF quantity-field records and workbook manifests use version `2` when they contain declared
+custom-field units, including unresolved baseline entries retained for refresh. Version `1`
+is retained without those units. Absent units are omitted from serialized Number fields,
+preserving the comparison hashes of older manifests. A version `1` record claiming an actual
+custom-field unit is refused. A refresh compares unit changes explicitly and recalculates
+current values; it does not convert the old baseline into new totals. Older application
+versions cannot interpret the new metadata and must not be used to edit those fields.
 
 Formula exports also include definitions, arithmetic policy and `formula_evaluation_complete`, which is false if any matching row has a formula error. JSON `formula_rows` identifies each source page/index and gives each cell's `value`, `unit` and `error`; failed values are `null`. CSV adds value/unit/error columns for each formula, with the same completeness flag in metadata. A complete table inventory does not imply complete formula evaluation.
 
@@ -199,6 +235,7 @@ Save this complete field replacement as UTF-8 `fields.json`:
   "custom": {
     "Package": { "type": "text", "value": "Electrical" },
     "Allowance": { "type": "number", "value": "1.25" },
+    "Depth": { "type": "number", "value": "0.25", "unit": "m" },
     "Due date": { "type": "date", "value": "2026-12-31" },
     "Stage": {
       "type": "choice",
@@ -209,7 +246,7 @@ Save this complete field replacement as UTF-8 `fields.json`:
 }
 ```
 
-`amount` and typed number values are decimal strings. `per_unit` uses the unit IDs above. `unit_price: null` clears the price; missing custom keys are removed because `set-quantity-fields` replaces all quantity fields for that row. To clear the entire quantity-field record, use `clear-quantity-fields`; it does not remove the annotation or its measurement/count data.
+`amount` and typed number values are decimal strings. `per_unit` and an optional Number `unit` use the unit IDs above. Omitting a Number's unit, or supplying `unit: null`, means no declared unit; it is omitted on serialization. `unit_price: null` clears the price; missing custom keys are removed because `set-quantity-fields` replaces all quantity fields for that row. To clear the entire quantity-field record, use `clear-quantity-fields`; it does not remove the annotation or its measurement/count data.
 
 This PowerShell example adds one manual count marker to an existing `plan.pdf`, extracts the exact returned row, applies the fields above, exports costs, then clears them using a fresh expected row. Use fresh output filenames and stop if any command reports an error:
 
@@ -236,4 +273,4 @@ The document register is bounded to 1,000 pages, 128 MiB snapshots, 10,000 annot
 
 Decimal inputs allow at most six fractional digits and absolute values up to one trillion; unit prices are nonnegative. The quantity converted for pricing must also fit the supported finite, nonnegative range up to one trillion. Excessive values are refused rather than silently truncated.
 
-AEC-007 remains partial. Formula-derived subtotals are delivered in 0.62.0 within the recorded qualification scope. Unit-bearing custom fields, currency exchange, a tax engine, cross-document totals, automatic symbol recognition and a full estimating workflow remain outside this slice. Verify the plan revision and calibration separately before using its quantities.
+AEC-007 remains partial. Formula-derived subtotals are delivered in 0.62.0 within the recorded qualification scope. The 0.70 extension adds declared custom-field units and exact geometric products/quotients. Currency exchange, taxes, mass/density or inverse units, cross-document totals, automatic symbol recognition and a full estimating workflow remain outside this slice. Verify the plan revision and calibration separately before using its quantities.

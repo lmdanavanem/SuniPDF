@@ -14,7 +14,7 @@ use std::{
 };
 use sunipdf_core::{
     issue_report::SavedReportSource,
-    quantity_table::{QuantityOptions, QuantityTable},
+    quantity_table::{FormulaValue, QuantityOptions, QuantityTable},
     quantity_workbook::{
         PreparedQuantityWorkbook, QuantityWorkbookManifest, QuantityWorkbookModel,
         QuantityWorkbookOptions, WorkbookBaselineRow, WorkbookFormat, WorkbookPhase,
@@ -828,38 +828,167 @@ fn row_preview(ui: &mut egui::Ui, lang: Language, row: Option<&WorkbookBaselineR
                     price.per_unit.id()
                 ));
             }
-            for (name, value) in &row.row.fields.custom {
-                use sunipdf_core::quantity_table::TypedValue;
-                let text = match value {
-                    TypedValue::Text { value }
-                    | TypedValue::Date { value }
-                    | TypedValue::Choice { value, .. } => value.as_str(),
-                    TypedValue::Number { value } => value.as_str(),
-                };
-                ui.label(format!("{name}: {text}"));
-            }
-            for (name, value) in &row.formulas {
-                let text = value
-                    .value
-                    .as_deref()
-                    .map(str::to_owned)
-                    .unwrap_or_else(|| {
-                        value.error.map_or_else(
-                            || "—".into(),
-                            |error| {
-                                tr(lang, &format!("quantity.formula_error.{}", error.id())).into()
-                            },
-                        )
-                    });
-                ui.label(format!("{name}: {text}"));
-            }
+            field_and_formula_details(ui, lang, &row.row.fields, &row.formulas);
         });
     });
+}
+
+fn formula_value_text(lang: Language, value: &FormulaValue) -> String {
+    if let Some(error) = value.error {
+        return tr(lang, &format!("quantity.formula_error.{}", error.id())).into();
+    }
+    match (&value.value, value.unit) {
+        (Some(value), Some(unit)) => format!("{value} {}", unit.id()),
+        (Some(value), None) => value.clone(),
+        (None, _) => tr(lang, "quantity.missing").into(),
+    }
+}
+
+fn field_and_formula_details(
+    ui: &mut egui::Ui,
+    lang: Language,
+    fields: &sunipdf_core::quantity_table::QuantityFields,
+    formulas: &std::collections::BTreeMap<String, FormulaValue>,
+) {
+    for (name, value) in &fields.custom {
+        ui.label(format!("{name}: {}", value.display()));
+    }
+    for (name, value) in formulas {
+        ui.label(format!("{name}: {}", formula_value_text(lang, value)));
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn workbook_details_keep_custom_and_calculated_units_visible_without_inventing_zero() {
+        use std::collections::BTreeMap;
+        use sunipdf_core::quantity_table::{
+            DecimalValue, FormulaError, QuantityFields, QuantityUnit, TypedValue,
+        };
+        fn visible(
+            shape: &egui::Shape,
+            label: &str,
+            viewport: egui::Rect,
+            clip: egui::Rect,
+        ) -> bool {
+            match shape {
+                egui::Shape::Text(text) if text.galley.text() == label => {
+                    let rect = egui::Rect::from_min_size(text.pos, text.galley.size());
+                    viewport.contains_rect(rect) && clip.contains_rect(rect)
+                }
+                egui::Shape::Vec(shapes) => shapes
+                    .iter()
+                    .any(|shape| visible(shape, label, viewport, clip)),
+                _ => false,
+            }
+        }
+        let fields = QuantityFields {
+            custom: BTreeMap::from([
+                (
+                    "Depth".into(),
+                    TypedValue::Number {
+                        value: DecimalValue::parse("0.25").unwrap(),
+                        unit: Some(QuantityUnit::Metres),
+                    },
+                ),
+                (
+                    "Factor".into(),
+                    TypedValue::Number {
+                        value: DecimalValue::parse("2").unwrap(),
+                        unit: None,
+                    },
+                ),
+            ]),
+            ..Default::default()
+        };
+        let formulas = BTreeMap::from([
+            (
+                "Area".into(),
+                FormulaValue {
+                    value: Some("6.00".into()),
+                    unit: Some(QuantityUnit::SquareMetres),
+                    error: None,
+                },
+            ),
+            (
+                "Volume".into(),
+                FormulaValue {
+                    value: Some("1.50".into()),
+                    unit: Some(QuantityUnit::CubicMetres),
+                    error: None,
+                },
+            ),
+            (
+                "Ratio".into(),
+                FormulaValue {
+                    value: Some("0.00".into()),
+                    unit: None,
+                    error: None,
+                },
+            ),
+            (
+                "Unavailable".into(),
+                FormulaValue {
+                    value: None,
+                    unit: None,
+                    error: Some(FormulaError::MissingField),
+                },
+            ),
+        ]);
+        let viewport = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(360.0, 240.0));
+        for lang in Language::ALL {
+            assert_eq!(formula_value_text(lang, &formulas["Ratio"]), "0.00");
+            assert_eq!(
+                formula_value_text(lang, &formulas["Unavailable"]),
+                tr(lang, "quantity.formula_error.missing_field")
+            );
+            assert_eq!(
+                formula_value_text(
+                    lang,
+                    &FormulaValue {
+                        value: None,
+                        unit: None,
+                        error: None
+                    }
+                ),
+                tr(lang, "quantity.missing")
+            );
+            for dark in [false, true] {
+                let ctx = egui::Context::default();
+                crate::theme::apply(&ctx, dark);
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(viewport),
+                        ..Default::default()
+                    },
+                    |ui| {
+                        field_and_formula_details(ui, lang, &fields, &formulas);
+                    },
+                );
+                for label in [
+                    "Depth: 0.25 m",
+                    "Factor: 2",
+                    "Area: 6.00 m2",
+                    "Volume: 1.50 m3",
+                    "Ratio: 0.00",
+                ] {
+                    assert!(
+                        output.shapes.iter().any(|shape| visible(
+                            &shape.shape,
+                            label,
+                            viewport,
+                            shape.clip_rect
+                        )),
+                        "Missing or clipped workbook value: {lang:?}, dark={dark}, {label}"
+                    );
+                }
+                output.textures_delta.clear();
+            }
+        }
+    }
 
     #[test]
     fn compact_workbook_keeps_actions_and_first_difference_fully_visible() {

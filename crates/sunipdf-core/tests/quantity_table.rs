@@ -15,6 +15,13 @@ fn fields() -> QuantityFields {
         }),
         custom: BTreeMap::from([
             (
+                "Depth".into(),
+                TypedValue::Number {
+                    value: DecimalValue::parse("0.25").unwrap(),
+                    unit: Some(QuantityUnit::Metres),
+                },
+            ),
+            (
                 "Room".into(),
                 TypedValue::Text {
                     value: "A-101".into(),
@@ -116,6 +123,22 @@ fn quantity_table_roundtrip_targets_units_legacy_fields_permissions_and_atomicit
         .unwrap();
     assert_eq!(row.line_total.as_ref().unwrap().amount, "25.00");
     assert_eq!(row.register.fields, legacy);
+    assert_eq!(
+        row.fields.custom["Depth"].unit(),
+        Some(QuantityUnit::Metres)
+    );
+    let saved = lopdf::Document::load_mem(&doc.snapshot().unwrap()).unwrap();
+    let stored = saved
+        .objects
+        .values()
+        .filter_map(|object| object.as_dict().ok())
+        .filter_map(|dict| dict.get(b"SuniPDFQuantity").ok())
+        .map(|object| {
+            serde_json::from_slice::<serde_json::Value>(object.as_str().unwrap()).unwrap()
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(stored.len(), 1);
+    assert_eq!(stored[0]["version"], 2);
     assert!(priced.rows().iter().any(|r| r.quantity.is_none()));
     assert!(priced.rows().iter().any(|r| r
         .quantity
@@ -186,6 +209,29 @@ fn quantity_table_roundtrip_targets_units_legacy_fields_permissions_and_atomicit
         fields()
     );
     drop(reopened);
+    for unit in [None, Some(QuantityUnit::Centimetres)] {
+        let table = doc.quantity_table().unwrap();
+        let other = table
+            .rows()
+            .iter()
+            .find(|row| row.register.index != index)
+            .unwrap();
+        let conflict = QuantityFields {
+            custom: BTreeMap::from([(
+                "Depth".into(),
+                TypedValue::Number {
+                    value: DecimalValue::parse("1").unwrap(),
+                    unit,
+                },
+            )]),
+            ..Default::default()
+        };
+        let before_conflict = doc.snapshot().unwrap();
+        assert!(doc
+            .set_quantity_fields(&table.target(other).unwrap(), &conflict)
+            .is_err());
+        equal_pdf(&before_conflict, &doc.snapshot().unwrap(), None);
+    }
     let record = doc.measurement_records(0).unwrap().remove(0);
     let target = doc.measurement_target(0, &record).unwrap();
     let mut converted = record.measurement.clone();

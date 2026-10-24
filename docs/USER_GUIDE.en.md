@@ -89,7 +89,7 @@ Polylines keep 2–128 vertices; perimeters and polygon areas keep 3–128. Leng
 
 1. Open a PDF, then choose **Quantity table** from **Tools → Review & measure**, the measurement panel’s **Saved data** section or the annotation register. Filter the rows and choose **Subtotal groups**; totals cover all matching rows, including other table pages.
 2. Choose **Edit row** to enter **Unit price**, **Currency code**, **Price per unit** and **Cost decimal places**. A blank price is missing; `0` is an explicit zero. Counts and saved measurements supply the quantities; ordinary annotations do not acquire an inferred quantity, and angles are not priced.
-3. Use **Add custom column** for text, number, date or choice values. Choose **Apply fields** or **Cancel edit**. Each applied row is one Undo step; finish or cancel the field editor before using Undo/Redo, and save the PDF to retain the fields.
+3. Use **Add custom column** for text, number, date or choice values. Numbers default to **No unit**; select an explicit unit when needed (0.70 or later). A column must keep the same type and unit throughout the PDF. Choose **Apply fields** or **Cancel edit**. Each applied row is one Undo step; finish or cancel the field editor before using Undo/Redo, and save the PDF to retain the fields.
 4. Use **Export CSV** or **Export JSON** and a new filename. Exports include all matching rows and source provenance; copying permission is required. Quantity totals keep units separate, monetary totals keep currency/rounding groups separate, and partial coverage remains visible.
 
 Open **Filters → Custom column** to sort typed quantity fields: numbers sort numerically, dates chronologically and text/choices lexically. Missing values and blank text stay last in both directions; equal values use physical page/index. The annotation register has the same selector for its separate text fields, which remain lexically sorted.
@@ -97,9 +97,17 @@ Open **Filters → Custom column** to sort typed quantity fields: numbers sort n
 For a calculated report column, open **Custom columns → Formula columns**, enter a name and an expression such as
 `quantity * (1 + [Waste %] / 100)`, select the exact source quantity unit and result precision, then choose
 **Add and preview**. `[Waste %]` must be a typed Number field. Up to eight report columns can use decimal constants,
-`+ - * /`, parentheses, `quantity` and named numeric fields. Numeric fields are dimensionless; incompatible units,
+`+ - * /`, parentheses, `quantity` and named numeric fields. Numbers without a declared unit are dimensionless; incompatible units,
 missing inputs, division by zero and overflow are shown as errors, never zero. Results use six decimal places per
 arithmetic operation and then the chosen `0`–`6` places, rounding half away from zero.
+
+For an area quantity in `m2`, a numeric `Depth` field of `0.25 m` can supply
+`quantity * [Depth]`, producing a result in `m3`. The formula's selected unit stays
+`m2`, because it describes the source quantity. Exact geometric products and quotients
+work within one unit family; mixed metres/centimetres, inverse units, mass and density
+are refused. Choosing a different custom-field unit does not convert its number or
+change measured geometry. [Unit rules and compatibility](QUANTITY_TABLE.md#numeric-fields-with-declared-units)
+describe the supported cases.
 
 These formulas do not change the PDF, prices or existing subtotals. Configuration stays in the current tab;
 use **Reuse formula configuration → Copy configuration** to keep its JSON, or paste it and choose **Load configuration**

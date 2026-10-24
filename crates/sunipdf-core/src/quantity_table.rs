@@ -278,15 +278,26 @@ pub struct UnitPrice {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum TypedValue {
-    Text { value: String },
-    Date { value: String },
-    Number { value: DecimalValue },
-    Choice { value: String, options: Vec<String> },
+    Text {
+        value: String,
+    },
+    Date {
+        value: String,
+    },
+    Number {
+        value: DecimalValue,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        unit: Option<QuantityUnit>,
+    },
+    Choice {
+        value: String,
+        options: Vec<String>,
+    },
 }
 impl TypedValue {
     fn sort_key(&self) -> Option<(u8, i128, &str)> {
         Some(match self {
-            Self::Number { value } => (0, value.units().ok()?, ""),
+            Self::Number { value, .. } => (0, value.units().ok()?, ""),
             Self::Date { value } => (1, 0, value.as_str()),
             Self::Text { value } if !value.trim().is_empty() => (2, 0, value.as_str()),
             Self::Text { .. } => return None,
@@ -297,14 +308,31 @@ impl TypedValue {
         match self {
             Self::Text { .. } => json!({"type":"text"}),
             Self::Date { .. } => json!({"type":"date"}),
-            Self::Number { .. } => json!({"type":"number"}),
+            Self::Number {
+                unit: Some(unit), ..
+            } => json!({"type":"number","unit":unit}),
+            Self::Number { unit: None, .. } => json!({"type":"number"}),
             Self::Choice { options, .. } => json!({"type":"choice","options":options}),
         }
     }
-    fn display(&self) -> &str {
+    /// Raw value for numeric cells; the declared unit is available separately.
+    pub fn value_text(&self) -> &str {
         match self {
             Self::Text { value } | Self::Date { value } | Self::Choice { value, .. } => value,
-            Self::Number { value } => value.as_str(),
+            Self::Number { value, .. } => value.as_str(),
+        }
+    }
+    pub fn unit(&self) -> Option<QuantityUnit> {
+        match self {
+            Self::Number { unit, .. } => *unit,
+            _ => None,
+        }
+    }
+    /// Display and search text keeps the unit beside its user-declared value.
+    pub fn display(&self) -> String {
+        match self.unit() {
+            Some(unit) => format!("{} {}", self.value_text(), unit.id()),
+            None => self.value_text().into(),
         }
     }
 }
@@ -343,6 +371,16 @@ fn read_custom<'de, D: serde::Deserializer<'de>>(
     deserializer.deserialize_map(Visitor)
 }
 impl QuantityFields {
+    pub(crate) fn has_units(&self) -> bool {
+        self.custom.values().any(|value| value.unit().is_some())
+    }
+    pub(crate) fn format_version(&self) -> u8 {
+        if self.has_units() {
+            2
+        } else {
+            1
+        }
+    }
     pub fn from_json(bytes: &[u8]) -> Result<Self, EngineError> {
         let value: Self = parse_json(bytes)?;
         value.validate()?;
@@ -383,7 +421,7 @@ impl QuantityFields {
                         return Err(bad("date must be a real YYYY-MM-DD date"));
                     }
                 }
-                TypedValue::Number { value } => {
+                TypedValue::Number { value, .. } => {
                     value.units()?;
                 }
                 TypedValue::Choice { value, options } => {
@@ -474,7 +512,7 @@ fn stored_fields(
         return Err(bad("quantity metadata exceeds 4 MiB"));
     }
     let stored: StoredFields = parse_json(bytes)?;
-    if stored.version != 1 {
+    if stored.version != stored.fields.format_version() {
         return Err(bad("unsupported quantity metadata version"));
     }
     stored.fields.validate()?;
@@ -916,6 +954,11 @@ impl QuantityTable {
     }
     fn json_evaluated(&self, options: &QuantityOptions, evaluated: &QuantityEvaluation) -> Value {
         let rows = self.select(options);
+        let version = rows
+            .iter()
+            .map(|row| row.fields.format_version())
+            .max()
+            .unwrap_or(1);
         let formula_rows: Vec<_> = rows
             .iter()
             .filter(|_| !options.formulas.is_empty())
@@ -932,7 +975,7 @@ impl QuantityTable {
                 .as_object()
                 .is_some_and(|values| values.values().all(|value| value["error"].is_null()))
         });
-        json!({"schema":"sunipdf-quantity-table","version":1,"complete":options.filter.zone.is_none()||self.zone_coverage(&options.filter).complete,"zone_coverage":self.zone_coverage(&options.filter),"source_sha256":self.source_sha256(),"page_count":self.page_count(),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","rows":rows,"summary":evaluated.summary,"formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"formula_rows":formula_rows})
+        json!({"schema":"sunipdf-quantity-table","version":version,"complete":options.filter.zone.is_none()||self.zone_coverage(&options.filter).complete,"zone_coverage":self.zone_coverage(&options.filter),"source_sha256":self.source_sha256(),"page_count":self.page_count(),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","rows":rows,"summary":evaluated.summary,"formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"formula_rows":formula_rows})
     }
     pub fn csv(&self, options: &QuantityOptions) -> Result<String, EngineError> {
         if !self.can_export {
@@ -943,9 +986,20 @@ impl QuantityTable {
     }
     fn csv_evaluated(&self, options: &QuantityOptions, evaluated: &QuantityEvaluation) -> String {
         let rows = self.select(options);
+        let version = rows
+            .iter()
+            .map(|row| row.fields.format_version())
+            .max()
+            .unwrap_or(1);
         let keys: std::collections::BTreeSet<_> = rows
             .iter()
             .flat_map(|r| r.fields.custom.keys().cloned())
+            .collect();
+        let unit_keys: std::collections::BTreeSet<_> = rows
+            .iter()
+            .flat_map(|row| &row.fields.custom)
+            .filter(|(_, value)| value.unit().is_some())
+            .map(|(name, _)| name.clone())
             .collect();
         let mut header: Vec<String> = [
             "record_type",
@@ -977,6 +1031,9 @@ impl QuantityTable {
         for key in &keys {
             header.push(format!("custom:{key}:type"));
             header.push(format!("custom:{key}:value"));
+            if unit_keys.contains(key) {
+                header.push(format!("custom:{key}:unit"));
+            }
         }
         for column in &options.formulas {
             header.extend([
@@ -1071,9 +1128,18 @@ impl QuantityTable {
                         numeric_columns.push(values.len() + 1);
                     }
                     values.push(v.schema()["type"].as_str().unwrap().into());
-                    values.push(v.display().into());
+                    values.push(v.value_text().into());
                 } else {
                     values.extend([String::new(), String::new()]);
+                }
+                if unit_keys.contains(key) {
+                    values.push(
+                        row.fields
+                            .custom
+                            .get(key)
+                            .and_then(TypedValue::unit)
+                            .map_or_else(String::new, |unit| unit.id().into()),
+                    );
                 }
             }
             for value in evaluated
@@ -1171,7 +1237,7 @@ impl QuantityTable {
         let mut metadata = vec![String::new(); 22];
         metadata[0] = "metadata".into();
         metadata[1] = self.source_sha256().into();
-        metadata[21]=json!({"version":1,"zone_coverage":self.zone_coverage(&options.filter),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"matched_rows":summary.matched_rows,"quantity_rows":summary.quantity_rows,"additive_quantity_rows":summary.additive_quantity_rows,"angular_rows":summary.angular_rows,"unquantified_rows":summary.unquantified_rows,"excluded_quantity_rows":summary.excluded_quantity_rows,"unverified_measurement_rows":summary.unverified_measurement_rows,"legacy_measurement_rows":summary.legacy_measurement_rows,"stale_measurement_rows":summary.stale_measurement_rows}).to_string();
+        metadata[21]=json!({"version":version,"zone_coverage":self.zone_coverage(&options.filter),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"matched_rows":summary.matched_rows,"quantity_rows":summary.quantity_rows,"additive_quantity_rows":summary.additive_quantity_rows,"angular_rows":summary.angular_rows,"unquantified_rows":summary.unquantified_rows,"excluded_quantity_rows":summary.excluded_quantity_rows,"unverified_measurement_rows":summary.unverified_measurement_rows,"legacy_measurement_rows":summary.legacy_measurement_rows,"stale_measurement_rows":summary.stale_measurement_rows}).to_string();
         out.push_str(&line(metadata, &[]));
         out
     }
@@ -1337,7 +1403,9 @@ impl Document<'_> {
                     .insert(key.clone(), value.schema())
                     .is_some_and(|previous| previous != value.schema())
                 {
-                    return Err(bad("conflicting definitions for a typed custom column"));
+                    return Err(bad(
+                        "conflicting type, unit or choice definitions for a typed custom column",
+                    ));
                 }
             }
             if schemas.len() > 16 {
@@ -1505,7 +1573,9 @@ impl Document<'_> {
                         .get(key)
                         .is_some_and(|other| other.schema() != value.schema())
                     {
-                        return Err(bad("conflicting definitions for a typed custom column"));
+                        return Err(bad(
+                            "conflicting type, unit or choice definitions for a typed custom column",
+                        ));
                     }
                 }
             }
@@ -1524,7 +1594,7 @@ impl Document<'_> {
         let encoded = fields
             .map(|fields| {
                 serde_json::to_vec(&StoredFields {
-                    version: 1,
+                    version: fields.format_version(),
                     fields: fields.clone(),
                 })
                 .map_err(|e| bad(&e.to_string()))
@@ -1748,6 +1818,245 @@ mod tests {
     }
 
     #[test]
+    fn optional_number_units_preserve_legacy_json_and_version_the_pdf_record() {
+        let legacy = br#"{"unit_price":null,"custom":{"Depth":{"type":"number","value":"0.25"}}}"#;
+        let parsed = QuantityFields::from_json(legacy).unwrap();
+        assert_eq!(serde_json::to_vec(&parsed).unwrap(), legacy);
+        assert_eq!(parsed.custom["Depth"].display(), "0.25");
+        let null = QuantityFields::from_json(br#"{"unit_price":null,"custom":{"Depth":{"type":"number","value":"0.25","unit":null}}}"#).unwrap();
+        assert_eq!(parsed, null);
+        assert_eq!(serde_json::to_vec(&null).unwrap(), legacy);
+        let with_unit = QuantityFields::from_json(br#"{"unit_price":null,"custom":{"Depth":{"type":"number","value":"0.25","unit":"m"}}}"#).unwrap();
+        assert_eq!(with_unit.custom["Depth"].value_text(), "0.25");
+        assert_eq!(with_unit.custom["Depth"].display(), "0.25 m");
+        assert_ne!(
+            parsed.custom["Depth"].schema(),
+            with_unit.custom["Depth"].schema()
+        );
+        for unit in ["kg", "m4", "M", ""] {
+            let mut value = serde_json::to_value(&with_unit).unwrap();
+            value["custom"]["Depth"]["unit"] = unit.into();
+            assert!(QuantityFields::from_json(&serde_json::to_vec(&value).unwrap()).is_err());
+        }
+        assert!(QuantityFields::from_json(br#"{"unit_price":null,"custom":{"Depth":{"type":"number","value":"1","unit":"m","unit":"cm"}}}"#).is_err());
+        assert!(QuantityFields::from_json(
+            br#"{"unit_price":null,"custom":{"Depth":{"type":"text","value":"1","unit":"m"}}}"#
+        )
+        .is_err());
+        let pdf = lopdf::Document::with_version("1.7");
+        for (fields, version, valid) in [
+            (&parsed, 1, true),
+            (&parsed, 2, false),
+            (&with_unit, 1, false),
+            (&with_unit, 2, true),
+            (&with_unit, 3, false),
+        ] {
+            let mut dict = Dictionary::new();
+            dict.set(
+                "SuniPDFQuantity",
+                Object::string_literal(
+                    serde_json::to_vec(&StoredFields {
+                        version,
+                        fields: fields.clone(),
+                    })
+                    .unwrap(),
+                ),
+            );
+            assert_eq!(stored_fields(&pdf, &dict, &mut 0).is_ok(), valid);
+        }
+    }
+
+    #[test]
+    fn exact_geometric_field_formulas_preserve_scale_and_reject_unsupported_dimensions() {
+        use QuantityUnit::*;
+        for [length, area, volume] in [
+            [Millimetres, SquareMillimetres, CubicMillimetres],
+            [Centimetres, SquareCentimetres, CubicCentimetres],
+            [Metres, SquareMetres, CubicMetres],
+            [Inches, SquareInches, CubicInches],
+            [Feet, SquareFeet, CubicFeet],
+        ] {
+            let mut source = row(0, area, 8.0, None);
+            for (name, value, unit) in [
+                ("Depth", "0.25", length),
+                ("Area", "8", area),
+                ("Volume", "2", volume),
+            ] {
+                source.fields.custom.insert(
+                    name.into(),
+                    TypedValue::Number {
+                        value: DecimalValue::parse(value).unwrap(),
+                        unit: Some(unit),
+                    },
+                );
+            }
+            for (expression, expected, unit) in [
+                ("[Depth] * [Depth]", "0.06", Some(area)),
+                ("[Area] * [Depth]", "2.00", Some(volume)),
+                ("[Depth] * [Area]", "2.00", Some(volume)),
+                ("[Volume] / [Depth]", "8.00", Some(area)),
+                ("[Volume] / [Area]", "0.25", Some(length)),
+                ("[Area] / [Depth]", "32.00", Some(length)),
+                ("[Depth] / [Depth]", "1.00", None),
+                ("[Depth] + [Depth]", "0.50", Some(length)),
+                ("[Depth] - [Depth]", "0.00", Some(length)),
+                ("-[Depth] * 2", "-0.50", Some(length)),
+                ("quantity * [Depth]", "2.00", Some(volume)),
+            ] {
+                let mut column = formula(expression);
+                column.quantity_unit = Some(area);
+                let result = column.evaluate(&source).unwrap();
+                assert_eq!(
+                    result.value.as_deref(),
+                    Some(expected),
+                    "{expression}, {length:?}"
+                );
+                assert_eq!(result.unit, unit, "{expression}, {length:?}");
+                assert!(result.error.is_none());
+            }
+            for expression in [
+                "[Area] * [Area]",
+                "[Volume] * [Depth]",
+                "[Depth] / [Area]",
+                "1 / [Depth]",
+                "[Depth] + 1",
+            ] {
+                let result = formula(expression).evaluate(&source).unwrap();
+                assert_eq!(
+                    result.error,
+                    Some(FormulaError::UnitMismatch),
+                    "{expression}"
+                );
+                assert!(result.value.is_none());
+            }
+            source.quantity = None;
+            source.measurement_validity = Some(MeasurementValidity::LegacyUnverified);
+            assert_eq!(
+                formula("[Depth] * 2")
+                    .evaluate(&source)
+                    .unwrap()
+                    .value
+                    .as_deref(),
+                Some("0.50")
+            );
+        }
+        let mut source = row(0, Metres, 1.0, None);
+        for (name, value, unit) in [
+            ("m", "1", Metres),
+            ("cm", "100", Centimetres),
+            ("count", "2", Each),
+            ("angle", "30", Degrees),
+            ("zero", "0", Metres),
+            ("huge", "1000000000000", Metres),
+        ] {
+            source.fields.custom.insert(
+                name.into(),
+                TypedValue::Number {
+                    value: DecimalValue::parse(value).unwrap(),
+                    unit: Some(unit),
+                },
+            );
+        }
+        for expression in [
+            "[m] + [cm]",
+            "[m] * [cm]",
+            "[m] / [cm]",
+            "[count] * [m]",
+            "[angle] * [angle]",
+        ] {
+            assert_eq!(
+                formula(expression).evaluate(&source).unwrap().error,
+                Some(FormulaError::UnitMismatch),
+                "{expression}"
+            );
+        }
+        assert_eq!(
+            formula("[m] / [zero]").evaluate(&source).unwrap().error,
+            Some(FormulaError::DivisionByZero)
+        );
+        assert_eq!(
+            formula("[huge] * 2").evaluate(&source).unwrap().error,
+            Some(FormulaError::Overflow)
+        );
+        assert_eq!(
+            formula("[missing]").evaluate(&source).unwrap().error,
+            Some(FormulaError::MissingField)
+        );
+        assert_eq!(
+            formula("[count] * 2").evaluate(&source).unwrap().unit,
+            Some(Each)
+        );
+        assert_eq!(
+            formula("[angle] / 2").evaluate(&source).unwrap().unit,
+            Some(Degrees)
+        );
+    }
+
+    #[test]
+    fn unit_fields_keep_numeric_sort_and_csv_cells_separate_from_units() {
+        let mut rows: Vec<_> = (0..5)
+            .map(|index| row(index, QuantityUnit::Each, 1.0, None))
+            .collect();
+        for (row, number) in
+            rows.iter_mut()
+                .zip([Some("10"), Some("-0.25"), None, Some("0"), Some("-0.25")])
+        {
+            if let Some(number) = number {
+                row.fields.custom.insert(
+                    "Depth".into(),
+                    TypedValue::Number {
+                        value: DecimalValue::parse(number).unwrap(),
+                        unit: Some(QuantityUnit::Metres),
+                    },
+                );
+            }
+        }
+        rows[0].fields.custom.insert(
+            "Text".into(),
+            TypedValue::Text {
+                value: "=SUM(A1)".into(),
+            },
+        );
+        let table = test_table(rows);
+        let mut options = QuantityOptions::default();
+        options.filter.custom_sort = Some("Depth".into());
+        let indices = |options: &QuantityOptions| {
+            table
+                .select(options)
+                .iter()
+                .map(|row| row.register.index)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(indices(&options), [1, 4, 3, 0, 2]);
+        options.descending = true;
+        assert_eq!(indices(&options), [0, 3, 1, 4, 2]);
+        options.filter.query = "-0.25 m".into();
+        assert_eq!(indices(&options), [1, 4]);
+        options.filter.query.clear();
+        let json = table.json(&options).unwrap();
+        assert_eq!(json["version"], 2);
+        let csv = table.csv(&options).unwrap();
+        assert!(csv
+            .lines()
+            .next()
+            .unwrap()
+            .contains("\"custom:Depth:type\",\"custom:Depth:value\",\"custom:Depth:unit\""));
+        assert!(csv.contains("\"number\",\"-0.25\",\"m\""));
+        assert!(csv.contains("\"number\",\"0\",\"m\""));
+        assert!(!csv.contains("'-0.25"));
+        assert!(csv.contains("'=SUM(A1)"));
+        assert_eq!(json["summary"]["groups"][0]["quantity"], 5.0);
+        let mut plain = table.clone();
+        for row in &mut plain.rows {
+            if let Some(TypedValue::Number { unit, .. }) = row.fields.custom.get_mut("Depth") {
+                *unit = None;
+            }
+        }
+        assert_eq!(plain.json(&options).unwrap()["version"], 1);
+        assert!(!plain.csv(&options).unwrap().contains("custom:Depth:unit"));
+    }
+
+    #[test]
     fn custom_numeric_sort_is_numeric_stable_and_missing_last_in_both_directions() {
         let mut rows: Vec<_> = (0..6)
             .map(|index| row(index, QuantityUnit::Each, 1.0, None))
@@ -1765,6 +2074,7 @@ mod tests {
                     "Amount".into(),
                     TypedValue::Number {
                         value: DecimalValue::parse(number).unwrap(),
+                        unit: None,
                     },
                 );
             }
@@ -1793,6 +2103,7 @@ mod tests {
             "Waste %".into(),
             TypedValue::Number {
                 value: DecimalValue::parse("10").unwrap(),
+                unit: None,
             },
         );
         let value = formula("quantity * (1 + [Waste %] / 100)")
@@ -1898,12 +2209,14 @@ mod tests {
             "Number".into(),
             TypedValue::Number {
                 value: DecimalValue("invalid".into()),
+                unit: None,
             },
         );
         table.rows[1].fields.custom.insert(
             "Number".into(),
             TypedValue::Number {
                 value: DecimalValue::parse("0").unwrap(),
+                unit: None,
             },
         );
         options.filter.custom_sort = Some("Number".into());
@@ -1929,7 +2242,10 @@ mod tests {
             ("[Text]", FormulaError::NonNumericField),
             ("1/0", FormulaError::DivisionByZero),
             ("quantity + 1", FormulaError::UnitMismatch),
-            ("quantity * quantity", FormulaError::UnitMismatch),
+            (
+                "quantity * quantity * quantity * quantity",
+                FormulaError::UnitMismatch,
+            ),
             ("1 / quantity", FormulaError::UnitMismatch),
             ("1000000000000 * 2", FormulaError::Overflow),
         ] {
@@ -2056,6 +2372,7 @@ mod tests {
                 name.into(),
                 TypedValue::Number {
                     value: DecimalValue::parse(value).unwrap(),
+                    unit: None,
                 },
             );
         }
@@ -2241,6 +2558,7 @@ mod tests {
                 "Divisor".into(),
                 TypedValue::Number {
                     value: DecimalValue::parse(value).unwrap(),
+                    unit: None,
                 },
             );
         }
@@ -2296,6 +2614,7 @@ mod tests {
                     "Factor".into(),
                     TypedValue::Number {
                         value: DecimalValue::parse(factor).unwrap(),
+                        unit: None,
                     },
                 );
                 source
@@ -2344,6 +2663,7 @@ mod tests {
                             "Rate".into(),
                             TypedValue::Number {
                                 value: DecimalValue::parse("2.5").unwrap(),
+                                unit: None,
                             },
                         );
                         source.register.fields.discipline = Some(format!("Group {}", index % 10));

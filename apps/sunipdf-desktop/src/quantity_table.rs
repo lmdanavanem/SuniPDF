@@ -160,6 +160,63 @@ struct CustomDraft {
     kind: FieldKind,
     value: String,
     choices: String,
+    unit: Option<QuantityUnit>,
+}
+impl Default for CustomDraft {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            kind: FieldKind::Text,
+            value: String::new(),
+            choices: String::new(),
+            unit: None,
+        }
+    }
+}
+impl CustomDraft {
+    fn from_value(name: &str, value: &TypedValue) -> Self {
+        let (kind, choices) = match value {
+            TypedValue::Text { .. } => (FieldKind::Text, String::new()),
+            TypedValue::Date { .. } => (FieldKind::Date, String::new()),
+            TypedValue::Number { .. } => (FieldKind::Number, String::new()),
+            TypedValue::Choice { options, .. } => (FieldKind::Choice, options.join("\n")),
+        };
+        Self {
+            name: name.into(),
+            kind,
+            value: value.value_text().into(),
+            choices,
+            unit: value.unit(),
+        }
+    }
+
+    fn can_select_kind(&self, kind: FieldKind) -> bool {
+        kind == FieldKind::Number || self.unit.is_none()
+    }
+
+    fn typed_value(&self, lang: Language) -> Result<TypedValue, EngineError> {
+        if !self.can_select_kind(self.kind) {
+            return Err(EngineError::Other(
+                tr(lang, "quantity.unit_type_change").into(),
+            ));
+        }
+        Ok(match self.kind {
+            FieldKind::Text => TypedValue::Text {
+                value: self.value.clone(),
+            },
+            FieldKind::Date => TypedValue::Date {
+                value: self.value.trim().into(),
+            },
+            FieldKind::Number => TypedValue::Number {
+                value: DecimalValue::parse(self.value.trim())?,
+                unit: self.unit,
+            },
+            FieldKind::Choice => TypedValue::Choice {
+                value: self.value.clone(),
+                options: self.choices.lines().map(str::to_owned).collect(),
+            },
+        })
+    }
 }
 struct RowDraft {
     target: QuantityTarget,
@@ -207,28 +264,7 @@ impl RowDraft {
                 .fields
                 .custom
                 .iter()
-                .map(|(name, value)| {
-                    let (kind, value, choices) = match value {
-                        TypedValue::Text { value } => {
-                            (FieldKind::Text, value.clone(), String::new())
-                        }
-                        TypedValue::Date { value } => {
-                            (FieldKind::Date, value.clone(), String::new())
-                        }
-                        TypedValue::Number { value } => {
-                            (FieldKind::Number, value.as_str().to_owned(), String::new())
-                        }
-                        TypedValue::Choice { value, options } => {
-                            (FieldKind::Choice, value.clone(), options.join("\n"))
-                        }
-                    };
-                    CustomDraft {
-                        name: name.clone(),
-                        kind,
-                        value,
-                        choices,
-                    }
-                })
+                .map(|(name, value)| CustomDraft::from_value(name, value))
                 .collect(),
             applying: false,
             error: None,
@@ -237,7 +273,7 @@ impl RowDraft {
                 .is_some_and(|validity| !validity.is_current()),
         })
     }
-    fn fields(&self) -> Result<QuantityFields, EngineError> {
+    fn fields(&self, lang: Language) -> Result<QuantityFields, EngineError> {
         let unit_price = if self.price.trim().is_empty() {
             None
         } else {
@@ -250,21 +286,7 @@ impl RowDraft {
         };
         let mut custom = BTreeMap::new();
         for draft in &self.custom {
-            let value = match draft.kind {
-                FieldKind::Text => TypedValue::Text {
-                    value: draft.value.clone(),
-                },
-                FieldKind::Date => TypedValue::Date {
-                    value: draft.value.trim().into(),
-                },
-                FieldKind::Number => TypedValue::Number {
-                    value: DecimalValue::parse(draft.value.trim())?,
-                },
-                FieldKind::Choice => TypedValue::Choice {
-                    value: draft.value.clone(),
-                    options: draft.choices.lines().map(str::to_owned).collect(),
-                },
-            };
+            let value = draft.typed_value(lang)?;
             let name = draft.name.trim();
             if name.is_empty() || custom.insert(name.to_owned(), value).is_some() {
                 return Err(EngineError::Other(
@@ -278,14 +300,6 @@ impl RowDraft {
     }
 }
 
-fn typed_text(value: &TypedValue) -> &str {
-    match value {
-        TypedValue::Text { value }
-        | TypedValue::Date { value }
-        | TypedValue::Choice { value, .. } => value,
-        TypedValue::Number { value } => value.as_str(),
-    }
-}
 fn short_label(ui: &mut egui::Ui, text: &str) {
     ui.add_sized(
         [170.0, 20.0],
@@ -895,11 +909,13 @@ impl SuniApp {
                                     for name in &columns {
                                         short_label(
                                             ui,
-                                            row.fields
+                                            &row.fields
                                                 .custom
                                                 .get(*name)
-                                                .map(typed_text)
-                                                .unwrap_or(tr(lang, "quantity.missing")),
+                                                .map(TypedValue::display)
+                                                .unwrap_or_else(|| {
+                                                    tr(lang, "quantity.missing").into()
+                                                }),
                                         );
                                     }
                                     if let Some(values) =
@@ -1005,7 +1021,7 @@ impl SuniApp {
         }
         if apply {
             if let Some(edit) = &mut state.edit {
-                match edit.fields() {
+                match edit.fields(lang) {
                     Ok(fields) => {
                         edit.applying = true;
                         edit.error = None;
@@ -1218,40 +1234,9 @@ fn draw_editor(ui: &mut egui::Ui, draft: &mut RowDraft, lang: Language) {
         let mut remove = None;
         for (index, field) in draft.custom.iter_mut().enumerate() {
             ui.push_id(index, |ui| {
-                ui.group(|ui| {
-                    ui.horizontal_wrapped(|ui| {
-                        ui.label(tr(lang, "quantity.column_name"));
-                        ui.add(
-                            egui::TextEdit::singleline(&mut field.name)
-                                .char_limit(64)
-                                .desired_width(160.0),
-                        );
-                        egui::ComboBox::from_id_salt("column-type")
-                            .selected_text(tr(lang, field.kind.key()))
-                            .show_ui(ui, |ui| {
-                                for kind in FieldKind::ALL {
-                                    ui.selectable_value(
-                                        &mut field.kind,
-                                        kind,
-                                        tr(lang, kind.key()),
-                                    );
-                                }
-                            });
-                        if ui.button(tr(lang, "quantity.remove_column")).clicked() {
-                            remove = Some(index);
-                        }
-                    });
-                    ui.label(tr(lang, "quantity.value"));
-                    ui.add(egui::TextEdit::singleline(&mut field.value).char_limit(1024));
-                    if field.kind == FieldKind::Choice {
-                        ui.label(tr(lang, "quantity.choices"));
-                        ui.add(
-                            egui::TextEdit::multiline(&mut field.choices)
-                                .char_limit(4096)
-                                .desired_rows(3),
-                        );
-                    }
-                });
+                if custom_field_editor(ui, field, lang) {
+                    remove = Some(index);
+                }
             });
         }
         if let Some(index) = remove {
@@ -1264,17 +1249,70 @@ fn draw_editor(ui: &mut egui::Ui, draft: &mut RowDraft, lang: Language) {
             )
             .clicked()
         {
-            draft.custom.push(CustomDraft {
-                name: String::new(),
-                kind: FieldKind::Text,
-                value: String::new(),
-                choices: String::new(),
-            });
+            draft.custom.push(CustomDraft::default());
         }
     });
     if let Some(error) = &draft.error {
         ui.colored_label(egui::Color32::RED, error);
     }
+}
+
+fn custom_field_editor(ui: &mut egui::Ui, field: &mut CustomDraft, lang: Language) -> bool {
+    let mut remove = false;
+    ui.group(|ui| {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(tr(lang, "quantity.column_name"));
+            ui.add(
+                egui::TextEdit::singleline(&mut field.name)
+                    .char_limit(64)
+                    .desired_width(160.0),
+            );
+            egui::ComboBox::from_id_salt("column-type")
+                .selected_text(tr(lang, field.kind.key()))
+                .show_ui(ui, |ui| {
+                    for kind in FieldKind::ALL {
+                        ui.add_enabled_ui(field.can_select_kind(kind), |ui| {
+                            ui.selectable_value(&mut field.kind, kind, tr(lang, kind.key()))
+                        })
+                        .inner
+                        .on_disabled_hover_text(tr(lang, "quantity.unit_type_change"));
+                    }
+                });
+            remove = ui.button(tr(lang, "quantity.remove_column")).clicked();
+        });
+        ui.label(tr(lang, "quantity.value"));
+        ui.add(egui::TextEdit::singleline(&mut field.value).char_limit(1024));
+        if field.kind == FieldKind::Number || field.unit.is_some() {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(tr(lang, "quantity.unit"));
+                egui::ComboBox::from_id_salt("column-unit")
+                    .selected_text(
+                        field
+                            .unit
+                            .map_or(tr(lang, "quantity.no_unit"), QuantityUnit::id),
+                    )
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(&mut field.unit, None, tr(lang, "quantity.no_unit"));
+                        for unit in QuantityUnit::ALL {
+                            ui.selectable_value(&mut field.unit, Some(unit), unit.id());
+                        }
+                    });
+            });
+            ui.small(tr(lang, "quantity.number_unit_help"));
+            if field.unit.is_some() {
+                ui.small(tr(lang, "quantity.unit_type_change"));
+            }
+        }
+        if field.kind == FieldKind::Choice {
+            ui.label(tr(lang, "quantity.choices"));
+            ui.add(
+                egui::TextEdit::multiline(&mut field.choices)
+                    .char_limit(4096)
+                    .desired_rows(3),
+            );
+        }
+    });
+    remove
 }
 
 fn draw_summary(ui: &mut egui::Ui, summary: &QuantitySummary, lang: Language) {
@@ -1408,6 +1446,136 @@ pub(crate) mod tests {
     use super::*;
     use crate::worker::Response;
     use egui::{Event, Modifiers, Pos2, Rect};
+
+    #[test]
+    fn numeric_drafts_preserve_units_and_require_explicit_removal_before_type_change() {
+        for lang in Language::ALL {
+            let mut fresh = CustomDraft {
+                value: "-0.25".into(),
+                kind: FieldKind::Number,
+                ..Default::default()
+            };
+            assert!(fresh.unit.is_none(), "New numbers must not imply each");
+            assert_eq!(fresh.typed_value(lang).unwrap().display(), "-0.25");
+            for unit in QuantityUnit::ALL {
+                let stored = TypedValue::Number {
+                    value: DecimalValue::parse("-0.25").unwrap(),
+                    unit: Some(unit),
+                };
+                let mut loaded = CustomDraft::from_value("Offset", &stored);
+                assert_eq!(loaded.name, "Offset");
+                assert_eq!(loaded.value, "-0.25");
+                assert_eq!(loaded.unit, Some(unit));
+                assert_eq!(loaded.typed_value(lang).unwrap(), stored);
+                assert!(loaded.can_select_kind(FieldKind::Number));
+                for kind in [FieldKind::Text, FieldKind::Date, FieldKind::Choice] {
+                    assert!(!loaded.can_select_kind(kind));
+                    loaded.kind = kind;
+                    let error = loaded.typed_value(lang).unwrap_err();
+                    assert!(error
+                        .to_string()
+                        .contains(tr(lang, "quantity.unit_type_change")));
+                    assert_eq!(
+                        loaded.unit,
+                        Some(unit),
+                        "Refusal must preserve the declared unit"
+                    );
+                }
+                loaded.unit = None;
+                loaded.kind = FieldKind::Text;
+                assert!(loaded.can_select_kind(FieldKind::Text));
+                assert_eq!(
+                    loaded.typed_value(lang).unwrap(),
+                    TypedValue::Text {
+                        value: "-0.25".into()
+                    }
+                );
+                loaded.kind = FieldKind::Number;
+                assert!(loaded.typed_value(lang).unwrap().unit().is_none());
+            }
+            fresh.value = "0".into();
+            assert_eq!(fresh.typed_value(lang).unwrap().value_text(), "0");
+            fresh.value.clear();
+            assert!(
+                fresh.typed_value(lang).is_err(),
+                "Missing numeric input is not zero"
+            );
+        }
+    }
+
+    #[test]
+    fn compact_numeric_editor_shows_explicit_unit_choices_and_cell_values_in_both_languages() {
+        fn text_rects(shape: &egui::Shape, label: &str, found: &mut Vec<Rect>) {
+            match shape {
+                egui::Shape::Text(text) if text.galley.text() == label => {
+                    found.push(Rect::from_min_size(text.pos, text.galley.size()));
+                }
+                egui::Shape::Vec(shapes) => shapes
+                    .iter()
+                    .for_each(|shape| text_rects(shape, label, found)),
+                _ => {}
+            }
+        }
+        let viewport = Rect::from_min_size(Pos2::ZERO, egui::vec2(360.0, 400.0));
+        for lang in Language::ALL {
+            for dark in [false, true] {
+                for unit in [None, Some(QuantityUnit::Metres)] {
+                    let ctx = egui::Context::default();
+                    crate::theme::apply(&ctx, dark);
+                    let stored = TypedValue::Number {
+                        value: DecimalValue::parse("0.25").unwrap(),
+                        unit,
+                    };
+                    let mut draft = CustomDraft::from_value("Depth", &stored);
+                    let label = unit.map_or(tr(lang, "quantity.no_unit"), QuantityUnit::id);
+                    let mut final_output = None;
+                    for _ in 0..4 {
+                        let mut output = ctx.run_ui(
+                            egui::RawInput {
+                                screen_rect: Some(viewport),
+                                ..Default::default()
+                            },
+                            |ui| {
+                                ui.set_max_width(340.0);
+                                assert!(!custom_field_editor(ui, &mut draft, lang));
+                                short_label(ui, &draft.typed_value(lang).unwrap().display());
+                            },
+                        );
+                        output.textures_delta.clear();
+                        final_output = Some(output);
+                    }
+                    let output = final_output.unwrap();
+                    let stored_display = stored.display();
+                    for text in [tr(lang, "quantity.unit"), label, stored_display.as_str()] {
+                        assert!(
+                            output.shapes.iter().any(|shape| {
+                                let mut found = Vec::new();
+                                text_rects(&shape.shape, text, &mut found);
+                                found.iter().any(|rect| {
+                                    viewport.contains_rect(*rect)
+                                        && shape.clip_rect.contains_rect(*rect)
+                                })
+                            }),
+                            "Unit/value clipped or absent: {lang:?}, dark={dark}, {text}"
+                        );
+                    }
+                    assert_eq!(draft.typed_value(lang).unwrap(), stored);
+                }
+            }
+        }
+    }
+
+    pub(crate) fn verify_loaded_unit_draft(table: &QuantityTable) {
+        let row = &table.rows()[0];
+        assert_eq!(
+            row.fields.custom["Depth"].unit(),
+            Some(QuantityUnit::Metres)
+        );
+        for lang in Language::ALL {
+            let draft = RowDraft::new(table, row, 1).unwrap();
+            assert_eq!(draft.fields(lang).unwrap(), row.fields);
+        }
+    }
 
     #[test]
     fn quantity_display_bounds_float_noise_without_hiding_small_nonzero_values() {
@@ -1795,6 +1963,7 @@ pub(crate) mod tests {
                                 kind: FieldKind::Text,
                                 value: "Long form fixture".into(),
                                 choices: String::new(),
+                                unit: None,
                             })
                             .collect();
                         draft.error = Some(
@@ -1984,6 +2153,7 @@ pub(crate) mod tests {
                 "a pending field draft keeps document guards"
             );
             let draft = app.annotate.quantities.edit.as_mut().unwrap();
+            let lang = Language::from_code(language).unwrap();
             draft.price = "0".into();
             draft.currency = "CHF".into();
             draft.custom.push(CustomDraft {
@@ -1991,8 +2161,9 @@ pub(crate) mod tests {
                 kind: FieldKind::Text,
                 value: String::new(),
                 choices: String::new(),
+                unit: None,
             });
-            let zero = draft.fields().unwrap();
+            let zero = draft.fields(lang).unwrap();
             assert_eq!(zero.unit_price.unwrap().amount.as_str(), "0");
             assert_eq!(
                 zero.custom.get("Estimator"),
@@ -2001,15 +2172,16 @@ pub(crate) mod tests {
                 })
             );
             draft.price.clear();
-            assert!(draft.fields().unwrap().unit_price.is_none());
+            assert!(draft.fields(lang).unwrap().unit_price.is_none());
             draft.price = "12.5".into();
             draft.custom.push(CustomDraft {
                 name: "Inspection date".into(),
                 kind: FieldKind::Date,
                 value: "2026-02-30".into(),
                 choices: String::new(),
+                unit: None,
             });
-            assert!(draft.fields().is_err());
+            assert!(draft.fields(lang).is_err());
             draft.custom.pop();
             controls.click(&mut app, "quantity.cancel");
             assert!(app.annotate.quantities.edit.is_none());

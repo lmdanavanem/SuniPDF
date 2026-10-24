@@ -227,6 +227,51 @@ fn divide_round(numerator: i128, denominator: i128) -> Result<i128, FormulaError
     rounded.checked_mul(sign).ok_or(FormulaError::Overflow)
 }
 
+fn geometric_family(unit: QuantityUnit) -> Option<([QuantityUnit; 3], usize)> {
+    use QuantityUnit::*;
+    [
+        [Millimetres, SquareMillimetres, CubicMillimetres],
+        [Centimetres, SquareCentimetres, CubicCentimetres],
+        [Metres, SquareMetres, CubicMetres],
+        [Inches, SquareInches, CubicInches],
+        [Feet, SquareFeet, CubicFeet],
+    ]
+    .into_iter()
+    .find_map(|family| {
+        family
+            .iter()
+            .position(|candidate| *candidate == unit)
+            .map(|index| (family, index + 1))
+    })
+}
+
+fn combined_unit(
+    left: Option<QuantityUnit>,
+    right: Option<QuantityUnit>,
+    divide: bool,
+) -> Result<Option<QuantityUnit>, FormulaError> {
+    let (left, right) = match (left, right) {
+        (left, None) => return Ok(left),
+        (None, right) if !divide => return Ok(right),
+        (Some(left), Some(right)) if divide && left == right => return Ok(None),
+        (Some(left), Some(right)) => (left, right),
+        _ => return Err(FormulaError::UnitMismatch),
+    };
+    let (family, left_power) = geometric_family(left).ok_or(FormulaError::UnitMismatch)?;
+    let (right_family, right_power) = geometric_family(right).ok_or(FormulaError::UnitMismatch)?;
+    if family != right_family {
+        return Err(FormulaError::UnitMismatch);
+    }
+    let power = if divide {
+        left_power.checked_sub(right_power)
+    } else {
+        left_power.checked_add(right_power)
+    }
+    .filter(|power| (1..=3).contains(power))
+    .ok_or(FormulaError::UnitMismatch)?;
+    Ok(Some(family[power - 1]))
+}
+
 fn evaluate(
     node: &Node,
     row: &QuantityRow,
@@ -235,8 +280,8 @@ fn evaluate(
     let result = match node {
         Node::Number(value) => (*value, None),
         Node::Field(name) => match row.fields.custom.get(name) {
-            Some(TypedValue::Number { value }) => {
-                (value.units().map_err(|_| FormulaError::Overflow)?, None)
+            Some(TypedValue::Number { value, unit }) => {
+                (value.units().map_err(|_| FormulaError::Overflow)?, *unit)
             }
             Some(_) => return Err(FormulaError::NonNumericField),
             None => return Err(FormulaError::MissingField),
@@ -275,20 +320,26 @@ fn evaluate(
                     .ok_or(FormulaError::Overflow)?,
                     ua,
                 ),
-                b'*' if ua.is_none() || ub.is_none() => (
-                    divide_round(
-                        a.checked_mul(b).ok_or(FormulaError::Overflow)?,
-                        DECIMAL_SCALE,
-                    )?,
-                    ua.or(ub),
-                ),
-                b'/' if ub.is_none() || ua == ub => (
-                    divide_round(
-                        a.checked_mul(DECIMAL_SCALE).ok_or(FormulaError::Overflow)?,
-                        b,
-                    )?,
-                    if ua == ub { None } else { ua },
-                ),
+                b'*' => {
+                    let unit = combined_unit(ua, ub, false)?;
+                    (
+                        divide_round(
+                            a.checked_mul(b).ok_or(FormulaError::Overflow)?,
+                            DECIMAL_SCALE,
+                        )?,
+                        unit,
+                    )
+                }
+                b'/' => {
+                    let unit = combined_unit(ua, ub, true)?;
+                    (
+                        divide_round(
+                            a.checked_mul(DECIMAL_SCALE).ok_or(FormulaError::Overflow)?,
+                            b,
+                        )?,
+                        unit,
+                    )
+                }
                 _ => return Err(FormulaError::UnitMismatch),
             }
         }
