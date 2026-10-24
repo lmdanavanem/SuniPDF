@@ -471,7 +471,7 @@ fn validate_pairs(pairs: &[(usize, usize)]) -> Result<(), EngineError> {
     Ok(())
 }
 
-fn read_source(path: &Path, cancel: &AtomicBool) -> Result<Vec<u8>, EngineError> {
+pub(crate) fn read_source(path: &Path, cancel: &AtomicBool) -> Result<Vec<u8>, EngineError> {
     cancelled(cancel)?;
     let before = path.metadata()?;
     if !before.is_file() || before.len() == 0 || before.len() > MAX_SOURCE_BYTES {

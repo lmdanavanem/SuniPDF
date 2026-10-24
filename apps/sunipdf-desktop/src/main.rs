@@ -43,6 +43,7 @@ mod reader_ui_evidence;
 mod reading;
 mod recovery;
 mod redact;
+mod revision_outlines_ui;
 mod revision_overlay;
 mod revision_transfer_ui;
 mod settings;

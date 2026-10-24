@@ -513,6 +513,119 @@ fn wrap_native(page: &mut PdfPage<'_>, text: &str, width: f32) -> Result<Vec<Str
     Ok(lines)
 }
 
+pub(crate) fn vertex_annotation_components(
+    geo: &PageGeometry,
+    kind: VertexAnnotKind,
+    points: &[(f32, f32)],
+    style: &AnnotStyle,
+    author: Option<&str>,
+) -> Result<(Dictionary, Stream), EngineError> {
+    let closed = kind != VertexAnnotKind::Polyline;
+    if points.len() < if closed { 3 } else { 2 }
+        || points.len() > 512
+        || !style.width_pt.is_finite()
+        || !(0.1..=50.0).contains(&style.width_pt)
+        || !style.opacity.is_finite()
+        || !(0.0..=1.0).contains(&style.opacity)
+        || (!closed && style.fill_rgb.is_some())
+    {
+        return Err(bad());
+    }
+    annot_write::validate_dash_pattern(&style.dash_pattern)?;
+    let cloud = kind == VertexAnnotKind::Cloud;
+    let margin = style.width_pt / 2.0 + if cloud { 4.5 } else { 0.5 };
+    let mut rect = PointRect {
+        left: f32::INFINITY,
+        bottom: f32::INFINITY,
+        right: f32::NEG_INFINITY,
+        top: f32::NEG_INFINITY,
+    };
+    let mut length = 0.0;
+    for (index, point) in points.iter().enumerate() {
+        if !point.0.is_finite() || !point.1.is_finite() {
+            return Err(bad());
+        }
+        rect.left = rect.left.min(point.0);
+        rect.right = rect.right.max(point.0);
+        rect.bottom = rect.bottom.min(point.1);
+        rect.top = rect.top.max(point.1);
+        if index > 0 || closed {
+            let previous = points[(index + points.len() - 1) % points.len()];
+            let distance = (point.0 - previous.0).hypot(point.1 - previous.1);
+            if distance < 0.01 {
+                return Err(bad());
+            }
+            length += distance;
+        }
+    }
+    if length > 50_000.0 {
+        return Err(bad());
+    }
+    if !style.dash_pattern.is_empty() {
+        let cycle: f64 = style
+            .dash_pattern
+            .iter()
+            .map(|value| f64::from(*value))
+            .sum();
+        if 2.0 * f64::from(length) / cycle * style.dash_pattern.len() as f64 > 100_000.0 {
+            return Err(bad());
+        }
+    }
+    if cloud {
+        let area: f32 = points
+            .iter()
+            .zip(points.iter().cycle().skip(1))
+            .take(points.len())
+            .map(|(a, b)| a.0 * b.1 - a.1 * b.0)
+            .sum();
+        if !area.is_finite() || area.abs() < 0.01 {
+            return Err(bad());
+        }
+    }
+    rect.left -= margin;
+    rect.bottom -= margin;
+    rect.right += margin;
+    rect.top += margin;
+    let (w, h) = checked_rect(geo, rect)?;
+    let mut annotation = rich_base(
+        if closed { "Polygon" } else { "PolyLine" },
+        rect,
+        geo,
+        author,
+    )?;
+    annotation.set(
+        "Vertices",
+        annot_write::nums(
+            &points
+                .iter()
+                .flat_map(|&(x, y)| {
+                    let (x, y) = geo.to_user(x, y);
+                    [x, y]
+                })
+                .collect::<Vec<_>>(),
+        ),
+    );
+    annotation.set("C", annot_write::rgb_obj(style.rgb));
+    if let Some(fill) = style.fill_rgb {
+        annotation.set("IC", annot_write::rgb_obj(fill));
+    }
+    annotation.set("CA", style.opacity);
+    annotation.set(
+        "BS",
+        annot_write::border_style(style.width_pt, &style.dash_pattern),
+    );
+    if cloud {
+        annotation.set("IT", Object::Name(b"PolygonCloud".to_vec()));
+        annotation.set("BE", dictionary! {"S"=>"C", "I"=>2});
+    }
+    let local: Vec<_> = points
+        .iter()
+        .map(|&(x, y)| (x - rect.left, y - rect.bottom))
+        .collect();
+    let ap = crate::appearance::vertices_ap(w, h, &local, closed, cloud, style);
+    Ok((annotation, annot_write::ap_stream(&ap, geo)))
+}
+
 impl<'a> Document<'a> {
     fn rich_text_source(
         &self,
@@ -733,116 +846,10 @@ impl<'a> Document<'a> {
         style: &AnnotStyle,
         author: Option<&str>,
     ) -> Result<usize, EngineError> {
-        let closed = kind != VertexAnnotKind::Polyline;
-        if points.len() < if closed { 3 } else { 2 }
-            || points.len() > 512
-            || !style.width_pt.is_finite()
-            || !(0.1..=50.0).contains(&style.width_pt)
-            || !style.opacity.is_finite()
-            || !(0.0..=1.0).contains(&style.opacity)
-            || (!closed && style.fill_rgb.is_some())
-        {
-            return Err(bad());
-        }
-        annot_write::validate_dash_pattern(&style.dash_pattern)?;
-        let cloud = kind == VertexAnnotKind::Cloud;
-        let margin = style.width_pt / 2.0 + if cloud { 4.5 } else { 0.5 };
-        let mut rect = PointRect {
-            left: f32::INFINITY,
-            bottom: f32::INFINITY,
-            right: f32::NEG_INFINITY,
-            top: f32::NEG_INFINITY,
-        };
-        let mut length = 0.0;
-        for (index, point) in points.iter().enumerate() {
-            if !point.0.is_finite() || !point.1.is_finite() {
-                return Err(bad());
-            }
-            rect.left = rect.left.min(point.0);
-            rect.right = rect.right.max(point.0);
-            rect.bottom = rect.bottom.min(point.1);
-            rect.top = rect.top.max(point.1);
-            if index > 0 || closed {
-                let previous = points[(index + points.len() - 1) % points.len()];
-                let distance = (point.0 - previous.0).hypot(point.1 - previous.1);
-                if distance < 0.01 {
-                    return Err(bad());
-                }
-                length += distance;
-            }
-        }
-        if length > 50_000.0 {
-            return Err(bad());
-        }
-        if !style.dash_pattern.is_empty() {
-            let cycle: f64 = style
-                .dash_pattern
-                .iter()
-                .map(|value| f64::from(*value))
-                .sum();
-            if 2.0 * f64::from(length) / cycle * style.dash_pattern.len() as f64 > 100_000.0 {
-                return Err(bad());
-            }
-        }
-        if cloud {
-            let area: f32 = points
-                .iter()
-                .zip(points.iter().cycle().skip(1))
-                .take(points.len())
-                .map(|(a, b)| a.0 * b.1 - a.1 * b.0)
-                .sum();
-            if !area.is_finite() || area.abs() < 0.01 {
-                return Err(bad());
-            }
-        }
-        rect.left -= margin;
-        rect.bottom -= margin;
-        rect.right += margin;
-        rect.top += margin;
         self.edit_annotation_pdf(page_index, |pdf, page, geo| {
-            let (w, h) = checked_rect(geo, rect)?;
-            let mut annotation = rich_base(
-                if closed { "Polygon" } else { "PolyLine" },
-                rect,
-                geo,
-                author,
-            )?;
-            annotation.set(
-                "Vertices",
-                annot_write::nums(
-                    &points
-                        .iter()
-                        .flat_map(|&(x, y)| {
-                            let (x, y) = geo.to_user(x, y);
-                            [x, y]
-                        })
-                        .collect::<Vec<_>>(),
-                ),
-            );
-            annotation.set("C", annot_write::rgb_obj(style.rgb));
-            if let Some(fill) = style.fill_rgb {
-                annotation.set("IC", annot_write::rgb_obj(fill));
-            }
-            annotation.set("CA", style.opacity);
-            annotation.set(
-                "BS",
-                annot_write::border_style(style.width_pt, &style.dash_pattern),
-            );
-            if cloud {
-                annotation.set("IT", Object::Name(b"PolygonCloud".to_vec()));
-                annotation.set("BE", dictionary! {"S"=>"C", "I"=>2});
-            }
-            let local: Vec<_> = points
-                .iter()
-                .map(|&(x, y)| (x - rect.left, y - rect.bottom))
-                .collect();
-            let ap = crate::appearance::vertices_ap(w, h, &local, closed, cloud, style);
-            annot_write::push_annotation(
-                pdf,
-                page,
-                annotation,
-                Some(annot_write::ap_stream(&ap, geo)),
-            )
+            let (annotation, stream) =
+                vertex_annotation_components(geo, kind, points, style, author)?;
+            annot_write::push_annotation(pdf, page, annotation, Some(stream))
         })
     }
 

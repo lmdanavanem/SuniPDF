@@ -600,6 +600,10 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    RevisionOutlines {
+        generation: u64,
+        job: crate::revision_outlines_ui::Job,
+    },
     PlanLinks {
         generation: u64,
         job: crate::plan_links_ui::Job,
@@ -907,6 +911,14 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    RevisionOutlinesProgress {
+        generation: u64,
+        progress: sunipdf_core::revision_outlines::OutlineProgress,
+    },
+    RevisionOutlinesDone {
+        generation: u64,
+        result: Box<Result<crate::revision_outlines_ui::Outcome, EngineError>>,
+    },
     PlanLinksDone {
         generation: u64,
         result: Result<crate::plan_links_ui::Outcome, EngineError>,
@@ -2317,6 +2329,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
     let mut plan_links = crate::plan_links_ui::WorkerCache::default();
     let mut queue: VecDeque<Request> = VecDeque::new();
     let mut navigation_failed = false;
+    let mut revision_outlines = crate::revision_outlines_ui::WorkerCache::default();
     let mut revision_transfers = crate::revision_transfer_ui::WorkerCache::default();
     loop {
         // 1. Travail suivant : file locale, sinon requête reçue, sinon une tuile voulue, sinon
@@ -2379,6 +2392,35 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
                 Response::PlanLinksDone { generation, result }
             }
+            Request::RevisionOutlines { generation, job } => Response::RevisionOutlinesDone {
+                generation,
+                result: Box::new(
+                    if state.modified()
+                        && state.document.as_ref().is_some_and(|doc| {
+                            revision_outlines.touches_modified(&job, &doc.info().path)
+                        })
+                    {
+                        let _ = revision_outlines.run(
+                            &engine,
+                            generation,
+                            crate::revision_outlines_ui::Job::Discard,
+                            |_| {},
+                        );
+                        Err(EngineError::Other(
+                            "A selected revision has unsaved changes; save it and inspect again"
+                                .into(),
+                        ))
+                    } else {
+                        revision_outlines.run(&engine, generation, job, |progress| {
+                            let _ = tx.send(Response::RevisionOutlinesProgress {
+                                generation,
+                                progress,
+                            });
+                            ctx.request_repaint();
+                        })
+                    },
+                ),
+            },
             Request::RevisionTransfer { generation, job } => Response::RevisionTransferDone {
                 generation,
                 result: if state.modified()
@@ -3632,6 +3674,186 @@ mod tests {
         reviewed_plan_links_preview_both_pages_and_publish_only_fresh_copies(&worker);
         cooperative_search_and_register_publish_complete_generation_scoped_results(&worker);
         revision_transfer_candidates_stay_in_worker_and_revalidate_before_publication(&worker);
+        revision_outlines_keep_candidates_in_worker_and_revalidate_saved_sources(&worker);
+    }
+
+    fn revision_outlines_keep_candidates_in_worker_and_revalidate_saved_sources(worker: &Worker) {
+        use crate::revision_outlines_ui::{Job, Outcome};
+        use sunipdf_core::revision_outlines::{
+            OutlineClassification, OutlineOptions, OutlineReview, OutlineSelection,
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let old = dir.path().join("old.pdf");
+        let new = dir.path().join("new.pdf");
+        let fixture = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        std::fs::write(&old, &fixture).unwrap();
+        std::fs::write(&new, &fixture).unwrap();
+        worker.send(Request::Open {
+            path: new.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Edit(EditOp::AddAnnotShape {
+            page: 0,
+            shape: AnnotShape::Square,
+            rect: PointRect {
+                left: 100.0,
+                bottom: 100.0,
+                right: 140.0,
+                top: 140.0,
+            },
+            style: AnnotStyle::default(),
+            author: Some("Local QA".into()),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Save { path: new.clone() });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        let new_bytes = std::fs::read(&new).unwrap();
+        let cancel = || Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let run = |generation, job| {
+            worker.send(Request::RevisionOutlines { generation, job });
+            loop {
+                match next_response(worker) {
+                    Response::RevisionOutlinesProgress {
+                        generation: actual,
+                        progress,
+                    } => {
+                        assert_eq!(actual, generation);
+                        assert!(progress.done <= progress.total);
+                    }
+                    Response::RevisionOutlinesDone {
+                        generation: actual,
+                        result,
+                    } => {
+                        assert_eq!(actual, generation);
+                        break *result;
+                    }
+                    _ => panic!("revision outline response"),
+                }
+            }
+        };
+        let inspection = match run(
+            1200,
+            Job::Inspect {
+                paths: [old.clone(), new.clone()],
+                options: OutlineOptions {
+                    long_side: 256,
+                    min_component_pixels: 1,
+                    ..Default::default()
+                },
+                passwords: Default::default(),
+                cancel: cancel(),
+            },
+        )
+        .unwrap()
+        {
+            Outcome::Inspected(i) => i,
+            _ => panic!("inspection"),
+        };
+        assert!(!inspection.regions.is_empty());
+        let review = OutlineReview {
+            version: 1,
+            old_sha256: inspection.old_sha256.clone(),
+            new_sha256: inspection.new_sha256.clone(),
+            options: inspection.options.clone(),
+            selections: inspection
+                .regions
+                .iter()
+                .map(|r| OutlineSelection {
+                    id: r.id.clone(),
+                    fingerprint: r.fingerprint.clone(),
+                    classification: OutlineClassification::Uncertain,
+                    confirmed: true,
+                })
+                .collect(),
+        };
+        let prepare = |generation| {
+            run(
+                generation,
+                Job::Prepare {
+                    paths: [old.clone(), new.clone()],
+                    review: review.clone(),
+                    passwords: Default::default(),
+                    cancel: cancel(),
+                },
+            )
+        };
+        assert!(
+            matches!(prepare(1201).unwrap(),Outcome::Preview{token:1201,image,report}if image.width>0&&!report.created.is_empty())
+        );
+        assert!(matches!(
+            run(1202, Job::Discard).unwrap(),
+            Outcome::Discarded
+        ));
+        let output = dir.path().join("outlines.pdf");
+        assert!(run(
+            1203,
+            Job::Save {
+                token: 1201,
+                output: output.clone(),
+                cancel: cancel()
+            }
+        )
+        .is_err());
+        assert!(!output.exists());
+        assert!(prepare(1204).is_ok());
+        let mut changed = new_bytes.clone();
+        changed.extend_from_slice(b"\n% after-preview change\n");
+        std::fs::write(&new, &changed).unwrap();
+        assert!(run(
+            1205,
+            Job::Save {
+                token: 1204,
+                output: output.clone(),
+                cancel: cancel()
+            }
+        )
+        .is_err());
+        assert!(!output.exists());
+        std::fs::write(&new, &new_bytes).unwrap();
+        assert!(prepare(1206).is_ok());
+        let report = match run(
+            1207,
+            Job::Save {
+                token: 1206,
+                output: output.clone(),
+                cancel: cancel(),
+            },
+        )
+        .unwrap()
+        {
+            Outcome::Saved(r) => r,
+            _ => panic!("saved"),
+        };
+        assert_eq!(report.output_path.unwrap(), output.canonicalize().unwrap());
+        assert_eq!(std::fs::read(&old).unwrap(), fixture);
+        assert_eq!(std::fs::read(&new).unwrap(), new_bytes);
+        assert!(!worker.has_pending_mutations());
+        // A loaded source mutation after inspection is refused even when its saved file is unchanged.
+        worker.send(Request::Edit(EditOp::AddAnnotShape {
+            page: 0,
+            shape: AnnotShape::Square,
+            rect: PointRect {
+                left: 200.0,
+                bottom: 200.0,
+                right: 240.0,
+                top: 240.0,
+            },
+            style: AnnotStyle::default(),
+            author: None,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(prepare(1208).is_err());
     }
 
     fn revision_transfer_candidates_stay_in_worker_and_revalidate_before_publication(
@@ -4085,7 +4307,13 @@ mod tests {
         };
         assert_eq!(report.created.len(), 2);
         assert!(preview.image.width > preview.image.height);
-        assert!(preview.image.rgba.chunks_exact(4).any(|p| p[0] < 150));
+        assert!(preview
+            .image
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[0] < 150));
         let Outcome::Preview {
             target: is_target,
             preview: destination,

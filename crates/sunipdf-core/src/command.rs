@@ -5,6 +5,7 @@
 pub enum Command {
     PlanSets,
     PlanLinks,
+    RevisionOutlines,
     RevisionTransfer,
     CompareFiles,
     RevisionOverlay,
@@ -196,6 +197,14 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        RevisionOutlines,
+        "file.revision_outlines",
+        "outlines.title",
+        None,
+        false,
+        File
+    ),
     cmd!(
         PlanLinks,
         "file.plan_links",
@@ -1372,7 +1381,7 @@ mod tests {
         for info in REGISTRY {
             let _ = info.command.info();
         }
-        assert_eq!(Command::in_menu(Menu::File).count(), 14);
+        assert_eq!(Command::in_menu(Menu::File).count(), 15);
         assert_eq!(Command::in_menu(Menu::Tools).count(), 13);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }

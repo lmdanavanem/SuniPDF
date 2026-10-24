@@ -15,6 +15,7 @@ mod plan_links_cmd;
 mod plan_set_cmd;
 mod quantity_cmd;
 mod register_cmd;
+mod revision_outlines_cmd;
 mod revision_transfer_cmd;
 mod safe_output;
 mod v010_cmd;
@@ -52,6 +53,8 @@ enum Command {
     RevisionOverlay(overlay_cmd::OverlayArgs),
     /// Inspect, preview and transfer compatible annotations between explicitly paired saved revisions.
     RevisionTransfer(revision_transfer_cmd::RevisionTransferArgs),
+    /// Review raster difference regions and create classified revision outlines in a new PDF copy.
+    RevisionOutlines(revision_outlines_cmd::RevisionOutlinesArgs),
     /// Export a filtered quantity and cost table, preserving units, missing values and source identity.
     QuantityTable(quantity_cmd::TableArgs),
     /// Replace typed quantity fields and unit price on one expected annotation in a new PDF copy.
@@ -1607,6 +1610,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         Command::Count(args) => register_cmd::count(&engine, args),
         Command::RevisionOverlay(args) => overlay_cmd::run(&engine, args),
         Command::RevisionTransfer(args) => revision_transfer_cmd::run(&engine, args),
+        Command::RevisionOutlines(args) => revision_outlines_cmd::run(&engine, args),
         Command::QuantityTable(args) => quantity_cmd::table(&engine, args),
         Command::SetQuantityFields(args) => quantity_cmd::set(&engine, args),
         Command::ClearQuantityFields(args) => quantity_cmd::clear(&engine, args),
@@ -3021,6 +3025,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
         Command::RevisionOverlay(args) => Some(&args.out),
         Command::RevisionTransfer(args) => args.output_path(),
+        Command::RevisionOutlines(args) => args.output_path(),
         Command::QuantityTable(args) => args.report.out.as_deref(),
         Command::SetQuantityFields(args) => Some(&args.target.out),
         Command::ClearQuantityFields(args) => Some(&args.out),
@@ -3266,7 +3271,10 @@ fn cli_main() -> ExitCode {
         Command::SearchFiles { .. } | Command::Compare { .. } | Command::Inspect { .. }
     ) || matches!(&cli.command, Command::PlanSet(args) if args.is_inspection())
         || matches!(&cli.command, Command::PlanLinks(args) if args.is_inspection())
-        || matches!(&cli.command, Command::RevisionTransfer(..));
+        || matches!(
+            &cli.command,
+            Command::RevisionTransfer(..) | Command::RevisionOutlines(..)
+        );
     match run(cli) {
         Ok(serde_json::Value::Null) => ExitCode::SUCCESS,
         Ok(value) => {
