@@ -24,6 +24,9 @@ use sunipdf_core::{
 use sunipdf_i18n::{tr, Language};
 use zeroize::Zeroizing;
 
+mod batch;
+use batch::{BatchCached, BatchState};
+
 pub type Credentials = Vec<(String, Zeroizing<String>)>;
 
 #[derive(Clone)]
@@ -76,6 +79,31 @@ pub enum Job {
         credentials: Credentials,
         cancel: Arc<AtomicBool>,
     },
+    BatchInspect {
+        context: Context,
+        scan: core::PlanLinkBatchScanRequest,
+        credentials: Credentials,
+        cancel: Arc<AtomicBool>,
+    },
+    BatchPrepare {
+        context: Context,
+        review: core::PlanLinkBatchReview,
+        credentials: Credentials,
+        cancel: Arc<AtomicBool>,
+    },
+    BatchPreview {
+        token: u64,
+        file_index: usize,
+        page: usize,
+        target_sheet_id: Option<String>,
+        credentials: Credentials,
+        cancel: Arc<AtomicBool>,
+    },
+    BatchSave {
+        token: u64,
+        credentials: Credentials,
+        cancel: Arc<AtomicBool>,
+    },
     Clear,
 }
 pub enum Outcome {
@@ -94,6 +122,20 @@ pub enum Outcome {
     },
     Saved(PlanLinkReceipt),
     Navigate(crate::plan_sets::Navigation),
+    BatchInspected(core::PlanLinkBatchInspection),
+    BatchPrepared {
+        token: u64,
+        files: Vec<core::PlanLinkBatchFilePlan>,
+        preview: Preview,
+    },
+    BatchPreview {
+        token: u64,
+        source_file_id: String,
+        page: usize,
+        target_sheet_id: Option<String>,
+        preview: Preview,
+    },
+    BatchSaved(core::PlanLinkBatchOutcome),
     Cleared,
 }
 struct Cached {
@@ -105,6 +147,7 @@ struct Cached {
 pub struct WorkerCache {
     next: u64,
     candidate: Option<Cached>,
+    batch_candidate: Option<BatchCached>,
 }
 
 fn error(message: &str) -> EngineError {
@@ -176,7 +219,23 @@ impl WorkerCache {
             .filter(|c| c.token == token)
             .ok_or_else(|| error("preview expired; prepare it again"))
     }
-    pub fn run(&mut self, engine: &Engine, job: Job) -> Result<Outcome, EngineError> {
+    pub fn run(
+        &mut self,
+        engine: &Engine,
+        job: Job,
+        on_progress: impl FnMut(&core::PlanLinkBatchProgress),
+    ) -> Result<Outcome, EngineError> {
+        if matches!(
+            job,
+            Job::BatchInspect { .. }
+                | Job::BatchPrepare { .. }
+                | Job::BatchPreview { .. }
+                | Job::BatchSave { .. }
+        ) {
+            self.candidate = None;
+            return self.run_batch(engine, job, on_progress);
+        }
+        self.batch_candidate = None;
         match job {
             Job::Clear => {
                 self.candidate = None;
@@ -351,6 +410,10 @@ impl WorkerCache {
                     active_source: None,
                 }))
             }
+            Job::BatchInspect { .. }
+            | Job::BatchPrepare { .. }
+            | Job::BatchPreview { .. }
+            | Job::BatchSave { .. } => Err(error("invalid batch dispatch")),
         }
     }
 }
@@ -364,6 +427,8 @@ struct Picture {
 #[derive(Default)]
 pub struct PlanLinksState {
     pub open: bool,
+    batch_mode: bool,
+    batch: BatchState,
     context: Option<Context>,
     source_id: String,
     pages: String,
@@ -388,10 +453,12 @@ impl PlanLinksState {
         self.pending.is_some()
     }
     fn clear_preview(&mut self) {
+        self.batch.clear_preview();
         self.candidate = None;
         self.picture = None;
     }
     fn reset_scan(&mut self) {
+        self.batch.reset_scan();
         self.inspection = None;
         self.selections.clear();
         self.clear_preview();
@@ -559,6 +626,7 @@ impl SuniApp {
                     .iter()
                     .map(|f| (f.id.clone(), Zeroizing::new(String::new())))
                     .collect();
+                self.plan_links.batch.load(&context);
                 self.plan_links.context = Some(context);
                 self.plan_links.pages = "1".into();
             }
@@ -605,6 +673,14 @@ impl SuniApp {
                 self.close_plan_links();
                 self.navigate_plan_sheet(navigation);
             }
+            Ok(
+                outcome @ (Outcome::BatchInspected(_)
+                | Outcome::BatchPrepared { .. }
+                | Outcome::BatchPreview { .. }
+                | Outcome::BatchSaved(_)),
+            ) => {
+                self.on_plan_links_batch(ctx, outcome);
+            }
             Ok(Outcome::Cleared) => {}
             Err(EngineError::Cancelled) => {
                 self.plan_links.clear_preview();
@@ -642,6 +718,10 @@ impl SuniApp {
         if !self.plan_links.open {
             return;
         }
+        if self.plan_links.batch_mode && self.plan_links.remote.is_none() {
+            self.plan_links_batch_dialog(ctx);
+            return;
+        }
         let lang = self.lang();
         let busy = self.plan_links.busy();
         let saving = self.plan_links.pending.is_some_and(|(_, saving)| saving);
@@ -650,6 +730,7 @@ impl SuniApp {
         let mut footer_action = None;
         let mut close = false;
         let mut cancel = false;
+        let mut batch_mode = false;
         let spec = Spec::new(
             "plan_links",
             tr(lang, "plan_links.title"),
@@ -667,6 +748,16 @@ impl SuniApp {
             ctx,
             spec,
             |ui| {
+                if state.remote.is_none()
+                    && ui
+                        .add_enabled(
+                            ready,
+                            egui::Button::new(tr(lang, "plan_links.batch.switch")),
+                        )
+                        .clicked()
+                {
+                    batch_mode = true;
+                }
                 ui.label(tr(lang, "plan_links.help"));
                 if ui
                     .add_enabled(
@@ -1127,6 +1218,14 @@ impl SuniApp {
                 }
             },
         );
+        if batch_mode {
+            self.plan_links.batch_mode = true;
+            self.plan_links.reset_scan();
+            self.worker.send(Request::PlanLinks {
+                generation: self.plan_links.generation,
+                job: Job::Clear,
+            });
+        }
         if cancel {
             self.plan_links.cancel.store(true, Ordering::Relaxed);
             self.plan_links
@@ -1284,7 +1383,7 @@ mod tests {
         Command,
     };
 
-    fn context() -> Context {
+    pub(super) fn context() -> Context {
         let mut set = PlanSet::new("Review sheets").unwrap();
         for (id, path) in [("source", "index.pdf"), ("target", "floor.pdf")] {
             set.files.push(PlanFile {
@@ -1309,7 +1408,7 @@ mod tests {
             set,
         }
     }
-    fn inspection() -> PlanLinkInspection {
+    pub(super) fn inspection() -> PlanLinkInspection {
         PlanLinkInspection {
             version: 1,
             manifest_sha256: "b".repeat(64),

@@ -62,17 +62,54 @@ pub enum PlanLinksCommand {
         #[arg(long)]
         out: PathBuf,
     },
+    /// Inspect explicit pages and destinations in up to 16 indexed source PDFs.
+    BatchInspect {
+        manifest: PathBuf,
+        /// Strict JSON request containing a sources array; at most 4 MiB.
+        #[arg(long)]
+        request: PathBuf,
+    },
+    /// Preflight every reviewed source and render one candidate or destination; no PDF is saved.
+    BatchPreview {
+        manifest: PathBuf,
+        #[arg(long)]
+        review: PathBuf,
+        #[arg(long)]
+        source_file: String,
+        #[arg(long)]
+        preview_out: PathBuf,
+        #[arg(long, value_parser = positive_page, conflicts_with = "preview_target_sheet")]
+        preview_page: Option<usize>,
+        #[arg(long, conflicts_with = "preview_page")]
+        preview_target_sheet: Option<String>,
+        #[arg(long, default_value_t = 1200, value_parser = clap::value_parser!(u32).range(64..=1536))]
+        preview_long_side: u32,
+    },
+    /// Save new sibling PDFs sequentially; partial failures retain completed receipts and exit with code 2.
+    BatchApply {
+        manifest: PathBuf,
+        #[arg(long)]
+        review: PathBuf,
+    },
 }
 
 impl PlanLinksArgs {
     pub fn is_inspection(&self) -> bool {
-        matches!(self.command, PlanLinksCommand::Inspect { .. })
+        matches!(
+            self.command,
+            PlanLinksCommand::Inspect { .. }
+                | PlanLinksCommand::BatchInspect { .. }
+                | PlanLinksCommand::BatchApply { .. }
+        )
     }
 
     pub fn output_path(&self) -> Option<&Path> {
         match &self.command {
-            PlanLinksCommand::Inspect { .. } => None,
-            PlanLinksCommand::Preview { preview_out, .. } => Some(preview_out),
+            PlanLinksCommand::Inspect { .. }
+            | PlanLinksCommand::BatchInspect { .. }
+            | PlanLinksCommand::BatchApply { .. } => None,
+            PlanLinksCommand::Preview { preview_out, .. }
+            | PlanLinksCommand::BatchPreview { preview_out, .. } => Some(preview_out),
             PlanLinksCommand::Apply { out, .. } => Some(out),
         }
     }
@@ -110,9 +147,13 @@ fn parse_pages(value: &str) -> Result<PhysicalPages, String> {
 }
 
 fn read_review(path: &Path) -> Result<PlanLinkReview, EngineError> {
-    let maximum = plan_links::MAX_RECIPE_BYTES as u64;
+    plan_links::parse_review(&read_json_file(path, plan_links::MAX_RECIPE_BYTES)?)
+}
+
+fn read_json_file(path: &Path, maximum: usize) -> Result<Vec<u8>, EngineError> {
+    let maximum = maximum as u64;
     if !std::fs::metadata(path)?.is_file() {
-        return Err(invalid("review must be a regular file"));
+        return Err(invalid("JSON input must be a regular file"));
     }
     let mut options = std::fs::OpenOptions::new();
     options.read(true);
@@ -124,11 +165,16 @@ fn read_review(path: &Path) -> Result<PlanLinkReview, EngineError> {
     let file = options.open(path)?;
     let metadata = file.metadata()?;
     if !metadata.is_file() || metadata.len() > maximum {
-        return Err(invalid("review must be a regular file of at most 256 KiB"));
+        return Err(invalid(
+            "JSON input must be a regular file within its size limit",
+        ));
     }
     let mut bytes = Vec::new();
     file.take(maximum + 1).read_to_end(&mut bytes)?;
-    plan_links::parse_review(&bytes)
+    if bytes.len() as u64 > maximum {
+        return Err(invalid("JSON input exceeds its size limit"));
+    }
+    Ok(bytes)
 }
 
 fn read_passwords(
@@ -175,7 +221,10 @@ pub fn run(args: &PlanLinksArgs) -> Result<Value, EngineError> {
     let manifest = match &args.command {
         PlanLinksCommand::Inspect { manifest, .. }
         | PlanLinksCommand::Preview { manifest, .. }
-        | PlanLinksCommand::Apply { manifest, .. } => manifest,
+        | PlanLinksCommand::Apply { manifest, .. }
+        | PlanLinksCommand::BatchInspect { manifest, .. }
+        | PlanLinksCommand::BatchPreview { manifest, .. }
+        | PlanLinksCommand::BatchApply { manifest, .. } => manifest,
     };
     let set = plan_set::load(manifest)?;
     let passwords = read_passwords(&args.file_password_env, &set)?;
@@ -270,23 +319,7 @@ pub fn run(args: &PlanLinksArgs) -> Result<Value, EngineError> {
                     )?,
                 )
             };
-            if rendered.width == 0
-                || rendered.height == 0
-                || rendered.width.max(rendered.height) > *preview_long_side
-                || u64::from(rendered.width) * u64::from(rendered.height) * 4
-                    != rendered.rgba.len() as u64
-            {
-                return Err(invalid("invalid candidate preview dimensions"));
-            }
-            let mut png = Vec::new();
-            image::codecs::png::PngEncoder::new(&mut png)
-                .write_image(
-                    &rendered.rgba,
-                    rendered.width,
-                    rendered.height,
-                    image::ExtendedColorType::Rgba8,
-                )
-                .map_err(|_| invalid("candidate PNG encoding failed"))?;
+            let png = encode_preview(&rendered, *preview_long_side)?;
             prepared.revalidate_sources(&cancel)?;
             sunipdf_core::write_new_copy(preview_out, &png)?;
             let mut value = prepared.report().json();
@@ -317,7 +350,141 @@ pub fn run(args: &PlanLinksArgs) -> Result<Value, EngineError> {
             value["source_documents_unchanged"] = json!(true);
             Ok(value)
         }
+        PlanLinksCommand::BatchInspect { request, .. } => {
+            let request = plan_links::parse_batch_scan_request(&read_json_file(
+                request,
+                plan_links::MAX_BATCH_RECIPE_BYTES,
+            )?)?;
+            let inspection = plan_links::inspect_plan_link_batch(
+                &engine,
+                manifest,
+                &set,
+                &request,
+                &credentials,
+                &cancel,
+            )?;
+            let mut value = inspection.json();
+            value["operation"] = json!("batch_inspect");
+            value["page_index_base"] = json!(1);
+            value["source_documents_unchanged"] = json!(true);
+            Ok(value)
+        }
+        PlanLinksCommand::BatchPreview {
+            review,
+            source_file,
+            preview_out,
+            preview_page,
+            preview_target_sheet,
+            preview_long_side,
+            ..
+        } => {
+            let review = plan_links::parse_batch_review(&read_json_file(
+                review,
+                plan_links::MAX_BATCH_RECIPE_BYTES,
+            )?)?;
+            let plan = plan_links::prepare_plan_link_batch(
+                &engine,
+                manifest,
+                &set,
+                &review,
+                &credentials,
+                &cancel,
+            )?;
+            let index = plan
+                .files()
+                .iter()
+                .position(|file| file.source_file_id == *source_file)
+                .ok_or_else(|| invalid("preview source is not in the reviewed batch"))?;
+            let (page, rendered) = if let Some(target) = preview_target_sheet {
+                let page = set
+                    .sheets
+                    .iter()
+                    .find(|sheet| sheet.id == *target)
+                    .ok_or_else(|| invalid("preview destination is not in the plan set"))?
+                    .page;
+                (
+                    page,
+                    plan.preview_target(
+                        index,
+                        &engine,
+                        &credentials,
+                        target,
+                        *preview_long_side,
+                        &cancel,
+                    )?,
+                )
+            } else {
+                let page = preview_page
+                    .or_else(|| plan.files()[index].preview_pages.first().copied())
+                    .ok_or_else(|| invalid("candidate has no linked page"))?;
+                (
+                    page,
+                    plan.preview_file(
+                        index,
+                        &engine,
+                        &credentials,
+                        page,
+                        *preview_long_side,
+                        &cancel,
+                    )?,
+                )
+            };
+            let png = encode_preview(&rendered, *preview_long_side)?;
+            plan.revalidate_sources(&cancel)?;
+            sunipdf_core::write_new_copy(preview_out, &png)?;
+            Ok(
+                json!({"complete":true, "operation":"batch_preview", "published":false,
+                "source_file_id":source_file, "files":plan.files(),
+                "preview_image":{"path":preview_out, "page":page,
+                    "kind":if preview_target_sheet.is_some() {"destination"} else {"source_candidate"},
+                    "target_sheet_id":preview_target_sheet,
+                    "width":rendered.width,"height":rendered.height,"bytes":png.len()}}),
+            )
+        }
+        PlanLinksCommand::BatchApply { review, .. } => {
+            let review = plan_links::parse_batch_review(&read_json_file(
+                review,
+                plan_links::MAX_BATCH_RECIPE_BYTES,
+            )?)?;
+            let plan = plan_links::prepare_plan_link_batch(
+                &engine,
+                manifest,
+                &set,
+                &review,
+                &credentials,
+                &cancel,
+            )?;
+            let outcome =
+                plan_links::publish_plan_link_batch(plan, &engine, &credentials, &cancel, |_| {});
+            let mut value = outcome.json();
+            value["operation"] = json!("batch_apply");
+            value["atomicity"] = json!("per_file");
+            Ok(value)
+        }
     }
+}
+
+fn encode_preview(
+    rendered: &sunipdf_core::RenderedPage,
+    maximum: u32,
+) -> Result<Vec<u8>, EngineError> {
+    if rendered.width == 0
+        || rendered.height == 0
+        || rendered.width.max(rendered.height) > maximum
+        || u64::from(rendered.width) * u64::from(rendered.height) * 4 != rendered.rgba.len() as u64
+    {
+        return Err(invalid("invalid candidate preview dimensions"));
+    }
+    let mut png = Vec::new();
+    image::codecs::png::PngEncoder::new(&mut png)
+        .write_image(
+            &rendered.rgba,
+            rendered.width,
+            rendered.height,
+            image::ExtendedColorType::Rgba8,
+        )
+        .map_err(|_| invalid("candidate PNG encoding failed"))?;
+    Ok(png)
 }
 
 #[cfg(test)]

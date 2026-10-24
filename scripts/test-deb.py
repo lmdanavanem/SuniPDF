@@ -100,7 +100,7 @@ def runtime(evidence, version):
         command(["qpdf", "--check", output])
         cases.append("offline-ocr-" + language + "-saved-searchable-layer")
     assert sha(source) == original
-    gui(evidence, source)
+    cases.extend(gui(evidence, source))
     cases.append("native-ui-open-pdf-visible-text-blue-fixture-and-private-library")
     assert sha(source) == original
     settings = HOME / ".config/sunipdf/settings.json"
@@ -140,8 +140,7 @@ def gui(evidence, source):
                     break
             assert success, "Native screenshot did not contain the fixture's PDF text and blue rectangle"
             window = command(["xdotool", "search", "--onlyvisible", "--pid", app.pid]).splitlines()[-1]
-            command(["wmctrl", "-i", "-c", hex(int(window))])
-            assert app.wait(timeout=25) == 0, "Native desktop did not exit cleanly"
+            return window_controls(app, window, evidence)
         finally:
             if app.poll() is None:
                 app.terminate()
@@ -152,6 +151,133 @@ def gui(evidence, source):
                     app.wait()
             manager.terminate()
             manager.wait(timeout=10)
+
+
+def window_controls(app, window, evidence):
+    """Exercise real client controls on X11; do not infer Wayland coverage."""
+    from PIL import Image
+
+    def wait_for(description, predicate, seconds=15):
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            assert app.poll() is None, "Desktop exited while " + description
+            result = predicate()
+            if result:
+                return result
+            time.sleep(0.2)
+        raise AssertionError("Window control timed out: " + description)
+
+    def state():
+        return command(["xprop", "-id", window, "_NET_WM_STATE"])
+
+    def geometry():
+        values = dict(line.split("=", 1) for line in command(
+            ["xdotool", "getwindowgeometry", "--shell", window]).splitlines() if "=" in line)
+        return {key.lower(): int(values[key]) for key in ("X", "Y", "WIDTH", "HEIGHT")}
+
+    def maximized():
+        value = state()
+        return "_NET_WM_STATE_MAXIMIZED_VERT" in value and "_NET_WM_STATE_MAXIMIZED_HORZ" in value
+
+    def control_point(index):
+        # Logical target centers from the title strip, scaled to actual X11 pixels.
+        # The container has a fixed 96dpi Xvfb screen and no user UI scaling.
+        edge = 0 if maximized() else 6
+        return geometry()["width"] - edge - 24 - (2 - index) * 40, edge + 20
+
+    def click_control(index):
+        x, y = control_point(index)
+        command(["xdotool", "mousemove", "--window", window, x, y, "click", "1"])
+
+    command(["xdotool", "windowactivate", "--sync", window])
+    initial = geometry()
+    records = []
+    screenshot = evidence / "native-window-controls.png"
+    command(["import", "-window", window, screenshot], timeout=15)
+    with Image.open(screenshot) as image:
+        image.crop((image.width - 144, 0, image.width, 52)).save(evidence / "native-window-controls-detail.png")
+    x, y = control_point(2)
+    command(["xdotool", "mousemove", "--window", window, x, y])
+    time.sleep(0.3)
+    hover = evidence / "native-window-close-hover.png"
+    command(["import", "-window", window, hover], timeout=15)
+    with Image.open(hover) as image:
+        crop = image.crop((x - 16, y - 16, x + 16, y + 16)).convert("RGB")
+        red_pixels = sum(1 for r, g, b in crop.getdata() if r > 130 and g < 90 and b < 100)
+        assert red_pixels > 200, "Close control hover did not render its visible red circular target"
+    records.append({"check": "close-hover-visible", "redPixels": red_pixels, "screenshot": hover.name})
+
+    click_control(0)
+    wait_for("minimize from title button", lambda: "_NET_WM_STATE_HIDDEN" in state())
+    records.append({"check": "minimize-button", "state": state()})
+    command(["xdotool", "windowmap", window, "windowactivate", "--sync", window])
+    wait_for("restore minimized window", lambda: "_NET_WM_STATE_HIDDEN" not in state())
+
+    click_control(1)
+    wait_for("maximize from title button", maximized)
+    time.sleep(0.3)
+    records.append({"check": "maximize-button", "state": state(), "geometry": geometry()})
+    command(["import", "-window", window, evidence / "native-window-maximized.png"], timeout=15)
+    click_control(1)
+    wait_for("restore from title button", lambda: not maximized())
+    wait_for("restore window dimensions", lambda: all(abs(geometry()[key] - initial[key]) <= 2 for key in ("width", "height")))
+    records.append({"check": "restore-button", "state": state(), "geometry": geometry()})
+
+    command(["xdotool", "mousemove", "--window", window, 220, 26, "click", "--repeat", "2", "--delay", "100", "1"])
+    wait_for("maximize by double-clicking title strip", maximized)
+    time.sleep(0.3)
+    click_control(1)
+    wait_for("restore after title double-click", lambda: not maximized())
+    wait_for("restore dimensions after title double-click", lambda: all(abs(geometry()[key] - initial[key]) <= 2 for key in ("width", "height")))
+    records.append({"check": "title-double-click-maximize-and-restore", "geometry": geometry()})
+
+    before_drag = geometry()
+    command(["xdotool", "mousemove", "--window", window, 220, 26, "mousedown", "1"])
+    time.sleep(0.2)
+    # Cross the UI drag threshold first, then move under the window manager's grab.
+    command(["xdotool", "mousemove_relative", "--sync", "--", 12, 0])
+    time.sleep(0.2)
+    command(["xdotool", "mousemove_relative", "--sync", "--", 30, 24])
+    time.sleep(0.2)
+    command(["xdotool", "mouseup", "1"])
+    wait_for("drag title strip", lambda: geometry()["x"] != before_drag["x"] or geometry()["y"] != before_drag["y"])
+    records.append({"check": "title-drag", "before": before_drag, "after": geometry()})
+
+    before_resize = geometry()
+    command(["xdotool", "mousemove", "--window", window, before_resize["width"] - 2, before_resize["height"] - 2, "mousedown", "1"])
+    time.sleep(0.2)
+    command(["xdotool", "mousemove_relative", "--sync", "--", -80, -50])
+    time.sleep(0.2)
+    command(["xdotool", "mouseup", "1"])
+    wait_for("resize lower-right gutter", lambda: geometry()["width"] <= before_resize["width"] - 40 and geometry()["height"] <= before_resize["height"] - 20)
+    records.append({"check": "corner-resize", "before": before_resize, "after": geometry()})
+
+    command(["xdotool", "key", "--clearmodifiers", "ctrl+r"])
+    wait_for("create an unsaved page rotation", lambda: "*" in command(["xdotool", "getwindowname", window]))
+    click_control(2)
+    prompt = evidence / "native-window-unsaved-close.png"
+
+    def unsaved_prompt():
+        command(["import", "-window", window, prompt], timeout=15)
+        text = command(["tesseract", prompt, "stdout", "-l", "eng", "--psm", 11], timeout=30)
+        return text if re.search(r"unsaved\s+changes", text, re.I) else None
+
+    text = wait_for("guard custom close with unsaved-changes dialog", unsaved_prompt)
+    (evidence / "native-window-unsaved-close.txt").write_text(text + "\n")
+    records.append({"check": "close-keeps-unsaved-document-open", "screenshot": prompt.name, "processRunning": app.poll() is None})
+    command(["xdotool", "key", "--clearmodifiers", "Escape"])
+    time.sleep(0.3)
+    command(["xdotool", "key", "--clearmodifiers", "ctrl+z"])
+    wait_for("undo rotation after cancelling close", lambda: "*" not in command(["xdotool", "getwindowname", window]))
+    click_control(2)
+    assert app.wait(timeout=25) == 0, "Custom close did not exit cleanly after undoing the edit"
+    records.append({"check": "close-button-clean-exit", "exitCode": 0})
+    (evidence / "native-window-controls.json").write_text(json.dumps({
+        "schema": 1, "status": "passed", "session": "X11 / Openbox / Xvfb",
+        "waylandTested": False, "checks": records,
+        "screenshots": [{"file": path.name, "sha256": sha(path)} for path in sorted(evidence.glob("native-window-*.png"))],
+    }, indent=2) + "\n")
+    return ["native-window-minimize-maximize-restore-drag-resize", "native-window-close-preserves-unsaved-work", "native-window-close-clean-exit"]
 
 
 def lifecycle(package, evidence, identity):
@@ -190,8 +316,9 @@ def lifecycle(package, evidence, identity):
     os.chown(runtime_dir, user.pw_uid, user.pw_gid)
     environment = ["env", "HOME=" + str(HOME), "XDG_CONFIG_HOME=" + str(HOME / ".config"),
                    "XDG_DATA_HOME=" + str(HOME / ".local/share"), "XDG_RUNTIME_DIR=" + str(runtime_dir),
-                   "LIBGL_ALWAYS_SOFTWARE=1", "SUNIPDF_RENDERER=glow", "XDG_SESSION_TYPE=x11"]
-    command(["runuser", "-u", ACCOUNT, "--", *environment, "dbus-run-session", "--", "xvfb-run", "-a", "-s", "-screen 0 1400x1000x24", "python3", __file__, "--runtime", "--version", version, "--evidence", evidence], timeout=600)
+                   "LIBGL_ALWAYS_SOFTWARE=1", "SUNIPDF_RENDERER=glow", "XDG_SESSION_TYPE=x11",
+                   "WINIT_X11_SCALE_FACTOR=1"]
+    command(["runuser", "-u", ACCOUNT, "--", *environment, "dbus-run-session", "--", "xvfb-run", "-a", "-s", "-screen 0 1400x1000x24 -dpi 96", "python3", __file__, "--runtime", "--version", version, "--evidence", evidence], timeout=600)
     runtime_proof = json.loads((evidence / "runtime.json").read_text())
     protected = {Path(runtime_proof["source"]): runtime_proof["sourceSha256"], Path(runtime_proof["settings"]): runtime_proof["settingsSha256"]}
     command(["apt-get", "remove", "-y", "sunipdf"], timeout=120)
@@ -206,6 +333,7 @@ def lifecycle(package, evidence, identity):
               "screenshots": screenshots,
               "checks": {"install": True, "cli": True, "pdf_render_save_reopen": True,
                          "ocr_en": True, "ocr_fr": True, "native_gui_pdf_visible": True,
+                         "native_x11_window_controls": True, "native_close_unsaved_guard": True,
                          "reinstall": True, "uninstall": True, "user_data_preserved": True},
               "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged",
               "installedPayloadFiles": payload_count, "elfDependencies": elf,
