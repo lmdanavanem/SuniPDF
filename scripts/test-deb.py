@@ -193,6 +193,15 @@ def theme_label_center(tsv, label, image_size):
     return found[0]
 
 
+def dark_theme_ocr_input(image):
+    """Normalize light control text for older OCR without changing the native capture."""
+    from PIL import Image
+    # Dark material and low-contrast checkbox borders become white; bright text
+    # becomes black. Doubling pixels gives small interface text enough OCR detail.
+    mask = image.convert("L").point(lambda value: 0 if value >= 170 else 255)
+    return mask.resize((image.width * 2, image.height * 2), resample=Image.NEAREST)
+
+
 THEME_TITLEBAR_PATCH = (40, 16, 48, 24)
 GLASS_DARK_REDUCED_RGB = (24, 41, 61)
 THEME_RGB_TOLERANCE = 3
@@ -237,14 +246,23 @@ def theme_settings(app, window, evidence):
         command(["import", "-window", window, path], timeout=15)
         return path
 
-    def click_label(label):
+    def click_label(label, normalize_dark=False):
         nonlocal target_index
         target_index += 1
         path = capture("native-theme-target")
-        tsv = command(["tesseract", path, "stdout", "-l", "eng", "--psm", 11, "tsv"], timeout=30)
-        (evidence / f"native-theme-target-{target_index:02d}.tsv").write_text(tsv + "\n", encoding="utf-8")
+        ocr_path = path
+        scale = 2 if normalize_dark else 1
         with Image.open(path) as image:
-            x, y = theme_label_center(tsv, label, image.size)
+            image_size = image.size
+            if normalize_dark:
+                ocr_path = evidence / f"native-theme-target-{target_index:02d}.pgm"
+                dark_theme_ocr_input(image).save(ocr_path)
+        ocr_size = (image_size[0] * scale, image_size[1] * scale)
+        tsv = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", 11, "tsv"], timeout=30)
+        (evidence / f"native-theme-target-{target_index:02d}.tsv").write_text(tsv + "\n", encoding="utf-8")
+        x, y = theme_label_center(tsv, label, ocr_size)
+        x, y = x // scale, y // scale
+        assert 0 <= x < image_size[0] and 0 <= y < image_size[1], "OCR target escaped native capture"
         command(["xdotool", "mousemove", "--window", window, x, y, "click", "1"])
 
     def require_choice(style, mode, reduced):
@@ -279,7 +297,7 @@ def theme_settings(app, window, evidence):
     # OCR can attach the adjacent checkbox glyph to "Reduce". Target the unique
     # complete second word of the same clickable label; persistence and rendered
     # reduced-Glass checks below still require the real checkbox to change.
-    click_label("transparency")
+    click_label("transparency", normalize_dark=True)
     require_choice("liquid_glass", "dark", True)
     record("native-theme-glass-dark-reduced", True)
     click_label("System")
