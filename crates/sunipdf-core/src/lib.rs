@@ -34,6 +34,8 @@ pub mod header_footer;
 mod image_stamp;
 pub mod image_watermark;
 pub mod inspection;
+pub mod issue_report;
+mod issue_report_render;
 mod link_destination;
 pub mod links;
 pub mod local_review;

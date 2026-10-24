@@ -7,6 +7,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Further plan-workflow work is tracked in the [roadmap](docs/ROADMAP.md).
 
+- Prepare paginated PDF, CSV and JSON reports from the exact annotation-register or quantity-table selection, with reviewed previews, style legends, issue summaries and separate source/snapshot provenance. See the [development guide](docs/ISSUE_REPORTS.md) for coverage, protection and font limits.
+
 ## [0.64.0] - 2026-10-24
 
 - Transfer explicitly selected supported native annotations between confirmed revision pages, with real destination previews, fresh identities, source fingerprints and new-copy output.

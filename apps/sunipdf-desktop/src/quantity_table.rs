@@ -66,6 +66,17 @@ impl Default for FormulaDraft {
 }
 
 impl QuantityState {
+    pub(crate) fn issue_report_selection(
+        &self,
+    ) -> (crate::issue_report_ui::Input, QuantityOptions) {
+        (
+            self.report
+                .clone()
+                .map(crate::issue_report_ui::Input::Quantities)
+                .unwrap_or_default(),
+            self.options.clone(),
+        )
+    }
     pub(crate) fn blocks_document(&self) -> bool {
         self.edit.is_some() || self.exporting.is_some()
     }
@@ -470,6 +481,7 @@ impl SuniApp {
         let (mut close, mut refresh, mut apply, mut cancel, mut export) =
             (false, false, false, false, None);
         let mut navigate = None;
+        let mut issue_report = false;
         let selection = self
             .annotate
             .adv
@@ -952,6 +964,12 @@ impl SuniApp {
                             .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
                     return;
                 }
+                issue_report = ui
+                    .add_enabled(
+                        can_export,
+                        egui::Button::new(tr(lang, "issue_report.create")),
+                    )
+                    .clicked();
                 refresh = ui
                     .add_enabled(can_refresh, egui::Button::new(tr(lang, "quantity.refresh")))
                     .clicked();
@@ -1008,6 +1026,10 @@ impl SuniApp {
             state.invalidate();
         }
         self.annotate.quantities = state;
+        if issue_report {
+            let (input, options) = self.annotate.quantities.issue_report_selection();
+            self.open_issue_report(input, options);
+        }
         if let Some(csv) = export {
             let extension = if csv { "csv" } else { "json" };
             if let Some(path) = rfd::FileDialog::new()

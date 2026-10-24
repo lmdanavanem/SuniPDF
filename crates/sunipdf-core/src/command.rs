@@ -3,6 +3,7 @@
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
+    IssueReport,
     PlanZones,
     PlanSets,
     PlanLinks,
@@ -198,6 +199,14 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        IssueReport,
+        "tools.issue_report",
+        "issue_report.title",
+        None,
+        true,
+        Tools
+    ),
     cmd!(
         PlanZones,
         "tools.plan_zones",
@@ -1391,19 +1400,25 @@ mod tests {
             let _ = info.command.info();
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 15);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 14);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 15);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }
 
     #[test]
     fn tools_keep_hub_ids_and_explicit_document_workflow_ids() {
         for info in Command::in_menu(Menu::Tools) {
-            if info.command == Command::PlanZones {
-                assert_eq!(info.id, "tools.plan_zones");
-                assert!(info.needs_document);
-                assert_eq!(Command::from_id(info.id), Some(Command::PlanZones));
-            } else {
-                assert!(info.id.starts_with("hub."), "{}", info.id);
+            match info.command {
+                Command::PlanZones => {
+                    assert_eq!(info.id, "tools.plan_zones");
+                    assert!(info.needs_document);
+                    assert_eq!(Command::from_id(info.id), Some(Command::PlanZones));
+                }
+                Command::IssueReport => {
+                    assert_eq!(info.id, "tools.issue_report");
+                    assert!(info.needs_document);
+                    assert_eq!(Command::from_id(info.id), Some(Command::IssueReport));
+                }
+                _ => assert!(info.id.starts_with("hub."), "{}", info.id),
             }
         }
     }

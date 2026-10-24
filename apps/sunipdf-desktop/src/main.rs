@@ -16,6 +16,7 @@ mod form_builder;
 mod forms;
 mod icons;
 mod inline_text;
+mod issue_report_ui;
 mod library_store;
 mod local_review;
 #[cfg(test)]
