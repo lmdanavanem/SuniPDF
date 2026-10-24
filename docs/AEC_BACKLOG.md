@@ -12,6 +12,13 @@ of accepted count markers. Windows: 1,114 passed, 15 ignored; Linux: 1,095 passe
 Native interaction and broader drawing qualification remain open.
 [Workflow and limits](VISUAL_SEARCH.md).
 
+## Current region-fill development
+
+AEC-012 is **In progress** for the 0.72 region-fill increment: bounded raster filling,
+explicit manual closures, retained holes and reviewed calibrated area creation.
+Leakage, ambiguous topology and incomplete processing prevent application.
+[Workflow and limits](REGION_FILL.md). Qualification remains in progress.
+
 ## 0.70 increment and remaining qualification
 
 Declare optional units on Number custom fields and retain them in the table, formula previews,
@@ -120,7 +127,7 @@ P1 covers foundations and qualification; P2 extends plan workflows; P3 requires 
 | AEC-009 | P2 | Volumes and deducted areas | Done | Explicit depth, cut-outs/holes and retained calculation inputs; unit-safe area/volume totals and tests for degenerate or self-intersecting geometry. | AEC-002, AEC-003 |
 | AEC-010 | P2 | Rooms and named zones | In progress | Named/hierarchical plan regions, deterministic assignment of annotations to regions and filters/reports by room or floor; expose overlapping/unassigned cases. | AEC-004, AEC-008 |
 | AEC-011 | P2 | Visual symbol search | In progress | Search from a selected symbol locally, with sensitivity, rotation choices, bounded processing and candidate previews. User-accepted matches drive counts; false positives and partial searches remain explicit. | AEC-005, AEC-026 |
-| AEC-012 | P2 | Boundary-based region filling | Planned | Preview a bounded region from drawing edges, allow manual closure of openings and retain holes. Convert reviewed results to measurements; document resolution/tolerance and refuse leakage or ambiguous boundaries. | AEC-002, AEC-009, AEC-026 |
+| AEC-012 | P2 | Boundary-based region filling | In progress | Preview a bounded region from drawing edges, allow manual closure of openings and retain holes. Convert reviewed results to measurements; document resolution/tolerance and refuse leakage or ambiguous boundaries. | AEC-002, AEC-009, AEC-026 |
 | AEC-013 | P2 | Aligned colour overlays | In progress | Register two or more plans using explicit control points and display/export colour-separated overlays. Keep input PDFs intact; ambiguous alignment and unmatched pages require review. | Existing comparison, AEC-026 |
 | AEC-014 | P2 | Revision outlines and tracked differences | In progress | Convert reviewed comparison regions into editable revision outlines and register entries. Preserve original/revised identity and distinguish geometric changes from rendering noise. | Existing comparison, AEC-004, AEC-013 |
 | AEC-015 | P2 | Plan sets | Done | Navigate separate PDFs as one indexed set, grouped by discipline/sheet/revision. A portable manifest preserves references; missing, moved and duplicate sheets stay visible. | Labels/bookmarks baseline |

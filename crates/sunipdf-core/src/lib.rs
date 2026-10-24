@@ -14,6 +14,7 @@ pub mod annotation_library;
 pub mod annotation_register;
 mod appearance;
 pub mod bookmarks;
+pub mod boundary_fill;
 pub mod boxes;
 pub mod cache;
 pub mod certificate;

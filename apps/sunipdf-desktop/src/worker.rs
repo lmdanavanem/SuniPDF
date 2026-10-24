@@ -197,6 +197,11 @@ pub enum BytesOp {
 
 /// Modification de pages, appliquée sous instantané (annulable).
 pub enum EditOp {
+    CommitBoundaryFill {
+        epoch: u64,
+        generation: u64,
+    },
+    PreparedBoundaryFill(Box<sunipdf_core::boundary_fill::PreparedBoundaryFillMeasurement>),
     CommitVisualSearchCounts {
         epoch: u64,
         generation: u64,
@@ -509,7 +514,9 @@ impl EditOp {
     fn keeps_measurement_scales(&self) -> bool {
         matches!(
             self,
-            Self::CommitVisualSearchCounts { .. }
+            Self::CommitBoundaryFill { .. }
+                | Self::PreparedBoundaryFill(_)
+                | Self::CommitVisualSearchCounts { .. }
                 | Self::PreparedVisualSearchCounts(_)
                 | Self::CommitPlanZones { .. }
                 | Self::PreparedPlanZones(_)
@@ -617,6 +624,11 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    BoundaryFill {
+        epoch: u64,
+        generation: u64,
+        job: crate::boundary_fill_ui::Job,
+    },
     VisualSearch {
         epoch: u64,
         generation: u64,
@@ -948,6 +960,11 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    BoundaryFill {
+        epoch: u64,
+        generation: u64,
+        result: Result<crate::boundary_fill_ui::Outcome, EngineError>,
+    },
     VisualSearch {
         epoch: u64,
         generation: u64,
@@ -1328,6 +1345,8 @@ struct State<'a> {
     rich_preview: Option<(u64, u64, sunipdf_core::annot_rich::PreparedRichAnnotation)>,
     plan_zones: crate::plan_zones_ui::WorkerCache,
     visual_search: crate::visual_search_ui::WorkerCache,
+    boundary_fill: crate::boundary_fill_ui::WorkerCache,
+    boundary_turn: bool,
     visual_turn: bool,
     quantity_workbook: crate::quantity_workbook_ui::WorkerCache,
     issue_report: crate::issue_report_ui::WorkerCache,
@@ -1385,7 +1404,11 @@ impl State<'_> {
     fn next_idle_work(&mut self) -> IdleWork {
         if let Some((epoch, job)) = self.wanted.pop() {
             IdleWork::Tile(epoch, job)
-        } else if self.search.is_some() || self.register.is_some() || self.visual_search.active() {
+        } else if self.search.is_some()
+            || self.register.is_some()
+            || self.visual_search.active()
+            || self.boundary_fill.active()
+        {
             IdleWork::Background
         } else {
             IdleWork::Wait
@@ -1434,6 +1457,7 @@ impl State<'_> {
         self.rich_preview = None;
         self.plan_zones.clear();
         self.visual_search.clear();
+        self.boundary_fill.clear();
         self.quantity_workbook.clear();
         self.issue_report.clear();
         self.redaction_preview = None;
@@ -1444,6 +1468,24 @@ impl State<'_> {
     /// One bounded unit of background work; called only after requests and visible tiles.
     /// PDFium remains confined to this thread. Jobs never hold a document borrow across turns.
     fn background_step(&mut self) -> Option<Response> {
+        if self.boundary_fill.active()
+            && (self.boundary_turn
+                || (!self.visual_search.active()
+                    && self.search.is_none()
+                    && self.register.is_none()))
+        {
+            self.boundary_turn = false;
+            let (epoch, generation) = self.boundary_fill.token()?;
+            return self
+                .boundary_fill
+                .step()
+                .map(|outcome| Response::BoundaryFill {
+                    epoch,
+                    generation,
+                    result: Ok(outcome),
+                });
+        }
+        self.boundary_turn = true;
         if self.visual_search.active()
             && (self.visual_turn || (self.search.is_none() && self.register.is_none()))
         {
@@ -1595,6 +1637,12 @@ impl State<'_> {
     /// (les opérations échouent avant de modifier, ou l'instantané est restauré).
     fn edit(&mut self, op: EditOp) -> Response {
         let op = match op {
+            EditOp::CommitBoundaryFill { epoch, generation } => {
+                match self.boundary_fill.take(epoch, generation) {
+                    Ok(prepared) => EditOp::PreparedBoundaryFill(Box::new(prepared)),
+                    Err(error) => return Response::OperationFailed(error),
+                }
+            }
             EditOp::CommitVisualSearchCounts {
                 epoch,
                 generation,
@@ -1863,6 +1911,8 @@ mod save_point_tests {
             rich_preview: None,
             plan_zones: Default::default(),
             visual_search: Default::default(),
+            boundary_fill: Default::default(),
+            boundary_turn: false,
             visual_turn: false,
             quantity_workbook: Default::default(),
             issue_report: Default::default(),
@@ -2011,6 +2061,8 @@ fn checked_pages(mut pages: Vec<usize>, count: usize) -> Result<Vec<usize>, Engi
 
 fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Result<(), EngineError> {
     match op {
+        EditOp::PreparedBoundaryFill(p) => doc.apply_boundary_fill_measurement(&p).map(|_| ()),
+        EditOp::CommitBoundaryFill { .. } => unreachable!("resolved by worker"),
         EditOp::PreparedVisualSearchCounts(p) => doc.apply_visual_search_counts(&p).map(|_| ()),
         EditOp::CommitVisualSearchCounts { .. } => unreachable!("resolved by worker"),
         EditOp::PreparedPlanZones(p) => doc.apply_plan_zones(p),
@@ -2458,6 +2510,8 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         rich_preview: None,
         plan_zones: Default::default(),
         visual_search: Default::default(),
+        boundary_fill: Default::default(),
+        boundary_turn: false,
         visual_turn: false,
         quantity_workbook: Default::default(),
         issue_report: Default::default(),
@@ -3668,6 +3722,69 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     result,
                 }
             }
+            Request::BoundaryFill {
+                epoch,
+                generation,
+                job,
+            } => {
+                use crate::boundary_fill_ui::{Job, Outcome};
+                use crate::measurement_shapes_ui::RectangleScaleSelection;
+                use sunipdf_core::{
+                    boundary_fill::BoundaryFillMeasurementOptions, measurement::RectangleScale,
+                };
+                let result = if matches!(&job, Job::Discard) {
+                    state.boundary_fill.discard(epoch, generation);
+                    Ok(Outcome::Discarded)
+                } else {
+                    (|| {
+                        let doc = state
+                            .document
+                            .as_ref()
+                            .ok_or_else(|| EngineError::Other("no document".into()))?;
+                        if let Job::Prepare {
+                            scale,
+                            unit,
+                            precision,
+                        } = job
+                        {
+                            let page = state.boundary_fill.page().ok_or_else(|| {
+                                EngineError::Other(
+                                    "Find a region before preparing its measurement".into(),
+                                )
+                            })?;
+                            let scale = match scale {
+                                RectangleScaleSelection::Automatic => RectangleScale::Automatic,
+                                RectangleScaleSelection::Page => RectangleScale::Page,
+                                RectangleScaleSelection::Region(id) => RectangleScale::Region(id),
+                                RectangleScaleSelection::Local(calibration) => {
+                                    let capture =
+                                        state.rectangle_calibration.as_ref().ok_or_else(|| {
+                                            EngineError::Other(RECTANGLE_REFERENCE_REQUIRED.into())
+                                        })?;
+                                    RectangleScale::Local(capture.reference(page, &calibration)?)
+                                }
+                            };
+                            state.boundary_fill.prepare(
+                                doc,
+                                epoch,
+                                generation,
+                                BoundaryFillMeasurementOptions {
+                                    scale,
+                                    unit,
+                                    precision,
+                                },
+                            )
+                        } else {
+                            state.boundary_fill.run(doc, epoch, generation, job)
+                        }
+                    })()
+                };
+                Response::BoundaryFill {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
             Request::VisualSearch {
                 epoch,
                 generation,
@@ -3932,6 +4049,7 @@ mod tests {
         issue_reports_preserve_filters_history_source_and_refuse_stale_publication(&worker);
         quantity_workbooks_refresh_reviewed_identities_and_keep_history(&worker);
         visual_search_reviewed_counts_have_one_undo_and_reject_stale_tokens(&worker);
+        boundary_fill_preserves_deductions_history_and_rejects_incomplete_or_stale_results(&worker);
     }
 
     fn quantity_workbooks_refresh_reviewed_identities_and_keep_history(worker: &Worker) {
@@ -7289,6 +7407,286 @@ mod tests {
         assert_eq!(std::fs::read(source).unwrap(), original);
     }
 
+    fn boundary_fill_preserves_deductions_history_and_rejects_incomplete_or_stale_results(
+        worker: &Worker,
+    ) {
+        use crate::boundary_fill_ui::{Job, Outcome};
+        use crate::measurement_shapes_ui::RectangleScaleSelection;
+        use sunipdf_core::boundary_fill::{
+            BoundaryFillOptions, BoundaryFillReport, BoundaryFillStatus,
+        };
+        use sunipdf_core::measurement::{MeasurementRecord, MeasurementUnit, PageCalibration};
+        fn start(worker: &Worker, generation: u64, seed: [f32; 2]) {
+            worker.send(Request::BoundaryFill {
+                epoch: 1800,
+                generation,
+                job: Job::Start {
+                    page: 0,
+                    seed,
+                    options: BoundaryFillOptions::default(),
+                },
+            });
+        }
+        fn started(worker: &Worker) {
+            assert!(matches!(
+                next_response(worker),
+                Response::BoundaryFill {
+                    result: Ok(Outcome::Started(_)),
+                    ..
+                }
+            ));
+        }
+        fn finish(worker: &Worker) -> BoundaryFillReport {
+            match next_response(worker) {
+                Response::BoundaryFill {
+                    result: Ok(Outcome::Finished(report)),
+                    ..
+                } => report,
+                Response::BoundaryFill {
+                    result: Err(error), ..
+                } => panic!("region fill failed: {error}"),
+                _ => panic!("completed region response"),
+            }
+        }
+        fn records(worker: &Worker) -> Vec<MeasurementRecord> {
+            worker.send(Request::MeasurementPage {
+                page: 0,
+                epoch: 1800,
+                generation: 50,
+            });
+            match next_response(worker) {
+                Response::MeasurementPage {
+                    result: Ok(data), ..
+                } => data.records.unwrap().to_vec(),
+                _ => panic!("measurement records"),
+            }
+        }
+        fn prepare(worker: &Worker, generation: u64) {
+            worker.send(Request::BoundaryFill {
+                epoch: 1800,
+                generation,
+                job: Job::Prepare {
+                    scale: RectangleScaleSelection::Automatic,
+                    unit: MeasurementUnit::Metres,
+                    precision: 2,
+                },
+            });
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("enclosed-room.pdf");
+        let calibrated = dir.path().join("calibrated-room.pdf");
+        let counted = dir.path().join("measured-room.pdf");
+        let mut pdf = lopdf::Document::with_version("1.7");
+        let pages = pdf.new_object_id();
+        let stream = pdf.add_object(lopdf::Stream::new(
+            lopdf::Dictionary::new(),
+            b"0 G 0 g 2 w 20 20 80 80 re S 45 45 15 15 re f".to_vec(),
+        ));
+        let page = pdf.add_object(lopdf::dictionary! { "Type" => "Page", "Parent" => pages,
+            "MediaBox" => vec![0.into(), 0.into(), 120.into(), 120.into()], "Contents" => stream, "Resources" => lopdf::Dictionary::new() });
+        pdf.objects.insert(pages, lopdf::Object::Dictionary(lopdf::dictionary! { "Type" => "Pages", "Kids" => vec![lopdf::Object::Reference(page)], "Count" => 1 }));
+        let catalog = pdf.add_object(lopdf::dictionary! { "Type" => "Catalog", "Pages" => pages });
+        pdf.trailer.set("Root", catalog);
+        pdf.save(&source).unwrap();
+        let original = std::fs::read(&source).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Edit(EditOp::SetPageCalibration {
+            page: 0,
+            calibration: Some(PageCalibration {
+                points: [(20., 20.), (100., 20.)],
+                known_distance: 8.,
+                unit: MeasurementUnit::Metres,
+            }),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Save {
+            path: calibrated.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: calibrated,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        start(worker, 1, [30., 30.]);
+        worker.send(Request::Thumbnail {
+            page: 0,
+            width_px: 120,
+        });
+        started(worker);
+        assert!(
+            matches!(next_response(worker), Response::Thumbnail { .. }),
+            "foreground rendering precedes background fill"
+        );
+        let report = finish(worker);
+        assert_eq!(report.progress.status, BoundaryFillStatus::Complete);
+        assert_eq!(report.region.unwrap().holes.len(), 1);
+        assert!(
+            records(worker).is_empty(),
+            "finding a region does not create a measurement"
+        );
+        prepare(worker, 1);
+        let expected = match next_response(worker) {
+            Response::BoundaryFill {
+                result: Ok(Outcome::Prepared { measurement, image }),
+                ..
+            } => {
+                assert!(image.width > 0 && image.height > 0);
+                assert_eq!(measurement.holes.len(), 1);
+                measurement
+            }
+            Response::BoundaryFill {
+                result: Err(error), ..
+            } => panic!("region preview failed: {error}"),
+            _ => panic!("prepared area response"),
+        };
+        assert!(
+            records(worker).is_empty(),
+            "preview has no document side effects"
+        );
+        worker.send(Request::Edit(EditOp::CommitBoundaryFill {
+            epoch: 1800,
+            generation: 1,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_undo: true, .. })
+        ));
+        assert_eq!(records(worker)[0].measurement, expected);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
+        ));
+        assert!(
+            records(worker).is_empty(),
+            "one Undo removes the area and all deductions"
+        );
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(records(worker)[0].measurement, expected);
+        worker.send(Request::Edit(EditOp::CommitBoundaryFill {
+            epoch: 1800,
+            generation: 1,
+        }));
+        assert!(
+            matches!(next_response(worker), Response::OperationFailed(_)),
+            "a consumed preview cannot apply twice"
+        );
+        worker.send(Request::Save {
+            path: counted.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: counted,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(
+            records(worker)[0].measurement,
+            expected,
+            "deductions and calibration survive reopening"
+        );
+        start(worker, 2, [30., 30.]);
+        worker.send(Request::BoundaryFill {
+            epoch: 1800,
+            generation: 1,
+            job: Job::Discard,
+        });
+        started(worker);
+        assert!(matches!(
+            next_response(worker),
+            Response::BoundaryFill {
+                result: Ok(Outcome::Discarded),
+                ..
+            }
+        ));
+        assert_eq!(finish(worker).progress.status, BoundaryFillStatus::Complete);
+        prepare(worker, 2);
+        assert!(matches!(
+            next_response(worker),
+            Response::BoundaryFill {
+                result: Ok(Outcome::Prepared { .. }),
+                ..
+            }
+        ));
+        worker.send(Request::Edit(EditOp::Note {
+            page: 0,
+            x: 110.,
+            y: 110.,
+            text: "later edit".into(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Edit(EditOp::CommitBoundaryFill {
+            epoch: 1800,
+            generation: 2,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                ..
+            })
+        ));
+        assert_eq!(
+            records(worker).len(),
+            1,
+            "stale commit adds no history or area"
+        );
+        start(worker, 3, [30., 30.]);
+        worker.send(Request::BoundaryFill {
+            epoch: 1800,
+            generation: 3,
+            job: Job::Cancel,
+        });
+        started(worker);
+        assert_eq!(
+            finish(worker).progress.status,
+            BoundaryFillStatus::Cancelled
+        );
+        prepare(worker, 3);
+        assert!(matches!(
+            next_response(worker),
+            Response::BoundaryFill { result: Err(_), .. }
+        ));
+        start(worker, 4, [5., 5.]);
+        started(worker);
+        assert_eq!(finish(worker).progress.status, BoundaryFillStatus::Leaked);
+        prepare(worker, 4);
+        assert!(matches!(
+            next_response(worker),
+            Response::BoundaryFill { result: Err(_), .. }
+        ));
+        assert_eq!(
+            records(worker).len(),
+            1,
+            "cancelled and leaking results cannot add measurements"
+        );
+        assert_eq!(std::fs::read(source).unwrap(), original);
+    }
+
     fn next_response(worker: &Worker) -> Response {
         loop {
             let response = worker
@@ -7300,6 +7698,10 @@ mod tests {
             } else if matches!(
                 response,
                 Response::SearchProgress { .. }
+                    | Response::BoundaryFill {
+                        result: Ok(crate::boundary_fill_ui::Outcome::Progress(_)),
+                        ..
+                    }
                     | Response::VisualSearch {
                         result: Ok(crate::visual_search_ui::Outcome::Progress(_)),
                         ..

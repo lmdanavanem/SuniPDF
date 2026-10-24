@@ -1,10 +1,15 @@
 # Roadmap
 
-## Next development
+## Current development: region fill
 
-Priority order: boundary-based region filling (AEC-012), multi-source plan-link
-batches (AEC-017), then independent synchronized reader views. Implementation and
-package publication are tracked separately; no publication date is claimed.
+The 0.72 development increment implements boundary-based region filling (AEC-012):
+explicit seeds and closures, actual contours with holes, calibrated previews and
+complete-only area creation. Source tests, downloaded-package qualification and
+native interaction remain separate. See [the workflow and limits](REGION_FILL.md).
+
+The next implementation priorities are multi-source plan-link batches (AEC-017) and
+independent synchronized reader views. These remain planned work, with no publication
+date claimed.
 
 ## Published scope
 

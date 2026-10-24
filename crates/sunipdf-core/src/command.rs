@@ -7,6 +7,7 @@ pub enum Command {
     IssueReport,
     PlanZones,
     VisualSearch,
+    BoundaryFill,
     PlanSets,
     PlanLinks,
     RevisionOutlines,
@@ -213,6 +214,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         IssueReport,
         "tools.issue_report",
         "issue_report.title",
+        None,
+        true,
+        Tools
+    ),
+    cmd!(
+        BoundaryFill,
+        "tools.boundary_fill",
+        "boundary_fill.title",
         None,
         true,
         Tools
@@ -1418,7 +1427,7 @@ mod tests {
             let _ = info.command.info();
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 15);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 17);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 18);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }
 
@@ -1426,6 +1435,11 @@ mod tests {
     fn tools_keep_hub_ids_and_explicit_document_workflow_ids() {
         for info in Command::in_menu(Menu::Tools) {
             match info.command {
+                Command::BoundaryFill => {
+                    assert_eq!(info.id, "tools.boundary_fill");
+                    assert!(info.needs_document);
+                    assert_eq!(Command::from_id(info.id), Some(Command::BoundaryFill));
+                }
                 Command::VisualSearch => {
                     assert_eq!(info.id, "tools.visual_search");
                     assert!(info.needs_document);
