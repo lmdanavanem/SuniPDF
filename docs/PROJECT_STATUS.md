@@ -1,94 +1,73 @@
 # Project status
 
-**0.63.0 is published as stable Latest, with source, package and public-download verification complete.**
-Updated 2026-10-24. [Published downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.63.0) ·
-[0.63 evidence](qa/RELEASE_0.63.0.json) · [0.63 scope](RELEASE_0.63.0.md).
+**0.64.0 is published as stable Latest, with source, package and public-download verification complete.**
+Updated 2026-10-24. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.64.0) ·
+[Evidence](qa/RELEASE_0.64.0.json) · [Release scope](RELEASE_0.64.0.md).
 
-## 0.63 qualification
+## Qualification
 
-The release source was merged as `f35c2c7930546b9a2bc1e24a886ca0c19621941f` through
-[PR #39](https://github.com/lmdanavanem/SuniPDF/pull/39). Its tree matches the locally qualified source.
-Release ID `422499992` was published at 04:28:05 UTC on 2026-10-24; anonymous Latest checks passed before and after public-package execution.
+Release `422528678` was published at `2026-10-24T05:42:14Z` from
+`71854ef09886c94519775c345de1b45078c9d706` through [PR #41](https://github.com/lmdanavanem/SuniPDF/pull/41).
+Its tree matches the qualified local source. The local suite recorded 994 passed, 0 failed and 15 ignored
+results across 88 suites; formatting, Clippy and desktop/CLI builds passed. The local transfer CLI recorded
+14 commands / 94 independent assertions.
 
-| Check | Recorded result |
-|---|---|
-| Final local Windows workspace | 963 passed, 0 failed, 15 ignored |
-| Formatting, workspace Clippy and desktop/CLI build | Passed |
-| Whole-process CLI corpus | 20 commands / 680 assertions / 0 failures |
-| Native Windows plan set | Manifest open, reference statuses and existing clean-tab navigation passed |
-| Native Windows volume | Deduction vertex insertion, Preview/Apply, Undo/Redo and save/reopen passed |
-| Native Windows FDF | Repeated imports, clear, save/reopen and FDF export passed |
-| Independent native-volume output | 65 assertions passed; source, geometry, depth, appearance and quantity retained |
-| Independent native-FDF output | 8 commands / 129 assertions passed; 13 protected files unchanged |
-| Main CI / Linux / CodeQL / release workflows | All four passed on the release source |
-| Windows / Linux source tests | Windows 963 passed / 15 ignored; Linux 943 passed / 10 ignored per run; zero failures |
-| Translation catalogues | 1,619 matching keys |
-| Portable updates | 43 baselines plus 4 guards: 47 scenarios passed |
-| MSI lifecycle | 41 baselines / 205 logs passed |
-| Ubuntu package | 22.04 and 24.04 clean-container installation, CLI, OCR, reader, remove/reinstall checks passed |
-| Public downloads | Eight assets and checksum sidecars verified anonymously; stable Latest verified |
-| Actual downloaded Windows CLI | 68 commands / 968 assertions, zero failures; package and helpers unchanged |
-| DEB payload identity | Embedded CLI matched both conformance runs; no execution performed by this supplemental check |
-| Reader UI CI | Five actual application/PDFium scenes; offscreen DX12 WARP, not physical GPU interaction |
-| Security scanning | Zero open alerts after individual fixture/false-positive review |
+The exact release source passed all four workflows. Windows recorded 994 passed tests
+and 15 ignored results; Linux recorded 974 passed and 10 ignored per run,
+with no failures. All 1,670 English/French keys matched. Portable upgrades covered
+44 baselines and 4 guards (48 scenarios); MSI lifecycle checks covered
+42 baselines and 210 logs. Ubuntu 22.04/24.04 installation and the pinned conformance corpus passed.
 
-The final local source fingerprint was
-`74e6ad2caf2cf54172d0ab48ee6201e092f0c5bcf15c3bdb4550901a6d874964`.
-The CLI SHA256 was `750e713e2bf81c52cfadc22ce2498e6a466bafce7cda3efac8b8f44c72bf5583`;
-the desktop SHA256 was `ad827ad2f2180948e5c8d549c3fa34d15690e0d7300a657a7e109b87d078b235`.
-These hashes identify the local development builds. The separately downloaded CLI has SHA256
-`cf7b8a03da2fecfca99388065d835c6760178dcedb849b07fc5ee8ee3574e658`. Its runtime check did not
-launch the distributed GUI or install the package locally; installer evidence is from CI. Ignored tests are not passed checks;
-separate runs and earlier failed attempts are not summed.
+Eight public assets and checksum sidecars were downloaded anonymously and verified against GitHub digests.
+The downloaded Windows CLI passed 82 process commands and 1,062 assertions with its bundled runtime.
+Its three corpora cover provenance/quantities, plans/forms/volumes and revision transfer. Packaged files,
+test helpers and protected inputs remained unchanged. The DEB's embedded CLI matched both conformance runs;
+that additional payload inspection executed no program. See [machine-readable evidence](qa/RELEASE_0.64.0.json).
 
-## Implemented scope
+The final development build also passed native English/light and French/dark workflows: natural sorting,
+filtering, grouping, physical-page navigation, explicit matches, both destination previews, four transferred
+annotations over two pages, Save new copy and reopening. Ambiguous/unmatched sheets remained explicit;
+closing a candidate wrote no output, and changing a scratch destination after preview refused save.
+Independent inspection of the saved native output passed 27 assertions with qpdf and pypdf.
 
-- [Local plan sets](PLAN_SETS.md): selected PDFs, stable sheet identities, editable metadata, confined
-  relative paths, source fingerprints and guarded navigation. Refresh/relink and manifest copies preserve
-  source PDFs and existing tab edits. Grouped/searchable navigation remains open in AEC-015.
-- [FDF exchange](FORM_DATA.md): typed button states, Unicode values, explicit empty-choice/clear behavior,
-  bounded expansion and transactional appearance refresh, including repeated imports.
-- [Deducted areas and volumes](MEASUREMENT_VOLUMES.md): separate contours, physical depth,
-  gross/deducted/net results, cubic prices and formulas, source provenance and atomic validation.
-  AEC-009 is Done for its stated polygon deductions and constant-depth calculation criteria. Editable external-reader interoperability
-  and physical measurement accuracy remain separate, unqualified scopes.
+These native checks used a development build with an explicitly supplied PDFium runtime. They do not
+establish distributed-GUI execution or local installer qualification. Dirty-tab guards, cancellation races
+and two-anchor alignment retain automated/CLI evidence; they were not repeated in the native run.
+Detailed engine refusals can remain English inside the French interface.
 
-The native volume run validated vertex insertion; it did not establish handle dragging. The native form
-panel lacked one tested CJK glyph, while independent inspection confirmed the exact stored Unicode value.
-The full [release notes](RELEASE_0.63.0.md) retain behavior and limits.
+Code scanning has zero open alerts after individual review of two test-only credentials and one false-positive
+PDF identity digest. The original failed aggregate checks are retained in history; scanners remain enabled.
 
-## Previous release evidence
+## Delivered scope and tracking
 
-[0.62.0](RELEASE_0.62.0.md) was published from `a6281fd8d54e4bceddc53d43e9527b1cdaa3872e`.
-Its [evidence](qa/RELEASE_0.62.0.json) retains exact-source CI, eight verified public downloads, Windows
-x64 CLI qualification and the later DEB payload identity check. Those results belong to 0.62.0.
-Earlier local benchmarks found a faster 300-row/eight-formula case and a 23 ms regression in the
-optimization/output case; the cause remains unisolated. They do not establish release-build or UI performance.
-[0.61 evidence](qa/RELEASE_0.61.0.json), [0.60 evidence](qa/RELEASE_0.60.0.json) and
-[earlier status history](archive/PROJECT_STATUS_PRE_0.60.md) remain available.
+- [Plan sets](PLAN_SETS.md): separate indexed PDFs, stable sheet identities, metadata, confined references,
+  fingerprints, explicit refresh/relink, persistent manifest copies, filtering, grouping, natural sorting and
+  guarded physical-page navigation. AEC-015 is **Done for these stated criteria**; replacement and links are separate cards.
+- [Reviewed annotation transfer](REVISION_TRANSFER.md): explicit revision/page matching, supported native shapes,
+  bounded alignment, destination previews and atomic fresh-copy publication. AEC-016 remains **In progress**
+  for its broader batch scope; excluded semantic records are not silently transferred.
+- [Volumes](MEASUREMENT_VOLUMES.md) and [FDF](FORM_DATA.md) retain their published 0.63 capabilities and limits.
+  AEC-009 remains Done for polygon deductions and constant physical depth.
 
-## Project tracking and remaining gates
+AEC-017 reviewed cross-document links, AEC-014 reviewed revision outlines and AEC-010 named zones
+are development work planned for a combined 0.67 release after qualification. They remain In progress
+and are not included in the 0.64 downloads. The
+[GitHub project](https://github.com/users/lmdanavanem/projects/1), [backlog](AEC_BACKLOG.md) and
+[roadmap](ROADMAP.md) retain broader acceptance criteria; no whole P1/P2 category is closed.
 
-### 0.64 development candidate
+## Earlier evidence
 
-Reviewed native-shape transfer and grouped/searchable plan navigation are implemented in the
-[0.64 candidate](RELEASE_0.64.0.md). The final local workspace passed 994 test executions, with
-0 failures and 15 ignored results; formatting, Clippy, desktop/CLI build and 1,670 bilingual keys
-passed. The final CLI passed 14 independent process commands and 94 output assertions, including
-source preservation and atomic refusals. Native workflows and exact-source package qualification
-remain in progress. These counts are separate from the published 0.63 evidence above.
+[0.63](RELEASE_0.63.0.md) retains its 963-test local qualification, 68-command / 968-assertion downloaded CLI
+run and separate native plan/FDF/volume evidence. [0.62](RELEASE_0.62.0.md), [0.61](RELEASE_0.61.0.md),
+[0.60](RELEASE_0.60.0.md) and [earlier status history](archive/PROJECT_STATUS_PRE_0.60.md) remain available.
+An earlier bounded benchmark found a 23 ms optimization/output regression; no general UI performance gain is claimed.
 
-[GitHub Projects](https://github.com/users/lmdanavanem/projects/1) was synchronized after 0.62 publication
-on 2026-10-24: five existing P1 cards updated and 27 AEC cards added without duplication. The preserved
-views contained 51 Roadmap, 8 Bugs and 11 Suggestions cards. This is the dated tracking baseline;
-subsequent publication updates mark AEC-009 Done for its stated scope and keep AEC-015, AEC-016 and
-AEC-017 in progress for later 0.64/0.65 work. The 27 AEC cards comprise 15 In progress, 10 Planned and
-2 Done. Those candidates
-are not part of 0.63, and partial evidence does not close broader P1 cards.
+## Remaining gates
 
-Private real-project plans remain deferred. Independent update signing, production code signing,
-physical printing, native ARM64 execution, human accessibility and broader reader/conformance checks
-remain open. Windows packages are unsigned; Ubuntu CI uses containers and software rendering.
-There is no universal PDF/A, PDF/UA, survey-accuracy or physical-device claim.
-See the [roadmap](ROADMAP.md), [capability backlog](AEC_BACKLOG.md),
-[known limits](KNOWN_ISSUES.md) and [1.0 gates](RELEASE_1.0_CRITERIA.md).
+Windows packages remain unsigned. Physical ARM64, printers, production code signing, independent
+update authenticity, human accessibility and private-project plans remain unqualified. Ubuntu checks use
+containers and software rendering. Specified synthetic/licensed corpus results do not establish universal
+PDF/A, PDF/UA, external-reader compatibility or survey accuracy. Ignored tests are not passed checks;
+separate runs and earlier failures are not added to the final counts.
+
+See [known issues](KNOWN_ISSUES.md) and [1.0 acceptance criteria](RELEASE_1.0_CRITERIA.md).

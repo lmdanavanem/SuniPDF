@@ -1,36 +1,36 @@
 # Roadmap
 
-Updated 2026-10-24 for [0.63.0](RELEASE_0.63.0.md), published as stable Latest.
-[Release evidence](qa/RELEASE_0.63.0.json) records actual source, package and public-download checks.
-Full backlog cards remain open until their acceptance criteria are evidenced.
+Updated 2026-10-24 for [0.64.0](RELEASE_0.64.0.md), published as stable Latest.
+[Evidence](qa/RELEASE_0.64.0.json) records exact source, package and public-download checks.
+Full backlog cards remain open until their stated acceptance criteria are evidenced.
 
-## Delivered in 0.63.0
+## Delivered in 0.64.0
 
-Local plan sets retain separate PDFs, stable sheet IDs, metadata, source fingerprints and guarded
-navigation. FDF exchanges typed form values with bounded parsing and preserved button states.
-Deducted polygon areas and constant-depth volumes retain their contours, scale and physical depth;
-cubic quantities and prices reject incompatible edits. AEC-009 is Done for these stated criteria.
-Editable external-reader measurement exchange and physical accuracy remain separate unqualified scopes.
+Grouped/searchable plan navigation completes AEC-015's indexed-set criteria: portable manifests,
+stable identities, metadata, fingerprints, visible reference issues, natural sorting, discipline/revision/file
+groups and guarded physical-page navigation. Native grouping/navigation, automated persistence and
+downloaded-package manifest checks passed. Revision replacement and links are separate cards.
 
-Exact-source CI passed: Windows 963 tests / 15 ignored; Linux 943 / 10 ignored per run, with no failures.
-Portable updates covered 43 baselines plus 4 guards; MSI covered 41 baselines / 205 logs. All eight public
-assets were verified anonymously. The downloaded Windows CLI passed 68 commands / 968 assertions.
-Ubuntu 22.04/24.04 package checks ran in clean containers. Native development-build workflows and independent
-saved-output inspection have separate evidence and limits in [Project status](PROJECT_STATUS.md).
+Reviewed transfer of supported native shapes uses explicit page matches and optional bounded alignment,
+preserves originals and revised contents, requires each destination preview and writes a new copy.
+AEC-016 remains In progress for broader batch processing and unsupported annotation semantics.
 
-The earlier [0.62 release](RELEASE_0.62.0.md) added dimensioned rectangles, formula subtotals, historical
-measurement provenance, explicit recalibration, output collision guards and tab/restoration fixes.
-An earlier bounded benchmark found the 300-row/eight-formula case faster and the optimization/output
-case 23 ms slower. Investigate that regression without weakening atomic writes; no general UI gain is established.
+Exact-source CI passed 994 Windows tests / 15 ignored and 974 Linux tests /
+10 ignored per run. Portable checks covered 44 baselines plus 4 guards;
+MSI covered 42 baselines / 210 logs. The eight public assets were verified anonymously;
+the downloaded Windows CLI passed 82 commands / 1,062 assertions. Native development-build
+checks and independent saved-output inspection retain separate limits in [Project status](PROJECT_STATUS.md).
 
-## Work in progress after 0.63
+The [0.63 release](RELEASE_0.63.0.md) retains local manifests, FDF and deducted areas/constant-depth volumes.
+AEC-009 remains Done for its stated geometry and calculation criteria. [0.62](RELEASE_0.62.0.md) added
+dimensioned rectangles, formula subtotals and explicit historical-measurement recalibration.
+An earlier bounded benchmark found a 23 ms optimization/output regression; investigate it without weakening atomic writes.
 
-AEC-015 grouped/searchable sheet navigation and AEC-016 reviewed revision transfer are later 0.64
-candidate work. AEC-017 reviewed cross-document links are a separate 0.65 implementation in progress.
-Neither candidate is included in the published 0.63 packages. Their complete source, native workflow,
-package and interoperability evidence must precede delivery claims. The final local 0.64 workspace
-passed 994 test executions (15 ignored), and its CLI passed 14 commands / 94 independent assertions.
-Native and package checks remain in progress; see the [candidate scope](RELEASE_0.64.0.md).
+## Work in progress after 0.64
+
+AEC-017 reviewed cross-document links, AEC-014 reviewed revision outlines and AEC-010 named zones
+are development work planned for a combined 0.67 release. Source, native and package gates must precede
+delivery claims; these increments remain In progress and are not included in the current downloads.
 
 ## Delivered foundation
 
@@ -66,7 +66,7 @@ not only an implementation or a successful build.
 | P1 | Independent interoperability | Record exact reader versions and outcomes for encrypted PDFs, XMP, forms, replies/statuses, ink, FreeText, shapes, redaction and signatures. Structural qpdf checks alone do not establish appearance or trust. |
 | P1 | PDF/A and PDF/UA qualification | Select supported profiles, retain independent validator reports and complete applicable human accessibility checks. Preserving identification metadata is not conformance validation. |
 
-Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.63.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans. A later DEB payload inspection on 2026-10-24 independently matched the embedded SuniPDF CLI to both conformance-run hashes. The original run records remain unchanged. No program was executed and no Linux runtime or desktop qualification was added; the desktop hash was recorded only.
+Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.64.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans. A later DEB payload inspection on 2026-10-24 independently matched the embedded SuniPDF CLI to both conformance-run hashes. The original run records remain unchanged. No program was executed and no Linux runtime or desktop qualification was added; the desktop hash was recorded only.
 
 Private real-project plan qualification is **deferred at the owner's request**.
 Known synthetic geometry and retained licensed/public PDFs remain the automated baseline;
@@ -87,7 +87,7 @@ criteria. Existing features are foundations for these extensions, not unimplemen
 | Rooms and zones | Named hierarchical regions and assignment rules | Expose overlapping and unassigned annotations; filter and report by room or floor. |
 | Visual recognition | Symbol search and boundary-based region proposals | Bounded work, candidate previews, explicit tolerance and user confirmation before creating counts or measurements. |
 | Revisions | Reviewed change outlines and broader alignment workflows | Distinguish drawing changes from rendering noise and retain original/revised identities. |
-| Plan sets | Grouped/searchable navigation, then reviewed revision replacement and links | The published 0.63 release indexes sheets with metadata and guarded navigation. Complete discipline/sheet/revision grouping separately; review matches and retain previous files before any transfer. |
+| Plan sets | Broader reviewed revision replacement and links | Grouped/searchable navigation and manifest persistence are delivered. Supported annotation transfer requires explicit review; broader batches and cross-document links retain separate acceptance criteria. |
 | Reports | Legends, quantity summaries and issue reports | Generate from actual filtered annotations and document revisions, with no invented or stale totals. |
 
 Named scale regions, batch recalibration, vector snapping, manual counts, saved-geometry

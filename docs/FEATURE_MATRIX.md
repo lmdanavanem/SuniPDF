@@ -1,23 +1,28 @@
 # SuniPDF feature matrix
 
-Current release scope: **0.63.0**. Features below are implemented within the stated limits.
-[Project status](PROJECT_STATUS.md) records executed checks; implementation does not imply qualification on every document,
-physical device or third-party reader. Planned work is tracked in the [roadmap](ROADMAP.md).
+Current release scope: **0.64.0**. Features below are implemented within the stated limits.
+[Project status](PROJECT_STATUS.md) records executed checks. Physical devices, arbitrary documents and
+third-party readers retain separate qualification gates; planned work is in the [roadmap](ROADMAP.md).
 
-## Delivered in 0.63.0
-
-The separate [0.64 development candidate](RELEASE_0.64.0.md) implements reviewed native-shape transfer
-and plan-set filtering, grouping and natural sorting. Its final local tests passed; native and
-package qualification remain pending. These extensions are not part of the current release below.
+## Delivered in 0.64.0
 
 Exact-source CI, package checks and public downloads are verified. The downloaded Windows CLI passed
-68 commands / 968 assertions; local native workflows have separate bounded evidence. See [0.63 qualification](RELEASE_0.63.0.md).
+82 commands / 1,062 assertions; native development-build workflows have separate bounded evidence.
+See [0.64 qualification](RELEASE_0.64.0.md).
 
 | Area | Implemented behavior and limits |
 |---|---|
-| Plan sets | Local manifests, stable sheet IDs, metadata, fingerprints, explicit validation/refresh/relink and guarded navigation; grouped/searchable navigation and revision transfer remain open |
+| Plan sets | Portable manifests, stable identities, fingerprints, validation/refresh/relink, metadata and filename/page filtering, natural sorting, discipline/revision/file grouping and guarded navigation; no automatic revision approval |
+| Revision transfer | Explicit source-bound page matches, selected supported native shapes, bounded alignment, real destination previews, preserved revised contents and fresh-copy output; unsupported semantic data is excluded, broader batch processing remains open |
+
+## Retained from 0.63.0
+
+| Area | Implemented behavior and limits |
+|---|---|
 | Deducted areas and volumes | Strict interior holes, retained physical depth, gross/deducted/net calculations, cubic quantities/prices and full-contour editing; constant depth only, editable third-party measurement exchange unqualified |
 | FDF | Value-only export/import with typed button states, Unicode, distinct empty-choice/clear semantics, bounded expansion and preserved appearances during repeated imports |
+
+[0.63 evidence](qa/RELEASE_0.63.0.json) remains a historical record of that release's own checks.
 
 ## Delivered in 0.62.0
 
