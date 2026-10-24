@@ -2,6 +2,10 @@
 
 ## Next development
 
+In development: [0.77 linked-sheet previews and native navigation checks](RELEASE_0.77.0.md).
+This lot also caches historical Windows packages to reduce repeated download work
+without reducing the upgrade scenarios.
+
 Independent synchronized reader views are delivered in [0.76.0](RELEASE_0.76.0.md):
 two locations in one PDF, one active editing context and pane positions retained
 when switching tabs during the session.

@@ -7,6 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $repo = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot 'upgrade-baseline-cache.ps1')
 $helperSource = Join-Path $repo 'apps/sunipdf-desktop/src/update-helper.ps1'
 $powershell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
 & (Join-Path $PSScriptRoot 'test-update-helper-host.ps1')
@@ -82,24 +83,11 @@ function PreviousPackages([string]$Workspace) {
         '0.73.0' = '92EF12184039D2600052814DB6592EFB7B29DEEF558924154520D3BAB8D99CE5'
         '0.74.0' = '5B98572492F80DBB027F3757FBA066AAB035FC79055134E69903D752785688AE'
         '0.75.0' = 'B7A49431D61B6294061EE5D43C238750F62783BD2D15A5D7C1B71F9E6835F87F'
+        '0.76.0' = 'D8A981186CF6B206DDD6AAC891388F5F76E01D275D81F8ADF3B0B0888242639A'
     }
-    foreach ($version in @('0.8.2', '0.8.3', '0.9.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0', '0.32.0', '0.33.0', '0.34.0', '0.35.0', '0.36.0', '0.37.0', '0.38.0', '0.39.0', '0.40.0', '0.41.0', '0.42.0', '0.43.0', '0.44.0', '0.45.0', '0.46.0', '0.47.0', '0.48.0', '0.49.0', '0.50.0', '0.51.0', '0.60.0', '0.61.0', '0.62.0', '0.63.0', '0.64.0', '0.67.0', '0.69.0', '0.70.0', '0.71.0', '0.72.0', '0.73.0', '0.74.0', '0.75.0')) {
+    foreach ($version in @('0.8.2', '0.8.3', '0.9.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0', '0.32.0', '0.33.0', '0.34.0', '0.35.0', '0.36.0', '0.37.0', '0.38.0', '0.39.0', '0.40.0', '0.41.0', '0.42.0', '0.43.0', '0.44.0', '0.45.0', '0.46.0', '0.47.0', '0.48.0', '0.49.0', '0.50.0', '0.51.0', '0.60.0', '0.61.0', '0.62.0', '0.63.0', '0.64.0', '0.67.0', '0.69.0', '0.70.0', '0.71.0', '0.72.0', '0.73.0', '0.74.0', '0.75.0', '0.76.0')) {
         if ([version]$version -ge [version]$incoming.version) { continue }
-        $name = "SuniPDF-$version-win-x64-portable.zip"
-        $sidecarBody = (Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/lmdanavanem/SuniPDF/releases/download/v$version/$name.sha256" -TimeoutSec 60).Content
-        if ($sidecarBody -is [byte[]]) { $sidecarBody = [Text.Encoding]::ASCII.GetString($sidecarBody) }
-        $sidecar = $sidecarBody.Trim() -split '\s+', 2
-        Assert ($sidecar[0] -ieq $pins[$version] -and $sidecar[1] -eq $name) "Pinned release digest disagrees with the published checksum: $version"
-        $path = Join-Path $repo "dist/$name"
-        if (-not (Test-Path -LiteralPath $path) -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ine $pins[$version]) {
-            $directory = Join-Path $Workspace 'previous'
-            [IO.Directory]::CreateDirectory($directory) | Out-Null
-            $path = Join-Path $directory $name
-            Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/lmdanavanem/SuniPDF/releases/download/v$version/$name" -OutFile $path -TimeoutSec 300
-            Assert ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ieq $pins[$version]) "Pinned previous public release checksum mismatch: $version"
-            [IO.File]::WriteAllText("$path.sha256", "$($pins[$version])  $name", [Text.Encoding]::ASCII)
-        }
-        Write-Output $path
+        Get-SuniUpgradeBaseline -Version $version -CurrentVersion $incoming.version -ExpectedSha256 $pins[$version] -Kind portable
     }
 }
 function ExpandTestCopy([string]$Archive, [string]$Destination) {

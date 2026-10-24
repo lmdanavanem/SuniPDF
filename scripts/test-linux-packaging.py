@@ -4,6 +4,7 @@ import importlib.util
 import gzip
 import io
 from pathlib import Path
+import re
 import struct
 import tarfile
 import tempfile
@@ -21,9 +22,59 @@ def load(filename):
 fetch = load("fetch-pdfium-linux.py")
 package = load("package-deb.py")
 installed = load("test-deb.py")
+plan_fixture = load("native-plan-link-fixture.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_plan_navigation_requires_unique_colored_pdf_title(self):
+        for kind, title, wrong in (("source", "Native source document", "Native destination two"),
+                                   ("destination", "Native destination two", "Native wrong first page")):
+            with self.subTest(kind=kind):
+                self.assertTrue(installed.plan_fixture_visible(kind, 501, title))
+                self.assertTrue(installed.plan_fixture_visible(kind, 501, title.replace(" ", "\n")))
+                for pixels, text in ((500, title), (5000, wrong), (5000, "Page 2"),
+                                     (5000, "Preview destination"), (5000, title + "fold"),
+                                     (5000, (title + "\n") * 2)):
+                    self.assertFalse(installed.plan_fixture_visible(kind, pixels, text))
+
+    def test_plan_navigation_refusal_requires_the_specific_observed_error(self):
+        errors = {"changed-target": "Plan set: Source fingerprint changed; accept the revision explicitly before navigation",
+                  "missing-target": "I/O error: No such file or directory (os error 2)",
+                  "changed-source": "Plan links: source PDF changed since the preview; preview it again"}
+        for kind, expected in errors.items():
+            with self.subTest(kind=kind):
+                self.assertTrue(installed.plan_error_visible(kind, expected))
+                for other, text in errors.items():
+                    if other != kind:
+                        self.assertFalse(installed.plan_error_visible(kind, text))
+                self.assertFalse(installed.plan_error_visible(kind, "Destination verified for this preview"))
+                self.assertFalse(installed.plan_error_visible(kind, "Unable to open this document"))
+
+    def test_plan_link_input_target_requires_a_complete_unambiguous_placeholder(self):
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        rows = "".join(f"5\t1\t1\t1\t1\t{index + 1}\t{20 + 60 * index}\t30\t50\t14\t95\t{word}\n"
+                       for index, word in enumerate("Paste a manifest path".split()))
+        self.assertEqual(installed.theme_label_center(header + rows, "Paste a manifest path", (280, 80)), (135, 37))
+        with self.assertRaises(installed.ThemeLabelMissing):
+            installed.theme_label_center(header + rows, "Load manifest", (280, 80))
+        with self.assertRaises(AssertionError):
+            installed.theme_label_center(header + rows, "Paste a manifest path", (220, 80))
+
+    def test_synthetic_plan_pdf_has_correct_offsets_streams_and_distinct_pages(self):
+        pages = [b"0 0.6 0 rg\nBT /F1 28 Tf 72 700 Td (Native wrong first page) Tj ET\n",
+                 b"1 0 0 rg\nBT /F1 28 Tf 72 700 Td (Native destination two) Tj ET\n"]
+        data = plan_fixture.pdf(pages)
+        xref = int(re.search(rb"startxref\n(\d+)\n%%EOF", data).group(1))
+        self.assertEqual(data[xref:xref + 5], b"xref\n")
+        entries = data[xref:].splitlines()[3:10]
+        self.assertEqual(len(entries), 7)
+        for index, entry in enumerate(entries, 1):
+            offset = int(entry.split()[0])
+            self.assertTrue(data[offset:].startswith(f"{index} 0 obj\n".encode()))
+        self.assertIn(b"/Kids [4 0 R 6 0 R] /Count 2", data)
+        for page in pages:
+            self.assertIn(b"/Length " + str(len(page)).encode() + b" >>\nstream\n" + page + b"\nendstream", data)
+
     def test_split_reader_evidence_rejects_other_page_and_interface_text(self):
         for color, right, wrong in (("blue", "1", "2"), ("red", "2", "1")):
             with self.subTest(color=color):

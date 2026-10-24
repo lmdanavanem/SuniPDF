@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
+## [0.77.0] - Unreleased
+
+- Add an explicit verified destination preview before opening saved plan-sheet links.
+- Allow a manifest path to be entered directly while retaining file browsing.
+- Cache pinned historical Windows packages without reducing upgrade or rollback coverage.
+
+Development candidate: [scope and pending qualification](docs/RELEASE_0.77.0.md).
+
 ## [0.76.0] - 2026-10-24
 
 - Add two reader panes for one open PDF, with independent page, zoom, scroll position and navigation history.

@@ -4,6 +4,12 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
+## In development: 0.77.0
+
+- Explicit preview of a saved plan link's verified destination before navigation.
+- Keyboard manifest entry and fresh input checks before opening a destination.
+- [Scope and pending qualification](RELEASE_0.77.0.md); broader AEC-017 acceptance remains open.
+
 ## Added in 0.76.0
 
 | Area | Implemented behavior and limits |

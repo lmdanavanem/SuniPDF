@@ -37,6 +37,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Releases and history
 
+- [0.77.0 candidate: linked-sheet previews and pending qualification](RELEASE_0.77.0.md).
 - [0.76.0 release: independent reader views](RELEASE_0.76.0.md) and [qualification evidence](qa/RELEASE_0.76.0.json).
 - [0.75.0 release and qualification](RELEASE_0.75.0.md).
 - [0.74.0 release and qualification](RELEASE_0.74.0.md).
