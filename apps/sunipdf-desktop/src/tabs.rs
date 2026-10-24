@@ -13,6 +13,8 @@ pub struct TabState {
     pub effective_zoom: f32,
     /// Décalage de la zone de défilement du document (l'état egui est partagé entre onglets).
     pub scroll: egui::Vec2,
+    /// A queued geometry edit must return to a valid page, not an obsolete offset.
+    scroll_to_page: Option<usize>,
     pub view_mode: crate::view::ViewMode,
     pub reading: crate::reading::ReadingState,
     pub page_input: String,
@@ -80,6 +82,7 @@ impl SuniApp {
             zoom: std::mem::replace(&mut self.zoom, Zoom::FitWidth),
             effective_zoom: std::mem::replace(&mut self.effective_zoom, 1.0),
             scroll,
+            scroll_to_page: None,
             view_mode,
             reading,
             page_input: std::mem::take(&mut self.page_input),
@@ -114,7 +117,9 @@ impl SuniApp {
         self.effective_zoom = t.effective_zoom;
         self.view.reset();
         self.view.reading = t.reading;
-        if self.view.mode == t.view_mode {
+        if let Some(page) = t.scroll_to_page {
+            self.view.request(crate::view::ScrollRequest::Page(page));
+        } else if self.view.mode == t.view_mode {
             self.view
                 .request(crate::view::ScrollRequest::Offset(t.scroll));
         } else {
@@ -134,6 +139,9 @@ impl SuniApp {
         self.status_msg = t.status_msg;
         self.organize = t.organize;
         self.annotate = t.annotate;
+        // Suspension cancels the engine inventory, and edits queued before it may
+        // have changed a previously completed report. Keep filters, reload rows.
+        self.annotate.register.invalidate();
         // The scales belong to this suspended document, not the shared viewport epoch.
         self.annotate.measure.advance_epoch(self.view.epoch);
         self.annotate.clear_reading();
@@ -243,6 +251,58 @@ impl SuniApp {
         }
     }
 
+    /// Edits already queued before Suspend still belong to that tab's UI state.
+    pub(crate) fn on_suspending_document_changed(&mut self, state: crate::worker::DocState) {
+        let Some(tab) = self
+            .tabs
+            .suspending
+            .and_then(|index| self.tabs.tabs.get_mut(index))
+        else {
+            return;
+        };
+        self.has_signatures = state.has_signatures;
+        tab.dirty = state.modified;
+        let Some(ui) = tab.ui.as_mut() else {
+            return;
+        };
+        let same_sizes = ui
+            .document
+            .as_ref()
+            .is_some_and(|doc| doc.info.page_sizes == state.info.page_sizes);
+        if state.measurement_scales_unchanged && same_sizes {
+            ui.annotate.measure.advance_epoch(self.view.epoch);
+        } else {
+            ui.annotate.measure.invalidate(self.view.epoch);
+        }
+        ui.annotate.register.invalidate();
+        ui.annotate.quantities.invalidate();
+        ui.docinfo.properties = None;
+        ui.docinfo.inspection = None;
+        ui.docinfo.inspection_epoch = None;
+        ui.find.document_changed();
+        ui.organize
+            .selected
+            .retain(|page| *page < state.info.page_count());
+        ui.organize.anchor = ui
+            .organize
+            .anchor
+            .filter(|page| *page < state.info.page_count());
+        if let Some(doc) = &mut ui.document {
+            doc.page = doc.page.min(state.info.page_count().saturating_sub(1));
+            ui.page_input = state.info.page_input(doc.page);
+            if !same_sizes {
+                ui.scroll_to_page = Some(doc.page);
+            }
+            doc.info = state.info;
+        }
+        if !state.pages_unchanged || !same_sizes {
+            ui.reading.history.reset();
+        }
+        ui.dirty = state.modified;
+        ui.can_undo = state.can_undo;
+        ui.can_redo = state.can_redo;
+    }
+
     /// Le moteur a repris un document : restaurer l'état d'interface de son onglet.
     pub fn on_resumed(&mut self, state: crate::worker::DocState, ctx: &egui::Context) {
         let Some(index) = self.tabs.resuming.take() else {
@@ -258,8 +318,20 @@ impl SuniApp {
                 if let Some(doc) = &mut ui.document {
                     if doc.info.page_sizes != state.info.page_sizes {
                         ui.annotate.measure.invalidate(self.view.epoch);
+                        ui.reading.history.reset();
+                        ui.scroll_to_page =
+                            Some(doc.page.min(state.info.page_count().saturating_sub(1)));
                     }
                     doc.info = state.info;
+                    doc.page = doc.page.min(doc.info.page_count().saturating_sub(1));
+                    ui.page_input = doc.info.page_input(doc.page);
+                    ui.organize
+                        .selected
+                        .retain(|page| *page < doc.info.page_count());
+                    ui.organize.anchor = ui
+                        .organize
+                        .anchor
+                        .filter(|page| *page < doc.info.page_count());
                 }
                 self.put_tab(ui);
             }
@@ -288,13 +360,15 @@ impl SuniApp {
         }
     }
 
-    /// La reprise a échoué : l'onglet visé est retiré (son document n'est plus disponible).
-    pub fn on_resume_failed(&mut self) {
+    /// Keep the tab, its UI and its complete journal available for an explicit retry.
+    pub fn on_resume_failed(&mut self, suspended: SuspendedDoc) {
         if let Some(i) = self.tabs.resuming.take() {
-            if i < self.tabs.tabs.len() {
-                self.tabs.tabs.remove(i);
+            if let Some(tab) = self.tabs.tabs.get_mut(i) {
+                tab.dirty = suspended.modified;
+                tab.doc = Some(suspended);
             }
         }
+        self.tabs.quit_pending = false;
     }
 
     /// Le document actif vient d'être ouvert : il prend place dans un nouvel onglet actif.
@@ -356,6 +430,158 @@ impl SuniApp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn queued_page_deletion_updates_suspended_ui_after_resume_or_suspend_failure() {
+        for suspend_succeeds in [false, true] {
+            let (mut app, _, responses) = crate::app::tests::test_app();
+            let ctx = egui::Context::default();
+            let doc = app.document.as_mut().unwrap();
+            doc.info.page_sizes = vec![doc.info.page_sizes[0]; 3];
+            doc.page = 2;
+            app.page_input = "3".into();
+            app.organize.selected.extend([0, 2]);
+            app.organize.anchor = Some(2);
+            app.view.offset = egui::vec2(0.0, 1500.0);
+            app.view
+                .reading
+                .history
+                .jump(0, Some(egui::Vec2::ZERO), 2, 1.0);
+            let mut info = app.document.as_ref().unwrap().info.clone();
+            info.page_sizes.truncate(1);
+            info.page_labels = vec![Some("Cover".into())];
+            let state = crate::worker::DocState {
+                info: info.clone(),
+                can_undo: true,
+                can_redo: false,
+                pages_unchanged: false,
+                measurement_scales_unchanged: false,
+                modified: true,
+                has_signatures: false,
+            };
+            assert!(app.suspend_active());
+            responses
+                .send(crate::worker::Response::DocumentChanged(state.clone()))
+                .unwrap();
+            app.handle_responses(&ctx);
+            let ui = app.tabs.tabs[0].ui.as_ref().unwrap();
+            assert_eq!(ui.document.as_ref().unwrap().info.page_count(), 1);
+            assert_eq!(ui.document.as_ref().unwrap().page, 0);
+            assert_eq!(ui.page_input, "Cover");
+            assert_eq!(ui.scroll_to_page, Some(0));
+            assert!(!ui.reading.history.can_back());
+            assert_eq!(
+                ui.organize.selected.iter().copied().collect::<Vec<_>>(),
+                vec![0]
+            );
+            assert_eq!(ui.organize.anchor, None);
+            if suspend_succeeds {
+                app.on_suspended(SuspendedDoc {
+                    bytes: vec![],
+                    password: None,
+                    path: info.path.clone(),
+                    undo: vec![],
+                    redo: vec![],
+                    save_point: None,
+                    modified: true,
+                    signature_source: None,
+                });
+                app.switch_to(0);
+                responses
+                    .send(crate::worker::Response::Resumed(state))
+                    .unwrap();
+            } else {
+                responses
+                    .send(crate::worker::Response::SuspendFailed(
+                        sunipdf_core::EngineError::InvalidFormat,
+                    ))
+                    .unwrap();
+            }
+            app.handle_responses(&ctx);
+            assert_eq!(app.tabs.active, Some(0));
+            assert_eq!(app.document.as_ref().unwrap().page, 0);
+            assert_eq!(app.document.as_ref().unwrap().info.page_count(), 1);
+            assert_eq!(app.page_input, "Cover");
+            assert!(app.dirty && app.can_undo);
+            assert!(!app.view.reading.history.can_back());
+        }
+    }
+
+    #[test]
+    fn failed_resume_keeps_unsaved_tab_and_ui_for_retry_and_cancels_pending_close() {
+        let (mut app, requests, responses) = crate::app::tests::test_app();
+        let ctx = egui::Context::default();
+        let info = app.document.as_ref().unwrap().info.clone();
+        app.dirty = true;
+        app.zoom = Zoom::Fixed(1.75);
+        app.find.query = "retained query".into();
+        let recovery_id = app.tabs.tabs[0].recovery_id;
+        assert!(app.suspend_active());
+        app.on_suspended(SuspendedDoc {
+            bytes: b"unsaved tab bytes".to_vec(),
+            password: Some("retained credential".into()),
+            path: info.path.clone(),
+            undo: vec![],
+            redo: vec![],
+            save_point: None,
+            modified: true,
+            signature_source: None,
+        });
+        app.switch_to(0);
+        let suspended = requests
+            .try_iter()
+            .find_map(|request| match request {
+                Request::ResumeDoc(suspended) => Some(suspended),
+                _ => None,
+            })
+            .expect("resume request must own the suspended document");
+        app.tabs.quit_pending = true;
+        app.execute(&ctx, sunipdf_core::Command::CloseDocument);
+        responses
+            .send(crate::worker::Response::ResumeFailed {
+                error: sunipdf_core::EngineError::InvalidFormat,
+                suspended,
+            })
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert_eq!(app.tabs.tabs.len(), 1);
+        assert_eq!(app.tabs.tabs[0].recovery_id, recovery_id);
+        assert_eq!(app.any_background_dirty(), Some(0));
+        assert!(app.tabs.resuming.is_none());
+        assert!(!app.tabs.quit_pending);
+        assert!(
+            requests.try_recv().is_err(),
+            "failure must cancel the deferred close"
+        );
+        let retained = app.tabs.tabs[0].doc.as_ref().unwrap();
+        assert_eq!(retained.bytes, b"unsaved tab bytes");
+        assert_eq!(retained.password.as_deref(), Some("retained credential"));
+        assert_eq!(retained.save_point, None);
+        app.switch_to(0);
+        assert!(requests
+            .try_iter()
+            .any(|request| matches!(request, Request::ResumeDoc(doc) if doc.bytes == b"unsaved tab bytes")));
+        responses
+            .send(crate::worker::Response::Resumed(crate::worker::DocState {
+                info,
+                can_undo: true,
+                can_redo: true,
+                pages_unchanged: false,
+                measurement_scales_unchanged: false,
+                modified: true,
+                has_signatures: false,
+            }))
+            .unwrap();
+        app.handle_responses(&ctx);
+        assert_eq!(app.tabs.active, Some(0));
+        assert!(app.dirty && app.can_undo && app.can_redo);
+        assert!(matches!(app.zoom, Zoom::Fixed(value) if value == 1.75));
+        assert_eq!(app.find.query, "retained query");
+        assert!(app.document.is_some());
+        assert!(requests
+            .try_iter()
+            .all(|request| !matches!(request, Request::Close | Request::Save { .. })));
+    }
 
     #[test]
     fn view_rotation_and_history_survive_tab_suspension_without_leaking() {

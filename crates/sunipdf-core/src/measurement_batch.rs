@@ -2,8 +2,9 @@
 
 use crate::annot_write::{load_annot, set_ap, store_annot, touch};
 use crate::measurement::{
-    annotation_components, bounded_text, check_editable_local, MeasurementKind, MeasurementRecord,
-    MeasurementUnit, PageCalibration,
+    annotation_components, bind_provenance, bounded_text, check_editable_local,
+    measurement_after_storage, page_provenance, MeasurementKind, MeasurementRecord,
+    MeasurementUnit, MeasurementValidity, PageCalibration,
 };
 use crate::security::{self, lopdf_err};
 use crate::{Document, EngineError};
@@ -24,6 +25,7 @@ pub struct RecalibrationChange {
     pub page: usize,
     pub index: usize,
     pub before: f64,
+    pub before_validity: MeasurementValidity,
     pub after: f64,
     pub unit: MeasurementUnit,
     pub kind: MeasurementKind,
@@ -160,6 +162,10 @@ impl Document<'_> {
                 pdf.get_dictionary(page).map_err(lopdf_err)?,
             )?;
             let records = self.measurement_records_from_pdf(request.page, &pdf)?;
+            if !request.measurements.is_empty() {
+                // Validate the common page evidence once before preparing any selected record.
+                page_provenance(&pdf, page, &geo)?;
+            }
             let mut indices = HashSet::new();
             for expected in &request.measurements {
                 if !indices.insert(expected.index)
@@ -179,12 +185,16 @@ impl Document<'_> {
                     return Err(invalid("measurement identity is shared or ambiguous"));
                 }
                 let next = replacement(expected, &request.calibration)?;
+                let stored = measurement_after_storage(&geo, &next)?;
                 annotation_components(&geo, &next, None)?;
+                let (_, annotation) = load_annot(&pdf, page, expected.index)?;
+                crate::quantity_table::validate_measurement_price(&pdf, &annotation, &stored)?;
                 changes.push(RecalibrationChange {
                     page: request.page,
                     index: expected.index,
                     before: expected.measurement.value()?,
-                    after: next.value()?,
+                    before_validity: expected.validity,
+                    after: stored.value()?,
                     unit: next.unit,
                     kind: next.kind,
                 });
@@ -223,11 +233,24 @@ impl Document<'_> {
             let page = *pages
                 .get(&(request.page as u32 + 1))
                 .ok_or(EngineError::PageOutOfRange(request.page))?;
+            let provenance = if request.measurements.is_empty() {
+                None
+            } else {
+                Some(page_provenance(&pdf, page, &geo)?)
+            };
             for expected in &request.measurements {
                 check_editable_local(&pdf, page, expected)?;
                 let next = replacement(expected, &request.calibration)?;
-                let (components, appearance) = annotation_components(&geo, &next, None)?;
+                let stored = measurement_after_storage(&geo, &next)?;
+                let (mut components, appearance) = annotation_components(&geo, &next, None)?;
+                bind_provenance(
+                    &mut components,
+                    provenance
+                        .as_ref()
+                        .expect("selected measurements have page provenance"),
+                )?;
                 let (slot, mut annotation) = load_annot(&pdf, page, expected.index)?;
+                crate::quantity_table::validate_measurement_price(&pdf, &annotation, &stored)?;
                 for key in [b"Rect".as_slice(), b"Contents", b"SuniPDFMeasurement"] {
                     annotation.set(key, components.get(key).map_err(lopdf_err)?.clone());
                 }

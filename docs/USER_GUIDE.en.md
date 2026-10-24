@@ -5,6 +5,9 @@ no document ever leaves your computer.
 
 This guide covers the [0.61.0 release](RELEASE_0.61.0.md). Executed checks and limits are recorded in [Project status](PROJECT_STATUS.md). English is the default interface language; French is available in Settings.
 
+The working branch contains unreleased improvements described below. They still await tests
+and desktop qualification and are not present in the 0.61.0 download.
+
 Ubuntu users should start with [installation and platform limits](UBUNTU.md). Native printing, certificate signing and trust verification, protected Office import, and persistent encrypted visual-signature storage currently require Windows. Other workflows below retain their documented document and permission limits.
 
 ## Reader controls and tools
@@ -79,6 +82,12 @@ These formulas do not change the PDF, prices or existing subtotals. Configuratio
 use **Reuse formula configuration → Copy configuration** to keep its JSON, or paste it and choose **Load configuration**
 in another tab. Exports include definitions, calculated values and explicit errors/completeness information.
 
+**Unreleased:** Formula totals sum the rounded results of all filtered rows, with separate
+groups for each formula, selected group, unit and precision. Read the contributing/error
+counts before using a partial total. When no row succeeds, no total is supplied; missing
+inputs do not become zero. The [subtotal and export specification](QUANTITY_TABLE.md#unreleased-formula-subtotals-and-coverage)
+describes the new coverage counters and CSV records. These additions do not modify the PDF.
+
 [Full instructions, limits and CLI](QUANTITY_TABLE.md).
 
 ## Reuse local annotation templates
@@ -142,7 +151,8 @@ default, while retaining any explicitly chosen session scale; save the file to r
 requires document-modification permission; measurement creation requires annotation permission.
 Rotation and page reordering preserve eligible defaults. Changed crop bounds, decoded page content or reachable
 resources, unsupported records and non-default `UserUnit` cause a refusal; recalibrate or remove a supported stale
-default. New page defaults use version 2. Resource-dependent version-1 defaults require explicit recalibration or removal.
+default. In 0.61.0, new page defaults use version 2 and resource-dependent version-1 defaults require explicit recalibration or removal.
+The working branch strengthens this check further; see [unreleased reference migration](#unreleased-verify-saved-measurement-references).
 Supported stale regions can be explicitly cleared and recreated; malformed or unknown records are refused.
 Unsaved session scales are lost on closing. These checks do not authenticate every plan revision.
 
@@ -180,6 +190,38 @@ Saved-vertex editing, eligible vector snapping, named scale regions and explicit
 within their documented limits. Check the known distance and drawing revision; a calculated value does not establish
 physical accuracy. See the [measurement guide](MEASUREMENTS.md) and [plan workspace](PLAN_WORKSPACE.md) for formats,
 permissions and geometry limits. Private real-project plan qualification remains deferred.
+
+### Unreleased: verify saved measurement references
+
+The working branch adds page-reference checks; this workflow is not yet desktop-qualified or
+included in the 0.61.0 packages. **Saved measurements** distinguishes a record bound to the current
+page from a legacy record with an unverified reference or a record whose page no longer matches.
+The check covers page bounds, user unit, decoded content, reachable resources, initial layer
+visibility and page transparency state. A matching reference does not prove physical accuracy.
+
+Legacy and changed-page measurements remain visible with their historical values and points.
+They cannot supply **Use this scale**, enter **Edit geometry**, or contribute to active quantity
+and cost totals. Editing precision, unit, prices or custom fields alone does not verify a record.
+
+To recalibrate a historical length, polyline, perimeter or area:
+
+1. Close the editor and confirm a known distance on the current page using **Calibrate this page**.
+2. Review every retained measurement point against the current drawing. If the geometry no longer
+   describes the intended object, recreate the measurement instead of certifying the old points.
+3. Open **Saved measurements**, choose **Edit measurement**, then explicitly select
+   **Recalibrate using current page reference**. A saved historical default is not sufficient.
+4. Choose **Preview**, inspect the value and rendered geometry, then **Apply**. The original stays
+   historical until Apply. Save the PDF to retain the replacement; Undo restores its previous state.
+
+Historical angles must be recreated on the current page. Batch recalibration also requires an
+explicit current session reference when historical lengths or areas are selected, marks historical
+before-values in its preview and leaves angles excluded. Recalibration never silently moves vertices.
+
+New saved page defaults use version 3 and named-region references use version 2. Older defaults
+and regions cannot be reused automatically because they do not verify the additional rendering
+state. Explicitly recalibrate or remove supported old records; malformed or unknown records remain
+refused. [Quantity table provenance and export fields](QUANTITY_TABLE.md#unreleased-measurement-provenance)
+explain historical exclusions, inactive prices and formula errors.
 
 ## Prepare a visual signature
 
@@ -295,6 +337,11 @@ Use **Leave tool**, Escape or the active tool entry to leave a workspace. Escape
 Each open PDF gets a tab in the top strip. Click a tab to show it, its cross to close it, the home button to
 go back to the home screen without closing anything. Ctrl+Tab and Ctrl+Shift+Tab cycle through tabs.
 Unsaved changes are flagged with a dot per tab and confirmed one by one when you quit.
+
+**Unreleased:** If returning to a tab fails, its unsaved document bytes, Undo/Redo history and
+recovery identity remain available. Select the retained tab to retry; the failed attempt
+cancels a pending close/quit action. Register data reloads after switching, obsolete search
+responses are ignored, and page selection/navigation follows edits completed during suspension.
 
 ## Automatic recovery
 
@@ -705,6 +752,12 @@ passed. See [Project status](PROJECT_STATUS.md) for evidence and remaining hardw
 Ctrl+S saves to the open file, Ctrl+Shift+S to a new file. Writes are atomic: the original file is never
 left half-written (data is flushed to disk before the replacement). A dot after the tab name signals unsaved
 changes; undoing back to the saved state clears it; SuniPDF asks before closing or quitting.
+
+**Unreleased:** A failed document restoration retains the current document and password.
+CLI commands also check their no-overwrite policy when creating the final output, so a file
+created while processing is not silently replaced. Commands that allow explicit `--overwrite`
+retain their own source-file restrictions; commands requiring a new copy continue to require one.
+Certificate signing refuses encrypted inputs even when they open without asking for a user password.
 
 ## Printing
 

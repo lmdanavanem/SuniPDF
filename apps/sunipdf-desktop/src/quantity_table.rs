@@ -18,7 +18,7 @@ use sunipdf_core::{
     },
     EngineError,
 };
-use sunipdf_i18n::{tr, Language};
+use sunipdf_i18n::{tr, tr_args, Language};
 
 #[derive(Default)]
 pub struct QuantityState {
@@ -109,16 +109,13 @@ impl QuantityState {
         }
         self.columns = columns.into_iter().collect();
         self.offset = 0;
-        match report.formula_values(&self.options) {
-            Ok(computed) => self.computed = computed,
+        match report.evaluate_selection(&self.options) {
+            Ok(evaluated) => {
+                self.computed = evaluated.formulas;
+                self.summary = Some(evaluated.summary);
+            }
             Err(error) => {
                 self.computed.clear();
-                self.error = Some(error.to_string());
-            }
-        }
-        match report.summary(&self.options) {
-            Ok(summary) => self.summary = Some(summary),
-            Err(error) => {
                 self.summary = None;
                 self.error = Some(error.to_string());
             }
@@ -160,6 +157,7 @@ struct RowDraft {
     custom: Vec<CustomDraft>,
     applying: bool,
     error: Option<String>,
+    unverified_measurement: bool,
 }
 impl RowDraft {
     fn new(table: &QuantityTable, row: &QuantityRow, epoch: u64) -> Result<Self, EngineError> {
@@ -184,6 +182,7 @@ impl RowDraft {
                 .as_ref()
                 .map(|p| p.per_unit)
                 .or_else(|| row.quantity.as_ref().map(|q| q.unit))
+                .or_else(|| row.historical_quantity.as_ref().map(|q| q.unit))
                 .unwrap_or(QuantityUnit::Each),
             rounding: row
                 .fields
@@ -219,6 +218,9 @@ impl RowDraft {
                 .collect(),
             applying: false,
             error: None,
+            unverified_measurement: row
+                .measurement_validity
+                .is_some_and(|validity| !validity.is_current()),
         })
     }
     fn fields(&self) -> Result<QuantityFields, EngineError> {
@@ -276,6 +278,54 @@ fn short_label(ui: &mut egui::Ui, text: &str) {
         egui::Label::new(text.chars().take(60).collect::<String>()).truncate(),
     )
     .on_hover_text(text);
+}
+
+// Quantity rows do not carry measurement display precision. Keep this UI-only
+// fallback at six decimals, without changing geometry, pricing or export values.
+fn quantity_number(value: f64) -> String {
+    if !value.is_finite() {
+        return "—".into();
+    }
+    if value == 0.0 {
+        return "0".into();
+    }
+    let trim = |text: &str| text.trim_end_matches('0').trim_end_matches('.').to_owned();
+    if value.abs() < 0.000_001 || value.abs() >= 1_000_000_000_000.0 {
+        let scientific = format!("{value:.6e}");
+        let (mantissa, exponent) = scientific.split_once('e').expect("scientific value");
+        format!("{}e{exponent}", trim(mantissa))
+    } else {
+        trim(&format!("{value:.6}"))
+    }
+}
+
+fn quantity_warning(dark: bool) -> egui::Color32 {
+    if dark {
+        egui::Color32::from_rgb(250, 204, 21)
+    } else {
+        egui::Color32::from_rgb(133, 77, 14)
+    }
+}
+
+fn quantity_value_label(
+    ui: &mut egui::Ui,
+    quantity: &sunipdf_core::quantity_table::QuantityValue,
+    historical: bool,
+    lang: Language,
+) -> egui::Response {
+    let value = quantity_number(quantity.value);
+    let text = if historical {
+        egui::RichText::new(tr_args(
+            lang,
+            "quantity.historical",
+            &[("value", &value), ("unit", quantity.unit.id())],
+        ))
+        .color(quantity_warning(ui.visuals().dark_mode))
+    } else {
+        egui::RichText::new(value)
+    };
+    ui.add(egui::Label::new(text).wrap_mode(egui::TextWrapMode::Extend))
+        .on_hover_text(format!("{} {}", quantity.value, quantity.unit.id()))
 }
 
 impl SuniApp {
@@ -455,6 +505,12 @@ impl SuniApp {
                     // been scrolled. Its actions remain in the fixed footer.
                     ui.set_max_width(ui.clip_rect().width());
                     ui.heading(egui::RichText::new(tr(lang, "quantity.edit")).color(text_color));
+                    if edit.unverified_measurement {
+                        ui.colored_label(
+                            quantity_warning(ui.visuals().dark_mode),
+                            tr(lang, "quantity.unverified_help"),
+                        );
+                    }
                     draw_editor(ui, edit, lang);
                 } else if let Some(report) = &report {
                     let mut changed = false;
@@ -714,27 +770,52 @@ impl SuniApp {
                                             .as_deref()
                                             .unwrap_or(tr(lang, "quantity.missing")),
                                     );
-                                    ui.label(
-                                        row.quantity
-                                            .as_ref()
-                                            .map(|q| q.value.to_string())
-                                            .unwrap_or_else(|| tr(lang, "quantity.missing").into()),
-                                    );
+                                    ui.vertical(|ui| {
+                                        ui.set_min_width(140.0);
+                                        if let Some(quantity) = &row.quantity {
+                                            quantity_value_label(ui, quantity, false, lang);
+                                        } else {
+                                            ui.label(tr(lang, "quantity.missing"));
+                                        }
+                                        if let Some(historical) = &row.historical_quantity {
+                                            quantity_value_label(ui, historical, true, lang);
+                                        }
+                                        if let Some(validity) = row
+                                            .measurement_validity
+                                            .filter(|validity| !validity.is_current())
+                                        {
+                                            ui.small(tr(
+                                                lang,
+                                                crate::measurement_saved::validity_key(validity),
+                                            ));
+                                        }
+                                    });
                                     ui.label(row.quantity.as_ref().map_or("—", |q| q.unit.id()));
-                                    ui.label(
-                                        row.fields
-                                            .unit_price
-                                            .as_ref()
-                                            .map(|p| {
-                                                format!(
-                                                    "{} {} / {}",
-                                                    p.amount.as_str(),
-                                                    p.currency,
-                                                    p.per_unit.id()
-                                                )
-                                            })
-                                            .unwrap_or_else(|| tr(lang, "quantity.missing").into()),
-                                    );
+                                    ui.vertical(|ui| {
+                                        ui.label(
+                                            row.fields
+                                                .unit_price
+                                                .as_ref()
+                                                .map(|p| {
+                                                    format!(
+                                                        "{} {} / {}",
+                                                        p.amount.as_str(),
+                                                        p.currency,
+                                                        p.per_unit.id()
+                                                    )
+                                                })
+                                                .unwrap_or_else(|| {
+                                                    tr(lang, "quantity.missing").into()
+                                                }),
+                                        );
+                                        if row.fields.unit_price.is_some()
+                                            && row
+                                                .measurement_validity
+                                                .is_some_and(|validity| !validity.is_current())
+                                        {
+                                            ui.small(tr(lang, "quantity.stored_price"));
+                                        }
+                                    });
                                     ui.label(
                                         row.line_total
                                             .as_ref()
@@ -759,7 +840,7 @@ impl SuniApp {
                                         for value in values {
                                             if let Some(error) = value.error {
                                                 ui.colored_label(
-                                                    egui::Color32::YELLOW,
+                                                    quantity_warning(ui.visuals().dark_mode),
                                                     tr(
                                                         lang,
                                                         &format!(
@@ -1120,9 +1201,31 @@ fn draw_summary(ui: &mut egui::Ui, summary: &QuantitySummary, lang: Language) {
         "{}: {} · {}: {}",
         tr(lang, "register.matches"),
         summary.matched_rows,
-        tr(lang, "quantity.missing"),
-        summary.unquantified_rows
+        tr(lang, "quantity.excluded_rows"),
+        summary.excluded_quantity_rows
     ));
+    ui.label(format!(
+        "{}: {} · {}: {}",
+        tr(lang, "quantity.additive_rows"),
+        summary.additive_quantity_rows,
+        tr(lang, "quantity.angular_rows"),
+        summary.angular_rows
+    ));
+    if summary.unverified_measurement_rows > 0 {
+        ui.colored_label(
+            quantity_warning(ui.visuals().dark_mode),
+            tr_args(
+                lang,
+                "quantity.unverified_rows",
+                &[
+                    ("total", &summary.unverified_measurement_rows.to_string()),
+                    ("legacy", &summary.legacy_measurement_rows.to_string()),
+                    ("stale", &summary.stale_measurement_rows.to_string()),
+                ],
+            ),
+        );
+        ui.small(tr(lang, "quantity.unverified_help"));
+    }
     egui::CollapsingHeader::new(egui::RichText::new(tr(lang, "quantity.totals")).color(text_color))
         .default_open(true)
         .show(ui, |ui| {
@@ -1130,12 +1233,16 @@ fn draw_summary(ui: &mut egui::Ui, summary: &QuantitySummary, lang: Language) {
                 ui.label(format!(
                     "{}: {} {} ({})",
                     group.group.as_deref().unwrap_or("—"),
-                    group.quantity,
+                    quantity_number(group.quantity),
                     group.unit.id(),
                     group.rows
-                ));
+                ))
+                .on_hover_text(format!("{} {}", group.quantity, group.unit.id()));
                 if group.missing_prices > 0 {
-                    ui.colored_label(egui::Color32::YELLOW, tr(lang, "quantity.partial"));
+                    ui.colored_label(
+                        quantity_warning(ui.visuals().dark_mode),
+                        tr(lang, "quantity.partial"),
+                    );
                 }
                 for cost in &group.costs {
                     ui.label(format!(
@@ -1153,10 +1260,65 @@ fn draw_summary(ui: &mut egui::Ui, summary: &QuantitySummary, lang: Language) {
             if summary.groups.len() > 30 {
                 ui.label(tr(lang, "register.more_groups"));
             }
-            if summary.unquantified_rows > 0 {
+            if summary.excluded_quantity_rows > 0 {
                 ui.label(tr(lang, "quantity.partial"));
             }
         });
+    if !summary.formula_groups.is_empty() {
+        egui::CollapsingHeader::new(
+            egui::RichText::new(tr(lang, "quantity.formula_totals")).color(text_color),
+        )
+        .default_open(true)
+        .show(ui, |ui| {
+            ui.small(tr(lang, "quantity.formula_subtotal_help"));
+            for group in summary.formula_groups.iter().take(30) {
+                ui.strong(format!(
+                    "{} · {}",
+                    group.formula_name,
+                    group.group.as_deref().unwrap_or("—")
+                ));
+                ui.label(tr_args(
+                    lang,
+                    "quantity.formula_coverage",
+                    &[
+                        ("contributing", &group.contributing_rows.to_string()),
+                        ("matched", &group.matched_rows.to_string()),
+                        ("errors", &group.error_rows.to_string()),
+                    ],
+                ));
+                for total in &group.totals {
+                    ui.label(format!(
+                        "{} {} ({})",
+                        total.amount,
+                        total
+                            .unit
+                            .map_or(tr(lang, "quantity.formula_scalar"), |unit| unit.id()),
+                        total.contributing_rows
+                    ));
+                }
+                if group.totals.is_empty() {
+                    ui.label(tr(lang, "quantity.formula_no_results"));
+                }
+                if !group.complete {
+                    ui.colored_label(
+                        quantity_warning(ui.visuals().dark_mode),
+                        tr(lang, "quantity.formula_partial"),
+                    );
+                }
+                for (error, count) in &group.errors {
+                    ui.small(format!(
+                        "{}: {}",
+                        tr(lang, &format!("quantity.formula_error.{error}")),
+                        count
+                    ));
+                }
+                ui.separator();
+            }
+            if summary.formula_groups.len() > 30 {
+                ui.label(tr(lang, "register.more_groups"));
+            }
+        });
+    }
 }
 
 #[cfg(test)]
@@ -1164,6 +1326,229 @@ pub(crate) mod tests {
     use super::*;
     use crate::worker::Response;
     use egui::{Event, Modifiers, Pos2, Rect};
+
+    #[test]
+    fn quantity_display_bounds_float_noise_without_hiding_small_nonzero_values() {
+        for (value, expected) in [
+            (6.000000457763672, "6"),
+            (12.3456789, "12.345679"),
+            (123.25, "123.25"),
+            (42.0, "42"),
+            (0.0, "0"),
+            (-0.0, "0"),
+            (0.000001, "0.000001"),
+            (0.0000001, "1e-7"),
+            (1.23456789e-10, "1.234568e-10"),
+            (1e12, "1e12"),
+            (f64::MAX, "1.797693e308"),
+        ] {
+            assert_eq!(quantity_number(value), expected);
+        }
+        for value in [
+            f64::from_bits(1),
+            f64::MIN_POSITIVE,
+            -f64::MIN_POSITIVE,
+            1e-20,
+            0.000000499999,
+            0.000000999999,
+            999_999_999_999.9,
+            -f64::MAX,
+        ] {
+            let display = quantity_number(value);
+            assert!(display.len() <= 20, "unbounded display: {display}");
+            assert_ne!(display.parse::<f64>().unwrap(), 0.0);
+        }
+        for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(quantity_number(value), "—");
+        }
+    }
+
+    #[test]
+    fn quantity_cells_stay_on_one_line_with_raw_tooltips_and_readable_history() {
+        use sunipdf_core::quantity_table::QuantityValue;
+
+        fn collect(shape: &egui::Shape, labels: &mut Vec<(String, usize)>) {
+            match shape {
+                egui::Shape::Text(text) => {
+                    labels.push((text.galley.text().to_owned(), text.galley.rows.len()));
+                }
+                egui::Shape::Vec(shapes) => {
+                    for shape in shapes {
+                        collect(shape, labels);
+                    }
+                }
+                _ => {}
+            }
+        }
+        let quantity = QuantityValue {
+            value: 6.000000457763672,
+            unit: QuantityUnit::SquareMetres,
+        };
+        let original = serde_json::to_vec(&quantity).unwrap();
+        for lang in Language::ALL {
+            for dark in [false, true] {
+                for historical in [false, true] {
+                    let ctx = egui::Context::default();
+                    crate::theme::apply(&ctx, dark);
+                    ctx.all_styles_mut(|style| {
+                        style.animation_time = 0.0;
+                        style.interaction.tooltip_delay = 0.0;
+                    });
+                    let display = if historical {
+                        tr_args(
+                            lang,
+                            "quantity.historical",
+                            &[("value", "6"), ("unit", quantity.unit.id())],
+                        )
+                    } else {
+                        "6".into()
+                    };
+                    let raw = format!("{} {}", quantity.value, quantity.unit.id());
+                    let mut pointer = None;
+                    let mut saw_tooltip = false;
+                    for frame in 0..6 {
+                        let input = egui::RawInput {
+                            screen_rect: Some(Rect::from_min_size(
+                                Pos2::ZERO,
+                                egui::vec2(360.0, 180.0),
+                            )),
+                            time: Some(frame as f64 * 0.5),
+                            events: pointer.map(Event::PointerMoved).into_iter().collect(),
+                            ..Default::default()
+                        };
+                        let mut output = ctx.run_ui(input, |ui| {
+                            ui.set_max_width(32.0);
+                            ui.vertical(|ui| {
+                                ui.set_min_width(140.0);
+                                pointer = Some(
+                                    quantity_value_label(ui, &quantity, historical, lang)
+                                        .rect
+                                        .center(),
+                                );
+                            });
+                        });
+                        let mut labels = Vec::new();
+                        for shape in &output.shapes {
+                            collect(&shape.shape, &mut labels);
+                        }
+                        assert!(labels
+                            .iter()
+                            .any(|(text, rows)| text == &display && *rows == 1));
+                        crate::workspace_table::assert_visible_text_contrast(
+                            &output,
+                            &[&display],
+                            dark,
+                        );
+                        saw_tooltip |= labels.iter().any(|(text, _)| text == &raw);
+                        output.textures_delta.clear();
+                    }
+                    assert!(saw_tooltip, "raw quantity remains inspectable");
+                    assert_eq!(serde_json::to_vec(&quantity).unwrap(), original);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn formula_summary_displays_partial_coverage_and_separate_valid_units_in_both_languages() {
+        use sunipdf_core::quantity_table::{FormulaGroupSummary, FormulaSubtotal};
+        fn collect(shape: &egui::Shape, text: &mut Vec<String>) {
+            match shape {
+                egui::Shape::Text(value) => text.push(value.galley.text().to_owned()),
+                egui::Shape::Vec(shapes) => shapes.iter().for_each(|shape| collect(shape, text)),
+                _ => {}
+            }
+        }
+        let summary = QuantitySummary {
+            matched_rows: 2,
+            quantity_rows: 2,
+            additive_quantity_rows: 1,
+            angular_rows: 1,
+            unquantified_rows: 0,
+            excluded_quantity_rows: 1,
+            unverified_measurement_rows: 0,
+            legacy_measurement_rows: 0,
+            stale_measurement_rows: 0,
+            groups: Vec::new(),
+            formula_groups: vec![
+                FormulaGroupSummary {
+                    formula_name: "Separated".into(),
+                    group: Some("Room A".into()),
+                    matched_rows: 2,
+                    contributing_rows: 2,
+                    error_rows: 0,
+                    errors: BTreeMap::new(),
+                    complete: true,
+                    totals: vec![
+                        FormulaSubtotal {
+                            unit: Some(QuantityUnit::Metres),
+                            rounding_decimals: 2,
+                            amount: "1.00".into(),
+                            contributing_rows: 1,
+                        },
+                        FormulaSubtotal {
+                            unit: Some(QuantityUnit::Feet),
+                            rounding_decimals: 2,
+                            amount: "2.00".into(),
+                            contributing_rows: 1,
+                        },
+                    ],
+                },
+                FormulaGroupSummary {
+                    formula_name: "Missing".into(),
+                    group: None,
+                    matched_rows: 2,
+                    contributing_rows: 0,
+                    error_rows: 2,
+                    errors: BTreeMap::from([("missing_field".into(), 2)]),
+                    complete: false,
+                    totals: Vec::new(),
+                },
+            ],
+        };
+        for lang in Language::ALL {
+            let ctx = egui::Context::default();
+            ctx.all_styles_mut(|style| style.animation_time = 0.0);
+            let mut labels = Vec::new();
+            for _ in 0..3 {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(Rect::from_min_size(
+                            Pos2::ZERO,
+                            egui::vec2(1200.0, 1200.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| draw_summary(ui, &summary, lang),
+                );
+                labels.clear();
+                for shape in &output.shapes {
+                    collect(&shape.shape, &mut labels);
+                }
+                output.textures_delta.clear();
+            }
+            assert!(labels.iter().any(|text| text == "1.00 m (1)"));
+            assert!(labels.iter().any(|text| text == "2.00 ft (1)"));
+            assert_eq!(
+                labels
+                    .iter()
+                    .filter(|text| text.as_str() == tr(lang, "quantity.formula_partial"))
+                    .count(),
+                1,
+                "separated valid units are not presented as a calculation failure"
+            );
+            assert!(labels
+                .iter()
+                .any(|text| text == tr(lang, "quantity.formula_no_results")));
+            assert!(labels
+                .iter()
+                .any(|text| text.contains(tr(lang, "quantity.angular_rows"))));
+            assert!(labels
+                .iter()
+                .any(|text| text.contains(&format!("{}: 1", tr(lang, "quantity.excluded_rows")))));
+        }
+    }
+
     struct Controls {
         ctx: egui::Context,
         time: f64,

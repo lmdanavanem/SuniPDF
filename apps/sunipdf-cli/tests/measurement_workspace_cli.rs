@@ -57,6 +57,8 @@ fn region_and_batch_cli_require_explicit_expected_state_and_preserve_source() {
     );
     assert_eq!(preview["applied"], false);
     assert_eq!(preview["changes"][0]["before"], 10.0);
+    assert_eq!(preview["changes"][0]["before_validity"], "current");
+    assert!(preview["changes"][0]["historical_before"].is_null());
     assert_eq!(preview["changes"][0]["after"], 20.0);
     assert_eq!(std::fs::read(&measured).unwrap(), original);
     let output = dir.path().join("recalibrated.pdf");
@@ -152,6 +154,98 @@ fn region_and_batch_cli_require_explicit_expected_state_and_preserve_source() {
     );
     assert_eq!(std::fs::read(&with_regions).unwrap(), original_regions);
     assert_eq!(std::fs::read(&measured).unwrap(), original);
+}
+
+#[test]
+fn batch_recalibration_previews_legacy_values_as_historical_and_binds_the_saved_copy() {
+    let dir = tempfile::tempdir().unwrap();
+    let measured = dir.path().join("measured.pdf");
+    success(
+        cli("measure", &fixture())
+            .args([
+                "--kind",
+                "length",
+                "--points",
+                "40,80 140,80",
+                "--calibration",
+                "40,40 140,40",
+                "--known-distance",
+                "10",
+                "--out",
+            ])
+            .arg(&measured)
+            .output()
+            .unwrap(),
+    );
+    let legacy = dir.path().join("legacy.pdf");
+    let mut pdf = lopdf::Document::load(&measured).unwrap();
+    let annotation = pdf
+        .objects
+        .values_mut()
+        .filter_map(|object| object.as_dict_mut().ok())
+        .find(|dict| dict.has(b"SuniPDFMeasurement"))
+        .unwrap();
+    let mut metadata: Value = serde_json::from_slice(
+        annotation
+            .get(b"SuniPDFMeasurement")
+            .unwrap()
+            .as_str()
+            .unwrap(),
+    )
+    .unwrap();
+    metadata["version"] = 1.into();
+    metadata.as_object_mut().unwrap().remove("provenance");
+    annotation.set(
+        "SuniPDFMeasurement",
+        lopdf::Object::string_literal(metadata.to_string()),
+    );
+    pdf.save(&legacy).unwrap();
+    let original = std::fs::read(&legacy).unwrap();
+    let record = success(cli("measurements", &legacy).output().unwrap())["pages"][0]
+        ["measurements"][0]
+        .clone();
+    assert_eq!(record["validity"], "legacy_unverified");
+    let requests = json!([{
+        "page": 1,
+        "calibration": {"points": [[40,40],[140,40]], "known_distance": 20, "unit": "m"},
+        "update_page_default": false,
+        "measurements": [record.clone()]
+    }]);
+    let request = dir.path().join("request.json");
+    std::fs::write(&request, serde_json::to_vec(&requests).unwrap()).unwrap();
+    let preview = success(
+        cli("recalibrate-measurements", &legacy)
+            .arg("--requests")
+            .arg(&request)
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(preview["applied"], false);
+    assert!(preview["changes"][0]["before"].is_null());
+    assert_eq!(preview["changes"][0]["historical_before"], 10.0);
+    assert_eq!(
+        preview["changes"][0]["before_validity"],
+        "legacy_unverified"
+    );
+    assert_eq!(preview["changes"][0]["after"], 20.0);
+    assert_eq!(std::fs::read(&legacy).unwrap(), original);
+    let out = dir.path().join("recalibrated.pdf");
+    success(
+        cli("recalibrate-measurements", &legacy)
+            .arg("--requests")
+            .arg(&request)
+            .arg("--out")
+            .arg(&out)
+            .output()
+            .unwrap(),
+    );
+    let reopened = success(cli("measurements", &out).output().unwrap());
+    let after = &reopened["pages"][0]["measurements"][0];
+    assert_eq!(after["validity"], "current");
+    assert_eq!(after["value"], 20.0);
+    assert!(after["historical_value"].is_null());
+    assert_eq!(after["annotation_id"], record["annotation_id"]);
+    assert_eq!(std::fs::read(&legacy).unwrap(), original);
 }
 
 #[test]

@@ -86,7 +86,7 @@ fn read_record(dict: &Dictionary) -> Result<Option<StoredCalibration>, EngineErr
     }
     let record: StoredCalibration =
         serde_json::from_slice(raw).map_err(|_| invalid("malformed or unsupported record"))?;
-    if !matches!(record.version, 1 | 2) || record.coordinate_system != "pdf-user-space" {
+    if !matches!(record.version, 1..=3) || record.coordinate_system != "pdf-user-space" {
         return Err(invalid("unsupported record version or coordinate system"));
     }
     if record
@@ -388,27 +388,46 @@ pub(crate) fn content_digest(
         .collect())
 }
 
+/// Qualifies the initial page rendering as well as drawing programs/resources. Optional-content
+/// defaults live in the catalog, and the page transparency group lives outside Resources.
+/// Hash these bounded graphs too; adding, changing or removing them invalidates the evidence.
+pub(crate) fn qualified_content_digest(
+    pdf: &lopdf::Document,
+    page: &Dictionary,
+) -> Result<String, EngineError> {
+    let mut digest = Sha256::new();
+    digest.update(b"SuniPDF-page-rendering-v3\0");
+    digest.update(content_digest(pdf, page)?);
+    let mut graph = ResourceDigest::new(pdf);
+    let null = Object::Null;
+    digest.update(graph.object(page.get(b"Group").unwrap_or(&null), 0)?);
+    digest.update(
+        graph.object(
+            pdf.catalog()
+                .map_err(lopdf_err)?
+                .get(b"OCProperties")
+                .unwrap_or(&null),
+            0,
+        )?,
+    );
+    Ok(digest
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
+}
+
 fn record_digest(
     pdf: &lopdf::Document,
     page: &Dictionary,
     version: u32,
 ) -> Result<String, EngineError> {
-    if version == 1 {
-        // V1 did not bind resources. There is no trustworthy way to infer whether they changed
-        // since calibration, so migration requires an explicit new scale instead of guessing.
-        let (hash, contains_names) = decoded_content_guard(pdf, page)?;
-        // Refuse names even if a resource dictionary was removed since V1 was saved. This
-        // conservative check also includes slashes inside strings instead of parsing untrusted
-        // drawing programs to guess which resources were present when the scale was recorded.
-        if contains_names || resources(pdf, page)?.is_some_and(|resources| !resources.is_empty()) {
-            return Err(invalid(
-                "legacy saved scale does not verify page resources; recalibrate or remove the saved scale",
-            ));
-        }
-        Ok(hash)
-    } else {
-        content_digest(pdf, page)
+    if version < 3 {
+        // Even absent render state may have been removed since an old scale was captured.
+        // Never invent historical evidence by hashing the current page during migration.
+        return Err(invalid("legacy saved scale does not verify page rendering state; recalibrate or remove the saved scale"));
     }
+    qualified_content_digest(pdf, page)
 }
 
 impl Document<'_> {
@@ -479,14 +498,14 @@ pub(crate) fn set_in_pdf(
         calibration.validate_on_page(geo)?;
         check_user_unit(pdf, dict)?;
         let record = StoredCalibration {
-            version: 2,
+            version: 3,
             coordinate_system: "pdf-user-space".into(),
             points: calibration.points.map(|(x, y)| geo.to_user(x, y)),
             known_distance: calibration.known_distance,
             unit: calibration.unit.id().into(),
             bbox: bounds(geo),
             user_unit: 1.0,
-            content_sha256: content_digest(pdf, dict)?,
+            content_sha256: qualified_content_digest(pdf, dict)?,
         };
         let text =
             serde_json::to_string(&record).map_err(|_| invalid("could not encode the scale"))?;
@@ -683,13 +702,7 @@ mod tests {
         assert!(record_digest(&pdf, &page, 1).is_err());
         let content = pdf.add_object(Stream::new(Dictionary::new(), b"0 0 m 100 0 l S".to_vec()));
         page.set("Contents", content);
-        assert_eq!(
-            record_digest(&pdf, &page, 1).unwrap(),
-            legacy_content_digest(&pdf, &page).unwrap()
-        );
-        assert_eq!(
-            record_digest(&pdf, &page, 2).unwrap(),
-            content_digest(&pdf, &page).unwrap()
-        );
+        assert!(record_digest(&pdf, &page, 1).is_err());
+        assert!(record_digest(&pdf, &page, 2).is_err());
     }
 }

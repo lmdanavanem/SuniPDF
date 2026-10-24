@@ -759,6 +759,52 @@ impl SuniApp {
 mod tests {
     use super::*;
 
+    #[test]
+    fn resumed_register_reloads_cancelled_or_completed_inventory_and_keeps_filters() {
+        for completed in [false, true] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let old_epoch = app.view.epoch;
+            app.annotate.register.open = true;
+            app.annotate.register.filter.author = "Reviewer".into();
+            app.annotate.register.filter.custom_sort = Some("Room".into());
+            app.annotate.register.descending = true;
+            app.annotate.register.generation = 7;
+            if completed {
+                app.annotate.register.report = Some(Arc::new(AnnotationRegister::default()));
+            } else {
+                app.annotate.register.pending = Some((old_epoch, 7));
+                app.annotate.register.progress = Some((4, 10));
+            }
+            let suspended_ui = app.take_tab();
+            app.put_tab(suspended_ui);
+            let state = &app.annotate.register;
+            assert!(state.open);
+            assert!(state.pending.is_none() && state.report.is_none() && state.progress.is_none());
+            assert_eq!(state.filter.author, "Reviewer");
+            assert_eq!(state.filter.custom_sort.as_deref(), Some("Room"));
+            assert!(state.descending);
+            app.on_annotation_register(old_epoch, 7, Ok(AnnotationRegister::default()));
+            assert!(app.annotate.register.report.is_none());
+            let ctx = egui::Context::default();
+            let mut out = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1280.0, 780.0),
+                    )),
+                    ..Default::default()
+                },
+                |_| app.annotation_register_ui(&ctx, None),
+            );
+            out.textures_delta.clear();
+            assert!(requests.try_iter().any(|request| matches!(
+                request,
+                Request::AnnotationRegister { epoch, generation }
+                    if epoch == app.view.epoch && epoch != old_epoch && generation != 7
+            )));
+        }
+    }
+
     fn large_register() -> Arc<AnnotationRegister> {
         let mut report = AnnotationRegister::default();
         report.page_count = 1000;

@@ -575,6 +575,66 @@ fn insert_move_and_snapshot_restore() {
 }
 
 #[test]
+fn failed_password_restore_preserves_the_live_document_and_later_save() {
+    use sunipdf_core::{security, Protection};
+    let engine = engine();
+    let temp = tempfile::tempdir().unwrap();
+    let input = std::fs::read(fixture("acroform.pdf")).unwrap();
+    for aes256 in [false, true] {
+        let protected = security::protect(
+            &input,
+            None,
+            &Protection {
+                user_password: "reader".into(),
+                owner_password: "owner".into(),
+                aes256,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let path = temp.path().join(format!("restore-{aes256}.pdf"));
+        let mut doc = engine.open_bytes(protected, Some("reader"), &path).unwrap();
+        let fields = doc.form_info().unwrap();
+        let sizes = doc.info().page_sizes.clone();
+        let text = doc.page_text(0).unwrap();
+        let before = doc.snapshot().unwrap();
+        for (bytes, password) in [
+            (b"not a PDF".to_vec(), Some("replacement".into())),
+            (before.clone(), Some("incorrect".into())),
+            (before.clone(), None),
+        ] {
+            assert!(doc.restore_with_password(bytes, password).is_err());
+            assert_eq!(doc.password(), Some("reader"));
+            assert_eq!(doc.info().path, path);
+            assert_eq!(doc.info().page_sizes, sizes);
+            assert_eq!(doc.form_info().unwrap(), fields);
+            assert_eq!(doc.page_text(0).unwrap(), text);
+        }
+
+        doc.save_as(&path).unwrap();
+        assert!(matches!(
+            engine.open(&path, None),
+            Err(EngineError::PasswordRequired)
+        ));
+        let reopened = engine.open(&path, Some("reader")).unwrap();
+        assert_eq!(reopened.form_info().unwrap(), fields);
+        assert_eq!(reopened.page_text(0).unwrap(), text);
+
+        // Protection Undo/Redo still changes the credentials only with its complete document.
+        let clear = security::unprotect(&before, "owner").unwrap();
+        doc.restore_with_password(clear, None).unwrap();
+        assert_eq!(doc.password(), None);
+        assert!(!doc.is_encrypted());
+        assert_eq!(doc.form_info().unwrap(), fields);
+        doc.restore_with_password(before, Some("reader".into()))
+            .unwrap();
+        assert_eq!(doc.password(), Some("reader"));
+        assert!(doc.is_encrypted());
+        assert_eq!(doc.form_info().unwrap(), fields);
+    }
+}
+
+#[test]
 fn move_page_preserves_bookmark_and_link_destinations() {
     let engine = engine();
     let dir = temp_dir("move-destinations");
@@ -996,6 +1056,15 @@ fn images_to_pdf_export_images_and_optimize() {
     assert_eq!(exported.len(), 2);
     let back = image::open(&exported[1]).unwrap();
     assert_eq!((back.width(), back.height()), (792, 612));
+    std::fs::write(&exported[0], b"existing image output").unwrap();
+    let replaced = engine
+        .open(&fixture("two-pages.pdf"), None)
+        .unwrap()
+        .export_images(&dir.join("png"), 72.0, true)
+        .unwrap();
+    assert_eq!(replaced, exported);
+    let back = image::open(&replaced[0]).unwrap();
+    assert_eq!((back.width(), back.height()), (612, 792));
 
     // Optimisation : fichier valide, même contenu, pas plus gros qu'un simple aller-retour.
     let res =

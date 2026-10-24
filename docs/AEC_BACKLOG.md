@@ -15,6 +15,10 @@ Custom-field sorting, supported saved native shape groups and bounded report for
 
 Full cards retain their broader acceptance gates; no entire P1/P2 category is closed.
 
+## Rectangle increment awaiting qualification
+
+AEC-008 now includes a shared dimensioned-rectangle constructor, CLI scale selection and a Measurements-panel placement workflow. The result is a normal area measurement with current provenance and quantity-table support. The increment retains explicit page/region/reference selection, refuses ambiguous automatic selection and never clips dimensions to fit. Regression cases cover known dimensions, units, rotations/crops, refusals, encrypted copies and reopening; their exact-source results and native UI qualification remain release gates. AEC-008 stays **In progress**: arbitrary rotated shapes, dimensioned circles and broader plan interoperability remain open. AEC-009 depth, holes and volumes are unchanged.
+
 ## Capabilities and acceptance
 
 P1 covers foundations and qualification; P2 extends plan workflows; P3 requires a separate integration or research effort. The [1.0 gates](RELEASE_1.0_CRITERIA.md) apply independently.

@@ -23,6 +23,7 @@ pub enum FormulaError {
     MissingField,
     NonNumericField,
     MissingQuantity,
+    UnverifiedQuantity,
     UnitMismatch,
     DivisionByZero,
     Overflow,
@@ -33,6 +34,7 @@ impl FormulaError {
             Self::MissingField => "missing_field",
             Self::NonNumericField => "non_numeric_field",
             Self::MissingQuantity => "missing_quantity",
+            Self::UnverifiedQuantity => "unverified_quantity",
             Self::UnitMismatch => "unit_mismatch",
             Self::DivisionByZero => "division_by_zero",
             Self::Overflow => "overflow",
@@ -239,6 +241,12 @@ fn evaluate(
             None => return Err(FormulaError::MissingField),
         },
         Node::Quantity => {
+            if row
+                .measurement_validity
+                .is_some_and(|validity| !validity.is_current())
+            {
+                return Err(FormulaError::UnverifiedQuantity);
+            }
             let quantity = row.quantity.as_ref().ok_or(FormulaError::MissingQuantity)?;
             if Some(quantity.unit) != expected_unit {
                 return Err(FormulaError::UnitMismatch);

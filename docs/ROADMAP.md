@@ -1,9 +1,29 @@
 # Roadmap
 
-Updated for [0.61.0](RELEASE_0.61.0.md), published on 2026-10-23.
+Updated 2026-10-24 for the [0.62.0 candidate](RELEASE_0.62.0.md).
+The current stable release remains [0.61.0](RELEASE_0.61.0.md), published on 2026-10-23.
 Current priorities are below; [release evidence](qa/RELEASE_0.61.0.json) records executed checks.
 Custom-field sorting, supported saved-group capture and bounded report formulas are delivered.
 Full backlog cards remain open until all acceptance criteria are evidenced.
+
+## 0.62.0 candidate: local qualification complete, release checks pending
+
+The candidate adds dimensioned rectangles, formula subtotals and coverage, shared formula evaluation,
+signed numeric CSV handling, final CLI destination checks, transactional restoration, encrypted-signing
+refusal and tab lifecycle/state corrections. Saved measurements bind to page evidence; historical values
+remain visible but cannot supply active quantities or prices without explicit current-reference recalibration.
+Older page defaults and named regions require recalibration or removal. Quantity formatting and control
+contrast have been checked in English/French and light/dark themes.
+
+Local Windows development qualification passed: 904 tests, zero failures, 15 ignored; 44 CLI commands with
+276 assertions; 19 independent output/source checks. Native rectangle and historical-price workflows cover
+Preview/Apply, Undo/Redo and save/reopen. Exact-version CI, Windows/Ubuntu packaging, upgrades and public
+download verification remain pending. See [current implementation status](PROJECT_STATUS.md#unreleased-working-branch).
+
+A bounded whole-command benchmark found the 300-row/eight-formula case faster and the optimization/output
+case 23 ms slower. Investigate the latter without weakening atomic output creation. Native capture timings
+do not establish a general responsiveness gain. Continue measurement qualification on larger licensed
+inputs and deferred private plans; keep physical accuracy separate from internal consistency.
 
 ## Delivered foundation
 
@@ -54,8 +74,8 @@ criteria. Existing features are foundations for these extensions, not unimplemen
 | Area | Remaining extension | Required behavior |
 |---|---|---|
 | Register and libraries | Broaden saved-group capture only for reproducible appearances | Native shape-group capture retains relative geometry and supported styles. Foreign, text/image/stamp and extra-semantic records remain explicitly refused. |
-| Quantity calculations | Add formula subtotals, unit-bearing custom fields and spreadsheet refresh | The 0.61 release supplies bounded non-executable expressions, exact quantity units, rounding and explicit errors. Existing prices/currencies remain separate; no implicit conversion or stale export. |
-| Dimensioned drawing | Draw supported shapes from real dimensions | Use the existing scale regions and snapping; show the selected scale and retain editable geometry. |
+| Quantity calculations | Release-qualify formula subtotals; add unit-bearing custom fields and spreadsheet refresh | The locally tested candidate sums rounded formula results with separate unit/precision totals and explicit error coverage. Exact-package checks remain pending. Existing prices/currencies remain separate; no implicit conversion or stale export. |
+| Dimensioned drawing | Release-qualify rectangles and extend supported geometry | The locally tested rectangle uses real width/height, an explicit anchor and local/page/region/automatic scale. Preview, Undo/Redo and save/reopen retain editable polygon geometry. Permanent constraints, other analytic shapes and independent X/Y scales remain extensions. |
 | Area and volume | Depth, deducted areas and retained holes | Unit-safe calculations; reject degenerate or self-intersecting geometry and retain all inputs. |
 | Rooms and zones | Named hierarchical regions and assignment rules | Expose overlapping and unassigned annotations; filter and report by room or floor. |
 | Visual recognition | Symbol search and boundary-based region proposals | Bounded work, candidate previews, explicit tolerance and user confirmation before creating counts or measurements. |
@@ -90,6 +110,7 @@ Each broader backlog card stays partial until its remaining acceptance criteria 
 
 - Record opening, scrolling, rendering, searching, table interaction and editing on named
   physical devices, including memory, representative file sizes and complete frame latency.
+- Isolate PDF processing and atomic output/synchronization costs behind the local optimization/output regression; retain collision and source-preservation guarantees.
 - Profile heavy pages before batching adjacent tile renders through a shared loaded page.
   Consider adjustable memory caps only when measurements show a practical need.
 - Reduce full-document annotation write/reload work without weakening Undo, permissions,

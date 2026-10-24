@@ -4,6 +4,11 @@
 
 Pricing and typed fields shipped in [0.46.0](RELEASE_0.46.0.md). [That release's evidence](qa/RELEASE_0.46.0.json) does not qualify the new custom sorting and report formulas.
 
+The [unreleased subtotal and coverage changes](#unreleased-formula-subtotals-and-coverage)
+and [measurement provenance checks](#unreleased-measurement-provenance)
+are implemented on the working branch and still await regression and desktop qualification.
+They are not included in the published 0.61.0 packages.
+
 ## Open and filter the table
 
 Open a PDF, then choose **Quantity table** from **Tools → Review & measure**, the measurement panel's **Saved data** section, or inside the annotation register. Finish or cancel another active draft first. Reading the table leaves the PDF unchanged.
@@ -31,7 +36,7 @@ Quantity subtotals retain their original units. `m` and `ft`, or `m2` and `ft2`,
 
 For each priced row, the quantity is converted to the explicit price unit and quantized to six decimal places. Decimal unit price multiplication then uses checked integer arithmetic. Line cost is rounded to the selected `0`–`4` decimals, half away from zero; subtotals sum these rounded line costs. Monetary groups remain separate by currency code and rounding precision. A currency code is a declaration, not a checked exchange-rate lookup.
 
-**Filtered subtotals** reports missing prices and partial cost coverage. A monetary subtotal is complete only when every row in that quantity group contributes to that same currency/precision subtotal. Consequently, mixed currencies can produce partial subtotals even when every row has a price. Ordinary unquantified rows and angles are excluded from additive totals and counted in `unquantified_rows`. The screen shows at most 30 subtotal groups; the export contains the complete filtered summary. Apply filters to inspect additional groups.
+**Filtered subtotals** reports missing prices and partial cost coverage. A monetary subtotal is complete only when every row in that quantity group contributes to that same currency/precision subtotal. Consequently, mixed currencies can produce partial subtotals even when every row has a price. Ordinary unquantified rows and angles are excluded from additive totals. Version 1 `quantity_rows` includes angles; `unquantified_rows` counts only rows without a quantity. The screen shows at most 30 subtotal groups; the export contains the complete filtered summary. Apply filters to inspect additional groups.
 
 ## Report formula columns
 
@@ -42,7 +47,7 @@ Expressions accept decimal constants, unary signs, `+ - * /`, parentheses, `quan
 - `quantity` requires the exact declared unit; metres and feet are not converted by formulas. The existing price-basis conversion is separate.
 - Numeric fields and constants are dimensionless. Addition/subtraction require matching units. Multiplication permits at most one quantity operand; division by a scalar retains the quantity unit, while equal-unit division produces a dimensionless result. Squared/cubed units and inverse units are not inferred.
 - Arithmetic uses checked decimal values with six fractional places. Multiplication/division round half away from zero at each operation; the final result uses the selected `0`–`6` decimal places with the same rule. Intermediate values must remain within the supported one-trillion absolute limit.
-- Missing fields/quantities, nonnumeric fields, incompatible units, division by zero and overflow produce explicit cell errors. They never become zero. Formula columns do not add new subtotals or change quantity/cost totals.
+- Missing fields/quantities, nonnumeric fields, incompatible units, division by zero and overflow produce explicit cell errors. They never become zero. In 0.61.0, formula columns do not add new subtotals. Formula calculations do not change the existing quantity/cost totals.
 
 Each expression is limited to 512 UTF-8 bytes, 128 tokens and 32 parser nesting levels. Names are unique and at most 64 bytes. Calls, assignments, scripts, external references and arbitrary spreadsheet formulas are refused. Invalid configuration preserves the currently active formulas.
 
@@ -64,6 +69,110 @@ sunipdf-cli quantity-table plan.pdf --sort-custom "Waste %" --formulas formulas.
 ```
 
 For a scalar-only expression such as `[Allowance] * 2`, `quantity_unit` can be `null` in JSON. Formula definitions are a separate report configuration, not a new type accepted by `set-quantity-fields`.
+
+## Unreleased formula subtotals and coverage
+
+The working branch adds **Formula totals** below the ordinary quantity/cost summary. These
+changes are implemented but not yet qualified in a desktop build or published release.
+
+Each subtotal covers all rows selected by the current filters, including rows beyond the visible
+table page. It groups results by formula name, the selected subtotal group, actual result unit
+and decimal precision. A dimensionless result has `unit: null`; this is a valid scalar result,
+not a missing unit. Distinct units remain separate and do not make otherwise successful
+calculation coverage incomplete.
+
+The subtotal sums each row's already-rounded formula result using checked integer arithmetic.
+It does not apply the formula to aggregated inputs. For example, two successful row results
+rounded to `0.33` contribute `0.66`, even if rounding an unrounded aggregate would give `0.67`.
+Each row keeps its own numeric fields and evaluated result dimension. Arithmetic overflow
+returns an error rather than wrapping or truncating the subtotal.
+
+Each formula/group reports matching rows, contributing rows, error rows and error counts by
+code. `complete` means every matching row evaluated successfully. A partial total includes
+only successful results and is labelled incomplete; if every row fails, `totals` is empty,
+not a fabricated zero. A genuine successful result of zero still contributes normally.
+Angles remain excluded from ordinary additive quantity and price totals, but an eligible
+formula can explicitly evaluate a current angle or dimensionless fields on those rows.
+Historical measurement quantities produce `unverified_quantity` when a formula uses `quantity`.
+
+JSON keeps schema version `1` and adds `summary.formula_groups`. Each group contains
+`formula_name`, `group`, `matched_rows`, `contributing_rows`, `error_rows`, `errors`, `complete`
+and `totals`. Each total records `unit`, `rounding_decimals`, decimal-string `amount` and
+`contributing_rows`. `formula_subtotal_policy` identifies
+`sum_rounded_row_results_by_formula_group_unit_and_precision`. CSV adds `formula_coverage`
+and `formula_subtotal` records with the same coverage information. Consumers should use the
+record type and column names rather than fixed row positions.
+
+The existing coverage counters retain their version 1 meanings:
+
+| Counter | Meaning |
+|---|---|
+| `matched_rows` | All rows selected by the filters |
+| `quantity_rows` | Rows with a usable `quantity`, including current angles |
+| `unquantified_rows` | Rows without a usable `quantity`, including historical measurements |
+| `additive_quantity_rows` | Rows eligible for ordinary additive quantity totals |
+| `angular_rows` | Rows whose usable quantity is an angle |
+| `excluded_quantity_rows` | Rows excluded from ordinary additive totals, including angles |
+| `unverified_measurement_rows` | Historical measurement rows: legacy plus stale |
+| `legacy_measurement_rows` | Measurement records without verifiable page provenance |
+| `stale_measurement_rows` | Measurement records whose page evidence no longer matches |
+
+Thus `quantity_rows + unquantified_rows == matched_rows`, and
+`additive_quantity_rows + excluded_quantity_rows == matched_rows`.
+Historical measurements count as unquantified and excluded; their separately retained historical
+values do not count as usable quantities. Historical angles are included in the historical counts,
+not `angular_rows`. These counters describe different coverage dimensions and must not all be summed.
+
+Table refreshes and JSON/CSV exports each evaluate formula cells once and reuse those results
+for summaries. This reduces repeated calculation; it is not a measured native UI speedup.
+Typed negative numbers and calculated numeric values remain numeric CSV cells. Free-text
+cells still receive spreadsheet-formula neutralization, including text that resembles a
+negative number. No formula configuration or subtotal is written into the PDF.
+
+## Unreleased measurement provenance
+
+New saved measurements use version 2 metadata with bounded evidence for their page: effective
+page bounds, user unit, decoded content, reachable resources, initial optional-content visibility
+and page transparency state. The inspector and quantity table distinguish three states:
+
+| State | Meaning and permitted use |
+|---|---|
+| `current` | The stored page evidence matches. The quantity can participate within its ordinary unit and permission limits. |
+| `legacy_unverified` | An older measurement has no sufficient page evidence. Its value and points remain historical. |
+| `stale` | The stored evidence no longer matches the page. Its value and points remain historical. |
+
+For either historical state, JSON rows retain `measurement_validity` and `historical_quantity`,
+while `quantity` and `line_total` are `null`. CSV adds `measurement_validity`, `historical_quantity`
+and `historical_unit` columns. The table labels the old value and any stored price as inactive;
+neither contributes to ordinary quantity or monetary totals. Custom fields and stored prices can
+still be corrected or removed, but those edits do not establish page provenance.
+
+A formula that reads `quantity` returns `unverified_quantity` for a historical measurement.
+A formula that uses only valid dimensionless fields can still evaluate on the same row. An
+inventory with `complete: true` therefore does not imply that every measurement is current or
+that formula or monetary coverage is complete. Ordinary explicit count markers keep their
+existing behavior; they do not require measurement provenance.
+
+To make a historical length or area usable, review its retained points against the drawing,
+confirm an explicit current page reference, then preview and apply recalibration. Historical
+angles must be recreated. Changing only unit, precision, fields or prices cannot make a record
+current. [Desktop recalibration steps](USER_GUIDE.en.md#unreleased-verify-saved-measurement-references)
+describe the individual and batch guards. A successful recalibration retains stored fields;
+an eligible stored price becomes active again only when a usable quantity is restored.
+
+Measurement edits and recalibration validate any preserved unit price against the proposed
+quantity before committing. A change from length to area, for example, cannot retain a price
+per metre. A new calibration or geometry that makes the priced quantity or line cost exceed
+the supported range is also refused. The failed edit leaves the document and history unchanged;
+in a batch, one incompatible or overflowing row rejects the entire operation. Correct or clear
+the price explicitly before retrying a change that requires a different price basis. Compatible
+unit conversions, such as metres to feet, retain the stored price and its original price unit.
+
+Quantity reports remain schema version `1` with the additional fields above. The separate
+measurement-record JSON is version `2`: non-current records export `value: null` and `label: null`,
+with the old result in `historical_value` and `historical_label`. Consumers must check validity
+instead of treating a historical number as a current result. These checks establish bounded
+page consistency, not survey accuracy or universal revision authentication.
 
 ## Export and source checks
 
@@ -129,4 +238,4 @@ The document register is bounded to 1,000 pages, 128 MiB snapshots, 10,000 annot
 
 Decimal inputs allow at most six fractional digits and absolute values up to one trillion; unit prices are nonnegative. The quantity converted for pricing must also fit the supported finite, nonnegative range up to one trillion. Excessive values are refused rather than silently truncated.
 
-AEC-007 remains partial: report arithmetic does not provide formula-derived subtotals, unit-bearing custom fields, currency exchange, a tax engine, cross-document totals, automatic symbol recognition or a full estimating workflow. Verify the plan revision and calibration separately before using its quantities.
+AEC-007 remains partial. Formula-derived subtotals are implemented only on the unreleased working branch and still require qualification. Unit-bearing custom fields, currency exchange, a tax engine, cross-document totals, automatic symbol recognition and a full estimating workflow remain outside this slice. Verify the plan revision and calibration separately before using its quantities.

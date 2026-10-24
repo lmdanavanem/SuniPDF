@@ -28,6 +28,10 @@ const UNDO_MAX_BYTES: usize = 512 * 1024 * 1024;
 pub(crate) const CERTIFICATE_SOURCE_CHANGED: &str =
     "certificate source changed; reload the document";
 pub(crate) const CERTIFICATE_SAVE_FIRST: &str = "save changes before signing or verifying";
+pub(crate) const RECTANGLE_REFERENCE_REQUIRED: &str =
+    "dimensioned rectangle: current local reference required";
+pub(crate) const RECTANGLE_CAPTURE_FAILED: &str =
+    "dimensioned rectangle: local reference capture failed: ";
 
 /// Exact bytes last opened or saved, independent of PDFium's rewritten snapshots.
 #[derive(Clone)]
@@ -805,6 +809,25 @@ pub enum Request {
         epoch: u64,
         generation: u64,
     },
+    PreviewMeasurementRecalibration {
+        page: usize,
+        record: sunipdf_core::measurement::MeasurementRecord,
+        measurement: sunipdf_core::measurement::Measurement,
+        calibration: sunipdf_core::measurement::PageCalibration,
+        epoch: u64,
+        generation: u64,
+    },
+    CaptureRectangleCalibration {
+        page: usize,
+        calibration: sunipdf_core::measurement::PageCalibration,
+    },
+    PreviewDimensionedRectangle {
+        page: usize,
+        rectangle: crate::measurement_shapes_ui::RectanglePlacement,
+        author: Option<String>,
+        epoch: u64,
+        generation: u64,
+    },
     DiscardRichAnnotationPreview {
         epoch: u64,
         generation: u64,
@@ -1058,8 +1081,11 @@ pub enum Response {
     },
     Suspended(SuspendedDoc),
     Resumed(DocState),
-    /// La reprise d'un onglet suspendu a échoué (le document de cet onglet est perdu).
-    ResumeFailed(EngineError),
+    /// Return the complete suspended document so a failed resume remains retryable.
+    ResumeFailed {
+        error: EngineError,
+        suspended: SuspendedDoc,
+    },
     Saved {
         path: PathBuf,
     },
@@ -1181,10 +1207,33 @@ struct State<'a> {
     clip: Option<ObjectClip>,
     fonts: Option<Arc<Vec<SystemFont>>>,
     rich_preview: Option<(u64, u64, sunipdf_core::annot_rich::PreparedRichAnnotation)>,
+    rectangle_calibration: Option<RectangleCalibrationCapture>,
     redaction_preview: Option<(u64, u64, sunipdf_core::redact::PreparedRedaction)>,
     search: Option<SearchJob>,
     register: Option<RegisterJob>,
     register_turn: bool,
+}
+
+struct RectangleCalibrationCapture {
+    page: usize,
+    calibration: sunipdf_core::measurement::PageCalibration,
+    result: Result<sunipdf_core::measurement::LocalCalibrationReference, String>,
+}
+
+impl RectangleCalibrationCapture {
+    fn reference(
+        &self,
+        page: usize,
+        calibration: &sunipdf_core::measurement::PageCalibration,
+    ) -> Result<sunipdf_core::measurement::LocalCalibrationReference, EngineError> {
+        if self.page != page || self.calibration != *calibration {
+            return Err(EngineError::Other(RECTANGLE_REFERENCE_REQUIRED.into()));
+        }
+        self.result
+            .as_ref()
+            .cloned()
+            .map_err(|reason| EngineError::Other(format!("{RECTANGLE_CAPTURE_FAILED}{reason}")))
+    }
 }
 
 struct SearchJob {
@@ -1585,6 +1634,40 @@ mod save_point_tests {
         assert_eq!(resumed.checked_bytes(&path, false).unwrap(), original);
     }
 
+    #[test]
+    fn rectangle_capture_failures_keep_the_cause_and_are_scoped_to_the_requested_reference() {
+        use sunipdf_core::measurement::{MeasurementUnit, PageCalibration};
+        let calibration = PageCalibration {
+            points: [(40.0, 40.0), (140.0, 40.0)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Metres,
+        };
+        for reason in [
+            "local references are limited to documents up to 128 MiB",
+            "document snapshot failed",
+        ] {
+            let capture = RectangleCalibrationCapture {
+                page: 0,
+                calibration: calibration.clone(),
+                result: Err(reason.into()),
+            };
+            assert!(
+                matches!(capture.reference(0, &calibration), Err(EngineError::Other(message))
+                if message == format!("{RECTANGLE_CAPTURE_FAILED}{reason}"))
+            );
+            assert!(
+                matches!(capture.reference(1, &calibration), Err(EngineError::Other(message))
+                if message == RECTANGLE_REFERENCE_REQUIRED)
+            );
+            let mut other = calibration.clone();
+            other.known_distance = 12.0;
+            assert!(
+                matches!(capture.reference(0, &other), Err(EngineError::Other(message))
+                if message == RECTANGLE_REFERENCE_REQUIRED)
+            );
+        }
+    }
+
     fn state() -> State<'static> {
         State {
             recovery: None,
@@ -1599,6 +1682,7 @@ mod save_point_tests {
             clip: None,
             fonts: None,
             rich_preview: None,
+            rectangle_calibration: None,
             redaction_preview: None,
             search: None,
             register: None,
@@ -2184,6 +2268,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         clip: None,
         fonts: None,
         rich_preview: None,
+        rectangle_calibration: None,
         redaction_preview: None,
         search: None,
         register: None,
@@ -2229,6 +2314,16 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             },
         };
         // 2. Traitement.
+        if matches!(
+            &request,
+            Request::Open { .. }
+                | Request::Resume(_)
+                | Request::ResumeDoc(_)
+                | Request::Suspend
+                | Request::Close
+        ) {
+            state.rectangle_calibration = None;
+        }
         let response = match request {
             Request::RevisionOverlay { generation, job } => Response::RevisionOverlayDone {
                 generation,
@@ -2761,7 +2856,9 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 continue;
             }
             Request::ResumeDoc(s) => {
-                match engine.open_bytes(s.bytes, s.password.as_deref(), &s.path) {
+                // PDFium consumes its input even on failure. Keep the original bytes and
+                // journal until a candidate document has opened successfully.
+                match engine.open_bytes(s.bytes.clone(), s.password.as_deref(), &s.path) {
                     Ok(doc) => {
                         state.document = Some(doc);
                         state.signature_source = s.signature_source;
@@ -2772,7 +2869,10 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         state.last_nudge = None;
                         Response::Resumed(state.doc_state().expect("document repris"))
                     }
-                    Err(error) => Response::ResumeFailed(error),
+                    Err(error) => Response::ResumeFailed {
+                        error,
+                        suspended: s,
+                    },
                 }
             }
             Request::ObjectAt { page, x, y } => {
@@ -2882,6 +2982,80 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     Err(e) => Response::OperationFailed(e),
                 }
             }
+            Request::CaptureRectangleCalibration { page, calibration } => {
+                state.rich_preview = None;
+                // Capture at confirmation, never reconstruct evidence from a cached UI scale at preview.
+                // Retain only the most recently confirmed page to bound snapshot memory.
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or(EngineError::PageOutOfRange(page))
+                    .and_then(|doc| doc.local_calibration_reference(page, &calibration))
+                    .map_err(|error| error.to_string());
+                // An unsuccessful capture replaces the previous token and is reported only
+                // when this rectangle reference is requested; ordinary measurement remains usable.
+                state.rectangle_calibration = Some(RectangleCalibrationCapture {
+                    page,
+                    calibration,
+                    result,
+                });
+                continue;
+            }
+            Request::PreviewDimensionedRectangle {
+                page,
+                rectangle,
+                author,
+                epoch,
+                generation,
+            } => {
+                use crate::measurement_shapes_ui::RectangleScaleSelection;
+                use sunipdf_core::measurement::{DimensionedRectangle, RectangleScale};
+                state.rich_preview = None;
+                let result = state
+                    .document
+                    .as_ref()
+                    .ok_or(EngineError::PageOutOfRange(page))
+                    .and_then(|doc| {
+                        let scale = match rectangle.scale {
+                            RectangleScaleSelection::Local(calibration) => {
+                                let capture =
+                                    state.rectangle_calibration.as_ref().ok_or_else(|| {
+                                        EngineError::Other(RECTANGLE_REFERENCE_REQUIRED.into())
+                                    })?;
+                                RectangleScale::Local(capture.reference(page, &calibration)?)
+                            }
+                            RectangleScaleSelection::Page => RectangleScale::Page,
+                            RectangleScaleSelection::Region(id) => RectangleScale::Region(id),
+                            RectangleScaleSelection::Automatic => RectangleScale::Automatic,
+                        };
+                        let annotation =
+                            sunipdf_core::annot_rich::RichAnnotation::DimensionedRectangle(
+                                DimensionedRectangle {
+                                    anchor: rectangle.anchor,
+                                    width: rectangle.width,
+                                    height: rectangle.height,
+                                    unit: rectangle.unit,
+                                    precision: rectangle.precision,
+                                    scale,
+                                },
+                            );
+                        doc.preview_rich_annotation(page, &annotation, author.as_deref())
+                    })
+                    .and_then(|mut preview| {
+                        let prepared = preview.prepared.take().ok_or_else(|| {
+                            EngineError::Other(
+                                "missing prepared dimensioned rectangle preview".into(),
+                            )
+                        })?;
+                        state.rich_preview = Some((epoch, generation, prepared));
+                        Ok(preview)
+                    });
+                Response::RichAnnotationPreview {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
             Request::PreviewRichAnnotation {
                 page,
                 annotation,
@@ -2922,13 +3096,33 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
                 continue;
             }
-            Request::PreviewMeasurementEdit {
-                page,
-                record,
-                measurement,
-                epoch,
-                generation,
-            } => {
+            request @ (Request::PreviewMeasurementEdit { .. }
+            | Request::PreviewMeasurementRecalibration { .. }) => {
+                let (page, record, measurement, calibration, epoch, generation) = match request {
+                    Request::PreviewMeasurementEdit {
+                        page,
+                        record,
+                        measurement,
+                        epoch,
+                        generation,
+                    } => (page, record, measurement, None, epoch, generation),
+                    Request::PreviewMeasurementRecalibration {
+                        page,
+                        record,
+                        measurement,
+                        calibration,
+                        epoch,
+                        generation,
+                    } => (
+                        page,
+                        record,
+                        measurement,
+                        Some(calibration),
+                        epoch,
+                        generation,
+                    ),
+                    _ => unreachable!(),
+                };
                 state.rich_preview = None;
                 let result = state
                     .document
@@ -2936,14 +3130,19 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                     .ok_or(EngineError::PageOutOfRange(page))
                     .and_then(|doc| {
                         let target = doc.measurement_target(page, &record)?;
-                        doc.preview_rich_annotation(
-                            page,
-                            &sunipdf_core::annot_rich::RichAnnotation::UpdateMeasurement {
+                        let annotation = if let Some(calibration) = calibration {
+                            sunipdf_core::annot_rich::RichAnnotation::RecalibrateMeasurement {
                                 target,
                                 measurement,
-                            },
-                            None,
-                        )
+                                calibration,
+                            }
+                        } else {
+                            sunipdf_core::annot_rich::RichAnnotation::UpdateMeasurement {
+                                target,
+                                measurement,
+                            }
+                        };
+                        doc.preview_rich_annotation(page, &annotation, None)
                     })
                     .and_then(|mut preview| {
                         let prepared = preview.prepared.take().ok_or_else(|| {
@@ -3296,11 +3495,13 @@ mod tests {
         prepared_redaction_has_one_undo_and_cancellation_keeps_history(&worker);
         encrypted_recovery_after_redaction(&worker);
         signatures_bind_to_loaded_saved_and_resumed_bytes(&worker);
+        failed_resume_returns_unsaved_bytes_and_journal_for_a_retry(&worker);
         reprotection_requires_the_current_owner_without_removing_existing_restrictions(&worker);
         inspection_uses_saved_bytes_and_refuses_unsaved_changes(&worker);
         count_register_edits_have_one_undo_and_stale_edits_add_no_history(&worker);
         page_calibration_edits_have_history_and_survive_reopening(&worker);
         saved_measurement_edits_replace_in_place_and_keep_history(&worker);
+        dimensioned_rectangles_preview_commit_and_revalidate_the_captured_reference(&worker);
         library_groups_use_one_preview_and_one_history_step(&worker);
         revision_overlay_jobs_preserve_sources_and_guard_exports(&worker);
         quantity_fields_have_history_exports_and_guarded_desktop_controls(&worker);
@@ -3914,6 +4115,212 @@ mod tests {
         assert_eq!(details(), after);
     }
 
+    fn dimensioned_rectangles_preview_commit_and_revalidate_the_captured_reference(
+        worker: &Worker,
+    ) {
+        use crate::measurement_shapes_ui::{RectanglePlacement, RectangleScaleSelection};
+        use sunipdf_core::measurement::{MeasurementKind, MeasurementUnit, PageCalibration};
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        let original_bytes = std::fs::read(&source).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let calibration = PageCalibration {
+            points: [(40.0, 40.0), (140.0, 40.0)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Metres,
+        };
+        let rectangle = RectanglePlacement {
+            anchor: (50.0, 100.0),
+            width: 2.0,
+            height: 3.0,
+            unit: MeasurementUnit::Metres,
+            precision: 2,
+            scale: RectangleScaleSelection::Local(calibration.clone()),
+        };
+        let preview = |generation| {
+            worker.send(Request::PreviewDimensionedRectangle {
+                page: 0,
+                rectangle: rectangle.clone(),
+                author: Some("lmdanavanem".into()),
+                epoch: 92,
+                generation,
+            });
+            match next_response(worker) {
+                Response::RichAnnotationPreview { result, .. } => result,
+                _ => panic!("dimensioned rectangle preview response"),
+            }
+        };
+        let read = || {
+            worker.send(Request::MeasurementPage {
+                page: 0,
+                epoch: 92,
+                generation: 1,
+            });
+            match next_response(worker) {
+                Response::MeasurementPage {
+                    result: Ok(data), ..
+                } => data.records.unwrap(),
+                _ => panic!("rectangle inventory"),
+            }
+        };
+        assert!(preview(1).is_err(), "old UI calibration alone is not proof");
+        assert!(read().is_empty());
+        worker.send(Request::CaptureRectangleCalibration {
+            page: 0,
+            calibration: calibration.clone(),
+        });
+        assert!(preview(2).is_ok());
+        assert!(read().is_empty(), "preview leaves the document unchanged");
+        let mut invalid = calibration.clone();
+        invalid.known_distance = 0.0;
+        worker.send(Request::CaptureRectangleCalibration {
+            page: 0,
+            calibration: invalid.clone(),
+        });
+        assert!(
+            matches!(preview(20), Err(EngineError::Other(message)) if message == RECTANGLE_REFERENCE_REQUIRED),
+            "failed capture must replace the earlier valid token"
+        );
+        let mut rejected_rectangle = rectangle.clone();
+        rejected_rectangle.scale = RectangleScaleSelection::Local(invalid);
+        worker.send(Request::PreviewDimensionedRectangle {
+            page: 0,
+            rectangle: rejected_rectangle,
+            author: None,
+            epoch: 92,
+            generation: 21,
+        });
+        assert!(
+            matches!(next_response(worker), Response::RichAnnotationPreview {result: Err(EngineError::Other(message)), ..}
+            if message.starts_with(RECTANGLE_CAPTURE_FAILED)),
+            "capture failure retains its actual cause"
+        );
+        worker.send(Request::PreviewRichAnnotation {
+            page: 0,
+            annotation: sunipdf_core::annot_rich::RichAnnotation::Measurement(
+                sunipdf_core::measurement::Measurement {
+                    kind: MeasurementKind::Length,
+                    points: vec![(40.0, 100.0), (140.0, 100.0)],
+                    calibration: calibration.points,
+                    known_distance: calibration.known_distance,
+                    unit: calibration.unit,
+                    precision: 2,
+                },
+            ),
+            author: None,
+            epoch: 92,
+            generation: 22,
+        });
+        assert!(
+            matches!(
+                next_response(worker),
+                Response::RichAnnotationPreview { result: Ok(_), .. }
+            ),
+            "a rectangle capture failure does not disable ordinary measurements"
+        );
+        assert!(read().is_empty());
+        worker.send(Request::CaptureRectangleCalibration {
+            page: 0,
+            calibration: calibration.clone(),
+        });
+        assert!(preview(2).is_ok());
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 92,
+            generation: 2,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let records = read();
+        assert_eq!(records.len(), 1);
+        assert!(records[0].validity.is_current());
+        assert_eq!(records[0].measurement.kind, MeasurementKind::Area);
+        assert_eq!(
+            records[0].measurement.points,
+            vec![(50.0, 100.0), (70.0, 100.0), (70.0, 130.0), (50.0, 130.0)]
+        );
+        assert!((records[0].measurement.value().unwrap() - 6.0).abs() < 1e-8);
+        assert!(
+            preview(3).is_ok(),
+            "annotation-only changes retain a verified local scale"
+        );
+        worker.send(Request::DiscardRichAnnotationPreview {
+            epoch: 92,
+            generation: 3,
+        });
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 92,
+            generation: 3,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(read().is_empty(), "one Undo removes the only rectangle");
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read(), records);
+        let temp = tempfile::tempdir().unwrap();
+        let output = temp.path().join("dimensioned-rectangle.pdf");
+        worker.send(Request::Save {
+            path: output.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: output,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(read(), records);
+        assert!(
+            preview(4).is_err(),
+            "opening a document clears temporary proof"
+        );
+        worker.send(Request::CaptureRectangleCalibration {
+            page: 0,
+            calibration: calibration.clone(),
+        });
+        assert!(preview(5).is_ok());
+        worker.send(Request::Edit(EditOp::AddText {
+            page: 0,
+            x: 200.0,
+            y: 200.0,
+            text: "Changed drawing".into(),
+            style: TextStyle::default(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 92,
+            generation: 5,
+        }));
+        assert!(
+            matches!(next_response(worker), Response::OperationFailed(_)),
+            "a mutation discards the prepared candidate"
+        );
+        assert!(
+            preview(6).is_err(),
+            "page content changes invalidate the earlier reference"
+        );
+        assert_eq!(read().len(), 1);
+        assert_eq!(std::fs::read(source).unwrap(), original_bytes);
+    }
+
     fn saved_measurement_edits_replace_in_place_and_keep_history(worker: &Worker) {
         use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementUnit};
         let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -4084,6 +4491,96 @@ mod tests {
         });
         assert!(matches!(next_response(worker), Response::Opened(_)));
         assert_eq!(read(), edited);
+        worker.send(Request::Edit(EditOp::AddText {
+            page: 0,
+            text: "Changed plan revision".into(),
+            x: 30.0,
+            y: 190.0,
+            style: TextStyle::default(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let historical = read();
+        assert_eq!(
+            historical[0].validity,
+            sunipdf_core::measurement::MeasurementValidity::Stale
+        );
+        worker.send(Request::PreviewMeasurementEdit {
+            page: 0,
+            record: historical[0].clone(),
+            measurement: historical[0].measurement.clone(),
+            epoch: 81,
+            generation: 6,
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::RichAnnotationPreview { result: Err(_), .. }
+        ));
+        let calibration = sunipdf_core::measurement::PageCalibration {
+            points: [(30.0, 40.0), (130.0, 40.0)],
+            known_distance: 5000.0,
+            unit: MeasurementUnit::Centimetres,
+        };
+        worker.send(Request::PreviewMeasurementRecalibration {
+            page: 0,
+            record: historical[0].clone(),
+            measurement: historical[0].measurement.clone(),
+            calibration: calibration.clone(),
+            epoch: 81,
+            generation: 7,
+        });
+        assert!(matches!(
+            next_response(worker),
+            Response::RichAnnotationPreview { result: Ok(_), .. }
+        ));
+        assert_eq!(read(), historical, "preview retains the historical state");
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 81,
+            generation: 7,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let recalibrated = read();
+        assert_eq!(recalibrated.len(), 1);
+        assert!(recalibrated[0].validity.is_current());
+        assert_eq!(recalibrated[0].annotation_id, historical[0].annotation_id);
+        assert_eq!(
+            recalibrated[0].measurement.points,
+            historical[0].measurement.points
+        );
+        assert_eq!(recalibrated[0].measurement.calibration, calibration.points);
+        assert_eq!(recalibrated[0].measurement.value().unwrap(), 5000.0);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(
+            read(),
+            historical,
+            "one Undo restores the unverified provenance"
+        );
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read(), recalibrated);
+        let output = temp.path().join("recalibrated-measurement.pdf");
+        worker.send(Request::Save {
+            path: output.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: output,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(read(), recalibrated);
         assert_eq!(std::fs::read(source).unwrap(), bytes);
     }
 
@@ -4479,6 +4976,122 @@ mod tests {
         );
         worker.send(Request::ResumeDoc(suspended));
         assert!(matches!(next_response(worker), Response::Resumed(_)));
+    }
+
+    fn failed_resume_returns_unsaved_bytes_and_journal_for_a_retry(worker: &Worker) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("resume-source.pdf");
+        let original = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        let protected = security::protect(
+            &original,
+            None,
+            &Protection {
+                user_password: "reader".into(),
+                owner_password: "owner".into(),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        std::fs::write(&path, &protected).unwrap();
+        worker.send(Request::Open {
+            path: path.clone(),
+            password: Some("owner".into()),
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        for (text, y) in [("Recovered tab", 60.0), ("Redo retained", 90.0)] {
+            worker.send(Request::Edit(EditOp::AddText {
+                page: 0,
+                text: text.into(),
+                x: 30.0,
+                y,
+                style: TextStyle::default(),
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+        }
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Suspend);
+        let mut suspended = match next_response(worker) {
+            Response::Suspended(suspended) => suspended,
+            _ => panic!("suspended unsaved document"),
+        };
+        let bytes = suspended.bytes.clone();
+        let undo = suspended.undo[0].bytes.clone();
+        let redo = suspended.redo[0].bytes.clone();
+        assert!(suspended.modified);
+        assert_eq!(suspended.save_point, Some(0));
+        suspended.password = Some("wrong credential".into());
+        worker.send(Request::ResumeDoc(suspended));
+        let mut retained = match next_response(worker) {
+            Response::ResumeFailed { error, suspended } => {
+                assert!(matches!(error, EngineError::PasswordRequired));
+                suspended
+            }
+            _ => panic!("failed resume must return the complete suspended document"),
+        };
+        assert_eq!(retained.bytes, bytes);
+        assert_eq!(retained.path, path);
+        assert!(retained.modified);
+        assert_eq!(retained.password.as_deref(), Some("wrong credential"));
+        assert_eq!(retained.save_point, Some(0));
+        assert_eq!(retained.undo.len(), 1);
+        assert_eq!(retained.redo.len(), 1);
+        assert_eq!(retained.undo[0].bytes, undo);
+        assert_eq!(retained.redo[0].bytes, redo);
+        assert_eq!(
+            retained.signature_source.as_ref().unwrap().bytes.as_ref(),
+            protected
+        );
+        retained.password = Some("owner".into());
+        worker.send(Request::ResumeDoc(retained));
+        assert!(matches!(
+            next_response(worker),
+            Response::Resumed(DocState {
+                can_undo: true,
+                can_redo: true,
+                modified: true,
+                ..
+            })
+        ));
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        let output = dir.path().join("resumed-copy.pdf");
+        worker.send(Request::Save {
+            path: output.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: output,
+            password: Some("owner".into()),
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Search {
+            query: "Recovered tab".into(),
+            match_case: true,
+            generation: 991,
+        });
+        assert!(
+            matches!(next_response(worker), Response::SearchResults { generation: 991, matches } if matches.len() == 1)
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), protected);
     }
 
     fn reprotection_requires_the_current_owner_without_removing_existing_restrictions(

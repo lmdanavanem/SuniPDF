@@ -9,11 +9,15 @@ use crate::geometry::PageGeometry;
 use crate::security::lopdf_err;
 use crate::{Document, EngineError, PointRect};
 use lopdf::{Dictionary, Object, Stream};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
 
 pub use crate::measurement_batch::{RecalibrationChange, RecalibrationPlan, RecalibrationRequest};
 pub use crate::measurement_distance::parse_measurement_distance;
+pub use crate::measurement_shapes::{
+    DimensionedRectangle, LocalCalibrationReference, RectangleScale,
+};
 pub use crate::measurement_snap::{SnapKind, SnapPoint, VectorSnapGeometry};
 pub use crate::measurement_viewports::{
     select_viewport, MeasurementViewport, MeasurementViewportResetTarget,
@@ -102,12 +106,142 @@ pub struct Measurement {
     pub precision: usize,
 }
 
-/// A validated saved annotation and its own calibration, in displayed-page coordinates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MeasurementValidity {
+    Current,
+    LegacyUnverified,
+    Stale,
+}
+
+impl MeasurementValidity {
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Current => "current",
+            Self::LegacyUnverified => "legacy_unverified",
+            Self::Stale => "stale",
+        }
+    }
+
+    pub fn is_current(self) -> bool {
+        self == Self::Current
+    }
+}
+
+/// A saved annotation and its historical calibration, in displayed-page coordinates.
+/// Only Current records qualify as measurements of the current page.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MeasurementRecord {
     pub index: usize,
     pub annotation_id: Option<String>,
     pub measurement: Measurement,
+    pub validity: MeasurementValidity,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct MeasurementPageProvenance {
+    page_bounds: [f32; 4],
+    user_unit: f32,
+    content_sha256: String,
+}
+
+pub(crate) fn page_provenance(
+    pdf: &lopdf::Document,
+    page: lopdf::ObjectId,
+    geo: &PageGeometry,
+) -> Result<MeasurementPageProvenance, EngineError> {
+    let dict = pdf.get_dictionary(page).map_err(lopdf_err)?;
+    crate::page_calibration::check_user_unit(pdf, dict)?;
+    current_page_provenance(pdf, page, geo)
+}
+
+fn current_page_provenance(
+    pdf: &lopdf::Document,
+    page: lopdf::ObjectId,
+    geo: &PageGeometry,
+) -> Result<MeasurementPageProvenance, EngineError> {
+    let dict = pdf.get_dictionary(page).map_err(lopdf_err)?;
+    let user_unit = match dict.get(b"UserUnit") {
+        Ok(raw) => pdf
+            .dereference(raw)
+            .and_then(|(_, value)| value.as_float())
+            .map_err(lopdf_err)?,
+        Err(_) => 1.0,
+    };
+    if !user_unit.is_finite() || user_unit <= 0.0 {
+        return Err(bad());
+    }
+    Ok(MeasurementPageProvenance {
+        page_bounds: [geo.bbox.left, geo.bbox.bottom, geo.bbox.right, geo.bbox.top],
+        user_unit,
+        content_sha256: crate::page_calibration::qualified_content_digest(pdf, dict)?,
+    })
+}
+
+pub(crate) fn bind_provenance(
+    annotation: &mut Dictionary,
+    provenance: &MeasurementPageProvenance,
+) -> Result<(), EngineError> {
+    let raw = annotation
+        .get(b"SuniPDFMeasurement")
+        .and_then(Object::as_str)
+        .map_err(lopdf_err)?;
+    let mut metadata: Value = serde_json::from_slice(raw).map_err(|_| bad())?;
+    metadata["version"] = 2.into();
+    metadata["provenance"] = serde_json::to_value(provenance).map_err(|_| bad())?;
+    annotation.set(
+        "SuniPDFMeasurement",
+        Object::string_literal(metadata.to_string()),
+    );
+    Ok(())
+}
+
+fn stored_provenance(metadata: &Value) -> Result<Option<MeasurementPageProvenance>, EngineError> {
+    let version = metadata["version"].as_u64().ok_or_else(bad)?;
+    if !matches!(version, 1 | 2) || metadata["coordinate_system"] != "pdf-user-space" {
+        return Err(bad());
+    }
+    let fields = [
+        "version",
+        "coordinate_system",
+        "kind",
+        "points",
+        "calibration",
+        "known_distance",
+        "unit",
+        "precision",
+        "rect",
+    ];
+    if metadata.as_object().is_none_or(|object| {
+        object.len() != fields.len() + usize::from(version == 2)
+            || object.keys().any(|key| {
+                !fields.contains(&key.as_str()) && !(version == 2 && key == "provenance")
+            })
+    }) {
+        return Err(bad());
+    }
+    if version == 1 {
+        return Ok(None);
+    }
+    let provenance: MeasurementPageProvenance =
+        serde_json::from_value(metadata["provenance"].clone()).map_err(|_| bad())?;
+    if provenance.user_unit != 1.0
+        || provenance
+            .page_bounds
+            .iter()
+            .any(|v| !v.is_finite() || v.abs() > 1e8)
+        || provenance.page_bounds[0] >= provenance.page_bounds[2]
+        || provenance.page_bounds[1] >= provenance.page_bounds[3]
+        || provenance.content_sha256.len() != 64
+        || !provenance
+            .content_sha256
+            .bytes()
+            .all(|v| v.is_ascii_digit() || (b'a'..=b'f').contains(&v))
+    {
+        return Err(bad());
+    }
+    Ok(Some(provenance))
 }
 
 /// An editable annotation bound to its validated source document. Obtain it from
@@ -147,7 +281,14 @@ impl MeasurementRecord {
             .annotation_id
             .as_ref()
             .map_or(Value::Null, |name| name.as_str().into());
-        result["version"] = 1.into();
+        result["version"] = 2.into();
+        result["validity"] = self.validity.id().into();
+        result["historical_value"] = Value::Null;
+        result["historical_label"] = Value::Null;
+        if !self.validity.is_current() {
+            result["historical_value"] = result["value"].take();
+            result["historical_label"] = result["label"].take();
+        }
         Ok(result)
     }
 }
@@ -260,24 +401,7 @@ fn check_editable_inner(
         return Err(bad());
     }
     let metadata: Value = serde_json::from_slice(raw).map_err(|_| bad())?;
-    let fields = [
-        "version",
-        "coordinate_system",
-        "kind",
-        "points",
-        "calibration",
-        "known_distance",
-        "unit",
-        "precision",
-        "rect",
-    ];
-    if metadata["version"] != 1
-        || metadata.as_object().is_none_or(|object| {
-            object.len() != fields.len() || object.keys().any(|key| !fields.contains(&key.as_str()))
-        })
-    {
-        return Err(bad());
-    }
+    stored_provenance(&metadata)?;
     if !check_identity {
         return Ok(());
     }
@@ -458,12 +582,60 @@ impl Measurement {
     }
 }
 
+/// Computes exactly the geometry that the reader will recover from serialized user-space f32
+/// points. Refuse excessive loss instead of committing a different scale or rounded label.
+pub(crate) fn measurement_after_storage(
+    geo: &PageGeometry,
+    measurement: &Measurement,
+) -> Result<Measurement, EngineError> {
+    let before = measurement.value()?;
+    let roundtrip = |(x, y)| {
+        let (x, y) = geo.to_user(x, y);
+        geo.to_display(x, y)
+    };
+    let mut stored = measurement.clone();
+    stored.points = measurement.points.iter().copied().map(roundtrip).collect();
+    stored.calibration = measurement.calibration.map(roundtrip);
+    let after = stored.value()?;
+    let close = |original: f64, saved: f64| {
+        saved.is_finite() && (original - saved).abs() <= original.abs() * 1e-5
+    };
+    let mut precise = close(before, after)
+        && close(
+            distance(measurement.calibration[0], measurement.calibration[1]),
+            distance(stored.calibration[0], stored.calibration[1]),
+        )
+        && format!("{:.*}", measurement.precision, before)
+            == format!("{:.*}", measurement.precision, after);
+    for (original, saved) in measurement.points.windows(2).zip(stored.points.windows(2)) {
+        precise &= close(
+            distance(original[0], original[1]),
+            distance(saved[0], saved[1]),
+        );
+    }
+    if matches!(
+        measurement.kind,
+        MeasurementKind::Area | MeasurementKind::Perimeter
+    ) {
+        let last = measurement.points.len() - 1;
+        precise &= close(
+            distance(measurement.points[last], measurement.points[0]),
+            distance(stored.points[last], stored.points[0]),
+        );
+    }
+    if !precise {
+        return Err(EngineError::Other("measurement coordinates lose precision when stored; use a longer calibration reference or a different page position".into()));
+    }
+    Ok(stored)
+}
+
 pub(crate) fn annotation_components(
     geo: &PageGeometry,
     measurement: &Measurement,
     author: Option<&str>,
 ) -> Result<(Dictionary, Stream), EngineError> {
-    let result = measurement.result()?;
+    let stored = measurement_after_storage(geo, measurement)?;
+    let result = stored.result()?;
     let label = result["label"].as_str().ok_or_else(bad)?;
     let (pw, ph) = geo.display_size();
     if measurement
@@ -580,8 +752,9 @@ impl Document<'_> {
             return Err(EngineError::SecurityRestricted);
         }
         let geo = self.page_geometry(page_index)?;
-        let (annotation, appearance) = annotation_components(&geo, measurement, author)?;
+        let (mut annotation, appearance) = annotation_components(&geo, measurement, author)?;
         self.edit_annotation_pdf(page_index, |pdf, page, _| {
+            bind_provenance(&mut annotation, &page_provenance(pdf, page, &geo)?)?;
             push_annotation(pdf, page, annotation, Some(appearance))
         })
     }
@@ -622,15 +795,53 @@ impl Document<'_> {
         target: &MeasurementTarget,
         replacement: &Measurement,
     ) -> Result<usize, EngineError> {
+        if !target.record.validity.is_current() {
+            return Err(EngineError::Other("measurement is not verified against this page; explicitly recalibrate it, or recreate an angle, before editing".into()));
+        }
+        self.replace_measurement_annotation(target, replacement)
+    }
+
+    /// Explicitly re-establishes a selected measurement against the current page and supplied
+    /// reference points. Units/precision/geometry edits alone never certify old records.
+    /// Angles must be recreated because they do not use a length calibration.
+    pub fn recalibrate_measurement_annotation(
+        &mut self,
+        target: &MeasurementTarget,
+        replacement: &Measurement,
+        calibration: &PageCalibration,
+    ) -> Result<usize, EngineError> {
+        if target.record.measurement.kind == MeasurementKind::Angle
+            || replacement.kind == MeasurementKind::Angle
+        {
+            return Err(EngineError::Other(
+                "angles must be recreated on the current page instead of recalibrated".into(),
+            ));
+        }
+        calibration.validate_on_page(&self.page_geometry(target.page)?)?;
+        let mut replacement = replacement.clone();
+        replacement.calibration = calibration.points;
+        replacement.known_distance =
+            calibration.known_distance * calibration.unit.metres() / replacement.unit.metres();
+        self.replace_measurement_annotation(target, &replacement)
+    }
+
+    fn replace_measurement_annotation(
+        &mut self,
+        target: &MeasurementTarget,
+        replacement: &Measurement,
+    ) -> Result<usize, EngineError> {
         self.require_annotation_permission()?;
         if !crate::annot_rich::same_document(&target.source, &self.snapshot()?, self.password())? {
             return Err(stale());
         }
         let geo = self.page_geometry(target.page)?;
-        let (components, appearance) = annotation_components(&geo, replacement, None)?;
+        let stored = measurement_after_storage(&geo, replacement)?;
+        let (mut components, appearance) = annotation_components(&geo, replacement, None)?;
         self.edit_annotation_pdf(target.page, |pdf, page, _| {
             check_editable(pdf, page, &target.record)?;
+            bind_provenance(&mut components, &page_provenance(pdf, page, &geo)?)?;
             let (slot, mut annotation) = load_annot(pdf, page, target.record.index)?;
+            crate::quantity_table::validate_measurement_price(pdf, &annotation, &stored)?;
             for key in [b"Rect".as_slice(), b"Contents", b"SuniPDFMeasurement"] {
                 annotation.set(key, components.get(key).map_err(lopdf_err)?.clone());
             }
@@ -684,6 +895,7 @@ impl Document<'_> {
             return Err(bad());
         }
         let mut records = Vec::new();
+        let mut current_provenance = None;
         let mut metadata_bytes = 0usize;
         for (index, entry) in entries.iter().enumerate() {
             let dict = match entry {
@@ -703,9 +915,30 @@ impl Document<'_> {
                 return Err(bad());
             }
             let value: Value = serde_json::from_slice(raw).map_err(|_| bad())?;
-            if value["version"] != 1 || value["coordinate_system"] != "pdf-user-space" {
-                return Err(bad());
-            }
+            let provenance = stored_provenance(&value)?;
+            let validity = if let Some(provenance) = provenance {
+                // One digest per page, shared by every saved record on this page.
+                if current_provenance.is_none() {
+                    current_provenance = Some(current_page_provenance(pdf, page, &geo)?);
+                }
+                let current = current_provenance
+                    .as_ref()
+                    .expect("page provenance was computed");
+                if provenance.content_sha256 == current.content_sha256
+                    && provenance
+                        .page_bounds
+                        .iter()
+                        .zip(current.page_bounds)
+                        .all(|(a, b)| (a - b).abs() <= 0.001)
+                    && provenance.user_unit == current.user_unit
+                {
+                    MeasurementValidity::Current
+                } else {
+                    MeasurementValidity::Stale
+                }
+            } else {
+                MeasurementValidity::LegacyUnverified
+            };
             let scalar = |v: &Value| -> Result<f32, EngineError> {
                 let number = v.as_f64().ok_or_else(bad)?;
                 if !number.is_finite() || number.abs() > 1e8 {
@@ -765,6 +998,7 @@ impl Document<'_> {
                 index,
                 annotation_id,
                 measurement,
+                validity,
             });
         }
         Ok(records)

@@ -105,10 +105,11 @@ pub fn apply(ctx: &egui::Context, dark: bool) {
     v.widgets.hovered.weak_bg_fill = p.hover;
     v.widgets.hovered.bg_stroke = Stroke::new(1.0, p.accent);
     v.widgets.hovered.fg_stroke = Stroke::new(1.0, p.text);
-    // Texte blanc sur fond plein : `accent` (clair en thème sombre) serait illisible (2,5:1).
-    v.widgets.active.bg_fill = p.accent_fill;
-    v.widgets.active.weak_bg_fill = p.accent.gamma_multiply(0.3);
-    v.widgets.active.fg_stroke = Stroke::new(1.0, Color32::WHITE);
+    // egui also uses the active foreground for strong labels, independently of override_text_color.
+    // Generic active controls therefore use a soft background; filled actions set white explicitly.
+    v.widgets.active.bg_fill = p.accent_soft;
+    v.widgets.active.weak_bg_fill = p.accent_soft;
+    v.widgets.active.fg_stroke = Stroke::new(1.0, p.text);
     v.widgets.open.bg_fill = p.hover;
     v.widgets.open.weak_bg_fill = p.hover;
     for w in [
@@ -203,4 +204,162 @@ pub fn focus_ring(painter: &egui::Painter, rect: egui::Rect, p: &Palette, radius
         Stroke::new(2.0, p.focus),
         egui::StrokeKind::Inside,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use egui::{Pos2, Rect, RichText, Shape};
+    use sunipdf_i18n::{tr, Language};
+
+    fn contrast(first: Color32, second: Color32) -> f64 {
+        let luminance = |color: Color32| {
+            let linear = |channel: u8| {
+                let value = f64::from(channel) / 255.0;
+                if value <= 0.04045 {
+                    value / 12.92
+                } else {
+                    ((value + 0.055) / 1.055).powf(2.4)
+                }
+            };
+            0.2126 * linear(color.r()) + 0.7152 * linear(color.g()) + 0.0722 * linear(color.b())
+        };
+        let first = luminance(first);
+        let second = luminance(second);
+        (first.max(second) + 0.05) / (first.min(second) + 0.05)
+    }
+
+    fn painted_colors(shape: &Shape, clip: Rect, label: &str, colors: &mut Vec<Color32>) {
+        match shape {
+            Shape::Text(text) if text.galley.text() == label => {
+                let bounds = Rect::from_min_size(text.pos, text.galley.size());
+                if !clip.contains_rect(bounds) {
+                    return;
+                }
+                for section in &text.galley.job.sections {
+                    colors.push(text.override_text_color.unwrap_or_else(|| {
+                        if section.format.color == Color32::PLACEHOLDER {
+                            text.fallback_color
+                        } else {
+                            section.format.color
+                        }
+                    }));
+                }
+            }
+            Shape::Vec(shapes) => {
+                for shape in shapes {
+                    painted_colors(shape, clip, label, colors);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn assert_painted(
+        output: &egui::FullOutput,
+        label: &str,
+        foreground: Color32,
+        backgrounds: &[Color32],
+    ) {
+        let mut colors = Vec::new();
+        for shape in &output.shapes {
+            painted_colors(&shape.shape, shape.clip_rect, label, &mut colors);
+        }
+        assert!(!colors.is_empty(), "visible label missing: {label}");
+        for color in colors {
+            assert_eq!(color, foreground, "painted label color: {label}");
+            for &background in backgrounds {
+                assert!(
+                    contrast(color, background) >= 4.5,
+                    "insufficient contrast for {label}: {color:?} on {background:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn strong_labels_and_active_controls_paint_readable_text_in_both_languages_and_themes() {
+        for language in Language::ALL {
+            for dark in [false, true] {
+                let ctx = egui::Context::default();
+                apply(&ctx, dark);
+                let palette = palette(dark);
+                let strong = tr(language, "measure.rectangle.title");
+                let rich = tr(language, "measure.precision");
+                let heading = tr(language, "measure.panel.saved");
+                let button = tr(language, "measure.unit");
+                let primary = tr(language, "register.apply");
+                let danger = tr(language, "comments.delete");
+                let mut button_rect = Rect::NOTHING;
+                for pressed in [false, true] {
+                    let events = if pressed {
+                        vec![
+                            egui::Event::PointerMoved(button_rect.center()),
+                            egui::Event::PointerButton {
+                                pos: button_rect.center(),
+                                button: egui::PointerButton::Primary,
+                                pressed: true,
+                                modifiers: egui::Modifiers::NONE,
+                            },
+                        ]
+                    } else {
+                        Vec::new()
+                    };
+                    let input = egui::RawInput {
+                        screen_rect: Some(Rect::from_min_size(
+                            Pos2::ZERO,
+                            egui::vec2(900.0, 650.0),
+                        )),
+                        events,
+                        ..Default::default()
+                    };
+                    let mut down = false;
+                    let mut output = ctx.run_ui(input, |ui| {
+                        ui.strong(strong);
+                        ui.label(RichText::new(rich).strong());
+                        ui.heading(heading);
+                        let response = ui.button(button);
+                        button_rect = response.rect;
+                        down = response.is_pointer_button_down_on();
+                        crate::dialog::primary(ui, primary);
+                        crate::dialog::danger(ui, danger);
+                    });
+                    assert_eq!(
+                        down,
+                        pressed,
+                        "active button was not exercised: {} dark={dark}",
+                        language.code()
+                    );
+                    for label in [strong, rich, heading] {
+                        assert_painted(
+                            &output,
+                            label,
+                            palette.text,
+                            &[palette.surface, palette.chrome],
+                        );
+                    }
+                    assert_painted(
+                        &output,
+                        button,
+                        palette.text,
+                        &[if pressed {
+                            palette.accent_soft
+                        } else {
+                            palette.surface
+                        }],
+                    );
+                    assert_painted(&output, primary, Color32::WHITE, &[palette.accent_fill]);
+                    assert_painted(&output, danger, Color32::WHITE, &[ERROR]);
+                    if pressed {
+                        let style = ctx.global_style();
+                        let active = &style.visuals.widgets.active;
+                        assert_eq!(active.bg_fill, palette.accent_soft);
+                        assert_eq!(active.weak_bg_fill, palette.accent_soft);
+                        assert!(contrast(active.fg_stroke.color, active.bg_fill) >= 4.5);
+                    }
+                    output.textures_delta.clear();
+                }
+            }
+        }
+    }
 }

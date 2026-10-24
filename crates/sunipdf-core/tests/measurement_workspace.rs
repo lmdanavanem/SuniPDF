@@ -336,7 +336,7 @@ fn overlapping_regions_are_explicit_and_malformed_or_stale_metadata_is_preserved
             )
             .unwrap();
             match change {
-                "version" => v["version"] = 2.into(),
+                "version" => v["version"] = 99.into(),
                 "unknown" => v["unknown"] = true.into(),
                 "nonfinite" => v["regions"][0]["bounds"][0] = serde_json::Value::Null,
                 _ => unreachable!(),

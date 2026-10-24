@@ -3,7 +3,10 @@ use clap::{ArgGroup, Args};
 use serde_json::Value;
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use sunipdf_core::measurement::{Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit};
+use sunipdf_core::measurement::{
+    Measurement, MeasurementKind, MeasurementRecord, MeasurementUnit, MeasurementValidity,
+    PageCalibration,
+};
 use sunipdf_core::{Document, Engine, EngineError};
 
 type Calibration = ([(f32, f32); 2], f64);
@@ -85,9 +88,15 @@ fn json_points(value: &Value, maximum: usize) -> Result<Vec<(f32, f32)>, EngineE
 }
 
 pub(crate) fn parse_record(value: Value) -> Result<MeasurementRecord, EngineError> {
-    if value["version"].as_u64() != Some(1) {
-        return Err(invalid_record());
-    }
+    let validity = match value["version"].as_u64() {
+        Some(1) if value.get("validity").is_none() || value["validity"] == "legacy_unverified" => {
+            MeasurementValidity::LegacyUnverified
+        }
+        Some(2) => {
+            serde_json::from_value(value["validity"].clone()).map_err(|_| invalid_record())?
+        }
+        _ => return Err(invalid_record()),
+    };
     let annotation_id = value["annotation_id"]
         .as_str()
         .filter(|id| !id.is_empty() && id.len() <= 256)
@@ -98,6 +107,7 @@ pub(crate) fn parse_record(value: Value) -> Result<MeasurementRecord, EngineErro
             .and_then(|i| usize::try_from(i).ok())
             .ok_or_else(invalid_record)?,
         annotation_id: Some(annotation_id.into()),
+        validity,
         measurement: Measurement {
             kind: value["kind"]
                 .as_str()
@@ -195,6 +205,7 @@ pub fn edit(engine: &Engine, args: EditArgs) -> Result<Value, EngineError> {
     let mut doc = engine.open(&args.file, args.password.as_deref())?;
     let page = crate::page_index(args.page, doc.page_count())?;
     let target = doc.measurement_target(page, &expected)?;
+    let explicit_calibration = args.use_page_calibration || args.calibration.is_some();
     let mut replacement = expected.measurement.clone();
     if let Some(kind) = args.kind {
         replacement.kind = MeasurementKind::from_id(&kind).ok_or_else(invalid_record)?;
@@ -223,12 +234,21 @@ pub fn edit(engine: &Engine, args: EditArgs) -> Result<Value, EngineError> {
             "changing an angle to a scaled measurement requires an explicit calibration".into(),
         ));
     }
-    let index = doc.update_measurement_annotation(&target, &replacement)?;
-    sunipdf_core::write_new_copy(&args.out, &doc.snapshot()?)?;
+    let index = if !expected.validity.is_current() && explicit_calibration {
+        let calibration = PageCalibration {
+            points: replacement.calibration,
+            known_distance: replacement.known_distance,
+            unit: replacement.unit,
+        };
+        doc.recalibrate_measurement_annotation(&target, &replacement, &calibration)?
+    } else {
+        doc.update_measurement_annotation(&target, &replacement)?
+    };
     let record = MeasurementRecord {
         index,
         annotation_id: expected.annotation_id,
         measurement: replacement,
+        validity: MeasurementValidity::Current,
     };
     let export_unavailable = !doc.properties().can_copy;
     let exported = if export_unavailable {
@@ -236,6 +256,7 @@ pub fn edit(engine: &Engine, args: EditArgs) -> Result<Value, EngineError> {
     } else {
         record.result()?
     };
+    sunipdf_core::write_new_copy(&args.out, &doc.snapshot()?)?;
     Ok(
         serde_json::json!({"out":args.out,"page":args.page,"index":index,"measurement":exported,"export_unavailable":export_unavailable,
         "original_unchanged":true,"encrypted":doc.properties().encrypted}),
@@ -250,6 +271,7 @@ mod tests {
         MeasurementRecord {
             index: 3,
             annotation_id: Some("stable-identity".into()),
+            validity: MeasurementValidity::Current,
             measurement: Measurement {
                 kind: MeasurementKind::Area,
                 points: vec![(10.0, 10.0), (50.0, 10.0), (50.0, 40.0)],
@@ -266,7 +288,9 @@ mod tests {
         let record = sample();
         assert_eq!(parse_record(record.result().unwrap()).unwrap(), record);
         for (key, value) in [
-            ("version", 2.into()),
+            ("version", 3.into()),
+            ("validity", Value::Null),
+            ("validity", "unknown".into()),
             ("annotation_id", Value::Null),
             ("index", (-1).into()),
             ("precision", 5.into()),
@@ -279,6 +303,13 @@ mod tests {
         let mut angle = record.clone();
         angle.measurement.kind = MeasurementKind::Angle;
         assert_eq!(parse_record(angle.result().unwrap()).unwrap(), angle);
+        let mut legacy = record.result().unwrap();
+        legacy["version"] = 1.into();
+        assert!(parse_record(legacy.clone()).is_err());
+        legacy.as_object_mut().unwrap().remove("validity");
+        let parsed = parse_record(legacy).unwrap();
+        assert_eq!(parsed.validity, MeasurementValidity::LegacyUnverified);
+        assert_eq!(parsed.measurement, record.measurement);
     }
 
     #[test]

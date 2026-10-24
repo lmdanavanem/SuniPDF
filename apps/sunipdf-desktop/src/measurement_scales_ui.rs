@@ -41,6 +41,7 @@ struct BatchDraft {
     first: usize,
     last: usize,
     calibration: PageCalibration,
+    explicit_reference: bool,
     recalculate: bool,
     pages: BTreeMap<usize, BatchPage>,
     pending: Option<u64>,
@@ -559,6 +560,7 @@ impl SuniApp {
             first: page,
             last: page,
             calibration,
+            explicit_reference: self.annotate.measure.local_calibration(page).is_some(),
             recalculate: true,
             pages: BTreeMap::new(),
             pending: None,
@@ -633,6 +635,15 @@ impl SuniApp {
             let Ok(records) = &data.records else {
                 return;
             };
+            if batch.recalculate
+                && !batch.explicit_reference
+                && records.iter().any(|record| {
+                    !record.validity.is_current()
+                        && record.measurement.kind != MeasurementKind::Angle
+                })
+            {
+                return;
+            }
             requests.push(RecalibrationRequest {
                 page,
                 calibration: batch.calibration.clone(),
@@ -711,7 +722,16 @@ impl SuniApp {
         let can_preview = !locked
             && (batch.first..=batch.last).all(|p| {
                 batch.pages.get(&p).is_some_and(|d| {
-                    d.can_modify && (!recalculate || d.can_annotate) && d.records.is_ok()
+                    d.can_modify
+                        && (!recalculate || d.can_annotate)
+                        && d.records.as_ref().is_ok_and(|records| {
+                            !recalculate
+                                || batch.explicit_reference
+                                || records.iter().all(|record| {
+                                    record.validity.is_current()
+                                        || record.measurement.kind == MeasurementKind::Angle
+                                })
+                        })
                 })
             });
         let mut close = false;
@@ -729,6 +749,17 @@ impl SuniApp {
             .width(760.0_f32.min((ctx.content_rect().width() - 40.0).max(300.0))),
             |ui| {
                 ui.label(tr(lang, "measure.batch.help"));
+                let has_unverified = batch.pages.values().any(|data| {
+                    data.records.as_ref().is_ok_and(|records| {
+                        records.iter().any(|record| !record.validity.is_current())
+                    })
+                });
+                if recalculate && has_unverified {
+                    ui.colored_label(Color32::YELLOW, tr(lang, "measure.validity.batch_warning"));
+                    if !batch.explicit_reference {
+                        ui.small(tr(lang, "measure.validity.reference_required"));
+                    }
+                }
                 ui.small(format!(
                     "{} {} / {:.2} pt",
                     batch.calibration.known_distance,
@@ -769,10 +800,18 @@ impl SuniApp {
                         |ui, range| {
                             for change in &plan.changes()[range] {
                                 ui.label(format!(
-                                    "p. {} · #{} · {:.4} → {:.4} {}{}",
+                                    "p. {} · #{} · {:.4}{} → {:.4} {}{}",
                                     change.page + 1,
                                     change.index,
                                     change.before,
+                                    if change.before_validity.is_current() {
+                                        String::new()
+                                    } else {
+                                        format!(
+                                            " ({})",
+                                            tr(lang, "measure.validity.historical_value")
+                                        )
+                                    },
                                     change.after,
                                     change.unit.id(),
                                     if change.kind == MeasurementKind::Area {
@@ -1190,10 +1229,62 @@ mod tests {
     }
 
     #[test]
+    fn historical_batch_measurements_require_a_current_explicit_reference() {
+        use sunipdf_core::measurement::{
+            Measurement, MeasurementRecord, MeasurementUnit, MeasurementValidity,
+        };
+        for validity in [
+            MeasurementValidity::LegacyUnverified,
+            MeasurementValidity::Stale,
+        ] {
+            let (mut app, requests) = ready();
+            let record = MeasurementRecord {
+                index: 3,
+                annotation_id: Some("historical-length".into()),
+                validity,
+                measurement: Measurement {
+                    kind: MeasurementKind::Length,
+                    points: vec![(20.0, 40.0), (60.0, 40.0)],
+                    calibration: calibration(4.0).points,
+                    known_distance: 4.0,
+                    unit: MeasurementUnit::Metres,
+                    precision: 2,
+                },
+            };
+            load(
+                &mut app,
+                &requests,
+                0,
+                MeasurementPageData::new(
+                    Ok(Some(calibration(4.0))),
+                    Ok(vec![record.clone()]),
+                    true,
+                ),
+            );
+            app.annotate.measure.clear_temporary_scale(0);
+            app.open_measurement_batch(0);
+            app.read_measurement_batch_pages();
+            app.preview_measurement_batch();
+            assert!(requests.try_recv().is_err());
+            app.annotate.measure.scales_ui.batch = None;
+            assert!(app.annotate.measure.use_calibration(0, &calibration(8.0)));
+            app.open_measurement_batch(0);
+            app.read_measurement_batch_pages();
+            app.preview_measurement_batch();
+            assert!(
+                matches!(requests.recv().unwrap(), Request::PreviewRecalibration { requests, .. }
+                if requests[0].measurements == vec![record]
+                    && requests[0].calibration == calibration(8.0))
+            );
+        }
+    }
+
+    #[test]
     fn batch_preview_freezes_explicit_records_and_discards_stale_replies() {
         use sunipdf_core::measurement::{Measurement, MeasurementRecord, MeasurementUnit};
         let (mut app, requests) = ready();
         let record = MeasurementRecord {
+            validity: sunipdf_core::measurement::MeasurementValidity::Current,
             index: 3,
             annotation_id: Some("length-a".into()),
             measurement: Measurement {

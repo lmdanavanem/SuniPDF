@@ -38,6 +38,142 @@ fn table(file: &Path) -> Value {
     success(cli("quantity-table", file).output().unwrap())
 }
 
+#[test]
+fn historical_measurements_keep_prices_but_never_supply_totals_or_formula_quantities() {
+    let directory = tempfile::tempdir().unwrap();
+    let (source, expected, fields_path) = seed(directory.path());
+    let priced = directory.path().join("priced-current.pdf");
+    success(
+        set(&source, &expected, &fields_path, &priced)
+            .output()
+            .unwrap(),
+    );
+    let priced_bytes = std::fs::read(&priced).unwrap();
+    let configuration = directory.path().join("formula.json");
+    write_json(
+        &configuration,
+        &json!([
+            {"name":"Measured length","expression":"quantity * 2","quantity_unit":"m","rounding_decimals":2}
+        ]),
+    );
+    for (validity, legacy) in [("legacy_unverified", true), ("stale", false)] {
+        let historical = directory.path().join(format!("{validity}.pdf"));
+        let mut pdf = lopdf::Document::load(&priced).unwrap();
+        if legacy {
+            let annotation = pdf
+                .objects
+                .values_mut()
+                .filter_map(|object| object.as_dict_mut().ok())
+                .find(|dict| dict.has(b"SuniPDFMeasurement"))
+                .unwrap();
+            let mut metadata: Value = serde_json::from_slice(
+                annotation
+                    .get(b"SuniPDFMeasurement")
+                    .unwrap()
+                    .as_str()
+                    .unwrap(),
+            )
+            .unwrap();
+            metadata["version"] = 1.into();
+            metadata.as_object_mut().unwrap().remove("provenance");
+            annotation.set(
+                "SuniPDFMeasurement",
+                lopdf::Object::string_literal(metadata.to_string()),
+            );
+        } else {
+            let page = pdf.get_pages()[&1];
+            let content = pdf.add_object(lopdf::Stream::new(
+                lopdf::Dictionary::new(),
+                b"q 0 0 1 RG 30 30 120 60 re S Q".to_vec(),
+            ));
+            pdf.get_dictionary_mut(page)
+                .unwrap()
+                .set("Contents", content);
+        }
+        pdf.save(&historical).unwrap();
+        let original = std::fs::read(&historical).unwrap();
+        let result = success(
+            cli("quantity-table", &historical)
+                .arg("--formulas")
+                .arg(&configuration)
+                .output()
+                .unwrap(),
+        );
+        let historical_row = row(&result, 1);
+        assert_eq!(historical_row["measurement_validity"], validity);
+        assert!(historical_row["quantity"].is_null());
+        assert!(historical_row["line_total"].is_null());
+        assert_eq!(historical_row["historical_quantity"]["value"], 10.0);
+        assert_eq!(historical_row["historical_quantity"]["unit"], "m");
+        assert_eq!(historical_row["fields"]["unit_price"]["amount"], "2.5");
+        assert_eq!(result["summary"]["unverified_measurement_rows"], 1);
+        assert_eq!(
+            result["summary"]["legacy_measurement_rows"],
+            usize::from(legacy)
+        );
+        assert_eq!(
+            result["summary"]["stale_measurement_rows"],
+            usize::from(!legacy)
+        );
+        assert_eq!(result["summary"]["quantity_rows"], 1);
+        assert_eq!(result["summary"]["unquantified_rows"], 1);
+        let groups = result["summary"]["groups"].as_array().unwrap();
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0]["unit"], "each");
+        assert_eq!(groups[0]["quantity"], 1.0);
+        let formulas = result["summary"]["formula_groups"].as_array().unwrap();
+        assert_eq!(formulas.len(), 1);
+        assert_eq!(formulas[0]["contributing_rows"], 0);
+        assert_eq!(formulas[0]["error_rows"], 2);
+        assert_eq!(formulas[0]["complete"], false);
+        assert_eq!(formulas[0]["totals"], json!([]));
+        let csv_path = directory.path().join(format!("{validity}.csv"));
+        success(
+            cli("quantity-table", &historical)
+                .arg("--formulas")
+                .arg(&configuration)
+                .args(["--format", "csv", "--out"])
+                .arg(&csv_path)
+                .output()
+                .unwrap(),
+        );
+        let csv = std::fs::read_to_string(&csv_path).unwrap();
+        assert!(csv.contains("\"measurement_validity\""));
+        assert!(csv.contains("\"historical_quantity\""));
+        assert!(csv.contains(&format!("\"{validity}\"")));
+
+        let record = success(cli("measurements", &historical).output().unwrap())["pages"][0]
+            ["measurements"][0]
+            .clone();
+        let record_path = directory.path().join(format!("{validity}-record.json"));
+        write_json(&record_path, &record);
+        let recalibrated = directory.path().join(format!("{validity}-current.pdf"));
+        success(
+            cli("edit-measurement", &historical)
+                .args(["--page", "1", "--index", "1", "--expected-record"])
+                .arg(&record_path)
+                .args([
+                    "--calibration",
+                    "40,40 140,40",
+                    "--known-distance",
+                    "20",
+                    "--out",
+                ])
+                .arg(&recalibrated)
+                .output()
+                .unwrap(),
+        );
+        let fresh = table(&recalibrated);
+        assert_eq!(row(&fresh, 1)["measurement_validity"], "current");
+        assert_eq!(row(&fresh, 1)["quantity"]["value"], 20.0);
+        assert_eq!(row(&fresh, 1)["line_total"]["amount"], "50.00");
+        assert!(row(&fresh, 1)["historical_quantity"].is_null());
+        assert_eq!(fresh["summary"]["unverified_measurement_rows"], 0);
+        assert_eq!(std::fs::read(&historical).unwrap(), original);
+    }
+    assert_eq!(std::fs::read(priced).unwrap(), priced_bytes);
+}
+
 fn row(table: &Value, index: usize) -> &Value {
     table["rows"]
         .as_array()
@@ -276,6 +412,23 @@ fn custom_sort_and_formula_reports_reuse_configuration_without_modifying_the_pdf
             result["formulas"][0]["expression"],
             "quantity * [Allowance]"
         );
+        let groups = result["summary"]["formula_groups"].as_array().unwrap();
+        let allowance = groups
+            .iter()
+            .find(|group| group["formula_name"] == "Allowance quantity")
+            .unwrap();
+        assert_eq!(allowance["matched_rows"], 2);
+        assert_eq!(allowance["contributing_rows"], 1);
+        assert_eq!(allowance["error_rows"], 1);
+        assert_eq!(allowance["complete"], false);
+        assert_eq!(allowance["totals"][0]["amount"], "12.50");
+        assert_eq!(allowance["totals"][0]["unit"], "m");
+        let missing = groups
+            .iter()
+            .find(|group| group["formula_name"] == "Missing input")
+            .unwrap();
+        assert!(missing["totals"].as_array().unwrap().is_empty());
+        assert_eq!(missing["errors"]["missing_field"], 2);
     }
     let csv_path = directory.path().join("formula-report.csv");
     success(
@@ -292,6 +445,8 @@ fn custom_sort_and_formula_reports_reuse_configuration_without_modifying_the_pdf
     assert!(csv.contains("12.50"));
     assert!(csv.contains("unit_mismatch"));
     assert!(csv.contains("missing_field"));
+    assert!(csv.contains("\"formula_subtotal\""));
+    assert!(csv.contains("\"formula_coverage\""));
     let invalid_out = directory.path().join("invalid-formula.csv");
     write_json(
         &configuration,
@@ -316,6 +471,101 @@ fn custom_sort_and_formula_reports_reuse_configuration_without_modifying_the_pdf
     assert_eq!(register["filter"]["custom_sort"], "No such column");
     assert_eq!(register["rows"][0]["index"], 0);
     assert_eq!(std::fs::read(&priced).unwrap(), before);
+}
+
+#[test]
+fn signed_numeric_csv_and_angular_formula_coverage_survive_saved_pdf_roundtrip() {
+    let directory = tempfile::tempdir().unwrap();
+    let (source, expected, input) = seed(directory.path());
+    let mut entered = fields();
+    entered["custom"]["Allowance"]["value"] = "-2.5".into();
+    entered["custom"]["Note"]["value"] = "-2+3".into();
+    write_json(&input, &entered);
+    let priced = directory.path().join("signed-fields.pdf");
+    success(set(&source, &expected, &input, &priced).output().unwrap());
+    let angle = directory.path().join("with-angle.pdf");
+    success(
+        cli("measure", &priced)
+            .args([
+                "--kind",
+                "angle",
+                "--points",
+                "150,150 200,150 200,200",
+                "--out",
+            ])
+            .arg(&angle)
+            .output()
+            .unwrap(),
+    );
+    let before = std::fs::read(&angle).unwrap();
+    let configuration = directory.path().join("signed-formulas.json");
+    write_json(
+        &configuration,
+        &json!([
+            {"name":"Negative","expression":"-1.005","quantity_unit":null,"rounding_decimals":2},
+            {"name":"Angle","expression":"quantity / 2","quantity_unit":"deg","rounding_decimals":2}
+        ]),
+    );
+    let result = success(
+        cli("quantity-table", &angle)
+            .arg("--formulas")
+            .arg(&configuration)
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(result["summary"]["quantity_rows"], 3);
+    assert_eq!(result["summary"]["additive_quantity_rows"], 2);
+    assert_eq!(result["summary"]["angular_rows"], 1);
+    assert_eq!(result["summary"]["unquantified_rows"], 0);
+    assert_eq!(result["summary"]["excluded_quantity_rows"], 1);
+    let summary = &result["summary"];
+    assert_eq!(
+        summary["quantity_rows"].as_u64().unwrap() + summary["unquantified_rows"].as_u64().unwrap(),
+        summary["matched_rows"].as_u64().unwrap()
+    );
+    assert_eq!(
+        summary["additive_quantity_rows"].as_u64().unwrap()
+            + summary["excluded_quantity_rows"].as_u64().unwrap(),
+        summary["matched_rows"].as_u64().unwrap()
+    );
+    assert_eq!(
+        result["summary"]["formula_groups"][0]["totals"][0]["amount"],
+        "-3.03"
+    );
+    assert_eq!(result["summary"]["formula_groups"][0]["complete"], true);
+    assert_eq!(
+        result["summary"]["formula_groups"][1]["totals"][0]["amount"],
+        "45.00"
+    );
+    assert_eq!(
+        result["summary"]["formula_groups"][1]["totals"][0]["unit"],
+        "deg"
+    );
+    assert_eq!(result["summary"]["formula_groups"][1]["error_rows"], 2);
+    let output = directory.path().join("signed.csv");
+    success(
+        cli("quantity-table", &angle)
+            .arg("--formulas")
+            .arg(&configuration)
+            .args(["--format", "csv", "--out"])
+            .arg(&output)
+            .output()
+            .unwrap(),
+    );
+    let csv = std::fs::read_to_string(&output).unwrap();
+    assert!(csv.contains("\"number\",\"-2.5\""));
+    assert!(csv.contains("\"text\",\"'-2+3\""));
+    assert!(csv.contains("\"-1.01\""));
+    assert!(csv.contains("\"-3.03\""));
+    assert!(!csv.contains("\"'-1.01\""));
+    assert!(!csv.contains("\"'-3.03\""));
+    let metadata = csv
+        .lines()
+        .find(|line| line.starts_with("\"metadata\""))
+        .unwrap();
+    assert!(metadata.contains("\"\"unquantified_rows\"\":0"));
+    assert!(metadata.contains("\"\"excluded_quantity_rows\"\":1"));
+    assert_eq!(std::fs::read(&angle).unwrap(), before);
 }
 
 #[test]

@@ -3,10 +3,12 @@
 
 mod annot_cmd;
 mod calibration_cmd;
+mod dimensioned_shape_cmd;
 mod feature_cmd;
 mod library_cmd;
 mod measurement_cmd;
 mod measurement_workspace_cmd;
+mod output;
 mod overlay_cmd;
 mod password_input;
 mod quantity_cmd;
@@ -77,6 +79,8 @@ enum Command {
     RecalibrateMeasurements(measurement_workspace_cmd::RecalibrateArgs),
     /// Find a real vector endpoint or straight-segment intersection near a displayed point.
     MeasurementSnap(measurement_workspace_cmd::SnapArgs),
+    /// Place an axis-aligned rectangle using real dimensions and an explicit scale source.
+    DimensionedRectangle(dimensioned_shape_cmd::RectangleArgs),
     /// Add a calibrated measurement annotation in a new PDF copy.
     Measure {
         file: PathBuf,
@@ -114,7 +118,7 @@ enum Command {
         #[arg(long, help=password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
-    /// Export supported calibrated measurement records as JSON; refuse changed/unsupported metadata.
+    /// Export measurement records with current/stale/legacy validity; refuse unsupported metadata.
     Measurements {
         file: PathBuf,
         #[arg(long)]
@@ -1275,7 +1279,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             background,
             threshold,
         } => {
-            return feature_cmd::prepare_signature_image(file, out, background, *threshold);
+            return feature_cmd::prepare_signature_image(
+                file, out, background, *threshold, overwrite,
+            );
         }
         Command::Inspect { file, password } => {
             return sunipdf_core::inspection::inspect_file(file, password.as_deref())
@@ -1401,7 +1407,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 multi_select,
                 editable,
             )?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({"out":out,"page":page,"name":name,"kind":kind}))
         }
         Command::Ocr {
@@ -1425,9 +1431,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 |_, _| {},
             )?;
             if report.recognized_pages == 0 {
-                sunipdf_core::write_atomic(&out, &std::fs::read(&file)?)?;
+                output::write(&out, &std::fs::read(&file)?, overwrite)?;
             } else {
-                doc.save_as(&out)?;
+                output::save(&doc, &out, overwrite)?;
             }
             Ok(
                 serde_json::json!({"out":out,"recognized_pages":report.recognized_pages,"skipped_pages":report.skipped_pages,"words":report.words}),
@@ -1454,7 +1460,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             Ok(serde_json::Value::Null)
         }
         Command::Merge { inputs, out } => {
-            let pages = engine.merge(&inputs, &out)?;
+            let pages = output::staged(&out, overwrite, |path| engine.merge(&inputs, path))?;
             Ok(serde_json::json!({ "out": out, "page_count": pages }))
         }
         Command::Extract {
@@ -1465,7 +1471,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         } => {
             let doc = engine.open(&file, password.as_deref())?;
             let selection = parse_pages(&pages, doc.page_count())?;
-            let n = doc.extract_to(&selection, &out)?;
+            let n = output::staged(&out, overwrite, |path| doc.extract_to(&selection, path))?;
             Ok(serde_json::json!({
                 "out": out, "page_count": n, "encryption_removed": false,
                 "encrypted": doc.is_encrypted()
@@ -1502,7 +1508,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 let current = doc.page_rotation(*p)?;
                 doc.set_page_rotation(*p, current.turned(delta))?;
             }
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "rotated": selection.len() }))
         }
         Command::Stamp {
@@ -1536,7 +1542,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 margin_pt: 28.0,
             };
             let count = doc.stamp_pages(Some(&selection), &stamp)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "stamped": count }))
         }
         Command::HeadersFooters {
@@ -1621,6 +1627,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             measurement_workspace_cmd::recalibrate(&engine, args)
         }
         Command::MeasurementSnap(args) => measurement_workspace_cmd::snap(&engine, args),
+        Command::DimensionedRectangle(args) => dimensioned_shape_cmd::rectangle(&engine, args),
         Command::Measure {
             file,
             kind,
@@ -1673,13 +1680,20 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             };
             let index =
                 doc.add_measurement_annotation(page_number, &measurement, author.as_deref())?;
-            sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
             let export_unavailable = !doc.properties().can_copy;
             let exported = if export_unavailable {
                 serde_json::Value::Null
             } else {
-                measurement.result()?
+                // Creation binds this geometry to the current page in the shared engine.
+                // Do not inventory unrelated imported annotations just to report this result.
+                let mut result = measurement.result()?;
+                result["version"] = 2.into();
+                result["validity"] = "current".into();
+                result["historical_value"] = serde_json::Value::Null;
+                result["historical_label"] = serde_json::Value::Null;
+                result
             };
+            sunipdf_core::write_new_copy(&out, &doc.snapshot()?)?;
             Ok(
                 serde_json::json!({"out":out,"page":page,"index":index,"measurement":exported,"export_unavailable":export_unavailable,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
             )
@@ -1757,7 +1771,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 ..Stamp::page_numbers(&template, position)
             };
             let count = doc.stamp_pages(Some(&selection), &stamp)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "numbered": count }))
         }
         Command::SetPageLabels {
@@ -1789,7 +1803,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 start,
             };
             doc.set_page_labels(&range)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(
                 serde_json::json!({ "out": out, "from": from, "to": last, "count": range.last - range.first + 1 }),
             )
@@ -1801,7 +1815,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         } => {
             let mut doc = engine.open(&file, password.as_deref())?;
             doc.reset_page_labels()?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "count": doc.page_count() }))
         }
         Command::Insert {
@@ -1817,7 +1831,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let selection = parse_pages(&pages, src_count)?;
             let at = if at == 0 { doc.page_count() } else { at - 1 };
             let n = doc.insert_pages_from(&from, None, &selection, at)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "inserted": n, "page_count": doc.page_count() }))
         }
         Command::Move {
@@ -1833,7 +1847,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 to.checked_sub(1).ok_or_else(page_zero)?,
             );
             doc.move_page(from, to)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "moved": from + 1, "to": to + 1 }))
         }
         Command::Properties { file, password } => {
@@ -1971,7 +1985,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                     aes256: !aes128,
                 },
             )?;
-            sunipdf_core::write_atomic(&out, &bytes)?;
+            output::write(&out, &bytes, overwrite)?;
             Ok(
                 serde_json::json!({ "out": out, "cipher": if aes128 { "AES-128" } else { "AES-256" } }),
             )
@@ -1986,7 +2000,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 &input,
                 password.as_deref().ok_or(EngineError::PasswordRequired)?,
             )?;
-            sunipdf_core::write_atomic(&out, &bytes)?;
+            output::write(&out, &bytes, overwrite)?;
             Ok(serde_json::json!({ "out": out }))
         }
         Command::SetMetadata {
@@ -2014,7 +2028,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             };
             let input = std::fs::read(&file)?;
             let bytes = sunipdf_core::security::set_metadata(&input, password.as_deref(), &meta)?;
-            sunipdf_core::write_atomic(&out, &bytes)?;
+            output::write(&out, &bytes, overwrite)?;
             Ok(
                 serde_json::json!({ "out": out, "title": meta.title, "author": meta.author, "subject": meta.subject, "keywords": meta.keywords }),
             )
@@ -2026,7 +2040,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         } => {
             let input = std::fs::read(&file)?;
             let bytes = sunipdf_core::security::strip_metadata(&input, password.as_deref())?;
-            sunipdf_core::write_atomic(&out, &bytes)?;
+            output::write(&out, &bytes, overwrite)?;
             Ok(serde_json::json!({ "out": out }))
         }
         Command::Sanitize {
@@ -2119,7 +2133,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             if remaining > 0 {
                 return Err(EngineError::RedactionIncomplete);
             }
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({
                 "out": out, "marks": r.marks, "pages": r.pages, "objects_removed": r.objects_removed,
                 "annotations_removed": r.annotations_removed, "fields_removed": r.fields_removed,
@@ -2129,7 +2143,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             }))
         }
         Command::Images2pdf { images, out, dpi } => {
-            let pages = engine.images_to_pdf(&images, &out, dpi)?;
+            let pages = output::staged(&out, overwrite, |path| {
+                engine.images_to_pdf(&images, path, dpi)
+            })?;
             Ok(serde_json::json!({ "out": out, "page_count": pages }))
         }
         Command::ExportImages {
@@ -2147,7 +2163,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             out,
             password,
         } => {
-            let r = sunipdf_core::convert::optimize_file(&file, &out, password.as_deref())?;
+            let r = output::staged(&out, overwrite, |path| {
+                sunipdf_core::convert::optimize_file(&file, path, password.as_deref())
+            })?;
             Ok(
                 serde_json::json!({ "out": out, "before": r.before, "after": r.after,
                 "saved_percent": if r.before > 0 { 100.0 * (1.0 - r.after as f64 / r.before as f64) } else { 0.0 } }),
@@ -2276,7 +2294,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let p = page_index(page, doc.page_count())?;
             let indices = parse_indices(&objects)?;
             let new_indices = doc.reorder_objects(p, &indices, sunipdf_core::ZOrder::At(at))?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "page": page, "new_indices": new_indices }))
         }
         Command::AddText {
@@ -2322,7 +2340,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 ..Default::default()
             };
             let added = doc.add_text(p, x, y, &text.replace("\\n", "\n"), &style)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(
                 serde_json::json!({ "out": out, "added": added, "embedded_font": font_file, "font_face_index": font_face_index }),
             )
@@ -2346,7 +2364,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                     ..Default::default()
                 },
             )?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "objects": indices.len(),
                     "opacity": (opacity.clamp(0.0, 1.0) as f64 * 1000.0).round() / 1000.0 }))
         }
@@ -2362,7 +2380,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let p = page_index(page, doc.page_count())?;
             doc.rotate_object(p, object, degrees)?;
             let angle = doc.object_info(p, object)?.angle_deg;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "angle": angle }))
         }
         Command::RotateObjects {
@@ -2377,7 +2395,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let p = page_index(page, doc.page_count())?;
             let indices = parse_indices(&objects)?;
             doc.rotate_objects(p, &indices, degrees)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({"out":out,"objects":indices.len(),"degrees":degrees}))
         }
         Command::ResizeObjects {
@@ -2393,7 +2411,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let p = page_index(page, doc.page_count())?;
             let indices = parse_indices(&objects)?;
             doc.resize_objects(p, &indices, bounds)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(
                 serde_json::json!({"out":out,"objects":indices.len(),"bounds":[bounds.left,bounds.bottom,bounds.right,bounds.top]}),
             )
@@ -2419,7 +2437,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             };
             let to = page_index(to_page, dest.page_count())?;
             let pasted = dest.paste_objects(to, &clip, dx, dy)?;
-            dest.save_as(&out)?;
+            output::save(&dest, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "copied": clip.count, "pasted_index": pasted }))
         }
         Command::ReplaceImage {
@@ -2434,7 +2452,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let p = page_index(page, doc.page_count())?;
             doc.replace_image(p, object, &image)?;
             let b = doc.object_info(p, object)?.bounds;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "bounds": [b.left, b.bottom, b.right, b.top] }))
         }
         Command::AddImage {
@@ -2476,7 +2494,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                     &std::sync::atomic::AtomicBool::new(false),
                     |_, _| {},
                 )?;
-                doc.save_as(&out)?;
+                output::save(&doc, &out, overwrite)?;
                 return Ok(serde_json::json!({
                     "out": out,
                     "pages": selection.iter().map(|p| p + 1).collect::<Vec<_>>(),
@@ -2490,7 +2508,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 }));
             }
             doc.add_image_data(p, &image::DynamicImage::ImageRgba8(img), x, y, width)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({
                 "out": out,
                 "page": page,
@@ -2531,7 +2549,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                     doc.crop_page(p, margins)?;
                 }
             }
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({
                 "out": out,
                 "cropped": selection.len(),
@@ -2569,7 +2587,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             for &p in &selection {
                 doc.resize_page(p, width * k, height * k, mode)?;
             }
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "resized": selection.len() }))
         }
         Command::InsertBlank {
@@ -2596,7 +2614,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             };
             let at = if at == 0 { doc.page_count() } else { at - 1 };
             doc.insert_blank_pages(at, count, w, h)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "inserted": count, "page_count": doc.page_count() }))
         }
         Command::Render {
@@ -2625,7 +2643,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 image::ImageFormat::Png,
             )
             .map_err(|e| EngineError::Other(e.to_string()))?;
-            sunipdf_core::write_atomic(&out, &png)?;
+            output::write(&out, &png, overwrite)?;
             Ok(serde_json::json!({
                 "out": out,
                 "width": img.width,
@@ -2663,7 +2681,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let info = doc.form_info()?;
             let extension = out.extension().and_then(|s| s.to_str()).unwrap_or("");
             let bytes = form_data::export_values(&info, extension)?;
-            sunipdf_core::write_atomic(&out, &bytes)?;
+            output::write(&out, &bytes, overwrite)?;
             Ok(
                 serde_json::json!({"out":out,"fields":form_data::values_to_json(&info).as_object().map_or(0, |v| v.len())}),
             )
@@ -2793,7 +2811,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                     )))
                 }
             };
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({
                 "out": out,
                 "page": page,
@@ -2821,7 +2839,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let target =
                 annot_cmd::link_target(goto_page, url, named_destination, view, x, y, zoom)?;
             doc.set_link_target(p, index, &target)?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({
                 "out": out, "page": page, "index": index,
                 "link": annot_cmd::link_json(&target),
@@ -2843,7 +2861,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 doc.delete_annotation(p, index)?;
                 1
             };
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "deleted": deleted }))
         }
         Command::Reply {
@@ -2858,7 +2876,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let mut doc = engine.open(&file, password.as_deref())?;
             let p = page_index(page, doc.page_count())?;
             let reply = doc.add_reply(p, index, &text, author.as_deref())?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "index": reply }))
         }
         Command::ReviewState {
@@ -2875,7 +2893,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let mut doc = engine.open(&file, password.as_deref())?;
             let p = page_index(page, doc.page_count())?;
             doc.set_review_status(p, index, status, author.as_deref())?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "state": status.id() }))
         }
         Command::FillForm {
@@ -2927,7 +2945,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             if flatten {
                 doc.flatten(None)?;
             }
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             let mut unknown = plan.skipped_unknown;
             unknown.extend(report.skipped_unknown);
             let invalid: Vec<serde_json::Value> = plan
@@ -2954,7 +2972,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let selection = unique(parse_pages(&pages, doc.page_count())?);
             let all = pages.trim().eq_ignore_ascii_case("all");
             let n = doc.flatten(if all { None } else { Some(&selection) })?;
-            doc.save_as(&out)?;
+            output::save(&doc, &out, overwrite)?;
             Ok(serde_json::json!({ "out": out, "annotations": n, "pages": selection.len() }))
         }
     }
@@ -2975,6 +2993,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::SetPageCalibration(args) => Some(&args.out),
         Command::RemovePageCalibration(args) => Some(&args.out),
         Command::EditMeasurement(args) => Some(&args.out),
+        Command::DimensionedRectangle(args) => Some(&args.out),
         Command::SetMeasurementViewports(args) => Some(&args.out),
         Command::ClearMeasurementViewports(args) => Some(&args.out),
         Command::RecalibrateMeasurements(args) => args.out.as_deref(),
@@ -3554,6 +3573,90 @@ mod tests {
         assert!(
             matches!(cli.command, Command::ImageStamp { page:1, opacity, image, password:None, .. } if opacity==0.5 && image==std::path::Path::new("chosen image.png"))
         );
+    }
+
+    #[test]
+    fn dimensioned_rectangle_requires_one_scale_and_a_new_output() {
+        let base = [
+            "sunipdf-cli",
+            "dimensioned-rectangle",
+            "source.pdf",
+            "--anchor",
+            "40,80",
+            "--width",
+            "2",
+            "--height",
+            "3",
+            "--out",
+            "new.pdf",
+        ];
+        assert!(parse_cli(base).is_err());
+        for selection in [
+            vec!["--calibration", "40,40 140,40", "--known-distance", "1"],
+            vec![
+                "--calibration",
+                "40,40 140,40",
+                "--known-distance",
+                "100",
+                "--calibration-unit",
+                "cm",
+            ],
+            vec!["--use-page-calibration"],
+            vec!["--region", "detail-a"],
+            vec!["--automatic-scale"],
+        ] {
+            let cli = parse_cli(base.into_iter().chain(selection)).unwrap();
+            assert_eq!(
+                output_path(&cli.command),
+                Some(std::path::Path::new("new.pdf"))
+            );
+            assert!(matches!(
+                cli.command,
+                Command::DimensionedRectangle(dimensioned_shape_cmd::RectangleArgs {
+                    page: 1,
+                    precision: 2,
+                    ..
+                })
+            ));
+        }
+        for invalid in [
+            vec!["--calibration", "40,40 140,40"],
+            vec!["--known-distance", "1", "--use-page-calibration"],
+            vec!["--known-distance", "1", "--region", "detail-a"],
+            vec!["--known-distance", "1", "--automatic-scale"],
+            vec!["--calibration-unit", "cm", "--use-page-calibration"],
+            vec!["--calibration-unit", "cm", "--region", "detail-a"],
+            vec!["--calibration-unit", "cm", "--automatic-scale"],
+            vec!["--use-page-calibration", "--region", "detail-a"],
+            vec!["--automatic-scale", "--region", "detail-a"],
+            vec!["--automatic-scale", "--use-page-calibration"],
+            vec![
+                "--automatic-scale",
+                "--calibration",
+                "40,40 140,40",
+                "--known-distance",
+                "1",
+            ],
+            vec!["--use-page-calibration", "--precision", "5"],
+        ] {
+            assert!(
+                parse_cli(base.into_iter().chain(invalid.iter().copied())).is_err(),
+                "unexpectedly accepted incompatible rectangle arguments: {invalid:?}"
+            );
+        }
+        assert!(parse_cli([
+            "sunipdf-cli",
+            "dimensioned-rectangle",
+            "source.pdf",
+            "--anchor",
+            "40,80",
+            "--width",
+            "2",
+            "--height",
+            "3",
+            "--use-page-calibration",
+        ])
+        .is_err());
     }
 
     #[test]

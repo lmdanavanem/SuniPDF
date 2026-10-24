@@ -36,6 +36,7 @@ pub struct MeasurementState {
     pub(crate) scales_ui: crate::measurement_scales_ui::ScaleToolsState,
     pub(crate) saved: crate::measurement_saved::SavedMeasurements,
     pub(crate) geometry: Option<crate::measurement_geometry::GeometryDraft>,
+    pub(crate) rectangle: crate::measurement_shapes_ui::RectangleToolsState,
     pub(crate) kind: MeasurementKind,
     pub(crate) unit: MeasurementUnit,
     pub(crate) precision: usize,
@@ -53,6 +54,7 @@ impl Default for MeasurementState {
             scales_ui: Default::default(),
             saved: Default::default(),
             geometry: None,
+            rectangle: Default::default(),
             kind: MeasurementKind::Length,
             unit: MeasurementUnit::Metres,
             precision: 2,
@@ -69,6 +71,7 @@ impl Default for MeasurementState {
 impl MeasurementState {
     pub fn is_active_draft(&self) -> bool {
         self.geometry.is_some()
+            || self.rectangle.draft.is_some()
             || self.scales_ui.region.is_some()
             || !matches!(self.gesture, Gesture::Idle)
     }
@@ -76,6 +79,7 @@ impl MeasurementState {
     pub fn cancel(&mut self) -> bool {
         let active = self.is_active_draft();
         self.geometry = None;
+        self.rectangle.draft = None;
         self.scales_ui.cancel_region();
         self.gesture = Gesture::Idle;
         self.input_distance.clear();
@@ -171,6 +175,7 @@ impl MeasurementState {
             Gesture::Idle => None,
         }
         .or_else(|| self.scales_ui.region_page())
+        .or_else(|| self.rectangle.draft.as_ref().map(|draft| draft.page))
     }
 
     pub(crate) fn points(&self) -> &[Point] {
@@ -468,6 +473,16 @@ impl SuniApp {
             state.cancel();
             state.error = Some("measure.stale");
         }
+        if state.rectangle.draft.as_ref().is_some_and(|draft| {
+            draft.epoch != self.view.epoch
+                || !self
+                    .document
+                    .as_ref()
+                    .is_some_and(|doc| doc.page == draft.page)
+        }) {
+            state.cancel();
+            state.error = Some("measure.stale");
+        }
     }
 
     pub(crate) fn measurement_ready(&self) -> bool {
@@ -541,6 +556,11 @@ impl SuniApp {
             return;
         }
         let point = self.snap_measurement_point(page, point, shift);
+        if self.annotate.measure.rectangle.draft.is_some() {
+            self.make_current(page);
+            self.place_dimensioned_rectangle(page, point);
+            return;
+        }
         if double_click && matches!(self.annotate.measure.gesture, Gesture::Draw { .. }) {
             // The first release already added the final vertex. Mouse jitter on the
             // second release must not create a tiny extra segment or closing edge.
@@ -621,6 +641,7 @@ impl SuniApp {
             .or_else(|| self.document.as_ref().map(|d| d.page));
         let palette = crate::theme::palette(self.settings.dark_theme);
         let mut finish = false;
+        let mut capture_calibration = None;
         ui.scope(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
             ui.spacing_mut().item_spacing.y = 6.0;
@@ -700,7 +721,12 @@ impl SuniApp {
                         .clicked()
                         || (distance.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)))
                     {
-                        state.confirm_calibration();
+                        let calibrated_page = state.page();
+                        if state.confirm_calibration() {
+                            capture_calibration = calibrated_page.and_then(|page| {
+                                state.local_calibration(page).map(|calibration| (page, calibration))
+                            });
+                        }
                     }
                 }
                 if let Some((page, scale)) = page.and_then(|p| state.effective_calibration(p).map(|s| (p, s))) {
@@ -723,11 +749,13 @@ impl SuniApp {
 
             self.measurement_saved_scale_controls(ui);
             self.measurement_advanced_scale_controls(ctx, ui);
+            self.measurement_rectangle_controls(ui);
             ui.add_space(4.0);
             ui.separator();
             ui.label(egui::RichText::new(tr(lang, "measure.panel.drawing")).strong().color(palette.text));
             let state = &mut self.annotate.measure;
             let hint = match &state.gesture {
+                _ if state.rectangle.draft.is_some() => "measure.rectangle.place_hint",
                 _ if state.scales_ui.region.is_some() => "measure.viewport.draw",
                 Gesture::Calibrate { points, .. } if points.len() == 2 => "measure.distance_hint",
                 Gesture::Calibrate { .. } => "measure.calibration_hint",
@@ -809,6 +837,10 @@ impl SuniApp {
                 self.open_quantity_table();
             }
         });
+        if let Some((page, calibration)) = capture_calibration {
+            self.worker
+                .send(crate::worker::Request::CaptureRectangleCalibration { page, calibration });
+        }
     }
 
     pub(crate) fn paint_measurement(
@@ -822,6 +854,10 @@ impl SuniApp {
             return;
         }
         self.paint_measurement_scales(painter, rect, page, page_h_pt);
+        if self.annotate.measure.rectangle.draft.is_some() {
+            self.paint_dimensioned_rectangle(painter, rect, page, page_h_pt);
+            return;
+        }
         if self.annotate.measure.geometry.is_some() {
             self.paint_measurement_geometry(painter, rect, page, page_h_pt);
             return;
@@ -1371,10 +1407,9 @@ mod tests {
                                 continue;
                             }
                             seen.insert(key);
-                            assert_eq!(
-                                colors,
-                                vec![palette.text],
-                                "{language}, dark={dark}, {key}"
+                            assert!(
+                                colors.iter().all(|color| *color == palette.text),
+                                "all visible labels must retain contrast: {language}, dark={dark}, {key}, {colors:?}"
                             );
                             let foreground = luminance(colors[0]);
                             let background = luminance(palette.surface);

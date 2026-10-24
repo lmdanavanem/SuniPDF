@@ -233,7 +233,11 @@ impl Document<'_> {
                 image::ImageFormat::Png,
             )
             .map_err(|e| EngineError::Other(e.to_string()))?;
-            write_atomic(&path, &png)?;
+            if overwrite {
+                write_atomic(&path, &png)?;
+            } else {
+                crate::write_new_copy(&path, &png)?;
+            }
             out.push(path);
         }
         Ok(out)

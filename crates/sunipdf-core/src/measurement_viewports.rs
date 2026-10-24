@@ -1,7 +1,7 @@
 //! Named, content-bound measurement regions with deliberately explicit overlap selection.
 
 use crate::measurement::PageCalibration;
-use crate::page_calibration::{check_user_unit, content_digest};
+use crate::page_calibration::{check_user_unit, qualified_content_digest};
 use crate::security::{self, lopdf_err};
 use crate::{Document, EngineError, PageGeometry, PointRect};
 use lopdf::{Dictionary, Object};
@@ -230,7 +230,7 @@ fn read_stored(page: &Dictionary) -> Result<Option<StoredViewports>, EngineError
     }
     let record: StoredViewports =
         serde_json::from_slice(raw).map_err(|_| invalid("malformed or unsupported record"))?;
-    if record.version != 1
+    if !matches!(record.version, 1 | 2)
         || record.coordinate_system != "pdf-user-space"
         || record.regions.len() > MAX_VIEWPORTS
         || record
@@ -297,13 +297,16 @@ fn decode(
     let Some(record) = read_stored(page)? else {
         return Ok(Vec::new());
     };
+    if record.version == 1 {
+        return Err(invalid("legacy saved regions do not verify page rendering state; explicitly clear supported regions and recalibrate"));
+    }
     check_user_unit(pdf, page)?;
     if record
         .page_bounds
         .iter()
         .zip(array(geo.bbox))
         .any(|(a, b)| (a - b).abs() > 0.001)
-        || record.content_sha256 != content_digest(pdf, page)?
+        || record.content_sha256 != qualified_content_digest(pdf, page)?
     {
         return Err(invalid(
             "page geometry/content changed; explicitly clear supported regions and recalibrate",
@@ -403,10 +406,10 @@ impl Document<'_> {
             }
             check_user_unit(pdf, dict)?;
             let stored = StoredViewports {
-                version: 1,
+                version: 2,
                 coordinate_system: "pdf-user-space".into(),
                 page_bounds: array(geo.bbox),
-                content_sha256: content_digest(pdf, dict)?,
+                content_sha256: qualified_content_digest(pdf, dict)?,
                 regions: replacement
                     .iter()
                     .map(|v| StoredViewport {

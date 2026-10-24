@@ -146,3 +146,70 @@ fn extract_cannot_overwrite_its_input_even_with_explicit_overwrite() {
     );
     assert_eq!(std::fs::read(source).unwrap(), original);
 }
+
+#[test]
+fn snapshot_and_staged_outputs_preserve_protection_and_explicit_overwrite() {
+    use sunipdf_core::{security, Engine, EngineError, Protection, Rotation};
+    let engine = Engine::new().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let input = std::fs::read(fixture()).unwrap();
+    for aes256 in [false, true] {
+        let protected = security::protect(
+            &input,
+            None,
+            &Protection {
+                user_password: "reader".into(),
+                owner_password: "owner".into(),
+                allow_copy: false,
+                aes256,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let source = temp.path().join(format!("source-{aes256}.pdf"));
+        std::fs::write(&source, &protected).unwrap();
+        for operation in ["rotate", "extract"] {
+            let out = temp.path().join(format!("{operation}-{aes256}.pdf"));
+            std::fs::write(&out, b"existing output").unwrap();
+            let command = |overwrite: bool| {
+                let mut command = cli(operation, &source);
+                command.args(["--password", "reader", "--pages", "1", "--out"]);
+                command.arg(&out);
+                if operation == "rotate" {
+                    command.args(["--degrees", "90"]);
+                }
+                if overwrite {
+                    command.arg("--overwrite");
+                }
+                command
+            };
+            let refused = command(false).output().unwrap();
+            assert_eq!(refused.status.code(), Some(6));
+            assert_eq!(
+                serde_json::from_slice::<serde_json::Value>(&refused.stderr).unwrap()["error"],
+                "already_exists"
+            );
+            assert_eq!(std::fs::read(&out).unwrap(), b"existing output");
+            let report = success(command(true).output().unwrap());
+            assert_eq!(report["out"], out.to_string_lossy().as_ref());
+            assert!(matches!(
+                engine.open(&out, None),
+                Err(EngineError::PasswordRequired)
+            ));
+            for password in ["reader", "owner"] {
+                let document = engine.open(&out, Some(password)).unwrap();
+                assert!(document.properties().encrypted);
+                assert!(!document.properties().can_copy);
+                assert!(document.page_text(0).unwrap().contains("SuniPDF page 1"));
+                assert_eq!(
+                    document.page_count(),
+                    if operation == "rotate" { 2 } else { 1 }
+                );
+                if operation == "rotate" {
+                    assert_eq!(document.page_rotation(0).unwrap(), Rotation::R90);
+                }
+            }
+            assert_eq!(std::fs::read(&source).unwrap(), protected);
+        }
+    }
+}

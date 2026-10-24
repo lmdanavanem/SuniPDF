@@ -11,9 +11,17 @@ Create a named region after calibrating its reference inside that region, then p
 
 Region metadata is a bounded `SuniPDFMeasurementViewports` page record in PDF user space, with page bounds and decoded-content digest. It follows page rotation and eligible page operations. Changed content/bounds, unknown records and malformed metadata are refused rather than overwritten. Metadata stripping, sanitization and redaction remove this private page record. These checks are not comprehensive document authentication: confirm the drawing revision yourself.
 
-The content guard includes reachable page resources such as Form XObject streams and matrices. New saved page defaults use version 2; resource-dependent legacy version-1 defaults require explicit recalibration or removal. If a supported region record becomes stale, explicitly clear the supported regions and recreate them. The reset captures the document state and refuses a later change; it does not remove measurements or their independent scales. Unknown/malformed records cannot obtain a reset target.
+The current content guard includes reachable page resources such as Form XObject streams and matrices, page transparency groups and catalog optional-content configuration. New saved page defaults use version 3 and region records use version 2. Older page-default versions 1/2 and region version 1 require explicit recalibration or removal; their historical rendering context cannot be established safely. If a supported region record becomes stale, explicitly clear the supported regions and recreate them. The reset captures the document state and refuses a later change; it does not remove measurements or their independent scales. Unknown/malformed records cannot obtain a reset target.
 
 Content and resource traversal each have a 32 MiB aggregate limit, with an 8 MiB limit per stream. The resource guard also limits traversal to 50,000 nodes and 64 levels, rejects cycles, and resolves at most 64 inherited page parents. Files beyond these bounds require another workflow; a missing guard is never accepted as a valid saved scale.
+
+## Place a rectangle with real dimensions
+
+The [dimensioned rectangle workflow](MEASUREMENTS.md#dimensioned-rectangles) uses the same scale sources and page coordinates. Enter width and height, choose a scale explicitly and place the lower-left anchor. The rectangle remains aligned to the displayed page axes, including rotated or cropped pages. Only its anchor snaps; dimensions stay fixed through the placement preview. Review the candidate before applying it as an ordinary four-vertex area measurement.
+
+Region selection validates the whole rectangle, including boundary crossings and enclosed regions. Automatic selection never chooses an arbitrary overlapping region. A saved page scale is an explicit override; a temporary reference must still match the captured content, geometry, scales and protection. Annotation-only changes may retain the local reference; applying a prepared candidate still requires its complete source state to match. Invalid geometry, an unavailable scale, unsupported page units or insufficient PDF permissions refuse the operation without adding an annotation. Save/reopen and quantity exports use the measurement's own persisted scale and provenance, independent of later page-default changes.
+
+This increment covers axis-aligned rectangles. Subsequent polygon editing is unconstrained; circles, holes, deducted areas, depth and volumes remain separate backlog items. Automated cases are included; qualification of the exact candidate and native UI remains a separate release gate.
 
 ## Recalibrate a selected batch
 
@@ -40,6 +48,7 @@ sunipdf-cli clear-measurement-viewports input.pdf --page 1 --out cleared-regions
 sunipdf-cli recalibrate-measurements input.pdf --requests recalibration.json
 sunipdf-cli recalibrate-measurements input.pdf --requests recalibration.json --out recalibrated.pdf
 sunipdf-cli measurement-snap input.pdf --page 1 --point "210,320" --tolerance 5
+sunipdf-cli dimensioned-rectangle input.pdf --page 1 --anchor "40,80" --width 2 --height 3 --unit m --use-page-calibration --out rectangle.pdf
 ```
 
 The `expected` and `regions` files contain arrays. A region has exactly `id`, `name`, `bounds` (`[left,bottom,right,top]`) and `calibration` (`points`, `known_distance`, `unit`). The reference points use displayed-page coordinates, bottom-left origin. Use the `regions` array from the read command as the exact expected state. Each JSON file is limited to 128 KiB.

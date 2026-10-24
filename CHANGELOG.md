@@ -1,9 +1,32 @@
 # Changelog
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
-`release.yml` builds and publishes the artefacts (Windows portable x64/ARM64 ZIP, x64 MSI, Ubuntu amd64 DEB) on the GitHub Releases page.
+`release.yml` builds draft release assets (Windows portable x64/ARM64 ZIP, x64 MSI, Ubuntu amd64 DEB); publication follows exact-source and package qualification.
 
 ## [Unreleased]
+
+## [0.62.0] - In preparation
+
+Local Windows x64 development qualification passed. Exact-version CI, release packaging,
+download verification and stable publication are pending. The published download remains 0.61.0.
+
+- Create a dimensioned rectangle from a displayed-page anchor and real width/height, using local, page, region or automatic calibration. Preview its four-vertex area, apply with one Undo step, save and reopen; the CLI shares the same checks.
+
+- Add formula subtotals for all filtered rows, grouped by formula, selected group, result unit and precision. Sum the rounded row results with checked arithmetic; retain explicit coverage and error counts without inventing a zero when every row fails.
+- Evaluate formula cells once per table refresh or export and reuse them for summaries. Keep typed signed values numeric in CSV while neutralizing spreadsheet formulas in free text.
+- Read document permissions once when building a quantity table and access each annotation without cloning the entire page annotation array. Keep fresh permission and source checks when exporting or applying edits.
+- Preserve version 1 quantity coverage fields and add separate additive, angular and excluded-row counts.
+- Bind new saved measurements to the current page bounds, user unit, decoded content, reachable resources and initial rendering state. Show legacy or changed-page records as historical; retain their points and values while excluding them from usable quantities, costs and quantity-dependent formulas.
+- Require an explicit current reference and Preview/Apply to recalibrate historical lengths and areas; recreate historical angles. Unit, precision, price or custom-field edits cannot restore page provenance. Strengthen saved page scales and named regions, requiring older references to be recalibrated or removed.
+- Reject measurement edits and batch recalibration atomically if the resulting dimension or quantity cannot use the preserved unit price, including pricing overflow. Compatible unit conversions retain the stored price and its explicit price basis.
+- Enforce the CLI's no-overwrite policy at final output creation, including files created while processing; retain command-specific source protections and explicit replacement rules.
+- Make document restoration transactional, retaining the current document and password when loading or refreshing the replacement fails. Refuse certificate signing of encrypted PDFs, including files automatically unlocked with an empty user password.
+- Retain unsaved tab bytes, Undo/Redo history and recovery identity after a failed tab resume, allowing retry. Reload cancelled register work and invalidate obsolete search results and measurement caches.
+- Synchronize page selection, labels, navigation history and scroll destination when an edit completes during tab suspension, including the suspension-failure path.
+- Close measurement editors after successful Apply and keep drafts available after refusal. Keep strong text, active controls and historical-value warnings readable in light and dark themes; format quantity cells without exposing floating-point noise while retaining raw values in tooltips and exports.
+- Add the published 0.61.0 portable and MSI packages to the upgrade-regression baselines.
+
+[Release notes and qualification scope](docs/RELEASE_0.62.0.md).
 
 ## [0.61.0] - 2026-10-23
 

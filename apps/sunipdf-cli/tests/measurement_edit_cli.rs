@@ -82,7 +82,7 @@ fn records(file: &Path) -> Value {
 
 fn seed(directory: &Path) -> (PathBuf, Value, PathBuf) {
     let file = directory.join("measured.pdf");
-    success(
+    let created = success(
         cli("measure", &fixture())
             .args([
                 "--kind",
@@ -101,10 +101,130 @@ fn seed(directory: &Path) -> (PathBuf, Value, PathBuf) {
             .output()
             .unwrap(),
     );
+    assert_eq!(created["measurement"]["version"], 2);
+    assert_eq!(created["measurement"]["validity"], "current");
+    assert!(created["measurement"]["historical_value"].is_null());
     let record = records(&file)["pages"][0]["measurements"][0].clone();
+    assert_eq!(record["validity"], "current");
     let expected = directory.join("expected.json");
     std::fs::write(&expected, serde_json::to_vec(&record).unwrap()).unwrap();
     (file, record, expected)
+}
+
+fn historical_copy(source: &Path, out: &Path, legacy: bool) {
+    let mut pdf = lopdf::Document::load(source).unwrap();
+    if legacy {
+        let annotation = pdf
+            .objects
+            .values_mut()
+            .filter_map(|object| object.as_dict_mut().ok())
+            .find(|dict| dict.has(b"SuniPDFMeasurement"))
+            .unwrap();
+        let mut metadata: Value = serde_json::from_slice(
+            annotation
+                .get(b"SuniPDFMeasurement")
+                .unwrap()
+                .as_str()
+                .unwrap(),
+        )
+        .unwrap();
+        metadata["version"] = 1.into();
+        metadata.as_object_mut().unwrap().remove("provenance");
+        annotation.set(
+            "SuniPDFMeasurement",
+            lopdf::Object::string_literal(metadata.to_string()),
+        );
+    } else {
+        // Same page box, different drawing: page dimensions alone cannot certify a takeoff.
+        let page = pdf.get_pages()[&1];
+        let content = pdf.add_object(lopdf::Stream::new(
+            lopdf::Dictionary::new(),
+            b"q 0 0 1 RG 30 30 120 60 re S Q".to_vec(),
+        ));
+        pdf.get_dictionary_mut(page)
+            .unwrap()
+            .set("Contents", content);
+    }
+    pdf.save(out).unwrap();
+}
+
+#[test]
+fn historical_measurements_require_real_recalibration_and_reject_forged_current_records() {
+    let directory = tempfile::tempdir().unwrap();
+    let (source, original_record, _) = seed(directory.path());
+    let source_bytes = std::fs::read(&source).unwrap();
+    for (name, legacy) in [("legacy_unverified", true), ("stale", false)] {
+        let historical = directory.path().join(format!("{name}.pdf"));
+        historical_copy(&source, &historical, legacy);
+        let before = std::fs::read(&historical).unwrap();
+        let record = records(&historical)["pages"][0]["measurements"][0].clone();
+        assert_eq!(record["version"], 2);
+        assert_eq!(record["validity"], name);
+        assert!(record["value"].is_null());
+        assert!(record["label"].is_null());
+        assert_eq!(record["historical_value"], 10.0);
+        assert_eq!(record["annotation_id"], original_record["annotation_id"]);
+        let expected = directory.path().join(format!("{name}.json"));
+        std::fs::write(&expected, serde_json::to_vec(&record).unwrap()).unwrap();
+        for (change, arguments) in [
+            ("unit-only", vec!["--unit", "cm"]),
+            ("precision-only", vec!["--precision", "1"]),
+            ("geometry-only", vec!["--points", "40,80 240,80"]),
+        ] {
+            let rejected = directory.path().join(format!("{name}-{change}.pdf"));
+            failure(
+                edit(&historical, &record, &expected, &rejected)
+                    .args(arguments)
+                    .output()
+                    .unwrap(),
+            );
+            assert!(!rejected.exists());
+        }
+        let forged_path = directory.path().join(format!("{name}-forged.json"));
+        let mut forged = record.clone();
+        forged["validity"] = "current".into();
+        forged["value"] = 10.0.into();
+        std::fs::write(&forged_path, serde_json::to_vec(&forged).unwrap()).unwrap();
+        let rejected = directory.path().join(format!("{name}-forged.pdf"));
+        failure(
+            edit(&historical, &record, &forged_path, &rejected)
+                .args(["--calibration", "40,40 140,40", "--known-distance", "20"])
+                .output()
+                .unwrap(),
+        );
+        assert!(!rejected.exists());
+
+        // An old version-1 CLI record remains readable, but is never upgraded by parsing alone.
+        if legacy {
+            let mut old_record = record.clone();
+            old_record["version"] = 1.into();
+            old_record.as_object_mut().unwrap().remove("validity");
+            std::fs::write(&expected, serde_json::to_vec(&old_record).unwrap()).unwrap();
+        }
+        let repaired = directory.path().join(format!("{name}-recalibrated.pdf"));
+        let updated = success(
+            edit(&historical, &record, &expected, &repaired)
+                .args([
+                    "--calibration",
+                    "40,40 140,40",
+                    "--known-distance",
+                    "20",
+                    "--unit",
+                    "m",
+                ])
+                .output()
+                .unwrap(),
+        );
+        assert_eq!(updated["measurement"]["validity"], "current");
+        assert_eq!(updated["measurement"]["value"], 20.0);
+        let reopened = records(&repaired)["pages"][0]["measurements"][0].clone();
+        assert_eq!(reopened["validity"], "current");
+        assert_eq!(reopened["value"], 20.0);
+        assert!(reopened["historical_value"].is_null());
+        assert_eq!(reopened["annotation_id"], record["annotation_id"]);
+        assert_eq!(std::fs::read(&historical).unwrap(), before);
+    }
+    assert_eq!(std::fs::read(source).unwrap(), source_bytes);
 }
 
 fn edit(file: &Path, record: &Value, expected: &Path, out: &Path) -> Command {
@@ -179,6 +299,94 @@ fn editing_preserves_identity_other_records_and_original_with_explicit_physical_
 }
 
 #[test]
+fn priced_measurement_dimension_changes_refuse_without_output_and_unit_conversion_keeps_price() {
+    let directory = tempfile::tempdir().unwrap();
+    let (source, _, _) = seed(directory.path());
+    let source_bytes = std::fs::read(&source).unwrap();
+    let initial = success(cli("quantity-table", &source).output().unwrap());
+    let quantity_expected = directory.path().join("quantity-expected.json");
+    std::fs::write(
+        &quantity_expected,
+        serde_json::to_vec(&initial["rows"][0]).unwrap(),
+    )
+    .unwrap();
+    let fields = serde_json::json!({
+        "unit_price": {
+            "amount": "2.5", "currency": "CHF", "per_unit": "m", "rounding_decimals": 2
+        },
+        "custom": {"Material": {"type": "text", "value": "Cable"}}
+    });
+    let fields_path = directory.path().join("price-fields.json");
+    std::fs::write(&fields_path, serde_json::to_vec(&fields).unwrap()).unwrap();
+    let priced = directory.path().join("priced.pdf");
+    success(
+        cli("set-quantity-fields", &source)
+            .args(["--page", "1", "--expected-record"])
+            .arg(&quantity_expected)
+            .arg("--fields")
+            .arg(&fields_path)
+            .arg("--out")
+            .arg(&priced)
+            .output()
+            .unwrap(),
+    );
+    let priced_bytes = std::fs::read(&priced).unwrap();
+    let record = records(&priced)["pages"][0]["measurements"][0].clone();
+    let expected = directory.path().join("priced-measurement.json");
+    std::fs::write(&expected, serde_json::to_vec(&record).unwrap()).unwrap();
+    let before = success(cli("quantity-table", &priced).output().unwrap());
+    assert_eq!(before["rows"][0]["fields"], fields);
+    assert_eq!(before["rows"][0]["line_total"]["amount"], "25.00");
+
+    for (kind, points) in [
+        ("area", "40,80 140,80 140,180 40,180"),
+        ("angle", "140,80 40,80 40,180"),
+    ] {
+        let rejected = directory.path().join(format!("priced-{kind}-refused.pdf"));
+        let error = failure(
+            edit(&priced, &record, &expected, &rejected)
+                .args(["--kind", kind, "--points", points])
+                .output()
+                .unwrap(),
+        );
+        assert!(
+            error.to_string().contains("quantity dimension"),
+            "{kind} must fail because the retained price is incompatible: {error}"
+        );
+        assert!(!rejected.exists());
+        assert_eq!(std::fs::read(&priced).unwrap(), priced_bytes);
+        let unchanged = success(cli("quantity-table", &priced).output().unwrap());
+        assert_eq!(unchanged["rows"][0]["fields"], before["rows"][0]["fields"]);
+        assert_eq!(
+            unchanged["rows"][0]["line_total"],
+            before["rows"][0]["line_total"]
+        );
+    }
+
+    let converted = directory.path().join("priced-centimetres.pdf");
+    success(
+        edit(&priced, &record, &expected, &converted)
+            .args(["--unit", "cm"])
+            .output()
+            .unwrap(),
+    );
+    let reopened = records(&converted);
+    let measured = &reopened["pages"][0]["measurements"][0];
+    assert_eq!(measured["validity"], "current");
+    assert_eq!(measured["annotation_id"], record["annotation_id"]);
+    assert_eq!(measured["unit"], "cm");
+    assert_eq!(measured["value"], 1000.0);
+    let after = success(cli("quantity-table", &converted).output().unwrap());
+    let row = &after["rows"][0];
+    assert_eq!(row["fields"], before["rows"][0]["fields"]);
+    assert_eq!(row["quantity"]["unit"], "cm");
+    assert_eq!(row["quantity"]["value"], 1000.0);
+    assert_eq!(row["line_total"], before["rows"][0]["line_total"]);
+    assert_eq!(std::fs::read(&priced).unwrap(), priced_bytes);
+    assert_eq!(std::fs::read(&source).unwrap(), source_bytes);
+}
+
+#[test]
 fn every_kind_can_be_edited_and_wrong_expected_identity_geometry_or_page_is_rejected() {
     let directory = tempfile::tempdir().unwrap();
     let (source, record, expected) = seed(directory.path());
@@ -207,7 +415,8 @@ fn every_kind_can_be_edited_and_wrong_expected_identity_geometry_or_page_is_reje
         ("annotation_id", Value::String("another-annotation".into())),
         ("kind", Value::String("polyline".into())),
         ("points", serde_json::json!([[40, 80], [150, 80]])),
-        ("version", Value::from(2)),
+        ("version", Value::from(3)),
+        ("validity", Value::String("stale".into())),
         ("index", Value::from(123)),
         ("annotation_id", Value::Null),
     ] {
