@@ -160,10 +160,14 @@ def gui(evidence, source):
             manager.wait(timeout=10)
 
 
+class ThemeLabelMissing(AssertionError):
+    pass
+
+
 def theme_label_center(tsv, label, image_size):
     """Find one visible label in real OCR output; reject ambiguous/outside targets."""
     groups = {}
-    for row in csv.DictReader(io.StringIO(tsv), delimiter="\t"):
+    for row in csv.DictReader(io.StringIO(tsv), delimiter="\t", quoting=csv.QUOTE_NONE):
         if row.get("level") != "5" or not row.get("text", "").strip():
             continue
         key = tuple(row.get(name) for name in ("page_num", "block_num", "par_num", "line_num"))
@@ -188,6 +192,8 @@ def theme_label_center(tsv, label, image_size):
             if not (0 <= left < right <= image_size[0] and 0 <= top < bottom <= image_size[1]):
                 raise AssertionError("Theme label escaped the captured window")
             found.append(((left + right) // 2, (top + bottom) // 2))
+    if not found:
+        raise ThemeLabelMissing(f"Expected one visible theme label {label!r}, found 0")
     if len(found) != 1:
         raise AssertionError(f"Expected one visible theme label {label!r}, found {len(found)}")
     return found[0]
@@ -246,22 +252,31 @@ def theme_settings(app, window, evidence):
         command(["import", "-window", window, path], timeout=15)
         return path
 
-    def click_label(label, normalize_dark=False):
+    def click_label(label):
         nonlocal target_index
         target_index += 1
         path = capture("native-theme-target")
-        ocr_path = path
-        scale = 2 if normalize_dark else 1
         with Image.open(path) as image:
             image_size = image.size
-            if normalize_dark:
+            for normalize_dark in (False, True):
+                scale = 2 if normalize_dark else 1
                 ocr_path = evidence / f"native-theme-target-{target_index:02d}.pgm"
-                dark_theme_ocr_input(image).save(ocr_path)
-        ocr_size = (image_size[0] * scale, image_size[1] * scale)
-        tsv = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", 11, "tsv"], timeout=30)
-        (evidence / f"native-theme-target-{target_index:02d}.tsv").write_text(tsv + "\n", encoding="utf-8")
-        x, y = theme_label_center(tsv, label, ocr_size)
-        x, y = x // scale, y // scale
+                if normalize_dark:
+                    dark_theme_ocr_input(image).save(ocr_path)
+                else:
+                    ocr_path = path
+                ocr_size = (image_size[0] * scale, image_size[1] * scale)
+                tsv = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", 11, "tsv"], timeout=30)
+                suffix = "-normalized" if normalize_dark else ""
+                (evidence / f"native-theme-target-{target_index:02d}{suffix}.tsv").write_text(tsv + "\n", encoding="utf-8")
+                try:
+                    x, y = theme_label_center(tsv, label, ocr_size)
+                except ThemeLabelMissing:
+                    if normalize_dark:
+                        raise
+                    continue
+                x, y = x // scale, y // scale
+                break
         assert 0 <= x < image_size[0] and 0 <= y < image_size[1], "OCR target escaped native capture"
         command(["xdotool", "mousemove", "--window", window, x, y, "click", "1"])
 
@@ -297,7 +312,7 @@ def theme_settings(app, window, evidence):
     # OCR can attach the adjacent checkbox glyph to "Reduce". Target the unique
     # complete second word of the same clickable label; persistence and rendered
     # reduced-Glass checks below still require the real checkbox to change.
-    click_label("transparency", normalize_dark=True)
+    click_label("transparency")
     require_choice("liquid_glass", "dark", True)
     record("native-theme-glass-dark-reduced", True)
     click_label("System")

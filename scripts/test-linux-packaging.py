@@ -24,6 +24,17 @@ installed = load("test-deb.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_ocr_quotes_are_literal_and_cannot_swallow_later_control_rows(self):
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        quote = '5\t1\t1\t1\t1\t1\t10\t10\t20\t14\t0\t"em\n'
+        target = "5\t1\t2\t1\t1\t1\t74\t30\t90\t14\t95\ttransparency\n"
+        self.assertEqual(installed.theme_label_center(header + quote + target, "transparency", (200, 80)), (119, 37))
+        with self.assertRaises(installed.ThemeLabelMissing):
+            installed.theme_label_center(header + quote, "transparency", (200, 80))
+        with self.assertRaises(AssertionError) as ambiguous:
+            installed.theme_label_center(header + target + target.replace("\t1\t2\t1\t1\t1\t", "\t1\t3\t1\t1\t1\t"), "transparency", (200, 80))
+        self.assertNotIsInstance(ambiguous.exception, installed.ThemeLabelMissing)
+
     def test_checkbox_target_accepts_unique_word_beside_merged_glyph_only(self):
         header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
         first = "5\t1\t1\t1\t1\t1\t20\t30\t50\t14\t88\t\u2610Reduce\n"
