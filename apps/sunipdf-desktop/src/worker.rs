@@ -607,6 +607,11 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    QuantityWorkbook {
+        epoch: u64,
+        generation: u64,
+        job: crate::quantity_workbook_ui::Job,
+    },
     IssueReport {
         epoch: u64,
         generation: u64,
@@ -928,6 +933,16 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    QuantityWorkbook {
+        epoch: u64,
+        generation: u64,
+        result: Result<crate::quantity_workbook_ui::Outcome, EngineError>,
+    },
+    QuantityWorkbookProgress {
+        epoch: u64,
+        generation: u64,
+        progress: sunipdf_core::quantity_workbook::WorkbookProgress,
+    },
     IssueReport {
         epoch: u64,
         generation: u64,
@@ -1292,6 +1307,7 @@ struct State<'a> {
     fonts: Option<Arc<Vec<SystemFont>>>,
     rich_preview: Option<(u64, u64, sunipdf_core::annot_rich::PreparedRichAnnotation)>,
     plan_zones: crate::plan_zones_ui::WorkerCache,
+    quantity_workbook: crate::quantity_workbook_ui::WorkerCache,
     issue_report: crate::issue_report_ui::WorkerCache,
     rectangle_calibration: Option<RectangleCalibrationCapture>,
     redaction_preview: Option<(u64, u64, sunipdf_core::redact::PreparedRedaction)>,
@@ -1395,6 +1411,7 @@ impl State<'_> {
         self.wanted.clear();
         self.rich_preview = None;
         self.plan_zones.clear();
+        self.quantity_workbook.clear();
         self.issue_report.clear();
         self.redaction_preview = None;
         self.search = None;
@@ -1777,6 +1794,7 @@ mod save_point_tests {
             fonts: None,
             rich_preview: None,
             plan_zones: Default::default(),
+            quantity_workbook: Default::default(),
             issue_report: Default::default(),
             rectangle_calibration: None,
             redaction_preview: None,
@@ -2367,6 +2385,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         fonts: None,
         rich_preview: None,
         plan_zones: Default::default(),
+        quantity_workbook: Default::default(),
         issue_report: Default::default(),
         rectangle_calibration: None,
         redaction_preview: None,
@@ -3501,6 +3520,44 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         doc.capture_library_entry(page, &selections, id, name, provenance)
                     }),
             },
+            Request::QuantityWorkbook {
+                epoch,
+                generation,
+                job,
+            } => {
+                let saved_sha = if state.modified() {
+                    None
+                } else {
+                    state
+                        .signature_source
+                        .as_ref()
+                        .map(SignatureSource::sha256_hex)
+                };
+                let result = match state.document.as_ref() {
+                    Some(doc) => state.quantity_workbook.run(
+                        doc,
+                        epoch,
+                        job,
+                        saved_sha.as_deref(),
+                        |progress| {
+                            let _ = tx.send(Response::QuantityWorkbookProgress {
+                                epoch,
+                                generation,
+                                progress,
+                            });
+                        },
+                    ),
+                    None => {
+                        state.quantity_workbook.clear();
+                        Err(EngineError::Other("no document".into()))
+                    }
+                };
+                Response::QuantityWorkbook {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
             Request::IssueReport {
                 epoch,
                 generation,
@@ -3776,6 +3833,205 @@ mod tests {
         revision_outlines_keep_candidates_in_worker_and_revalidate_saved_sources(&worker);
         plan_zones_preview_apply_history_reopen_and_stale_guard(&worker);
         issue_reports_preserve_filters_history_source_and_refuse_stale_publication(&worker);
+        quantity_workbooks_refresh_reviewed_identities_and_keep_history(&worker);
+    }
+
+    fn quantity_workbooks_refresh_reviewed_identities_and_keep_history(worker: &Worker) {
+        use crate::quantity_workbook_ui::{Job, Outcome};
+        use std::sync::atomic::AtomicBool;
+        use sunipdf_core::quantity_workbook::{
+            QuantityWorkbookOptions, WorkbookChangeStatus, WorkbookFormat,
+        };
+        fn run(
+            worker: &Worker,
+            epoch: u64,
+            generation: u64,
+            job: Job,
+        ) -> Result<Outcome, EngineError> {
+            worker.send(Request::QuantityWorkbook {
+                epoch,
+                generation,
+                job,
+            });
+            match next_response(worker) {
+                Response::QuantityWorkbook { result, .. } => result,
+                _ => panic!("workbook response"),
+            }
+        }
+        fn prepare(previous: Option<PathBuf>, include_new: bool) -> Job {
+            Job::Prepare {
+                table: None,
+                options: Box::new(QuantityWorkbookOptions::default()),
+                previous,
+                include_new,
+                cancel: Arc::new(AtomicBool::new(false)),
+            }
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.pdf");
+        let original = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        std::fs::write(&source, &original).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        for x in [40., 80.] {
+            worker.send(Request::Edit(EditOp::AddCountMarker {
+                page: 0,
+                point: (x, 70.),
+                size: 10.,
+                group: "Lighting".into(),
+                author: None,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+        }
+        let epoch = 1200;
+        let token = match run(worker, epoch, 1, prepare(None, false)).unwrap() {
+            Outcome::Preview { token, model, .. } => {
+                assert_eq!(model.quantities["rows"].as_array().unwrap().len(), 2);
+                assert_eq!(model.refreshable_rows, 2);
+                assert!(
+                    model.provenance.saved_file_sha256.is_none(),
+                    "unsaved edits use snapshot identity"
+                );
+                token
+            }
+            _ => panic!("preview"),
+        };
+        let manifest = dir.path().join("baseline.json");
+        let workbook = dir.path().join("quantities.xlsx");
+        for (generation, format, out) in [
+            (2, WorkbookFormat::Manifest, manifest.clone()),
+            (3, WorkbookFormat::Xlsx, workbook.clone()),
+        ] {
+            let outcome = run(
+                worker,
+                epoch,
+                generation,
+                Job::Publish {
+                    token,
+                    format,
+                    out,
+                    cancel: Arc::new(AtomicBool::new(false)),
+                },
+            )
+            .unwrap();
+            assert!(matches!(outcome, Outcome::Published(_)));
+        }
+        let baseline = std::fs::read(&manifest).unwrap();
+        let xlsx = std::fs::read(&workbook).unwrap();
+        assert!(xlsx.starts_with(b"PK") && xlsx.len() > 200);
+        assert!(run(
+            worker,
+            epoch,
+            4,
+            Job::Publish {
+                token,
+                format: WorkbookFormat::Xlsx,
+                out: workbook.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert_eq!(std::fs::read(&workbook).unwrap(), xlsx);
+        let stale = dir.path().join("stale.xlsx");
+        assert!(run(
+            worker,
+            epoch + 1,
+            5,
+            Job::Publish {
+                token,
+                format: WorkbookFormat::Xlsx,
+                out: stale.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert!(!stale.exists());
+        worker.send(Request::Edit(EditOp::AddCountMarker {
+            page: 0,
+            point: (120., 70.),
+            size: 10.,
+            group: "New".into(),
+            author: None,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(run(
+            worker,
+            epoch,
+            6,
+            Job::Publish {
+                token,
+                format: WorkbookFormat::Xlsx,
+                out: stale.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        for (generation, include_new, expected) in [(7, false, 2), (8, true, 3)] {
+            match run(
+                worker,
+                epoch,
+                generation,
+                prepare(Some(manifest.clone()), include_new),
+            )
+            .unwrap()
+            {
+                Outcome::Preview { model, .. } => {
+                    assert!(model.refresh);
+                    assert_eq!(model.quantities["rows"].as_array().unwrap().len(), expected);
+                    assert!(model.changes.iter().any(|change| change.status
+                        == if include_new {
+                            WorkbookChangeStatus::Added
+                        } else {
+                            WorkbookChangeStatus::ExcludedNew
+                        }));
+                }
+                _ => panic!("refresh preview"),
+            }
+        }
+        assert!(matches!(
+            run(
+                worker,
+                epoch,
+                9,
+                Job::Prepare {
+                    table: None,
+                    options: Box::default(),
+                    previous: None,
+                    include_new: false,
+                    cancel: Arc::new(AtomicBool::new(true))
+                }
+            ),
+            Err(EngineError::Cancelled)
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        match run(worker, epoch, 10, prepare(None, false)).unwrap() {
+            Outcome::Preview { model, .. } => assert_eq!(
+                model.quantities["rows"].as_array().unwrap().len(),
+                2,
+                "report operations do not add history steps"
+            ),
+            _ => panic!("after undo"),
+        }
+        assert_eq!(std::fs::read(&source).unwrap(), original);
+        assert_eq!(std::fs::read(&manifest).unwrap(), baseline);
+        assert_eq!(std::fs::read(&workbook).unwrap(), xlsx);
     }
 
     fn issue_reports_preserve_filters_history_source_and_refuse_stale_publication(worker: &Worker) {
@@ -6704,6 +6960,7 @@ mod tests {
                 Response::SearchProgress { .. }
                     | Response::AnnotationRegisterProgress { .. }
                     | Response::IssueReportProgress { .. }
+                    | Response::QuantityWorkbookProgress { .. }
             ) {
                 continue;
             } else {

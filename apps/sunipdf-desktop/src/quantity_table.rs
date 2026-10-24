@@ -66,6 +66,9 @@ impl Default for FormulaDraft {
 }
 
 impl QuantityState {
+    pub(crate) fn workbook_selection(&self) -> (Option<Arc<QuantityTable>>, QuantityOptions) {
+        (self.report.clone(), self.options.clone())
+    }
     pub(crate) fn issue_report_selection(
         &self,
     ) -> (crate::issue_report_ui::Input, QuantityOptions) {
@@ -482,6 +485,7 @@ impl SuniApp {
             (false, false, false, false, None);
         let mut navigate = None;
         let mut issue_report = false;
+        let mut workbook = false;
         let selection = self
             .annotate
             .adv
@@ -964,12 +968,12 @@ impl SuniApp {
                             .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
                     return;
                 }
-                issue_report = ui
-                    .add_enabled(
-                        can_export,
-                        egui::Button::new(tr(lang, "issue_report.create")),
-                    )
-                    .clicked();
+                ui.add_enabled_ui(can_export, |ui| {
+                    ui.menu_button(tr(lang, "quantity_workbook.reports"), |ui| {
+                        issue_report = ui.button(tr(lang, "issue_report.create")).clicked();
+                        workbook = ui.button(tr(lang, "quantity_workbook.create")).clicked();
+                    });
+                });
                 refresh = ui
                     .add_enabled(can_refresh, egui::Button::new(tr(lang, "quantity.refresh")))
                     .clicked();
@@ -1026,6 +1030,10 @@ impl SuniApp {
             state.invalidate();
         }
         self.annotate.quantities = state;
+        if workbook {
+            let (table, options) = self.annotate.quantities.workbook_selection();
+            self.open_quantity_workbook(table, options);
+        }
         if issue_report {
             let (input, options) = self.annotate.quantities.issue_report_selection();
             self.open_issue_report(input, options);

@@ -3,6 +3,7 @@
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Command {
+    QuantityWorkbook,
     IssueReport,
     PlanZones,
     PlanSets,
@@ -199,6 +200,14 @@ macro_rules! cmd {
 
 /// Ordre = ordre d'affichage dans les menus.
 pub const REGISTRY: &[CommandInfo] = &[
+    cmd!(
+        QuantityWorkbook,
+        "tools.quantity_workbook",
+        "quantity_workbook.title",
+        None,
+        true,
+        Tools
+    ),
     cmd!(
         IssueReport,
         "tools.issue_report",
@@ -1400,7 +1409,7 @@ mod tests {
             let _ = info.command.info();
         }
         assert_eq!(Command::in_menu(Menu::File).count(), 15);
-        assert_eq!(Command::in_menu(Menu::Tools).count(), 15);
+        assert_eq!(Command::in_menu(Menu::Tools).count(), 16);
         assert_eq!(Command::in_menu(Menu::Forms).count(), 11);
     }
 
@@ -1417,6 +1426,11 @@ mod tests {
                     assert_eq!(info.id, "tools.issue_report");
                     assert!(info.needs_document);
                     assert_eq!(Command::from_id(info.id), Some(Command::IssueReport));
+                }
+                Command::QuantityWorkbook => {
+                    assert_eq!(info.id, "tools.quantity_workbook");
+                    assert!(info.needs_document);
+                    assert_eq!(Command::from_id(info.id), Some(Command::QuantityWorkbook));
                 }
                 _ => assert!(info.id.starts_with("hub."), "{}", info.id),
             }

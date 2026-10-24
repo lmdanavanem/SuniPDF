@@ -103,6 +103,7 @@ pub struct SuniApp {
     pub review: crate::local_review::ReviewState,
     pub overlay: crate::revision_overlay::OverlayState,
     pub plan_zones: crate::plan_zones_ui::PlanZonesState,
+    pub quantity_workbook: crate::quantity_workbook_ui::QuantityWorkbookState,
     pub issue_report: crate::issue_report_ui::IssueReportState,
     pub revision_outlines: crate::revision_outlines_ui::OutlineState,
     pub revision_transfer: crate::revision_transfer_ui::TransferState,
@@ -201,6 +202,7 @@ impl SuniApp {
             plan_links: Default::default(),
             revision_outlines: Default::default(),
             plan_zones: Default::default(),
+            quantity_workbook: Default::default(),
             issue_report: Default::default(),
             revision_transfer: Default::default(),
             reading_full_screen: false,
@@ -538,6 +540,16 @@ impl SuniApp {
                 Response::RevisionOverlayDone { generation, result } => {
                     self.on_revision_overlay(ctx, generation, result);
                 }
+                Response::QuantityWorkbook {
+                    epoch,
+                    generation,
+                    result,
+                } => self.on_quantity_workbook(epoch, generation, result),
+                Response::QuantityWorkbookProgress {
+                    epoch,
+                    generation,
+                    progress,
+                } => self.on_quantity_workbook_progress(epoch, generation, progress),
                 Response::IssueReport {
                     epoch,
                     generation,
@@ -1437,7 +1449,9 @@ impl SuniApp {
     }
 
     pub(crate) fn navigation_blocked(&self) -> bool {
-        self.issue_report.open
+        self.quantity_workbook.open
+            || self.quantity_workbook.busy()
+            || self.issue_report.open
             || self.issue_report.busy()
             || self.plan_zones.open
             || self.plan_links.open
@@ -1470,7 +1484,8 @@ impl SuniApp {
     }
 
     fn close_must_wait(&self) -> bool {
-        self.issue_report.busy()
+        self.quantity_workbook.busy()
+            || self.issue_report.busy()
             || self.revision_outlines.busy()
             || self.revision_transfer.busy()
             || self.library.blocks_document()
@@ -1797,7 +1812,9 @@ impl SuniApp {
     /// Une boîte de dialogue ou un éditeur de texte est ouvert : les raccourcis sont suspendus et
     /// Échap leur appartient (ni la barre de recherche ni l'outil actif ne le voient).
     pub fn dialog_open(&self) -> bool {
-        self.issue_report.open
+        self.quantity_workbook.open
+            || self.quantity_workbook.busy()
+            || self.issue_report.open
             || self.issue_report.busy()
             || self.plan_zones.open
             || self.plan_links.open
@@ -1878,7 +1895,9 @@ impl SuniApp {
             self.ink_blocks_action();
             return;
         }
-        if (self.issue_report.open
+        if (self.quantity_workbook.open
+            || self.quantity_workbook.busy()
+            || self.issue_report.open
             || self.issue_report.busy()
             || self.review.busy
             || self.plan_zones.open
@@ -1907,6 +1926,9 @@ impl SuniApp {
             self.cancel_after_save();
         }
         if matches!(command, Command::CloseDocument | Command::Quit) && self.close_must_wait() {
+            if self.quantity_workbook.open || self.quantity_workbook.busy() {
+                self.close_quantity_workbook();
+            }
             if self.issue_report.open || self.issue_report.busy() {
                 self.close_issue_report();
             }
@@ -1936,6 +1958,10 @@ impl SuniApp {
                 PendingAction::Quit
             });
             return;
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument) && self.quantity_workbook.open
+        {
+            self.close_quantity_workbook();
         }
         if matches!(command, Command::Quit | Command::CloseDocument) && self.issue_report.open {
             self.close_issue_report();
@@ -1986,6 +2012,7 @@ impl SuniApp {
             Command::PlanLinks => self.open_plan_links(),
             Command::RevisionOutlines => self.open_revision_outlines(),
             Command::PlanZones => self.open_plan_zones(),
+            Command::QuantityWorkbook => self.open_current_quantity_workbook(),
             Command::IssueReport => self.open_current_issue_report(),
             Command::RevisionTransfer => self.open_revision_transfer(),
             Command::CompareFiles => self.open_local_review(true),
@@ -3472,6 +3499,7 @@ impl SuniApp {
         self.revision_outlines_dialog(&ctx);
         self.plan_zones_dialog(&ctx);
         self.issue_report_dialog(&ctx);
+        self.quantity_workbook_dialog(&ctx);
         self.revision_transfer_dialog(&ctx);
         self.plan_sets_dialog(&ctx);
         self.plan_links_dialog(&ctx);
@@ -3588,6 +3616,7 @@ pub(crate) mod tests {
             plan_links: Default::default(),
             revision_outlines: Default::default(),
             plan_zones: Default::default(),
+            quantity_workbook: Default::default(),
             issue_report: Default::default(),
             revision_transfer: Default::default(),
             reading_full_screen: false,

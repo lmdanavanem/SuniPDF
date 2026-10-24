@@ -533,7 +533,8 @@ pub(crate) fn validate_measurement_price(
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum QuantityGrouping {
     #[default]
     None,
@@ -557,7 +558,8 @@ impl QuantityGrouping {
         }
     }
 }
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct QuantityOptions {
     pub filter: RegisterFilter,
     pub sort: RegisterSort,
@@ -687,6 +689,20 @@ impl std::fmt::Debug for QuantityTarget {
 }
 
 impl QuantityTable {
+    pub(crate) fn for_workbook_selection(
+        &self,
+        keys: &std::collections::HashSet<(usize, usize)>,
+    ) -> Self {
+        let mut table = self.clone();
+        table
+            .rows
+            .retain(|row| keys.contains(&(row.register.page, row.register.index)));
+        table
+            .register
+            .rows
+            .retain(|row| keys.contains(&(row.page, row.index)));
+        table
+    }
     pub(crate) fn for_register_report(&self) -> Self {
         let mut table = self.clone();
         table.report_register_selection = true;

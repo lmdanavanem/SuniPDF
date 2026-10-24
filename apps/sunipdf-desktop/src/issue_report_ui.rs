@@ -604,7 +604,7 @@ impl SuniApp {
     }
 }
 
-fn selection_ui(ui: &mut egui::Ui, lang: Language, options: &QuantityOptions) {
+pub(crate) fn selection_ui(ui: &mut egui::Ui, lang: Language, options: &QuantityOptions) {
     ui.collapsing(tr(lang, "issue_report.selection"), |ui| {
         ui.label(format!(
             "{}: {} · {}: {} · {}: {}",

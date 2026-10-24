@@ -16,6 +16,7 @@ mod plan_links_cmd;
 mod plan_set_cmd;
 mod plan_zones_cmd;
 mod quantity_cmd;
+mod quantity_workbook_cmd;
 mod register_cmd;
 mod revision_outlines_cmd;
 mod revision_transfer_cmd;
@@ -53,6 +54,8 @@ struct Cli {
 enum Command {
     /// Prepare, preview and export source-bound issue reports with actual filtered quantities and legends.
     IssueReport(issue_report_cmd::IssueReportArgs),
+    /// Export formula-free quantity spreadsheets and review explicit refreshes by annotation ID.
+    QuantityWorkbook(quantity_workbook_cmd::QuantityWorkbookArgs),
     /// Overlay two explicitly aligned PDF pages as a new PNG or source-bound JSON report.
     RevisionOverlay(overlay_cmd::OverlayArgs),
     /// Inspect, preview and transfer compatible annotations between explicitly paired saved revisions.
@@ -1619,6 +1622,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         Command::RevisionOutlines(args) => revision_outlines_cmd::run(&engine, args),
         Command::PlanZones(args) => plan_zones_cmd::run(&engine, args),
         Command::IssueReport(args) => issue_report_cmd::run(&engine, args),
+        Command::QuantityWorkbook(args) => quantity_workbook_cmd::run(&engine, args),
         Command::QuantityTable(args) => quantity_cmd::table(&engine, args),
         Command::SetQuantityFields(args) => quantity_cmd::set(&engine, args),
         Command::ClearQuantityFields(args) => quantity_cmd::clear(&engine, args),
@@ -3036,6 +3040,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::RevisionOutlines(args) => args.output_path(),
         Command::PlanZones(args) => args.output_path(),
         Command::IssueReport(args) => args.output_path(),
+        Command::QuantityWorkbook(args) => args.output_path(),
         Command::QuantityTable(args) => args.report.out.as_deref(),
         Command::SetQuantityFields(args) => Some(&args.target.out),
         Command::ClearQuantityFields(args) => Some(&args.out),
@@ -3287,6 +3292,7 @@ fn cli_main() -> ExitCode {
                 | Command::RevisionOutlines(..)
                 | Command::PlanZones(..)
                 | Command::IssueReport(..)
+                | Command::QuantityWorkbook(..)
                 | Command::AnnotationRegister(..)
                 | Command::QuantityTable(..)
         );

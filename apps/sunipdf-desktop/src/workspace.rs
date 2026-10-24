@@ -262,6 +262,7 @@ pub static TABLE: [WsInfo; 18] = [
                 C::PlanZones,
                 C::QuantityTable,
                 C::IssueReport,
+                C::QuantityWorkbook,
                 C::EraseInkStrokes,
             ],
             &[C::ToggleComments, C::CopyText],
