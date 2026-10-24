@@ -1,10 +1,24 @@
 # SuniPDF feature matrix
 
-Published release scope: **0.67.0**. The workflows below retain explicit limits.
-[Project status](PROJECT_STATUS.md) distinguishes executed development checks, package evidence
-and the untested native plan workflows.
+Published release scope: **0.69.0**. See [qualification scope](RELEASE_0.69.0.md).
+[Project status](PROJECT_STATUS.md) separates source/package evidence from untested native workflows.
+The historical sections retain the limits and results of their own releases.
 
-## Delivered in 0.67.0
+## Added in 0.69.0
+
+| Area | Implemented behavior and limits |
+|---|---|
+| Selection-bound reports | PDF/CSV/JSON from the current register or quantity selection, preserving filters, row order and calculated values; real paginated PDF preview; new files only |
+| PDF presentation | Quantities, separate currency/precision subtotals and explicit missing/error coverage first; issue groups, actual supported style samples and annotation details; technical provenance/settings in an appendix |
+| Report bounds | 250 PDF pages, 32 MiB per output, four MiB of text and 256 issue/legend groups; unsupported glyphs or complex shaping refused; no PDF/A/PDF/UA claim |
+| Quantity workbooks | Local XLSX snapshots of rows, totals, changes and provenance; exact decimals retained when spreadsheet numbers would lose precision; annotation text does not become formulas or macros |
+| Reviewed refresh | Separate manifest, unique annotation-ID matching, explicit missing/ambiguous/unquantified entries and opt-in new identities; recalculation from the current PDF; no arbitrary XLSX import or automatic synchronization |
+
+Native desktop and native spreadsheet interaction remain untested. AEC-018 and AEC-019 remain
+**In progress**. Windows: 1,083 passed, 15 ignored; Linux: 1,064 passed, 10 ignored. Eight independent package corpora passed 5,027 assertions across 326 commands. [Qualification evidence](qa/RELEASE_0.69.0.json).
+See [reports](ISSUE_REPORTS.md) and [workbooks](QUANTITY_WORKBOOKS.md) for source and permission guards.
+
+## Retained from 0.67.0
 
 | Area | Implemented behavior and limits |
 |---|---|
@@ -87,6 +101,8 @@ See [project status](PROJECT_STATUS.md) and
 | Counts and register | Persistent count markers, groups, review status, discipline and custom text fields; built-in or lexical custom-field sorting, missing values last, navigation and guarded CSV/JSON export |
 | Quantity tables | Actual count/measurement quantities, typed fields, numeric/date/text/choice sorting and explicit prices; quantity totals retain their units, monetary totals keep currencies and rounding groups separate; missing values stay distinct from zero |
 | Report formulas | Up to eight tab-local arithmetic columns using decimal constants, numeric fields and an exact-unit quantity; six-decimal checked arithmetic, explicit cell errors and JSON configuration reuse; subtotals separate groups, units and precision; no PDF field mutation |
+| Issue reports | Real paginated PDF preview and shared PDF/CSV/JSON selection, totals, coverage, issue groups and supported style legends; technical appendix; new output files, source guards and explicit font limits |
+| Quantity workbooks | XLSX snapshots and manifest-based reviewed refresh; exact values, separate units/currencies and explicit unresolved records; no workbook overwrite, macros, arbitrary XLSX import or silent synchronization |
 | Table workspace | Docked or floating tables with saved placement/height, row-to-annotation navigation and cached filtering/sorting/totals |
 | Annotation library | Local templates and flat groups of up to 16 primitives; capture supported saved native shapes/lines/polygons/clouds with declared provenance and exact appearance checks; placement preview, fresh identities, one Undo and bounded JSON import/export; arbitrary/text/image/stamp capture, measurements and review threads excluded |
 | Comparison | Local text/geometry comparison and two-page magenta/cyan overlays; manual or two-point alignment and new PNG/JSON exports; automatic registration remains open; reviewed revision outlines are part of the 0.67 release, with native workflow interaction still unqualified |
