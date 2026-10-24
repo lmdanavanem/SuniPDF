@@ -40,10 +40,10 @@ const SETTLE_SECS: f64 = 0.15;
 
 /// Alternate pane requests within the existing total bound, without duplicate tiles.
 fn merge_reader_jobs(panes: &[Vec<TileJob>; 2]) -> Vec<TileJob> {
-    let mut jobs = Vec::with_capacity(MAX_WANTED);
+    let mut jobs: Vec<TileJob> = Vec::with_capacity(MAX_WANTED);
     for index in 0..panes[0].len().max(panes[1].len()) {
         for pane in panes {
-            if let Some(job) = pane.get(index).filter(|job| !jobs.contains(job)) {
+            if let Some(job) = pane.get(index).filter(|job| !jobs.contains(*job)) {
                 jobs.push(*job);
                 if jobs.len() == MAX_WANTED {
                     return jobs;
@@ -1365,7 +1365,7 @@ impl SuniApp {
                 egui::Id::unique(("page-interact", pane, s.page)),
                 egui::Sense::hover(),
             )
-            .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Image, false, label));
+            .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Image, false, &label));
             return None;
         }
         let h = s.size_pt.height_pt;

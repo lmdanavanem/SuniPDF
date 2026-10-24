@@ -82,7 +82,8 @@ impl SuniApp {
         if self.document.is_none() || self.ink_blocks_action() || !self.reading_navigation_ready() {
             return false;
         }
-        if self.opening.is_some()
+        if self.dialog_open()
+            || self.opening.is_some()
             || self.tabs.suspending.is_some()
             || self.tabs.resuming.is_some()
             || self.document_transition_pending()
@@ -259,7 +260,10 @@ impl SuniApp {
         let mut switched = false;
         let activate_at = ctx.input(|input| {
             (input.pointer.any_pressed()
-                || input.raw_scroll_delta != egui::Vec2::ZERO
+                || input
+                    .events
+                    .iter()
+                    .any(|event| matches!(event, egui::Event::MouseWheel { .. }))
                 || (input.zoom_delta() - 1.0).abs() > 1e-4)
                 .then(|| input.pointer.hover_pos())
                 .flatten()
@@ -446,6 +450,10 @@ mod tests {
     #[test]
     fn pane_switch_preserves_pending_forms_and_active_drag() {
         let mut app = split_app();
+        app.annotate.note_prompt = Some((0, 1.0, 2.0, "Unfinished note".into()));
+        assert!(!app.activate_reader_pane(1));
+        assert!(app.annotate.note_prompt.is_some());
+        app.annotate.note_prompt = None;
         app.forms.pending_clear = true;
         assert!(!app.activate_reader_pane(1));
         assert!(app.forms.pending_clear);
