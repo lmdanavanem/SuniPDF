@@ -1,0 +1,944 @@
+{
+  "schema": 1,
+  "version": "0.76.0",
+  "source": "343103c38569345423b51d40406be19e17ee7914",
+  "tag": "v0.76.0",
+  "release_id": 423044294,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.76.0",
+  "author": "github-actions[bot]",
+  "published_at": "2026-10-24T23:37:40Z",
+  "verified_at": "2026-10-24T23:38:01.275235+00:00",
+  "stable_latest_verified": true,
+  "assets": [
+    {
+      "name": "SuniPDF-0.76.0-linux-amd64.deb",
+      "id": 673588775,
+      "size": 22656880,
+      "sha256": "f3c2820007311fda25bab5fe67062fd9916a58ea24434369023366899ebdf18e",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-linux-amd64.deb",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.76.0-linux-amd64.deb.sha256",
+      "id": 673588778,
+      "size": 97,
+      "sha256": "f280821060de9c5cc1f2a030dfd0d4d7aa905aed9539c49f7a844ca66a8a18d3",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-linux-amd64.deb.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.76.0-macos-arm64.dmg",
+      "id": 673588773,
+      "size": 31905323,
+      "sha256": "f4eb88611b52b9db59eb517de07c6a779d7b3e3861fd08a4adb9d6f662d963dc",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-macos-arm64.dmg",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.76.0-macos-arm64.dmg.sha256",
+      "id": 673588770,
+      "size": 97,
+      "sha256": "513e70282ed814b49fbdb48bad3b91402c0257ab3441f146c7d2ede07183d780",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-macos-arm64.dmg.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.76.0-win-arm64-portable.zip",
+      "id": 673588776,
+      "size": 34469725,
+      "sha256": "be45c326a63c4978300de679e86048e7711d42836da5206618b2166256d31146",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-win-arm64-portable.zip",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.76.0-win-arm64-portable.zip.sha256",
+      "id": 673588769,
+      "size": 105,
+      "sha256": "1d2b78a5800c830ec856864e398f04278528bcd0f23b14f12a4fb43f33d8f352",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-win-arm64-portable.zip.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.76.0-win-x64-portable.zip",
+      "id": 673588779,
+      "size": 36478926,
+      "sha256": "d8a981186cf6b206ddd6aac891388f5f76e01d275d81f8adf3b0b0888242639a",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-win-x64-portable.zip",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.76.0-win-x64-portable.zip.sha256",
+      "id": 673588771,
+      "size": 103,
+      "sha256": "e90358ea34ec670f6a4085e91816c462fd90149dbaaa200ca7c028f547e7a250",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-win-x64-portable.zip.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.76.0-win-x64.msi",
+      "id": 673588772,
+      "size": 34295808,
+      "sha256": "e2a77004c547718ab1901ef2800cd20d1e24e556a8ebd36741eea97cfad9de1b",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-win-x64.msi",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.76.0-win-x64.msi.sha256",
+      "id": 673588777,
+      "size": 94,
+      "sha256": "0e27dd68f45b624049cdfc02377cf833fa305cb5b3cd479aadc0459dac55a2ee",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-win-x64.msi.sha256",
+      "public_unauthenticated": true
+    }
+  ],
+  "qualification": {
+    "release_run": 40140749094,
+    "release_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40140749094",
+    "conclusion": "success",
+    "evidence_check_sha256": "46497e08eb6e12237293d6560c668304e8967b7e4eddc1a08f9c46b174449ed7",
+    "jobs": [
+      {
+        "id": 121011797570,
+        "name": "build (arm64)",
+        "conclusion": "success"
+      },
+      {
+        "id": 121011797704,
+        "name": "linux / Classify and validate documentation",
+        "conclusion": "success"
+      },
+      {
+        "id": 121011797769,
+        "name": "build (x64)",
+        "conclusion": "success"
+      },
+      {
+        "id": 121011797950,
+        "name": "macos / Classify documentation change",
+        "conclusion": "success"
+      },
+      {
+        "id": 121011823321,
+        "name": "macos / Build macOS arm64",
+        "conclusion": "success"
+      },
+      {
+        "id": 121011832247,
+        "name": "linux / Build Ubuntu 22.04 amd64",
+        "conclusion": "success"
+      },
+      {
+        "id": 121013721027,
+        "name": "macos / Install and run on macOS",
+        "conclusion": "success"
+      },
+      {
+        "id": 121014220488,
+        "name": "linux / Install and run on Ubuntu 24.04",
+        "conclusion": "success"
+      },
+      {
+        "id": 121014220533,
+        "name": "linux / PDF conformance and independent reader",
+        "conclusion": "success"
+      },
+      {
+        "id": 121014220567,
+        "name": "linux / Install and run on Ubuntu 22.04",
+        "conclusion": "success"
+      },
+      {
+        "id": 121019806613,
+        "name": "publish",
+        "conclusion": "success"
+      }
+    ],
+    "portable_upgrade_baselines": 53,
+    "portable_guard_cases": 4,
+    "portable_report_sha256": "e99bc6a0f60b17894aec6ca70f9a68907684de788efa5e484d78067ec0453ed9",
+    "msi_upgrade_baselines": 51,
+    "msi_baseline_versions": [
+      "0.8.0",
+      "0.9.1",
+      "0.10.0",
+      "0.11.0",
+      "0.12.0",
+      "0.13.0",
+      "0.14.0",
+      "0.15.0",
+      "0.16.0",
+      "0.17.0",
+      "0.18.0",
+      "0.19.0",
+      "0.20.0",
+      "0.21.0",
+      "0.21.1",
+      "0.30.0",
+      "0.30.1",
+      "0.31.0",
+      "0.32.0",
+      "0.33.0",
+      "0.34.0",
+      "0.35.0",
+      "0.36.0",
+      "0.37.0",
+      "0.38.0",
+      "0.39.0",
+      "0.40.0",
+      "0.41.0",
+      "0.42.0",
+      "0.43.0",
+      "0.44.0",
+      "0.45.0",
+      "0.46.0",
+      "0.47.0",
+      "0.48.0",
+      "0.49.0",
+      "0.50.0",
+      "0.51.0",
+      "0.60.0",
+      "0.61.0",
+      "0.62.0",
+      "0.63.0",
+      "0.64.0",
+      "0.67.0",
+      "0.69.0",
+      "0.70.0",
+      "0.71.0",
+      "0.72.0",
+      "0.73.0",
+      "0.74.0",
+      "0.75.0"
+    ],
+    "msi_source": "Successful test-msi-upgrade.ps1 completion lines in the tagged Windows job log",
+    "msi_log_sha256": "e4a83ad20493429e775cd79a5607ce26a2879f459c0f9a93c60f266fe4d5fff5"
+  },
+  "publication": {
+    "method": "qualified workflow artifacts, owner-authenticated publication",
+    "public_downloads_sha256": "cc0b040932fe7ac370d7bb69509d19a07265192c5064799226481ba1472ceeae",
+    "artifacts": [
+      {
+        "id": 12579407645,
+        "name": "sunipdf-arm64",
+        "size": 34288913,
+        "sha256": "60c381f8609a375c4effe08de5748863a691eaf41f5b225a3feb03a2d42df392",
+        "source": "343103c38569345423b51d40406be19e17ee7914"
+      },
+      {
+        "id": 12579366059,
+        "name": "sunipdf-macos-arm64",
+        "size": 31170132,
+        "sha256": "e58f5c8aa640c88a0852afd7d61982a4640f04013c11711fed25349eded525a2",
+        "source": "343103c38569345423b51d40406be19e17ee7914"
+      },
+      {
+        "id": 12578929234,
+        "name": "sunipdf-x64",
+        "size": 70364141,
+        "sha256": "1e9171ce4cbc88c862be2cfcc4c03c683abb76f122b26e97a96ed22d9ebab179",
+        "source": "343103c38569345423b51d40406be19e17ee7914"
+      },
+      {
+        "id": 12578249125,
+        "name": "sunipdf-linux-amd64",
+        "size": 22663962,
+        "sha256": "658b70d2f3c385ea30c7a0d54d8ef19da7d45302f9cbe82a3149b3498400d3b9",
+        "source": "343103c38569345423b51d40406be19e17ee7914"
+      }
+    ]
+  },
+  "windows_reader": {
+    "status": "passed",
+    "report_sha256": "00415d3871b422d0717e31a5c6e880054351ea074bd9d9d6d05a2f8f81d1b0d3",
+    "scene_count": 13,
+    "split_scene_count": 3,
+    "fixture_unchanged": true,
+    "rendering": "Actual application UI and PDFium tiles, offscreen DX12 WARP",
+    "scenes": [
+      {
+        "name": "reader-en-dark-measurements",
+        "png": "reader-en-dark-measurements.png",
+        "sha256": "5b0e4d4a3a8747505d290d5126e1447394cb5c1dafc3dad831fa8bb39aa11bd9",
+        "split_reader": null
+      },
+      {
+        "name": "reader-fr-light-720-zoom149",
+        "png": "reader-fr-light-720-zoom149.png",
+        "sha256": "6e8448d88f92961f6f0346a9cd73d8b3677618af399f43ff53f601800b8bb764",
+        "split_reader": null
+      },
+      {
+        "name": "reader-en-light-pages",
+        "png": "reader-en-light-pages.png",
+        "sha256": "dc2deb191a19f1fe928c12ecc1334b099319f01f223bf9d218f4d322fbdea229",
+        "split_reader": null
+      },
+      {
+        "name": "reader-en-glass-light-pages",
+        "png": "reader-en-glass-light-pages.png",
+        "sha256": "2eba134b757d08179733b664433bd95bcbb8f15628d191404a30664ab0f72309",
+        "split_reader": null
+      },
+      {
+        "name": "reader-en-glass-dark-measurements",
+        "png": "reader-en-glass-dark-measurements.png",
+        "sha256": "5e0bd103c08500105d9eeec544ee0e42106caece6b3929ddfe79e7f99c57589d",
+        "split_reader": null
+      },
+      {
+        "name": "settings-en-glass-light",
+        "png": "settings-en-glass-light.png",
+        "sha256": "7a12426b7f5b5668adc2ba76737612c73c5256ae7eafb4a81e6d8ba2c21fbfdf",
+        "split_reader": null
+      },
+      {
+        "name": "settings-fr-glass-dark-720-reduced",
+        "png": "settings-fr-glass-dark-720-reduced.png",
+        "sha256": "b560dda6f2ff0dd1a12c96d22021871f86865c11d1d5c8008b3063bf0927272e",
+        "split_reader": null
+      },
+      {
+        "name": "reader-en-dark-split-independent",
+        "png": "reader-en-dark-split-independent.png",
+        "sha256": "d6d4fd76cab53180ca957a5158ace6788b075c7e660f4e1c9533efeeb69e5190",
+        "split_reader": {
+          "activePane": 0,
+          "bothPanesPaintExpectedPdf": true,
+          "combinedRenderQueueVerified": true,
+          "configurationMethod": "Application commands and reader state; offscreen rendering, no native pointer input",
+          "controlsVisibleAndAccessibleVerified": true,
+          "enabled": true,
+          "independentBeforeSynchronization": true,
+          "paneZoomsVerified": true,
+          "panes": [
+            {
+              "bounds": [
+                0.0,
+                137.0,
+                613.0,
+                700.0
+              ],
+              "effectiveZoom": 0.5,
+              "fixtureInk": "blue",
+              "fixtureInkPixels": 13651,
+              "index": 0,
+              "pageIndex": 0,
+              "visiblePdfRegions": [
+                [
+                  103.0,
+                  172.0,
+                  511.0,
+                  700.0
+                ]
+              ]
+            },
+            {
+              "bounds": [
+                619.0,
+                137.0,
+                1232.0,
+                700.0
+              ],
+              "effectiveZoom": 0.4000000059604645,
+              "fixtureInk": "red",
+              "fixtureInkPixels": 8562,
+              "index": 1,
+              "pageIndex": 1,
+              "visiblePdfRegions": [
+                [
+                  714.0,
+                  273.0,
+                  1136.39990234375,
+                  599.4000244140625
+                ]
+              ]
+            }
+          ],
+          "settleState": {
+            "activePane": 0,
+            "documentEpoch": 0,
+            "enabled": true,
+            "panes": [
+              {
+                "effectiveZoom": 0.5,
+                "offset": [
+                  0.0,
+                  16.0
+                ],
+                "pageIndex": 0,
+                "rendering": false
+              },
+              {
+                "effectiveZoom": 0.4000000059604645,
+                "offset": [
+                  0.0,
+                  0.0
+                ],
+                "pageIndex": 1,
+                "rendering": false
+              }
+            ],
+            "synchronized": false
+          },
+          "sharedDocumentEpochVerified": true,
+          "synchronized": false
+        }
+      },
+      {
+        "name": "reader-fr-light-720-split-independent",
+        "png": "reader-fr-light-720-split-independent.png",
+        "sha256": "4ca13b104eccaf936415404693bc26dcfc808071860aed8d95e78e701d31dba0",
+        "split_reader": {
+          "activePane": 0,
+          "bothPanesPaintExpectedPdf": true,
+          "combinedRenderQueueVerified": true,
+          "configurationMethod": "Application commands and reader state; offscreen rendering, no native pointer input",
+          "controlsVisibleAndAccessibleVerified": true,
+          "enabled": true,
+          "independentBeforeSynchronization": true,
+          "paneZoomsVerified": true,
+          "panes": [
+            {
+              "bounds": [
+                0.0,
+                137.0,
+                333.0,
+                560.0
+              ],
+              "effectiveZoom": 0.30000001192092896,
+              "fixtureInk": "blue",
+              "fixtureInkPixels": 5009,
+              "index": 0,
+              "pageIndex": 0,
+              "visiblePdfRegions": [
+                [
+                  44.0,
+                  208.0,
+                  288.800048828125,
+                  524.800048828125
+                ]
+              ]
+            },
+            {
+              "bounds": [
+                339.0,
+                137.0,
+                672.0,
+                560.0
+              ],
+              "effectiveZoom": 0.25,
+              "fixtureInk": "red",
+              "fixtureInkPixels": 3400,
+              "index": 1,
+              "pageIndex": 1,
+              "visiblePdfRegions": [
+                [
+                  374.0,
+                  264.0,
+                  638.0,
+                  468.0
+                ]
+              ]
+            }
+          ],
+          "settleState": {
+            "activePane": 0,
+            "documentEpoch": 0,
+            "enabled": true,
+            "panes": [
+              {
+                "effectiveZoom": 0.30000001192092896,
+                "offset": [
+                  0.0,
+                  0.0
+                ],
+                "pageIndex": 0,
+                "rendering": false
+              },
+              {
+                "effectiveZoom": 0.25,
+                "offset": [
+                  0.0,
+                  0.0
+                ],
+                "pageIndex": 1,
+                "rendering": false
+              }
+            ],
+            "synchronized": false
+          },
+          "sharedDocumentEpochVerified": true,
+          "synchronized": false
+        }
+      },
+      {
+        "name": "reader-en-glass-light-split-synchronized",
+        "png": "reader-en-glass-light-split-synchronized.png",
+        "sha256": "d51031afd9c9cf8c4efda63030e7d4e93d71a2167f9e112bc841c4d47b5f2801",
+        "split_reader": {
+          "activePane": 0,
+          "bothPanesPaintExpectedPdf": true,
+          "combinedRenderQueueVerified": true,
+          "configurationMethod": "Application commands and reader state; offscreen rendering, no native pointer input",
+          "controlsVisibleAndAccessibleVerified": true,
+          "enabled": true,
+          "independentBeforeSynchronization": true,
+          "paneZoomsVerified": true,
+          "panes": [
+            {
+              "bounds": [
+                0.0,
+                139.0,
+                613.0,
+                696.0
+              ],
+              "effectiveZoom": 0.4000000059604645,
+              "fixtureInk": "blue",
+              "fixtureInkPixels": 8691,
+              "index": 0,
+              "pageIndex": 0,
+              "visiblePdfRegions": [
+                [
+                  143.0,
+                  224.0,
+                  469.4000244140625,
+                  646.4000244140625
+                ]
+              ]
+            },
+            {
+              "bounds": [
+                619.0,
+                139.0,
+                1232.0,
+                696.0
+              ],
+              "effectiveZoom": 0.4000000059604645,
+              "fixtureInk": "blue",
+              "fixtureInkPixels": 8691,
+              "index": 1,
+              "pageIndex": 0,
+              "visiblePdfRegions": [
+                [
+                  762.0,
+                  224.0,
+                  1088.39990234375,
+                  646.4000244140625
+                ]
+              ]
+            }
+          ],
+          "settleState": {
+            "activePane": 0,
+            "documentEpoch": 0,
+            "enabled": true,
+            "panes": [
+              {
+                "effectiveZoom": 0.4000000059604645,
+                "offset": [
+                  0.0,
+                  0.0
+                ],
+                "pageIndex": 0,
+                "rendering": false
+              },
+              {
+                "effectiveZoom": 0.4000000059604645,
+                "offset": [
+                  0.0,
+                  0.0
+                ],
+                "pageIndex": 0,
+                "rendering": false
+              }
+            ],
+            "synchronized": true
+          },
+          "sharedDocumentEpochVerified": true,
+          "synchronized": true
+        }
+      },
+      {
+        "name": "reader-en-dark-docked-register",
+        "png": "reader-en-dark-docked-register.png",
+        "sha256": "cff9d1ea46fa865c108e36ea6a769cf2fac3c9941a9b6e8494cea8f1ef9c6ce9",
+        "split_reader": null
+      },
+      {
+        "name": "reader-fr-light-720-docked-quantities",
+        "png": "reader-fr-light-720-docked-quantities.png",
+        "sha256": "aee043283d8d8713fcb0ef1b59750ab63efab0b5545066b798ed7a837c58c9ba",
+        "split_reader": null
+      },
+      {
+        "name": "reader-en-glass-dark-docked-register",
+        "png": "reader-en-glass-dark-docked-register.png",
+        "sha256": "564c3a1404ebc55115fde6dcd2cb0d6d1a94ad0de591ced7e4e6297299b23997",
+        "split_reader": null
+      }
+    ]
+  },
+  "macos": {
+    "status": "passed",
+    "version": "15.7.9",
+    "architecture": "arm64",
+    "deployment_minimum": "12.0 (binary validation; no execution on macOS 12)",
+    "cases": [
+      "published-checksum-matches-image",
+      "ad-hoc-signature-seals-the-bundle-and-image-offers-applications",
+      "license-inventory-matches-installed-resources",
+      "apple-silicon-deployment-floor-and-library-closure",
+      "packaged-cli-loads-bundled-pdfium-and-renders-fixture",
+      "packaged-cli-edits-saves-and-reopens-a-new-copy",
+      "desktop-app-starts-with-a-pdf"
+    ],
+    "case_count": 7,
+    "runtime_evidence_sha256": "edcac47f364f152759d2b5020f58095828392b49e13127c0caa98c2ba41e8d74",
+    "dmg_sha256": "f4eb88611b52b9db59eb517de07c6a779d7b3e3861fd08a4adb9d6f662d963dc",
+    "notarized": false,
+    "finder_interaction_tested": false,
+    "clipboard_interaction_tested": false,
+    "physical_mac_tested": false,
+    "desktop_capture_review": {
+      "platform": "macOS",
+      "file": "macos-validation/desktop.png",
+      "method": "direct image inspection",
+      "sha256": "12de10f7102e740524dd89fa4ce83bdd315b7fe36893c3116b7724a5a958c1f1",
+      "width": 1024,
+      "height": 768,
+      "observations": "Installed application displays PDF text and blue fixture ink, document tab, tool navigation and readable native window controls."
+    }
+  },
+  "ubuntu": [
+    {
+      "distro": "Ubuntu 22.04",
+      "status": "passed",
+      "runtime_cases": [
+        "installed-cli-opens-and-extracts-text",
+        "installed-cli-loads-private-pdfium-and-renders-fixture",
+        "save-reopen-reordered-pages-and-independent-qpdf",
+        "offline-ocr-eng-saved-searchable-layer",
+        "offline-ocr-fra-saved-searchable-layer",
+        "native-reader-independent-pages",
+        "native-reader-synchronize-pages",
+        "native-reader-close-split-keeps-document",
+        "native-theme-classic-and-glass-live-switch",
+        "native-theme-light-dark-and-system-selection",
+        "native-theme-reduced-transparency-and-modal-escape",
+        "native-window-minimize-maximize-restore-drag-resize",
+        "native-window-close-preserves-unsaved-work",
+        "native-window-close-clean-exit",
+        "native-theme-persists-after-restart",
+        "native-ui-open-pdf-visible-text-blue-fixture-and-private-library"
+      ],
+      "runtime_case_count": 16,
+      "split_reader_cases": 3,
+      "split_reader_scenes": [
+        {
+          "scene": "native-reader-split-independent",
+          "pngSha256": "fd0ed64deda638b383e243169d0aeb9ac65aa2853a646f114e28eb620167f5b1",
+          "checks": [
+            {
+              "side": "left",
+              "color": "blue",
+              "inkPixels": 11087,
+              "pdfText": "SuniPDF page 1",
+              "passed": true,
+              "maskSha256": "2be46b7c14deabe4b05f4cd4de57b9e7d68eaa5690ef11677ed9d2cef54db7b9"
+            },
+            {
+              "side": "right",
+              "color": "red",
+              "inkPixels": 16900,
+              "pdfText": "SuniPDF page 2",
+              "passed": true,
+              "maskSha256": "0cd5b68f9d70e71f0a7b8ce2259b0be33e97283451a94383b8f436fa03462ef4"
+            }
+          ]
+        },
+        {
+          "scene": "native-reader-split-synchronized",
+          "pngSha256": "4bc4307adf3ecfe4bb5a9943c380e85591ce463e32f74a738a7649b152c92c9b",
+          "checks": [
+            {
+              "side": "left",
+              "color": "red",
+              "inkPixels": 17088,
+              "pdfText": "S\n\nSuniPDF page 2",
+              "passed": true,
+              "maskSha256": "28f5de388b7e382bc6efb55645b3fec75a72f6ba0a881b097fa3daa343ead55c"
+            },
+            {
+              "side": "right",
+              "color": "red",
+              "inkPixels": 16900,
+              "pdfText": "SuniPDF page 2",
+              "passed": true,
+              "maskSha256": "0cd5b68f9d70e71f0a7b8ce2259b0be33e97283451a94383b8f436fa03462ef4"
+            }
+          ]
+        },
+        {
+          "scene": "native-reader-split-closed",
+          "pngSha256": "6566998b29772ac83eff1edec4a67ce95da0b6e2e74e2fb123e7e788d85a6269",
+          "checks": [
+            {
+              "side": "whole",
+              "color": "blue",
+              "inkPixels": 13803,
+              "pdfText": "SuniPDF page 1",
+              "passed": true,
+              "maskSha256": "01f287bc75fee98e0e315c9d59e8f43cebbcf11b44a23ce91eb8d0cf977bdf20"
+            }
+          ]
+        }
+      ],
+      "document_retained_after_closing_split": true,
+      "install_evidence_sha256": "7a0a2ee5ed311820e8a7936496e2aae7863e10ea786b391db7cbd1694a315703",
+      "runtime_evidence_sha256": "2f0b15a85021c16ab789c6b71b7a77c603505891e15473e312a21a2086b7107e",
+      "split_reader_evidence_sha256": "a2cd61decd96bf71a309d68227f17c9e7504b2675236957c8820347226ccde1f",
+      "update_evidence_sha256": "90273f1c0e43ff128ee891aa41396680b09191204e22635dd88160bb480e140a",
+      "graphical_authorization_tested": false,
+      "full_desktop_updater_interaction_tested": false
+    },
+    {
+      "distro": "Ubuntu 24.04",
+      "status": "passed",
+      "runtime_cases": [
+        "installed-cli-opens-and-extracts-text",
+        "installed-cli-loads-private-pdfium-and-renders-fixture",
+        "save-reopen-reordered-pages-and-independent-qpdf",
+        "offline-ocr-eng-saved-searchable-layer",
+        "offline-ocr-fra-saved-searchable-layer",
+        "native-reader-independent-pages",
+        "native-reader-synchronize-pages",
+        "native-reader-close-split-keeps-document",
+        "native-theme-classic-and-glass-live-switch",
+        "native-theme-light-dark-and-system-selection",
+        "native-theme-reduced-transparency-and-modal-escape",
+        "native-window-minimize-maximize-restore-drag-resize",
+        "native-window-close-preserves-unsaved-work",
+        "native-window-close-clean-exit",
+        "native-theme-persists-after-restart",
+        "native-ui-open-pdf-visible-text-blue-fixture-and-private-library"
+      ],
+      "runtime_case_count": 16,
+      "split_reader_cases": 3,
+      "split_reader_scenes": [
+        {
+          "scene": "native-reader-split-independent",
+          "pngSha256": "839cae75733b3874174941ca88ed8aaab549225d8bb8602c23201adcca1b2d15",
+          "checks": [
+            {
+              "side": "left",
+              "color": "blue",
+              "inkPixels": 11087,
+              "pdfText": "SuniPDF page 1",
+              "passed": true,
+              "maskSha256": "2be46b7c14deabe4b05f4cd4de57b9e7d68eaa5690ef11677ed9d2cef54db7b9"
+            },
+            {
+              "side": "right",
+              "color": "red",
+              "inkPixels": 16900,
+              "pdfText": "SuniPDF page 2",
+              "passed": true,
+              "maskSha256": "0cd5b68f9d70e71f0a7b8ce2259b0be33e97283451a94383b8f436fa03462ef4"
+            }
+          ]
+        },
+        {
+          "scene": "native-reader-split-synchronized",
+          "pngSha256": "6c2b0721bb55d927d1c7b1e0f5f42263cefe5a698d3a1f7bc7068386c3e1b099",
+          "checks": [
+            {
+              "side": "left",
+              "color": "red",
+              "inkPixels": 17088,
+              "pdfText": "S\n\nSuniPDF page 2",
+              "passed": true,
+              "maskSha256": "28f5de388b7e382bc6efb55645b3fec75a72f6ba0a881b097fa3daa343ead55c"
+            },
+            {
+              "side": "right",
+              "color": "red",
+              "inkPixels": 16900,
+              "pdfText": "SuniPDF page 2",
+              "passed": true,
+              "maskSha256": "0cd5b68f9d70e71f0a7b8ce2259b0be33e97283451a94383b8f436fa03462ef4"
+            }
+          ]
+        },
+        {
+          "scene": "native-reader-split-closed",
+          "pngSha256": "dbaedde50d1a99132b0da089ffb51cb711eec4e193ecea4204848cb493c2d598",
+          "checks": [
+            {
+              "side": "whole",
+              "color": "blue",
+              "inkPixels": 13803,
+              "pdfText": "SuniPDF page 1",
+              "passed": true,
+              "maskSha256": "01f287bc75fee98e0e315c9d59e8f43cebbcf11b44a23ce91eb8d0cf977bdf20"
+            }
+          ]
+        }
+      ],
+      "document_retained_after_closing_split": true,
+      "install_evidence_sha256": "25ec0e1b67e84a32db540881731a69059a1953867da5af8ee94051eaeaafee7c",
+      "runtime_evidence_sha256": "3e1dbb4d7ec57a5cdd0384c247604e2bc6c5caaf6319649fb3234ebab6794576",
+      "split_reader_evidence_sha256": "d09a1a34fc81f36027358f9328c624bfdd13ef7d0d261b07ffb7cdea7541dc8e",
+      "update_evidence_sha256": "9c2a9dd2b90169b95148687d5164407498840b392a34d6bf3a3a537fa55cdb69",
+      "graphical_authorization_tested": false,
+      "full_desktop_updater_interaction_tested": false
+    }
+  ],
+  "visual_review": {
+    "report_sha256": "753dd788247d1b9d893ef023929185db0a4610ca356ddebffde4e1ee25202960",
+    "image_count": 10,
+    "images_per_platform": {
+      "Windows": 3,
+      "Ubuntu 22.04": 3,
+      "Ubuntu 24.04": 3,
+      "macOS": 1
+    },
+    "receipt": {
+      "source": "343103c38569345423b51d40406be19e17ee7914",
+      "status": "passed",
+      "reviewed_at": "2026-10-24T23:12:17.586769+00:00",
+      "images": [
+        {
+          "file": "reader-ui-evidence/reader-en-dark-split-independent.png",
+          "platform": "Windows",
+          "method": "exact RGBA equality with previously inspected PR scene",
+          "reference_source": "7f08ea56ef2ebfb96888760df5a376263e57b3a9",
+          "sha256": "d6d4fd76cab53180ca957a5158ace6788b075c7e660f4e1c9533efeeb69e5190",
+          "width": 1280,
+          "height": 780,
+          "pixels_equal": true
+        },
+        {
+          "file": "reader-ui-evidence/reader-fr-light-720-split-independent.png",
+          "platform": "Windows",
+          "method": "exact RGBA equality with previously inspected PR scene",
+          "reference_source": "7f08ea56ef2ebfb96888760df5a376263e57b3a9",
+          "sha256": "4ca13b104eccaf936415404693bc26dcfc808071860aed8d95e78e701d31dba0",
+          "width": 720,
+          "height": 640,
+          "pixels_equal": true
+        },
+        {
+          "file": "reader-ui-evidence/reader-en-glass-light-split-synchronized.png",
+          "platform": "Windows",
+          "method": "exact RGBA equality with previously inspected PR scene",
+          "reference_source": "7f08ea56ef2ebfb96888760df5a376263e57b3a9",
+          "sha256": "d51031afd9c9cf8c4efda63030e7d4e93d71a2167f9e112bc841c4d47b5f2801",
+          "width": 1280,
+          "height": 780,
+          "pixels_equal": true
+        },
+        {
+          "platform": "Ubuntu 22.04",
+          "file": "linux-validation-ubuntu-22.04/native-reader-split-independent.png",
+          "method": "direct image inspection",
+          "sha256": "fd0ed64deda638b383e243169d0aeb9ac65aa2853a646f114e28eb620167f5b1",
+          "width": 1280,
+          "height": 780,
+          "observations": "PDF page labels and colored ink agree with the view controls; independent and synchronized positions are visible; the closed scene shows one retained PDF view."
+        },
+        {
+          "platform": "Ubuntu 22.04",
+          "file": "linux-validation-ubuntu-22.04/native-reader-split-synchronized.png",
+          "method": "direct image inspection",
+          "sha256": "4bc4307adf3ecfe4bb5a9943c380e85591ce463e32f74a738a7649b152c92c9b",
+          "width": 1280,
+          "height": 780,
+          "observations": "PDF page labels and colored ink agree with the view controls; independent and synchronized positions are visible; the closed scene shows one retained PDF view."
+        },
+        {
+          "platform": "Ubuntu 22.04",
+          "file": "linux-validation-ubuntu-22.04/native-reader-split-closed.png",
+          "method": "direct image inspection",
+          "sha256": "6566998b29772ac83eff1edec4a67ce95da0b6e2e74e2fb123e7e788d85a6269",
+          "width": 1280,
+          "height": 780,
+          "observations": "PDF page labels and colored ink agree with the view controls; independent and synchronized positions are visible; the closed scene shows one retained PDF view."
+        },
+        {
+          "platform": "Ubuntu 24.04",
+          "file": "linux-validation-ubuntu-24.04/native-reader-split-independent.png",
+          "method": "direct image inspection",
+          "sha256": "839cae75733b3874174941ca88ed8aaab549225d8bb8602c23201adcca1b2d15",
+          "width": 1280,
+          "height": 780,
+          "observations": "PDF page labels and colored ink agree with the view controls; independent and synchronized positions are visible; the closed scene shows one retained PDF view."
+        },
+        {
+          "platform": "Ubuntu 24.04",
+          "file": "linux-validation-ubuntu-24.04/native-reader-split-synchronized.png",
+          "method": "direct image inspection",
+          "sha256": "6c2b0721bb55d927d1c7b1e0f5f42263cefe5a698d3a1f7bc7068386c3e1b099",
+          "width": 1280,
+          "height": 780,
+          "observations": "PDF page labels and colored ink agree with the view controls; independent and synchronized positions are visible; the closed scene shows one retained PDF view."
+        },
+        {
+          "platform": "Ubuntu 24.04",
+          "file": "linux-validation-ubuntu-24.04/native-reader-split-closed.png",
+          "method": "direct image inspection",
+          "sha256": "dbaedde50d1a99132b0da089ffb51cb711eec4e193ecea4204848cb493c2d598",
+          "width": 1280,
+          "height": 780,
+          "observations": "PDF page labels and colored ink agree with the view controls; independent and synchronized positions are visible; the closed scene shows one retained PDF view."
+        },
+        {
+          "platform": "macOS",
+          "file": "macos-validation/desktop.png",
+          "method": "direct image inspection",
+          "sha256": "12de10f7102e740524dd89fa4ce83bdd315b7fe36893c3116b7724a5a958c1f1",
+          "width": 1024,
+          "height": 768,
+          "observations": "Installed application displays PDF text and blue fixture ink, document tab, tool navigation and readable native window controls."
+        }
+      ],
+      "macos_desktop_review": {
+        "platform": "macOS",
+        "file": "macos-validation/desktop.png",
+        "method": "direct image inspection",
+        "sha256": "12de10f7102e740524dd89fa4ce83bdd315b7fe36893c3116b7724a5a958c1f1",
+        "width": 1024,
+        "height": 768,
+        "observations": "Installed application displays PDF text and blue fixture ink, document tab, tool navigation and readable native window controls."
+      },
+      "limits": [
+        "Windows: three new split scenes transferred only after exact RGBA equality with directly inspected PR captures. The other ten scenes have automated checks.",
+        "Ubuntu: three new split scenes directly reviewed on each recorded X11 test environment; theme and window interactions use automated checks.",
+        "Mac: one installed desktop capture; no native split-view interaction claim.",
+        "No physical GPU, Wayland, printer, pointer editing or human accessibility qualification."
+      ]
+    }
+  },
+  "conformance": {
+    "status": "passed",
+    "cases": 12,
+    "errors": 0,
+    "package_cli_sha256": "f3767b8dc3120f77ca7ec4ff31706c6600570f2ce1d97d497cd57526fafaec31",
+    "corpus_revision": "377728596647e40edf16003d68d620773ce96ec5",
+    "report_sha256": "d620ea77e694488ae3fe44b08056d4ff464a33f8dcc9e59588afd545e8cb4dbd",
+    "validator": {
+      "version": "1.30.3",
+      "url": "https://software.verapdf.org/releases/1.30/verapdf-greenfield-1.30.3-installer.zip",
+      "bytes": 32971125,
+      "sha256": "b512bf24945503a33fc10738ecffc1f2dccaaf8593a448e94ee9ac86a9559a59"
+    },
+    "scope": "Machine validation of the specified profiles and first-page appearance; human PDF/UA semantics remain unqualified."
+  },
+  "limitations": [
+    "Split reading opens two locations in the same PDF; different-document split reading is not included.",
+    "Windows reader screenshots use offscreen DX12 software rendering. Native split-view interaction was exercised on the recorded Ubuntu X11 environments, not on physical Windows or Mac hardware.",
+    "Mac OCR, printing, certificate signing, protected Office import, persistent encrypted visual-signature storage and automatic update installation are unavailable.",
+    "Windows packages unsigned; macOS ad hoc signed, not notarized; independent update signing unavailable.",
+    "Windows ARM64 cross-built without native ARM64 execution. No physical GPU, Wayland, printer or human accessibility qualification.",
+    "No whole-roadmap, universal interoperability, private project-plan accuracy or general PDF/A/PDF/UA conformance claim."
+  ]
+}

@@ -1,15 +1,15 @@
 # SuniPDF on Ubuntu
 [User guide](USER_GUIDE.en.md)
 
-The Ubuntu package targets **Ubuntu 22.04 and 24.04, amd64 (x86_64)**. It installs the desktop application and `sunipdf-cli`. Linux ARM64 is not included in this package. See [current downloads](../README.md#download-0750) and [project status](PROJECT_STATUS.md) for available packages and qualification results.
+The Ubuntu package targets **Ubuntu 22.04 and 24.04, amd64 (x86_64)**. It installs the desktop application and `sunipdf-cli`. Linux ARM64 is not included in this package. See [current downloads](../README.md#download-0760) and [project status](PROJECT_STATUS.md) for available packages and qualification results.
 
 ## Install
 
-Download `SuniPDF-0.75.0-linux-amd64.deb` and its `.sha256` file from the release page. In the download directory:
+Download `SuniPDF-0.76.0-linux-amd64.deb` and its `.sha256` file from the release page. In the download directory:
 
 ```sh
-sha256sum --check SuniPDF-0.75.0-linux-amd64.deb.sha256
-sudo apt install ./SuniPDF-0.75.0-linux-amd64.deb
+sha256sum --check SuniPDF-0.76.0-linux-amd64.deb.sha256
+sudo apt install ./SuniPDF-0.76.0-linux-amd64.deb
 ```
 
 APT installs the declared system dependencies. An Internet connection may be needed for this installation. PDF editing and OCR run locally afterwards.
@@ -28,6 +28,15 @@ The package registers an application capable of opening PDF files. It does not r
 The Linux application shares the PDF engine, reader, annotations, measurements, quantity tables, page operations, form tools and PDF exports with the Windows application. Existing document permissions, previews and save guards still apply.
 
 OCR uses Ubuntu's local Tesseract executable with the English and French language packages. Fonts for PDF editing are discovered from Linux font directories. Dialogues use the desktop's file portal and its available fallback.
+
+## Reader views in 0.76
+
+Version 0.76 adds two views of the same PDF. Use **Reading
+options > Split document view**, or find the command with **Ctrl+K**. Page, zoom and
+editing controls follow the active pane; **Synchronize views** links page, zoom,
+scroll position and view rotation. The workspace lasts for the current session.
+See the [reader workflow](READER_WORKSPACE.md#two-independent-views) and
+[release qualification](RELEASE_0.76.0.md).
 
 ## Platform limits
 

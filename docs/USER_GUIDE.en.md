@@ -36,8 +36,12 @@ The right side shows one context panel at a time. A measurement draft blocks ope
 
 Use **Reading options → Split document view** to keep two locations in the same
 PDF visible. Click a pane to activate it; page, zoom and editing controls follow
-that pane. **Synchronize views** links navigation when needed. **Close split view**
-leaves the active document open. [Split-view workflow](READER_WORKSPACE.md#two-independent-views).
+that pane. The first click focuses an inactive pane before an editing tool can act
+there. Finish or cancel unfinished input before switching. **Synchronize views**
+links page, zoom, scroll position and view rotation when needed. **Close split
+view** keeps the active location and leaves the document open. Pane locations
+survive tab switches during the session, but are not restored after restarting.
+[Split-view workflow](READER_WORKSPACE.md#two-independent-views) | [0.76 release and qualification](RELEASE_0.76.0.md).
 
 ## Plan workspace
 

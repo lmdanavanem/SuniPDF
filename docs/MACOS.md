@@ -1,7 +1,7 @@
 # SuniPDF on macOS
 [User guide](USER_GUIDE.en.md)
 
-The macOS package targets **Apple Silicon (arm64)**, with a macOS 12 deployment minimum checked against every bundled binary. Qualification runs on macOS 15; older systems and individual Mac models have not been tested. It contains the desktop application and `sunipdf-cli`. Download the [0.75.0 Apple Silicon DMG](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-macos-arm64.dmg) and see its [qualification record](qa/RELEASE_0.75.0.json).
+The macOS package targets **Apple Silicon (arm64)**, with a macOS 12 deployment minimum checked against every bundled binary. Qualification runs on macOS 15; older systems and individual Mac models have not been tested. It contains the desktop application and `sunipdf-cli`. Download the [0.76.0 Apple Silicon DMG](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-macos-arm64.dmg) and see its [qualification record](qa/RELEASE_0.76.0.json).
 
 ## Install
 
@@ -26,6 +26,15 @@ PDFs open from the Finder, and **SuniPDF > Use SuniPDF as Default PDF App** make
 The macOS application shares the PDF engine, reader, annotations, measurements, quantity tables, page operations, form tools and PDF exports with the Windows and Linux applications. Existing document permissions, previews and save guards still apply.
 
 The menu bar offers the same commands as the in-app **Menu**. Shortcuts use **⌘** where Windows uses Ctrl, **⌘⌫** deletes a page, **⌦** (fn+⌫) deletes the selected object and **⌃Tab** switches tabs. Fonts for PDF editing are discovered from the macOS font folders.
+
+## Reader views in 0.76
+
+Version 0.76 adds two views of the same PDF. Use **Reading
+options > Split document view**, or find the command with **Command+K**. Page, zoom and
+editing controls follow the active pane; **Synchronize views** links page, zoom,
+scroll position and view rotation. The workspace lasts for the current session.
+See the [reader workflow](READER_WORKSPACE.md#two-independent-views) and
+[release qualification](RELEASE_0.76.0.md).
 
 ## Platform limits
 

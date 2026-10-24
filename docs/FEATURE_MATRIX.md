@@ -4,11 +4,19 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
-## In development: 0.76.0
+## Added in 0.76.0
 
-- Two reader panes for the same PDF, independent navigation and zoom, active-pane editing and optional synchronization.
-- Shared document revision, Undo/Redo history and bounded rendering cache; per-tab session locations.
-- [Workflow](READER_WORKSPACE.md#two-independent-views) and [pending qualification](RELEASE_0.76.0.md). Different-document split views and restart persistence are outside this increment.
+| Area | Implemented behavior and limits |
+|---|---|
+| Independent reading | Two panes show the same open PDF with separate page, zoom, scroll position, reading layout, orientation and navigation history |
+| Active view | Page controls, search navigation and editing target one active pane; unfinished editing input blocks a conflicting switch |
+| Synchronization | The active pane drives the other pane's page, zoom, scroll position and view rotation; turn it off to navigate independently |
+| Document and session | Both panes share one PDF and Undo/Redo history; tab switches retain the workspace during the session, and closing the split leaves the active document open |
+| Rendering | Both panes share the document revision and bounded tile cache; page changes invalidate the affected rendering |
+
+[Workflow](READER_WORKSPACE.md#two-independent-views) | [Release qualification](RELEASE_0.76.0.md).
+Published stable with [evidence](qa/RELEASE_0.76.0.json). Different-document split views
+and restart persistence are outside this increment; other backlog criteria remain open.
 
 ## Added in 0.75.0
 
