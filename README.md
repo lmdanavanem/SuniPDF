@@ -67,6 +67,16 @@ optimization preserves the existing compression state of XML metadata, fixing a 
 
 [Release notes](docs/RELEASE_0.61.0.md) · [Qualification scope](docs/CONFORMANCE.md)
 
+## Preparing 0.62.0
+
+The next release adds rectangles from real dimensions, explicit recalibration of historical measurements,
+formula subtotals, faster quantity-table construction and safeguards for saving and resuming documents.
+Quantity cells and light/dark controls are easier to read. Local Windows development tests have passed;
+exact-version CI, installers and public downloads are still being qualified.
+
+The download links above continue to point to the published 0.61.0 packages.
+[Candidate changes and limits](docs/RELEASE_0.62.0.md) · [Current qualification](docs/PROJECT_STATUS.md).
+
 ## Documentation and development
 
 - [Documentation index](docs/README.md): usage guides, engineering references and release history.
