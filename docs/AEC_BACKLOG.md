@@ -96,8 +96,9 @@ inspection passed 27 independent assertions. See [qualification limits](RELEASE_
 
 ## Retained from 0.67
 
-AEC-017 provides reviewed links from one indexed source PDF; broader multi-source batches remain
-open. AEC-014 provides classified raster proposals and reviewed outlines for one old/new page pair.
+AEC-017 provides reviewed links from one indexed source PDF. The 0.73 candidate adds multi-source
+batches with explicit reviews, preflight of every output and retained partial receipts; qualification
+is in progress. AEC-014 provides classified raster proposals and reviewed outlines for one old/new page pair.
 AEC-010 provides named rectangular zone hierarchies and shared annotation/quantity coverage. All
 three remain **In progress**, with native interaction and broader qualification still open.
 

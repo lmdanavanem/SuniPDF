@@ -2,8 +2,8 @@
 
 ## Next development
 
-Priority order: multi-source plan-link batches (AEC-017), then independent synchronized reader views.
-These are planned implementation increments; no publication date or completed criteria are claimed.
+The 0.73 candidate implements multi-source plan-link batches (AEC-017) and clearer Linux window
+controls. Qualification is in progress. Next development priority: independent synchronized reader views.
 Implementation, source validation, package qualification and native interaction remain separate scopes.
 
 ## Published scope

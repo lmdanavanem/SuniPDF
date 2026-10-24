@@ -63,7 +63,7 @@ See [reports](ISSUE_REPORTS.md) and [workbooks](QUANTITY_WORKBOOKS.md) for sourc
 
 | Area | Implemented behavior and limits |
 |---|---|
-| Plan links | Exact indexed sheet identifiers in existing searchable text; one source PDF, up to 32 pages and 512 occurrences; explicit destination review, relative PDF links and new-copy output; broader batches remain open |
+| Plan links | Exact indexed sheet identifiers in existing searchable text; explicit destination review, relative PDF links and new-copy output. The 0.73 candidate adds up to 16 sources, 128 pages and 4,096 occurrences per batch with per-file receipts; package/native/interoperability qualification remains separate |
 | Revision outlines | One old/new page pair; manual or two-point alignment; classified raster proposals and individual confirmation; at most 1,536 pixels on the longest side, 512 proposals and 64 selected decisions; no claim of full drawing equivalence |
 | Rooms and zones | Up to 64 named rectangular zones per page and eight hierarchy levels; full-bounds assignment and shared register/quantity filters; boundary, overlap, unknown and stale records remain explicit; no area inference or scale changes |
 | Compact tables | Active zone filters in Filters, with coverage and quantity summaries under Totals |

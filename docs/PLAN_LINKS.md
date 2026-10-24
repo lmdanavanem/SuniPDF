@@ -115,3 +115,47 @@ Passwords are not stored in the manifest, review or PDF link. Global
 
 Native navigation, independent-reader interoperability and released-package evidence must be
 recorded separately from structural tests. This guide does not claim those pending checks passed.
+
+## Multiple source PDFs
+
+Batch processing uses the same indexed plan set and explicit reviews as the single-source workflow.
+Choose the pages and permitted destination sheets separately for each source. Occurrence IDs belong
+to their source PDF: the same ID in another PDF is a different occurrence. A source without an accepted
+occurrence is excluded from publication.
+
+Inspect a strict request with a `sources` array containing the scan objects shown above:
+
+```text
+sunipdf-cli plan-links batch-inspect set.json --request sources.json
+```
+
+The batch review contains `version: 1`, the inspected `manifest_sha256`, and a `files` array. Each
+entry has a `review` containing the complete single-source review and an `output_name` such as
+`floor-linked.pdf`. The name must be a new PDF basename; each copy stays beside its original source.
+Do not use a path, an existing filename or the name of another output in the same folder.
+
+```text
+sunipdf-cli plan-links batch-preview set.json --review batch.json --source-file FILE_ID --preview-out preview.png
+sunipdf-cli plan-links batch-preview set.json --review batch.json --source-file FILE_ID --preview-target-sheet SHEET_ID --preview-out target.png
+sunipdf-cli plan-links batch-apply set.json --review batch.json
+```
+
+Preparation validates every output and prepares each source sequentially before publication starts.
+Only one candidate PDF is retained at a time. Preview and publication prepare candidates separately;
+an earlier preview does not establish byte identity with a later output. Publication checks the original
+manifest, sources and destinations again before each copy is committed and after the batch.
+
+Atomic publication applies to each file separately. If cancellation, an input change or another error
+stops publication, the completed files remain saved. The JSON outcome retains their paths, hashes and
+created links, plus the failed or remaining files. An incomplete outcome returns exit code 2. Review
+these receipts before explicitly preparing a new batch for remaining sources. Existing outputs cannot
+be overwritten, even with `--overwrite`.
+
+Links always point to the original indexed destination PDFs. Generated copies are not automatically
+added to the plan set and do not replace targets in subsequent files. Moving or replacing originals
+requires another review.
+
+The batch accepts up to 16 distinct sources, 128 selected pages and 4,096 occurrences. Per-source
+limits still apply. Batch request/review JSON is bounded to 4 MiB and aggregate inspection/report data
+to 8 MiB. Truncated scans and unresolved occurrences remain visible; explicit review can resolve an
+ambiguous destination, but it cannot turn an uninspected reference into a confirmed link.

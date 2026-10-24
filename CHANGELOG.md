@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+- Review links across up to 16 indexed source PDFs with explicit per-source destinations, output names and occurrence confirmations.
+- Preflight every batch output, create new copies sequentially and retain completed-file receipts after cancellation or partial failure.
+- Add batch inspection, previews and publication to the CLI while preserving single-source commands.
+- Replace Linux fallback window buttons with round, accessible controls for minimizing, maximizing/restoring and guarded closing; retain native move and resize gestures.
+- Correct the welcome and About descriptions to include Linux.
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
