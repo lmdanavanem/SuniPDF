@@ -17,6 +17,7 @@ import zipfile
 
 INVENTORY = 'licenses/dependency-inventory.json'
 TEXTS = 'licenses/dependency-licenses.txt'
+REPORT_FONTS = ('NotoSansJP-Regular.otf', 'Ubuntu-Light.ttf')
 LEGAL_NAME = re.compile(r'(?i)^(licen[cs]e|copying|copyright|notice|unlicense)([._-]|$)')
 # The pinned PDFium 7881 FreeType notice contains a literal Latin-1 copyright sign.
 # Its original bytes remain in the package; only the combined UTF-8 text is decoded.
@@ -208,6 +209,7 @@ def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version
     notices.mkdir(parents=True, exist_ok=True)
     components = []
     icon_font = portable_icon_inventory(root, stage, texts, LINUX_DOC + '/licenses')
+    report_fonts = report_font_inventory(root, stage, texts, LINUX_DOC + '/licenses')
 
     def include(source, filename, component):
         destination = notices / filename
@@ -263,7 +265,7 @@ def generate_linux(root, stage, metadata, target_metadata, sysroot, rust_version
         'cargoLockSha256': digest((root / 'Cargo.lock').read_bytes()),
         'coverage': 'All locked source license terms, Linux normal/build membership, bundled PDFium and fonts; system dependencies are installed by apt, not bundled',
         'rustPackages': packages, 'nativeAndPackagingComponents': components,
-        'embeddedFontSources': font_inventory(metadata) + [icon_font],
+        'embeddedFontSources': font_inventory(metadata) + [icon_font] + report_fonts,
         'systemDependencies': [{'name': name, 'bundled': False, 'noticePath': '/usr/share/doc/' + name + '/copyright'} for name in ('tesseract-ocr', 'tesseract-ocr-eng', 'tesseract-ocr-fra')],
         'texts': [{'sha256': key, 'sources': sorted(value['sources'])} for key, value in sorted(texts.items())],
         'payloadFiles': linux_payload(stage),
@@ -487,18 +489,47 @@ def portable_icon_inventory(root, stage, texts, relative_notices='licenses'):
                 provenance=(notices / 'icon-provenance.json').relative_to(stage).as_posix())
 
 
+def report_font_inventory(root, stage, texts, relative_notices='licenses'):
+    directory = root / 'crates/sunipdf-core/tests/fixtures/fonts'
+    provenance = read_json(directory / 'source-provenance.json')
+    notices = inside(stage / relative_notices, stage)
+    notices.mkdir(parents=True, exist_ok=True)
+    fonts = []
+    for filename in REPORT_FONTS:
+        evidence = provenance[filename]
+        font = inside(directory / filename, directory)
+        if digest(font.read_bytes()) != evidence['sha256']:
+            raise ValueError('Embedded report font differs from its reviewed source: ' + filename)
+        license_path = inside(directory / evidence['licenseFile'], directory)
+        if digest(license_path.read_bytes()) != evidence['licenseSha256']:
+            raise ValueError('Embedded report font terms differ: ' + filename)
+        content = legal_text(license_path)
+        target = notices / ('report-font-' + license_path.name)
+        target.write_bytes(license_path.read_bytes())
+        text_id = digest(content.encode('utf-8'))
+        source = target.relative_to(stage).as_posix()
+        texts.setdefault(text_id, {'text': content, 'sources': set()})['sources'].add(source)
+        fonts.append(dict(evidence, name=filename,
+                          scope='Original font source embedded in the shared report renderer for desktop and CLI',
+                          texts=[{'textSha256': text_id, 'source': source}]))
+    return fonts
+
+
 def generate(root, stage, arch, metadata, target_metadata, sysroot, rust_version, cargo_version):
     packages, texts = rust_inventory(root, metadata, target_metadata)
     components = bundled_inventory(root, stage, arch, texts)
     components.extend(toolchain_inventory(root, stage, arch, texts, sysroot, rust_version, cargo_version))
-    fonts = font_inventory(metadata) + [portable_icon_inventory(root, stage, texts)]
+    fonts = font_inventory(metadata) + [portable_icon_inventory(root, stage, texts)] + report_font_inventory(root, stage, texts)
     fixture_root = root / 'crates/sunipdf-core/tests/fixtures/fonts'
     test_fonts = []
     for filename, evidence in sorted(read_json(fixture_root / 'source-provenance.json').items()):
         font = inside(fixture_root / filename, fixture_root)
         if digest(font.read_bytes()) != evidence['sha256']:
             raise ValueError('Licensed font fixture differs from its reviewed source: ' + filename)
-        entry = dict(evidence, name=filename, scope='Development regression fixture only; font file is not shipped in product packages')
+        scope = ('Regression fixture also embedded in the shared report renderer; see embeddedFontSources'
+                 if filename in REPORT_FONTS else
+                 'Development regression fixture only; font file is not shipped in product packages')
+        entry = dict(evidence, name=filename, scope=scope)
         entry['texts'] = []
         for key in ('licenseFile', 'noticeFile'):
             if key not in evidence:
@@ -573,6 +604,45 @@ def record_wix(stage, provenance):
 
 
 class InventoryTests(unittest.TestCase):
+    def test_report_fonts_ship_original_terms_in_windows_and_linux_packages(self):
+        root = Path(__file__).resolve().parents[1]
+        source = root / 'crates/sunipdf-core/tests/fixtures/fonts'
+        for destination in ('licenses', LINUX_DOC + '/licenses'):
+            with self.subTest(destination=destination), tempfile.TemporaryDirectory() as directory:
+                texts = {}
+                entries = report_font_inventory(root, Path(directory), texts, destination)
+                self.assertEqual({entry['name'] for entry in entries}, set(REPORT_FONTS))
+                for entry in entries:
+                    notice = entry['texts'][0]
+                    self.assertEqual((Path(directory) / notice['source']).read_bytes(),
+                                     (source / entry['licenseFile']).read_bytes())
+                    self.assertEqual(digest((source / entry['name']).read_bytes()), entry['sha256'])
+                    self.assertIn(notice['textSha256'], texts)
+
+    def test_report_fonts_refuse_changed_source_terms_and_missing_notice(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fonts = root / 'crates/sunipdf-core/tests/fixtures/fonts'
+            fonts.mkdir(parents=True)
+            font = fonts / REPORT_FONTS[0]
+            notice = fonts / 'terms.txt'
+            font.write_bytes(b'original font')
+            notice.write_bytes(b'Full original font terms')
+            evidence = {'sha256': digest(font.read_bytes()), 'licenseFile': notice.name,
+                        'licenseSha256': digest(notice.read_bytes())}
+            (fonts / 'source-provenance.json').write_text(json.dumps({REPORT_FONTS[0]: evidence}))
+            with patch(__name__ + '.REPORT_FONTS', (REPORT_FONTS[0],)):
+                font.write_bytes(b'changed font')
+                with self.assertRaisesRegex(ValueError, 'reviewed source'):
+                    report_font_inventory(root, root / 'stage', {})
+                font.write_bytes(b'original font')
+                notice.write_bytes(b'changed terms')
+                with self.assertRaisesRegex(ValueError, 'terms differ'):
+                    report_font_inventory(root, root / 'stage', {})
+                notice.unlink()
+                with self.assertRaises(FileNotFoundError):
+                    report_font_inventory(root, root / 'stage', {})
+
     def test_portable_icon_font_covers_all_application_icons_and_ships_full_terms(self):
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory() as directory:

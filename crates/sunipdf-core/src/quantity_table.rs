@@ -533,7 +533,8 @@ pub(crate) fn validate_measurement_price(
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum QuantityGrouping {
     #[default]
     None,
@@ -557,7 +558,8 @@ impl QuantityGrouping {
         }
     }
 }
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct QuantityOptions {
     pub filter: RegisterFilter,
     pub sort: RegisterSort,
@@ -664,6 +666,7 @@ pub struct QuantityExport {
 pub struct QuantityTable {
     register: AnnotationRegister,
     rows: Vec<QuantityRow>,
+    report_register_selection: bool,
     can_export: bool,
     metadata_bytes: usize,
     metadata_sizes: HashMap<(usize, usize), usize>,
@@ -686,6 +689,28 @@ impl std::fmt::Debug for QuantityTarget {
 }
 
 impl QuantityTable {
+    pub(crate) fn for_workbook_selection(
+        &self,
+        keys: &std::collections::HashSet<(usize, usize)>,
+    ) -> Self {
+        let mut table = self.clone();
+        table
+            .rows
+            .retain(|row| keys.contains(&(row.register.page, row.register.index)));
+        table
+            .register
+            .rows
+            .retain(|row| keys.contains(&(row.page, row.index)));
+        table
+    }
+    pub(crate) fn for_register_report(&self) -> Self {
+        let mut table = self.clone();
+        table.report_register_selection = true;
+        table
+    }
+    pub(crate) fn report_snapshot(&self) -> &[u8] {
+        &self.register.source_snapshot
+    }
     pub fn plan_zones(&self) -> &[crate::plan_zones::PagePlanZones] {
         &self.register.plan_zones
     }
@@ -719,6 +744,14 @@ impl QuantityTable {
             .iter()
             .map(|r| ((r.register.page, r.register.index), r))
             .collect();
+        if self.report_register_selection {
+            return self
+                .register
+                .select(&options.filter, options.sort, options.descending)
+                .into_iter()
+                .filter_map(|row| by_key.get(&(row.page, row.index)).copied())
+                .collect();
+        }
         let query = options.filter.query.to_lowercase();
         let ordinary: std::collections::HashSet<_> = self
             .register
@@ -1377,6 +1410,7 @@ impl Document<'_> {
         Ok(QuantityTable {
             register,
             rows,
+            report_register_selection: false,
             can_export: properties.can_copy,
             metadata_bytes: budget,
             metadata_sizes,
@@ -1699,6 +1733,7 @@ mod tests {
             },
             rows,
             can_export: true,
+            report_register_selection: false,
             metadata_bytes: 0,
             metadata_sizes: HashMap::new(),
         }
@@ -2393,6 +2428,7 @@ mod tests {
             },
             rows,
             can_export: true,
+            report_register_selection: false,
             metadata_bytes: 0,
             metadata_sizes: HashMap::new(),
         };

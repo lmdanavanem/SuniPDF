@@ -17,7 +17,7 @@ pub struct FormulaColumn {
     pub rounding_decimals: u8,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FormulaError {
     MissingField,
@@ -42,7 +42,8 @@ impl FormulaError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct FormulaValue {
     pub value: Option<String>,
     pub unit: Option<QuantityUnit>,

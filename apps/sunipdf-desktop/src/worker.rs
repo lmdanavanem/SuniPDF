@@ -607,6 +607,16 @@ pub enum PickMode {
 }
 
 pub enum Request {
+    QuantityWorkbook {
+        epoch: u64,
+        generation: u64,
+        job: crate::quantity_workbook_ui::Job,
+    },
+    IssueReport {
+        epoch: u64,
+        generation: u64,
+        job: crate::issue_report_ui::Job,
+    },
     PlanZones {
         epoch: u64,
         generation: u64,
@@ -923,6 +933,26 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    QuantityWorkbook {
+        epoch: u64,
+        generation: u64,
+        result: Result<crate::quantity_workbook_ui::Outcome, EngineError>,
+    },
+    QuantityWorkbookProgress {
+        epoch: u64,
+        generation: u64,
+        progress: sunipdf_core::quantity_workbook::WorkbookProgress,
+    },
+    IssueReport {
+        epoch: u64,
+        generation: u64,
+        result: Result<crate::issue_report_ui::Outcome, EngineError>,
+    },
+    IssueReportProgress {
+        epoch: u64,
+        generation: u64,
+        progress: sunipdf_core::issue_report::IssueReportProgress,
+    },
     PlanZones {
         epoch: u64,
         generation: u64,
@@ -1277,6 +1307,8 @@ struct State<'a> {
     fonts: Option<Arc<Vec<SystemFont>>>,
     rich_preview: Option<(u64, u64, sunipdf_core::annot_rich::PreparedRichAnnotation)>,
     plan_zones: crate::plan_zones_ui::WorkerCache,
+    quantity_workbook: crate::quantity_workbook_ui::WorkerCache,
+    issue_report: crate::issue_report_ui::WorkerCache,
     rectangle_calibration: Option<RectangleCalibrationCapture>,
     redaction_preview: Option<(u64, u64, sunipdf_core::redact::PreparedRedaction)>,
     search: Option<SearchJob>,
@@ -1379,6 +1411,8 @@ impl State<'_> {
         self.wanted.clear();
         self.rich_preview = None;
         self.plan_zones.clear();
+        self.quantity_workbook.clear();
+        self.issue_report.clear();
         self.redaction_preview = None;
         self.search = None;
         self.register = None;
@@ -1760,6 +1794,8 @@ mod save_point_tests {
             fonts: None,
             rich_preview: None,
             plan_zones: Default::default(),
+            quantity_workbook: Default::default(),
+            issue_report: Default::default(),
             rectangle_calibration: None,
             redaction_preview: None,
             search: None,
@@ -2349,6 +2385,8 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         fonts: None,
         rich_preview: None,
         plan_zones: Default::default(),
+        quantity_workbook: Default::default(),
+        issue_report: Default::default(),
         rectangle_calibration: None,
         redaction_preview: None,
         search: None,
@@ -3482,6 +3520,80 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         doc.capture_library_entry(page, &selections, id, name, provenance)
                     }),
             },
+            Request::QuantityWorkbook {
+                epoch,
+                generation,
+                job,
+            } => {
+                let saved_sha = if state.modified() {
+                    None
+                } else {
+                    state
+                        .signature_source
+                        .as_ref()
+                        .map(SignatureSource::sha256_hex)
+                };
+                let result = match state.document.as_ref() {
+                    Some(doc) => state.quantity_workbook.run(
+                        doc,
+                        epoch,
+                        job,
+                        saved_sha.as_deref(),
+                        |progress| {
+                            let _ = tx.send(Response::QuantityWorkbookProgress {
+                                epoch,
+                                generation,
+                                progress,
+                            });
+                        },
+                    ),
+                    None => {
+                        state.quantity_workbook.clear();
+                        Err(EngineError::Other("no document".into()))
+                    }
+                };
+                Response::QuantityWorkbook {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
+            Request::IssueReport {
+                epoch,
+                generation,
+                job,
+            } => {
+                let saved_sha = if state.modified() {
+                    None
+                } else {
+                    state
+                        .signature_source
+                        .as_ref()
+                        .map(SignatureSource::sha256_hex)
+                };
+                let result = match state.document.as_ref() {
+                    Some(doc) => {
+                        state
+                            .issue_report
+                            .run(doc, epoch, job, saved_sha.as_deref(), |progress| {
+                                let _ = tx.send(Response::IssueReportProgress {
+                                    epoch,
+                                    generation,
+                                    progress,
+                                });
+                            })
+                    }
+                    None => {
+                        state.issue_report.clear();
+                        Err(EngineError::Other("no document".into()))
+                    }
+                };
+                Response::IssueReport {
+                    epoch,
+                    generation,
+                    result,
+                }
+            }
             Request::PlanZones {
                 epoch,
                 generation,
@@ -3720,6 +3832,721 @@ mod tests {
         revision_transfer_candidates_stay_in_worker_and_revalidate_before_publication(&worker);
         revision_outlines_keep_candidates_in_worker_and_revalidate_saved_sources(&worker);
         plan_zones_preview_apply_history_reopen_and_stale_guard(&worker);
+        issue_reports_preserve_filters_history_source_and_refuse_stale_publication(&worker);
+        quantity_workbooks_refresh_reviewed_identities_and_keep_history(&worker);
+    }
+
+    fn quantity_workbooks_refresh_reviewed_identities_and_keep_history(worker: &Worker) {
+        use crate::quantity_workbook_ui::{Job, Outcome};
+        use std::sync::atomic::AtomicBool;
+        use sunipdf_core::quantity_workbook::{
+            QuantityWorkbookOptions, WorkbookChangeStatus, WorkbookFormat,
+        };
+        fn run(
+            worker: &Worker,
+            epoch: u64,
+            generation: u64,
+            job: Job,
+        ) -> Result<Outcome, EngineError> {
+            worker.send(Request::QuantityWorkbook {
+                epoch,
+                generation,
+                job,
+            });
+            match next_response(worker) {
+                Response::QuantityWorkbook { result, .. } => result,
+                _ => panic!("workbook response"),
+            }
+        }
+        fn prepare(previous: Option<PathBuf>, include_new: bool) -> Job {
+            Job::Prepare {
+                table: None,
+                options: Box::new(QuantityWorkbookOptions::default()),
+                previous,
+                include_new,
+                cancel: Arc::new(AtomicBool::new(false)),
+            }
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.pdf");
+        let original = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        std::fs::write(&source, &original).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        for x in [40., 80.] {
+            worker.send(Request::Edit(EditOp::AddCountMarker {
+                page: 0,
+                point: (x, 70.),
+                size: 10.,
+                group: "Lighting".into(),
+                author: None,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+        }
+        let epoch = 1200;
+        let token = match run(worker, epoch, 1, prepare(None, false)).unwrap() {
+            Outcome::Preview { token, model, .. } => {
+                assert_eq!(model.quantities["rows"].as_array().unwrap().len(), 2);
+                assert_eq!(model.refreshable_rows, 2);
+                assert!(
+                    model.provenance.saved_file_sha256.is_none(),
+                    "unsaved edits use snapshot identity"
+                );
+                token
+            }
+            _ => panic!("preview"),
+        };
+        let manifest = dir.path().join("baseline.json");
+        let workbook = dir.path().join("quantities.xlsx");
+        for (generation, format, out) in [
+            (2, WorkbookFormat::Manifest, manifest.clone()),
+            (3, WorkbookFormat::Xlsx, workbook.clone()),
+        ] {
+            let outcome = run(
+                worker,
+                epoch,
+                generation,
+                Job::Publish {
+                    token,
+                    format,
+                    out,
+                    cancel: Arc::new(AtomicBool::new(false)),
+                },
+            )
+            .unwrap();
+            assert!(matches!(outcome, Outcome::Published(_)));
+        }
+        let baseline = std::fs::read(&manifest).unwrap();
+        let xlsx = std::fs::read(&workbook).unwrap();
+        assert!(xlsx.starts_with(b"PK") && xlsx.len() > 200);
+        assert!(run(
+            worker,
+            epoch,
+            4,
+            Job::Publish {
+                token,
+                format: WorkbookFormat::Xlsx,
+                out: workbook.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert_eq!(std::fs::read(&workbook).unwrap(), xlsx);
+        let stale = dir.path().join("stale.xlsx");
+        assert!(run(
+            worker,
+            epoch + 1,
+            5,
+            Job::Publish {
+                token,
+                format: WorkbookFormat::Xlsx,
+                out: stale.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert!(!stale.exists());
+        worker.send(Request::Edit(EditOp::AddCountMarker {
+            page: 0,
+            point: (120., 70.),
+            size: 10.,
+            group: "New".into(),
+            author: None,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(run(
+            worker,
+            epoch,
+            6,
+            Job::Publish {
+                token,
+                format: WorkbookFormat::Xlsx,
+                out: stale.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        for (generation, include_new, expected) in [(7, false, 2), (8, true, 3)] {
+            match run(
+                worker,
+                epoch,
+                generation,
+                prepare(Some(manifest.clone()), include_new),
+            )
+            .unwrap()
+            {
+                Outcome::Preview { model, .. } => {
+                    assert!(model.refresh);
+                    assert_eq!(model.quantities["rows"].as_array().unwrap().len(), expected);
+                    assert!(model.changes.iter().any(|change| change.status
+                        == if include_new {
+                            WorkbookChangeStatus::Added
+                        } else {
+                            WorkbookChangeStatus::ExcludedNew
+                        }));
+                }
+                _ => panic!("refresh preview"),
+            }
+        }
+        assert!(matches!(
+            run(
+                worker,
+                epoch,
+                9,
+                Job::Prepare {
+                    table: None,
+                    options: Box::default(),
+                    previous: None,
+                    include_new: false,
+                    cancel: Arc::new(AtomicBool::new(true))
+                }
+            ),
+            Err(EngineError::Cancelled)
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        match run(worker, epoch, 10, prepare(None, false)).unwrap() {
+            Outcome::Preview { model, .. } => assert_eq!(
+                model.quantities["rows"].as_array().unwrap().len(),
+                2,
+                "report operations do not add history steps"
+            ),
+            _ => panic!("after undo"),
+        }
+        assert_eq!(std::fs::read(&source).unwrap(), original);
+        assert_eq!(std::fs::read(&manifest).unwrap(), baseline);
+        assert_eq!(std::fs::read(&workbook).unwrap(), xlsx);
+    }
+
+    fn issue_reports_preserve_filters_history_source_and_refuse_stale_publication(worker: &Worker) {
+        use crate::issue_report_ui::{Input, Job, Outcome};
+        use std::sync::atomic::AtomicBool;
+        use sunipdf_core::{
+            annotation_register::{RegisterFilter, RegisterSort},
+            issue_report::{IssueReportFormat, IssueReportOptions, IssueReportSelection},
+            quantity_table::{FormulaColumn, QuantityGrouping, QuantityOptions, QuantityUnit},
+        };
+        fn run(worker: &Worker, generation: u64, job: Job) -> Result<Outcome, EngineError> {
+            worker.send(Request::IssueReport {
+                epoch: 1100,
+                generation,
+                job,
+            });
+            match next_response(worker) {
+                Response::IssueReport { result, .. } => result,
+                _ => panic!("report response"),
+            }
+        }
+        fn table(worker: &Worker) -> Arc<sunipdf_core::quantity_table::QuantityTable> {
+            worker.send(Request::QuantityTable {
+                epoch: 1100,
+                generation: 1,
+            });
+            match next_response(worker) {
+                Response::QuantityTable {
+                    result: Ok(table), ..
+                } => Arc::new(table),
+                _ => panic!("table"),
+            }
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.pdf");
+        let bytes = std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf"),
+        )
+        .unwrap();
+        std::fs::write(&source, &bytes).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        for (x, group) in [(40., "Included"), (80., "Excluded")] {
+            worker.send(Request::Edit(EditOp::AddCountMarker {
+                page: 0,
+                point: (x, 70.),
+                size: 10.,
+                group: group.into(),
+                author: None,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+        }
+        let original = table(worker);
+        let options = IssueReportOptions {
+            title: "Selected report".into(),
+            include_legend: true,
+            selection: IssueReportSelection::Quantities,
+            quantities: QuantityOptions {
+                filter: RegisterFilter {
+                    count_group: "Included".into(),
+                    include_replies: true,
+                    ..Default::default()
+                },
+                sort: RegisterSort::Kind,
+                descending: true,
+                group_by: QuantityGrouping::CountGroup,
+                formulas: vec![FormulaColumn {
+                    name: "Double".into(),
+                    expression: "quantity * 2".into(),
+                    quantity_unit: Some(QuantityUnit::Each),
+                    rounding_decimals: 2,
+                }],
+            },
+        };
+        let expected = original.json(&options.quantities).unwrap();
+        let (token, pages) = match run(
+            worker,
+            1,
+            Job::Prepare {
+                input: Input::Quantities(original.clone()),
+                options: Box::new(options.clone()),
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        )
+        .unwrap()
+        {
+            Outcome::Preview {
+                token,
+                model,
+                page,
+                image,
+            } => {
+                assert_eq!(page, 0);
+                assert!(model.page_count > 0);
+                assert_eq!(
+                    model.quantities, expected,
+                    "same visible selection, ordering, groups and formulas"
+                );
+                assert!(
+                    model.provenance.saved_file_sha256.is_none(),
+                    "dirty snapshot is not a saved file hash"
+                );
+                assert!(
+                    image.width > 0
+                        && image.height > 0
+                        && image.rgba.len() == image.width as usize * image.height as usize * 4
+                );
+                assert!(
+                    image
+                        .rgba
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .any(|pixel| pixel[0] < 220 && pixel[3] > 0),
+                    "actual report text must be rendered"
+                );
+                assert_eq!(model.legend.iter().map(|l| l.count).sum::<usize>(), 1);
+                (token, model.page_count)
+            }
+            _ => panic!("preview"),
+        };
+        assert!(run(
+            worker,
+            2,
+            Job::Render {
+                token,
+                page: pages,
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert!(matches!(
+            run(
+                worker,
+                3,
+                Job::Render {
+                    token,
+                    page: 0,
+                    cancel: Arc::new(AtomicBool::new(false))
+                }
+            )
+            .unwrap(),
+            Outcome::Preview { .. }
+        ));
+        for (generation, format, extension) in [
+            (4, IssueReportFormat::Pdf, "pdf"),
+            (5, IssueReportFormat::Csv, "csv"),
+            (6, IssueReportFormat::Json, "json"),
+        ] {
+            let out = dir.path().join(format!("report.{extension}"));
+            let receipt = match run(
+                worker,
+                generation,
+                Job::Publish {
+                    token,
+                    format,
+                    out: out.clone(),
+                    cancel: Arc::new(AtomicBool::new(false)),
+                },
+            )
+            .unwrap()
+            {
+                Outcome::Published(r) => r,
+                _ => panic!("published"),
+            };
+            assert_eq!(receipt.matched_annotations, 1);
+            let data = std::fs::read(&out).unwrap();
+            assert_eq!(receipt.bytes, data.len());
+            assert_eq!(
+                receipt.output_sha256,
+                Sha256::digest(&data)
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect::<String>()
+            );
+            if extension == "pdf" {
+                assert_eq!(
+                    lopdf::Document::load(&out).unwrap().get_pages().len(),
+                    pages
+                );
+            }
+            if extension == "json" {
+                let value: serde_json::Value = serde_json::from_slice(&data).unwrap();
+                assert_eq!(value["quantities"], expected);
+            }
+            if extension == "csv" {
+                let text = String::from_utf8(data.clone()).unwrap();
+                assert!(text.contains("Included") && !text.contains("Excluded"));
+            }
+            assert!(run(
+                worker,
+                generation + 10,
+                Job::Publish {
+                    token,
+                    format,
+                    out: out.clone(),
+                    cancel: Arc::new(AtomicBool::new(false))
+                }
+            )
+            .is_err());
+            assert_eq!(std::fs::read(&out).unwrap(), data);
+        }
+        assert_eq!(std::fs::read(&source).unwrap(), bytes);
+        assert_eq!(
+            table(worker).json(&options.quantities).unwrap()["rows"],
+            expected["rows"]
+        );
+        worker.send(Request::Undo);
+        assert!(
+            matches!(next_response(worker),Response::DocumentChanged(ref state) if state.modified && state.can_redo)
+        );
+        assert_eq!(
+            table(worker).rows().len(),
+            1,
+            "exports did not add undo history"
+        );
+        let stale_out = dir.path().join("stale.pdf");
+        assert!(run(
+            worker,
+            30,
+            Job::Publish {
+                token,
+                format: IssueReportFormat::Pdf,
+                out: stale_out.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert!(!stale_out.exists());
+        assert!(
+            run(
+                worker,
+                31,
+                Job::Prepare {
+                    input: Input::Quantities(original),
+                    options: Box::new(options.clone()),
+                    cancel: Arc::new(AtomicBool::new(false))
+                }
+            )
+            .is_err(),
+            "old visible table is rejected"
+        );
+        assert!(matches!(
+            run(
+                worker,
+                32,
+                Job::Prepare {
+                    input: Input::Current,
+                    options: Box::new(options.clone()),
+                    cancel: Arc::new(AtomicBool::new(true))
+                }
+            ),
+            Err(EngineError::Cancelled)
+        ));
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let token = match run(
+            worker,
+            40,
+            Job::Prepare {
+                input: Input::Current,
+                options: Box::default(),
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        )
+        .unwrap()
+        {
+            Outcome::Preview { token, model, .. } => {
+                assert_eq!(
+                    model.provenance.saved_file_sha256.as_deref(),
+                    Some(
+                        Sha256::digest(&bytes)
+                            .iter()
+                            .map(|byte| format!("{byte:02x}"))
+                            .collect::<String>()
+                            .as_str()
+                    )
+                );
+                token
+            }
+            _ => panic!("saved preview"),
+        };
+        let mut changed = bytes.clone();
+        changed.extend_from_slice(b"\n% externally modified\n");
+        std::fs::write(&source, &changed).unwrap();
+        let out = dir.path().join("changed-source.pdf");
+        assert!(run(
+            worker,
+            41,
+            Job::Publish {
+                token,
+                format: IssueReportFormat::Pdf,
+                out: out.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert!(!out.exists());
+        assert_eq!(std::fs::read(&source).unwrap(), changed);
+
+        // Register text fields and quantity typed fields have different search and sort rules.
+        // The report must retain the visible register selection, rather than broadening it.
+        use sunipdf_core::annotation_register::{AnnotationRegister, RegisterFields};
+        use sunipdf_core::quantity_table::{DecimalValue, QuantityFields, TypedValue, UnitPrice};
+        fn register(worker: &Worker) -> Arc<AnnotationRegister> {
+            worker.send(Request::AnnotationRegister {
+                epoch: 1100,
+                generation: 50,
+            });
+            match next_response(worker) {
+                Response::AnnotationRegister {
+                    result: Ok(report), ..
+                } => Arc::new(report),
+                _ => panic!("register"),
+            }
+        }
+        let register_source = dir.path().join("register-source.pdf");
+        std::fs::write(&register_source, &bytes).unwrap();
+        worker.send(Request::Open {
+            path: register_source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        for x in [40., 80., 120.] {
+            worker.send(Request::Edit(EditOp::AddCountMarker {
+                page: 0,
+                point: (x, 70.),
+                size: 10.,
+                group: "Shared".into(),
+                author: None,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+        }
+        for (index, room, typed_room) in [(0, "Z", "A"), (1, "A", "Z"), (2, "M", "M")] {
+            let current = register(worker);
+            worker.send(Request::Edit(EditOp::SetAnnotationRegisterFields {
+                target: current.target(&current.rows[index]),
+                fields: RegisterFields {
+                    custom: [
+                        ("Room".into(), room.into()),
+                        (
+                            "Selection".into(),
+                            if index < 2 {
+                                "visible-selection"
+                            } else {
+                                "other"
+                            }
+                            .into(),
+                        ),
+                    ]
+                    .into(),
+                    ..Default::default()
+                },
+                count_group: Some("Shared".into()),
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            let current = table(worker);
+            worker.send(Request::Edit(EditOp::SetQuantityFields {
+                target: current.target(&current.rows()[index]).unwrap(),
+                fields: QuantityFields {
+                    unit_price: Some(UnitPrice {
+                        amount: DecimalValue::parse("10").unwrap(),
+                        currency: "CHF".into(),
+                        per_unit: QuantityUnit::Each,
+                        rounding_decimals: 2,
+                    }),
+                    custom: [
+                        (
+                            "Room".into(),
+                            TypedValue::Text {
+                                value: typed_room.into(),
+                            },
+                        ),
+                        (
+                            "TypedOnly".into(),
+                            TypedValue::Text {
+                                value: if index == 2 {
+                                    "visible-selection"
+                                } else {
+                                    "other"
+                                }
+                                .into(),
+                            },
+                        ),
+                    ]
+                    .into(),
+                },
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+        }
+        let visible = register(worker);
+        let mut register_options = options.clone();
+        register_options.quantities.filter = RegisterFilter {
+            query: "visible-selection".into(),
+            custom_sort: Some("Room".into()),
+            ..Default::default()
+        };
+        register_options.quantities.sort = RegisterSort::Page;
+        register_options.quantities.descending = false;
+        let expected = visible
+            .select(
+                &register_options.quantities.filter,
+                RegisterSort::Page,
+                false,
+            )
+            .iter()
+            .map(|row| row.annotation_id.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(expected.len(), 2);
+        assert_eq!(expected[0], visible.rows[1].annotation_id);
+        assert_eq!(expected[1], visible.rows[0].annotation_id);
+        let (register_token, register_model) = match run(
+            worker,
+            51,
+            Job::Prepare {
+                input: Input::Register(visible),
+                options: Box::new(register_options.clone()),
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        )
+        .unwrap()
+        {
+            Outcome::Preview { token, model, .. } => (token, model),
+            _ => panic!("register report preview"),
+        };
+        assert!(matches!(
+            register_model.selection,
+            IssueReportSelection::Register
+        ));
+        let actual = register_model.quantities["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|row| row["register"]["annotation_id"].as_str().map(str::to_owned))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            actual, expected,
+            "visible register rows and text-field order remain exact"
+        );
+        assert_eq!(register_model.quantities["summary"]["matched_rows"], 2);
+        assert_eq!(
+            register_model.quantities["summary"]["groups"][0]["quantity"],
+            2.0
+        );
+        assert_eq!(
+            register_model.quantities["summary"]["groups"][0]["costs"][0]["total"]["amount"],
+            "20.00"
+        );
+        assert_eq!(
+            register_model.quantities["formula_rows"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
+        assert_eq!(
+            register_model.quantities["summary"]["formula_groups"][0]["totals"][0]["amount"],
+            "4.00"
+        );
+        let out = dir.path().join("register-report.json");
+        assert!(matches!(
+            run(
+                worker,
+                52,
+                Job::Publish {
+                    token: register_token,
+                    format: IssueReportFormat::Json,
+                    out: out.clone(),
+                    cancel: Arc::new(AtomicBool::new(false)),
+                }
+            )
+            .unwrap(),
+            Outcome::Published(_)
+        ));
+        let saved: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(out).unwrap()).unwrap();
+        assert_eq!(saved["quantities"], register_model.quantities);
+        register_options.selection = IssueReportSelection::Register;
+        match run(
+            worker,
+            53,
+            Job::Prepare {
+                input: Input::Quantities(table(worker)),
+                options: Box::new(register_options),
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        )
+        .unwrap()
+        {
+            Outcome::Preview { model, .. } => {
+                assert!(matches!(model.selection, IssueReportSelection::Quantities));
+                assert_eq!(model.quantities["rows"].as_array().unwrap().len(), 3);
+            }
+            _ => panic!("quantity report preview"),
+        }
+        assert_eq!(std::fs::read(register_source).unwrap(), bytes);
     }
 
     fn plan_zones_preview_apply_history_reopen_and_stale_guard(worker: &Worker) {
@@ -6130,7 +6957,10 @@ mod tests {
                 worker.finish_mutation();
             } else if matches!(
                 response,
-                Response::SearchProgress { .. } | Response::AnnotationRegisterProgress { .. }
+                Response::SearchProgress { .. }
+                    | Response::AnnotationRegisterProgress { .. }
+                    | Response::IssueReportProgress { .. }
+                    | Response::QuantityWorkbookProgress { .. }
             ) {
                 continue;
             } else {

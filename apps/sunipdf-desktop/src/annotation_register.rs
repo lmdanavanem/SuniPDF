@@ -110,6 +110,25 @@ impl Default for RegisterState {
 }
 
 impl RegisterState {
+    pub(crate) fn issue_report_selection(
+        &self,
+    ) -> (
+        crate::issue_report_ui::Input,
+        sunipdf_core::quantity_table::QuantityOptions,
+    ) {
+        (
+            self.report
+                .clone()
+                .map(crate::issue_report_ui::Input::Register)
+                .unwrap_or_default(),
+            sunipdf_core::quantity_table::QuantityOptions {
+                filter: self.filter.clone(),
+                sort: self.sort,
+                descending: self.descending,
+                ..Default::default()
+            },
+        )
+    }
     pub fn dialog_open(&self) -> bool {
         self.count_open || self.edit.is_some()
     }
@@ -380,6 +399,7 @@ impl SuniApp {
         let mut cancel_edit = false;
         let mut quantities = false;
         let mut zones = false;
+        let mut issue_report = false;
         let mut cancel_collection = false;
         let report = state.report.clone();
         let enabled = !self.worker.has_pending_mutations();
@@ -442,6 +462,12 @@ impl SuniApp {
                     let totals = &selected.totals;
                     // Group totals are available without pushing the first result below the fold.
                     ui.horizontal_wrapped(|ui| {
+                        issue_report = ui
+                            .add_enabled(
+                                can_export,
+                                egui::Button::new(tr(lang, "issue_report.create")),
+                            )
+                            .clicked();
                         let active_filters =
                             filter_summary(&state.filter, &report.plan_zones, lang);
                         let filter_label = if active_filters.is_empty() {
@@ -861,6 +887,10 @@ impl SuniApp {
             state.edit = None;
         }
         self.annotate.register = state;
+        if issue_report {
+            let (input, options) = self.annotate.register.issue_report_selection();
+            self.open_issue_report(input, options);
+        }
         if zones {
             self.open_plan_zones();
         }

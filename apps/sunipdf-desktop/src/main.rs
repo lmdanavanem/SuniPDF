@@ -16,6 +16,7 @@ mod form_builder;
 mod forms;
 mod icons;
 mod inline_text;
+mod issue_report_ui;
 mod library_store;
 mod local_review;
 #[cfg(test)]
@@ -38,6 +39,7 @@ mod plan_zones_ui;
 mod printing;
 mod processing;
 mod quantity_table;
+mod quantity_workbook_ui;
 mod reader_layout;
 #[cfg(all(test, windows))]
 mod reader_ui_evidence;

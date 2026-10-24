@@ -66,6 +66,20 @@ impl Default for FormulaDraft {
 }
 
 impl QuantityState {
+    pub(crate) fn workbook_selection(&self) -> (Option<Arc<QuantityTable>>, QuantityOptions) {
+        (self.report.clone(), self.options.clone())
+    }
+    pub(crate) fn issue_report_selection(
+        &self,
+    ) -> (crate::issue_report_ui::Input, QuantityOptions) {
+        (
+            self.report
+                .clone()
+                .map(crate::issue_report_ui::Input::Quantities)
+                .unwrap_or_default(),
+            self.options.clone(),
+        )
+    }
     pub(crate) fn blocks_document(&self) -> bool {
         self.edit.is_some() || self.exporting.is_some()
     }
@@ -470,6 +484,8 @@ impl SuniApp {
         let (mut close, mut refresh, mut apply, mut cancel, mut export) =
             (false, false, false, false, None);
         let mut navigate = None;
+        let mut issue_report = false;
+        let mut workbook = false;
         let selection = self
             .annotate
             .adv
@@ -952,6 +968,12 @@ impl SuniApp {
                             .input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
                     return;
                 }
+                ui.add_enabled_ui(can_export, |ui| {
+                    ui.menu_button(tr(lang, "quantity_workbook.reports"), |ui| {
+                        issue_report = ui.button(tr(lang, "issue_report.create")).clicked();
+                        workbook = ui.button(tr(lang, "quantity_workbook.create")).clicked();
+                    });
+                });
                 refresh = ui
                     .add_enabled(can_refresh, egui::Button::new(tr(lang, "quantity.refresh")))
                     .clicked();
@@ -1008,6 +1030,14 @@ impl SuniApp {
             state.invalidate();
         }
         self.annotate.quantities = state;
+        if workbook {
+            let (table, options) = self.annotate.quantities.workbook_selection();
+            self.open_quantity_workbook(table, options);
+        }
+        if issue_report {
+            let (input, options) = self.annotate.quantities.issue_report_selection();
+            self.open_issue_report(input, options);
+        }
         if let Some(csv) = export {
             let extension = if csv { "csv" } else { "json" };
             if let Some(path) = rfd::FileDialog::new()

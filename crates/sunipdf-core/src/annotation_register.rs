@@ -105,7 +105,8 @@ pub struct RegisterRow {
     pub zone: crate::plan_zones::ZoneAssignment,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct RegisterFilter {
     pub query: String,
     pub page: Option<usize>,
@@ -123,7 +124,8 @@ pub struct RegisterFilter {
     pub zone_status: Option<crate::plan_zones::ZoneAssignmentStatus>,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RegisterSort {
     #[default]
     Page,

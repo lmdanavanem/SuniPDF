@@ -7,6 +7,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
+- Prepare readable PDF, CSV and JSON reports from the exact annotation-register or quantity-table selection. Show quantity and cost summaries, coverage, issue groups and actual style legends, with complete source details in a separate technical appendix. See the [report guide](docs/ISSUE_REPORTS.md).
+- Export quantity workbooks with structured rows, totals, changes and provenance. Review refreshes from a separate manifest using stable annotation identities, preserving missing and ambiguous records for later review. See the [workbook guide](docs/QUANTITY_WORKBOOKS.md).
+
+These developments are combined in the [0.69 candidate](docs/RELEASE_0.69.0.md); qualification is in progress.
+
 ## [0.67.0] - 2026-10-24
 
 - Review exact searchable sheet references against indexed plan destinations and create relative PDF links in a new copy, with ambiguous/missing targets and changed sources refused explicitly.

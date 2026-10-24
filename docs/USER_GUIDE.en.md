@@ -113,6 +113,39 @@ describes the new coverage counters and CSV records. These additions do not modi
 
 [Full instructions, limits and CLI](QUANTITY_TABLE.md).
 
+## Create an issue or quantity report
+
+In the annotation register, choose **Create report…**. In the quantity table, open
+**Reports and spreadsheets → Create report…**. The command palette also includes
+**Issue and quantity reports**. The report keeps the originating table's current
+search, filters and ordering; check the selected rows before exporting.
+
+Set a title and review the actual PDF pages. The summary separates quantities,
+currencies, missing prices and calculation errors. Issue groups, supported style
+legends and annotation details follow; source identities and settings appear in a
+technical appendix. Missing values never become zero.
+
+Choose PDF, CSV or JSON and a new filename. All three formats use the same selected
+rows and calculations. Changing the document or settings requires a fresh preview.
+The source PDF remains unchanged; the derived report is unencrypted and does not
+inherit its signatures. See [report instructions and limits](ISSUE_REPORTS.md).
+
+## Export and refresh a quantity workbook
+
+In the quantity table, open **Reports and spreadsheets → Spreadsheet…**, or find
+**Quantity workbooks** in the command palette. Review the filtered rows, totals and
+coverage, then export a new XLSX file. The workbook contains values and text, with
+no executable spreadsheet formulas or macros.
+
+Save a separate refresh manifest to compare a later PDF revision. Open that revision,
+load the manifest and review changed, missing, ambiguous and unquantified entries.
+Matching uses unique annotation identities. New identities are excluded until you
+explicitly include them. Export creates a new workbook and preserves the previous
+one; manual edits in an external spreadsheet are not imported.
+
+Use the manifest belonging to the intended revision; it is a comparison baseline,
+not an authenticated proof of origin. See [workbook instructions and limits](QUANTITY_WORKBOOKS.md).
+
 ## Reuse local annotation templates
 
 Open **Tools → Review & measure → Annotation library**. Its local file is separate from PDF files and settings.
