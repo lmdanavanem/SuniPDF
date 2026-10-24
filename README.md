@@ -73,6 +73,10 @@ The 0.64 development candidate adds [reviewed revision transfers](docs/REVISION_
 [grouped plan navigation](docs/PLAN_SETS.md). Local source and CLI checks passed; native and package
 qualification remain in progress. These changes are not included in the 0.63 downloads above.
 
+The [0.65 development candidate](docs/RELEASE_0.65.0.md) adds reviewed links from exact sheet references
+to local plan-set destinations. Local source, CLI and native workflow qualification passed;
+final-package checks remain pending. [Workflow and limits](docs/PLAN_LINKS.md).
+
 Earlier releases added dimensioned rectangles, explicit historical-measurement recalibration, custom-field
 sorting, reusable supported annotation groups and bounded formulas with subtotals. Independent PDF/A/PDF/UA
 fixtures and PDFium/Poppler checks cover specified files and operations; see [conformance limits](docs/CONFORMANCE.md).

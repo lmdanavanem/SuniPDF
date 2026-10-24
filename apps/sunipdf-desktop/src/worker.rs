@@ -4085,7 +4085,13 @@ mod tests {
         };
         assert_eq!(report.created.len(), 2);
         assert!(preview.image.width > preview.image.height);
-        assert!(preview.image.rgba.chunks_exact(4).any(|p| p[0] < 150));
+        assert!(preview
+            .image
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|p| p[0] < 150));
         let Outcome::Preview {
             target: is_target,
             preview: destination,

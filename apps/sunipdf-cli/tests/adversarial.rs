@@ -158,8 +158,11 @@ fn pdf_and_cms_mutations_keep_sources_and_emit_typed_results() {
     }
     assert_eq!(std::fs::read(valid).unwrap(), signed);
     let report = json!({"campaign":"deterministic mutation smoke","cases":cases,"elapsed_ms":started.elapsed().as_millis(),"commands":*process::COMMAND_METRICS.lock().unwrap(),"hardware":process::hardware(),"per_command_timeout_seconds":10,"campaign_budget_seconds":180,"memory_guard_bytes":process::MAX_MEMORY,"output_limit_bytes":process::MAX_OUTPUT,"production_identity_used":false,"coverage_guided_fuzzing":false});
+    let report_directory = root.join("target");
+    // An external CARGO_TARGET_DIR need not create the workspace's report directory.
+    std::fs::create_dir_all(&report_directory).unwrap();
     std::fs::write(
-        root.join("target/adversarial-corpus-report.json"),
+        report_directory.join("adversarial-corpus-report.json"),
         serde_json::to_vec_pretty(&report).unwrap(),
     )
     .unwrap();
