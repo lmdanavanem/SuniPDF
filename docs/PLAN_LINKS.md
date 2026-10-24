@@ -1,11 +1,7 @@
 # Reviewed links between plan sheets
 
-This development workflow finds exact indexed sheet numbers in searchable PDF text and creates
-standard links to explicitly selected local sheets. It is not part of the published 0.63.0 package.
-The final local workspace passes 1,013 tests with 15 ignored, and the independent CLI corpus passes
-329 checks across 30 process commands. Native save/reopen/navigation passed on the identified
-development build; release-package qualification remains pending. See the
-[0.65 candidate notes and native limits](RELEASE_0.65.0.md).
+This workflow finds exact indexed sheet numbers in searchable PDF text and creates standard links
+to explicitly selected local sheets. [Release qualification](RELEASE_0.67.0.md) records the tested scope.
 
 ## Sources and destinations
 

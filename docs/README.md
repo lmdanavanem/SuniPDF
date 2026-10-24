@@ -9,8 +9,8 @@ Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download
 |---|---|
 | Read and navigate | [Reader workspace](READER_WORKSPACE.md) · [Keyboard shortcuts](KEYBOARD_SHORTCUTS.md) · [Bookmarks and pages](BOOKMARKS_AND_PAGE_STRUCTURE.md) |
 | Measure plans | [Measurements](MEASUREMENTS.md) · [Plan scales, snapping and batches](PLAN_WORKSPACE.md) · [Edit saved vertices](MEASUREMENT_GEOMETRY.md) · [Deducted areas and volumes](MEASUREMENT_VOLUMES.md) |
-| Organize and exchange | [Local plan sets](PLAN_SETS.md) · [Form values](FORM_DATA.md) |
-| Review and quantify | [Counts and annotation register](MARKUP_REGISTER.md) · [Quantity tables](QUANTITY_TABLE.md) · [Revision overlays](REVISION_OVERLAY.md) · [Reviewed annotation transfer](REVISION_TRANSFER.md) · [Local comparison and search](LOCAL_REVIEW.md) |
+| Organize and exchange | [Local plan sets](PLAN_SETS.md) · [Reviewed plan links](PLAN_LINKS.md) · [Form values](FORM_DATA.md) |
+| Review and quantify | [Counts and annotation register](MARKUP_REGISTER.md) · [Quantity tables](QUANTITY_TABLE.md) · [Rooms and zones](PLAN_ZONES.md) · [Revision overlays](REVISION_OVERLAY.md) · [Revision outlines](REVISION_OUTLINES.md) · [Reviewed annotation transfer](REVISION_TRANSFER.md) · [Local comparison and search](LOCAL_REVIEW.md) |
 | Annotate and edit | [Rich annotations](RICH_ANNOTATIONS.md) · [Annotation library](ANNOTATION_LIBRARY.md) · [Object order](OBJECT_ORDER.md) · [Font embedding](FONT_EMBEDDING.md) |
 | Decorate and convert | [Page decorations](PAGE_DECORATIONS.md) · [Office conversion](OFFICE_CONVERSION.md) |
 | Sign and protect | [Visual signatures](VISUAL_SIGNATURE_PREPARATION.md) · [Certificate security](SIGNATURE_SECURITY.md) · [Redaction](REDACTION.md) · [Sanitization](SECURITY_MODEL.md) · [PDF inspection](PDF_INSPECTION.md) |
@@ -36,6 +36,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Releases and history
 
+- [0.67.0 combined qualification](RELEASE_0.67.0.md): reviewed links, revision outlines and rooms/zones; current development checks.
 - [0.64.0 release notes](RELEASE_0.64.0.md) and [qualification evidence](qa/RELEASE_0.64.0.json).
 - [0.63.0 release notes](RELEASE_0.63.0.md) and [qualification evidence](qa/RELEASE_0.63.0.json).
 - [0.62.0 release notes](RELEASE_0.62.0.md) and [qualification evidence](qa/RELEASE_0.62.0.json).

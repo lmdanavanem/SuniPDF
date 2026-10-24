@@ -1,7 +1,6 @@
 # Reviewed revision outlines
 
-Development scope for 0.66.0. This guide describes the implementation being prepared; it does not
-announce a published release or completed native qualification.
+See [release qualification](RELEASE_0.67.0.md) for executed checks and remaining limits.
 
 Revision outlines turn explicitly reviewed raster differences into ordinary PDF cloud annotations
 in a new copy of the revised PDF. A detected region is a proposal, not proof of a design change.
