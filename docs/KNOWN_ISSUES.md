@@ -1,10 +1,12 @@
 # Known limitations
 
-Current scope: [SuniPDF 0.74.0](RELEASE_0.74.0.md). This page lists supported boundaries
+Current scope: [SuniPDF 0.75.0](RELEASE_0.75.0.md). This page lists supported boundaries
 and remaining qualification gaps. See [project status](PROJECT_STATUS.md) for executed
 checks and the [roadmap](ROADMAP.md) for planned work.
 
 ## Platforms, installation and updates
+
+- macOS targets Apple Silicon, with a binary-checked macOS 12 minimum and installed execution on macOS 15.7.9. The DMG is ad hoc signed, not notarized. Physical Macs, interactive Finder opening and clipboard interoperability remain unqualified. OCR, native printing, certificate signing, protected Office import, persistent encrypted visual-signature storage and automatic update installation are unavailable. See [macOS](MACOS.md).
 
 - Windows packages are unsigned. Update downloads use GitHub HTTPS and same-channel SHA256;
   an independent release-signing key and production publisher certificate are not configured.

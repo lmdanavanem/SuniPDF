@@ -1,7 +1,7 @@
 # SuniPDF on macOS
 [User guide](USER_GUIDE.en.md)
 
-The macOS package targets **Apple Silicon (arm64)**, with a macOS 12 deployment minimum checked against every bundled binary. Qualification runs on macOS 15; older systems and individual Mac models have not been tested. It contains the desktop application and `sunipdf-cli`. See the [releases page](https://github.com/lmdanavanem/SuniPDF/releases) for available downloads.
+The macOS package targets **Apple Silicon (arm64)**, with a macOS 12 deployment minimum checked against every bundled binary. Qualification runs on macOS 15; older systems and individual Mac models have not been tested. It contains the desktop application and `sunipdf-cli`. Download the [0.75.0 Apple Silicon DMG](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-macos-arm64.dmg) and see its [qualification record](qa/RELEASE_0.75.0.json).
 
 ## Install
 

@@ -4,6 +4,12 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
+## Added in 0.75.0
+
+- Native Apple Silicon DMG, macOS menu bar, Finder opening, Command shortcuts and system clipboard support.
+- Mac Theme settings and manual update notifications, native settings/recovery paths and guarded regular-file readers.
+- Installed package, rendering and edit/save/reopen checks on macOS 15; no notarization or physical Mac/interactive Finder/clipboard qualification. [Platform limits](MACOS.md) · [Release evidence](RELEASE_0.75.0.md).
+
 ## Added in 0.74.0
 
 - Classic and Liquid Glass appearance, System/Light/Dark modes, reduced transparency and persistent Theme settings.

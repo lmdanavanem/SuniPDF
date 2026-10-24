@@ -5,9 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-- Add a macOS Apple silicon package: `release.yml` builds `SuniPDF-<version>-macos-arm64.dmg` (desktop app, CLI, pinned PDFium and verified license inventory, ad hoc signed, not notarized), checked by mounting it, running the packaged CLI and starting the app; `scripts/package-macos.sh [--install]` builds it locally. Same interface with San Francisco text and the bundled icon font, native menu bar, PDFs opened from the Finder and an optional default-PDF-app entry; ⌘ and ⌃ stay distinct shortcut modifiers. Printing, certificate signatures, saved visual signatures, OCR, Office import and in-app updates remain unavailable on macOS ([limits](docs/MACOS.md)).
-
 Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.75.0] - 2026-10-24
+
+- Add a native Apple Silicon DMG with the desktop application, CLI, pinned PDF engine and user guide.
+- Provide macOS menus, Finder PDF opening, Command shortcuts, system clipboard and native application-data paths.
+- Open Theme settings from the native menu and provide manual macOS update notifications.
+- Disable unsupported OCR with a clear explanation and retain documented platform limits.
+- Harden Unix regular-file reads and Darwin live-descriptor checks.
+- Verify package architecture, deployment requirements, dependencies, code sealing and edit/save/reopen behavior.
+- Include public 0.74 packages in Windows upgrade regression coverage.
+- Preserve vendored license bytes during Windows checkout so newline conversion cannot invalidate package integrity checks.
+
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.75.0). The Mac application is ad hoc signed, not notarized. See [qualification and limits](docs/RELEASE_0.75.0.md).
 
 ## [0.74.0] - 2026-10-24
 

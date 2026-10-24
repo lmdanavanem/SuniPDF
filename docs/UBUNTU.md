@@ -1,15 +1,15 @@
 # SuniPDF on Ubuntu
 [User guide](USER_GUIDE.en.md)
 
-The Ubuntu package targets **Ubuntu 22.04 and 24.04, amd64 (x86_64)**. It installs the desktop application and `sunipdf-cli`. Linux ARM64 is not included in this package. See [current downloads](../README.md#download-0740) and [project status](PROJECT_STATUS.md) for available packages and qualification results.
+The Ubuntu package targets **Ubuntu 22.04 and 24.04, amd64 (x86_64)**. It installs the desktop application and `sunipdf-cli`. Linux ARM64 is not included in this package. See [current downloads](../README.md#download-0750) and [project status](PROJECT_STATUS.md) for available packages and qualification results.
 
 ## Install
 
-Download `SuniPDF-0.74.0-linux-amd64.deb` and its `.sha256` file from the release page. In the download directory:
+Download `SuniPDF-0.75.0-linux-amd64.deb` and its `.sha256` file from the release page. In the download directory:
 
 ```sh
-sha256sum --check SuniPDF-0.74.0-linux-amd64.deb.sha256
-sudo apt install ./SuniPDF-0.74.0-linux-amd64.deb
+sha256sum --check SuniPDF-0.75.0-linux-amd64.deb.sha256
+sudo apt install ./SuniPDF-0.75.0-linux-amd64.deb
 ```
 
 APT installs the declared system dependencies. An Internet connection may be needed for this installation. PDF editing and OCR run locally afterwards.
@@ -54,7 +54,7 @@ If authorization is cancelled or installation fails, the application reports the
 you retry. Installation requires the official system-wide Ubuntu amd64 package and an available
 desktop authentication agent. No APT repository is configured.
 
-**Upgrading from 0.73 or earlier:** install the 0.74 DEB once through your package manager to obtain
+**Upgrading from 0.73 or earlier:** install the current DEB once through your package manager to obtain
 the new updater and its installed authorization helper. Earlier binaries continue opening the
 release page. Manual installation with `sudo apt install ./<downloaded-package>.deb` remains available.
 

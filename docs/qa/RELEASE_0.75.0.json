@@ -1,0 +1,268 @@
+{
+  "schema": 1,
+  "version": "0.75.0",
+  "source": "33c9116df1e2b35fed7337cf10ebcd6e5c0abc3d",
+  "tag": "v0.75.0",
+  "release_id": 423012185,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.75.0",
+  "author": "github-actions[bot]",
+  "published_at": "2026-10-24T22:17:26Z",
+  "verified_at": "2026-10-24T22:17:40.026028+00:00",
+  "stable_latest_verified": true,
+  "assets": [
+    {
+      "name": "SuniPDF-0.75.0-linux-amd64.deb",
+      "id": 673449320,
+      "size": 22645660,
+      "sha256": "1f5d7265335aca2d7dd9f0b4711e176e5bb937450d6bcc9c164c6472675a33ce",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-linux-amd64.deb",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.75.0-linux-amd64.deb.sha256",
+      "id": 673449313,
+      "size": 97,
+      "sha256": "8072be546656c605087afc0c2ec99fb123f310f932085962f5d460bb95187078",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-linux-amd64.deb.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.75.0-macos-arm64.dmg",
+      "id": 673449318,
+      "size": 31896019,
+      "sha256": "8a27320d7e4d1cefa4634742c5d97623d2ce98906469de9435a803998f0b07ad",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-macos-arm64.dmg",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.75.0-macos-arm64.dmg.sha256",
+      "id": 673449324,
+      "size": 97,
+      "sha256": "00a9c73108d284b32be2531b2dcf0c6dd420d1626c421abb235b2a1aca54ef88",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-macos-arm64.dmg.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.75.0-win-arm64-portable.zip",
+      "id": 673449321,
+      "size": 34451605,
+      "sha256": "708bf143fbe9cb714df9000fbca0aa726f0c0c781a84e25aae487f69d415734d",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-win-arm64-portable.zip",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.75.0-win-arm64-portable.zip.sha256",
+      "id": 673449322,
+      "size": 105,
+      "sha256": "5049f1d214983c7534850e225fa5dd0029cb930d308df8dac2afcc71090f580d",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-win-arm64-portable.zip.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.75.0-win-x64-portable.zip",
+      "id": 673449316,
+      "size": 36465720,
+      "sha256": "b7a49431d61b6294061ee5d43c238750f62783bd2d15a5d7c1b71f9e6835f87f",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-win-x64-portable.zip",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.75.0-win-x64-portable.zip.sha256",
+      "id": 673449317,
+      "size": 103,
+      "sha256": "cfc484400bce54debed41f090fc629fe45c7ec20b4bd601951eeee6843623382",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-win-x64-portable.zip.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.75.0-win-x64.msi",
+      "id": 673449315,
+      "size": 34283520,
+      "sha256": "bb676fe70085fab2584edc9f22a8f667b380c2eb0017b89145dc494a81dda05c",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-win-x64.msi",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.75.0-win-x64.msi.sha256",
+      "id": 673449325,
+      "size": 94,
+      "sha256": "7370e434dd0505f1f82c9993a2b299a88da1a60cbdc5a9d3b4269df6d60833ba",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-win-x64.msi.sha256",
+      "public_unauthenticated": true
+    }
+  ],
+  "qualification": {
+    "release_run": 40134968996,
+    "release_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40134968996",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "id": 120994438169,
+        "name": "build (x64)",
+        "conclusion": "success"
+      },
+      {
+        "id": 120994438278,
+        "name": "linux / Classify and validate documentation",
+        "conclusion": "success"
+      },
+      {
+        "id": 120994438359,
+        "name": "build (arm64)",
+        "conclusion": "success"
+      },
+      {
+        "id": 120994438596,
+        "name": "macos / Classify documentation change",
+        "conclusion": "success"
+      },
+      {
+        "id": 120994466386,
+        "name": "macos / Build macOS arm64",
+        "conclusion": "success"
+      },
+      {
+        "id": 120994468568,
+        "name": "linux / Build Ubuntu 22.04 amd64",
+        "conclusion": "success"
+      },
+      {
+        "id": 120995806156,
+        "name": "macos / Install and run on macOS",
+        "conclusion": "success"
+      },
+      {
+        "id": 120996592878,
+        "name": "linux / Install and run on Ubuntu 24.04",
+        "conclusion": "success"
+      },
+      {
+        "id": 120996592934,
+        "name": "linux / Install and run on Ubuntu 22.04",
+        "conclusion": "success"
+      },
+      {
+        "id": 120996592958,
+        "name": "linux / PDF conformance and independent reader",
+        "conclusion": "success"
+      },
+      {
+        "id": 121003006383,
+        "name": "publish",
+        "conclusion": "success"
+      }
+    ],
+    "portable_upgrade_baselines": 52,
+    "portable_guard_cases": 4,
+    "msi_upgrade_baselines": 50,
+    "portable_report_sha256": "c0e2614ec5759259268e401d887ea2b4c21c3025c9b970196a8152ecb71db146"
+  },
+  "publication": {
+    "method": "qualified workflow artifacts, owner-authenticated publication",
+    "public_downloads_sha256": "0cc7ddb9f2a8b2728ad88e4def9c4e9169c3cb78e4f02494952d64ca2d682f2e",
+    "artifacts": [
+      {
+        "id": 12577907174,
+        "name": "sunipdf-x64",
+        "size": 70336087,
+        "sha256": "862ea3417c7544e055217678dbbe5a0d2d29b32e3d2afab96427320a97d029c1",
+        "source": "33c9116df1e2b35fed7337cf10ebcd6e5c0abc3d"
+      },
+      {
+        "id": 12576937546,
+        "name": "sunipdf-macos-arm64",
+        "size": 31136773,
+        "sha256": "4160ba74b1771deb1fd9f941ac653ee71ef309f32beba1b7f2a5e4a8ad263ae1",
+        "source": "33c9116df1e2b35fed7337cf10ebcd6e5c0abc3d"
+      },
+      {
+        "id": 12576913569,
+        "name": "sunipdf-arm64",
+        "size": 34272060,
+        "sha256": "c037ab8abae705d02f61dcdcc2ec61b522e50f8143c5d07aca94bfb71c84191b",
+        "source": "33c9116df1e2b35fed7337cf10ebcd6e5c0abc3d"
+      },
+      {
+        "id": 12576248682,
+        "name": "sunipdf-linux-amd64",
+        "size": 22652731,
+        "sha256": "f56f6e1ecaa805385c5b031880beb1169596abb55fcb3b63925b82d644f4a7af",
+        "source": "33c9116df1e2b35fed7337cf10ebcd6e5c0abc3d"
+      }
+    ]
+  },
+  "macos": {
+    "status": "passed",
+    "version": "15.7.9",
+    "architecture": "arm64",
+    "deployment_minimum": "12.0 (binary validation; no execution on macOS 12)",
+    "cases": [
+      "published-checksum-matches-image",
+      "ad-hoc-signature-seals-the-bundle-and-image-offers-applications",
+      "license-inventory-matches-installed-resources",
+      "apple-silicon-deployment-floor-and-library-closure",
+      "packaged-cli-loads-bundled-pdfium-and-renders-fixture",
+      "packaged-cli-edits-saves-and-reopens-a-new-copy",
+      "desktop-app-starts-with-a-pdf"
+    ],
+    "runtime_evidence_sha256": "1d730659a6727527b1df4ce1287f83ea9748f1a9287431fc07788a5d748c8cb1",
+    "dmg_sha256": "8a27320d7e4d1cefa4634742c5d97623d2ce98906469de9435a803998f0b07ad",
+    "notarized": false,
+    "finder_interaction_tested": false,
+    "clipboard_interaction_tested": false,
+    "physical_mac_tested": false,
+    "desktop_capture_review": "directly reviewed"
+  },
+  "ubuntu": [
+    {
+      "distro": "Ubuntu 22.04",
+      "status": "passed",
+      "install_evidence_sha256": "4f17e29723462a9d4495feaee791cdbeeff135fb3966ce5b9c70008121de0245",
+      "update_evidence_sha256": "49816da70e152ae71ad9f69578b84f5ba4b884d03c26534bfedb95e63b0891e0",
+      "graphical_authorization_tested": false,
+      "full_desktop_updater_interaction_tested": false
+    },
+    {
+      "distro": "Ubuntu 24.04",
+      "status": "passed",
+      "install_evidence_sha256": "565096fe7d5c0df02c334f0cce3af80dff224c5f916b4d6bd20fdcadd80daa9f",
+      "update_evidence_sha256": "8b6f477bf3cfad6d64ac0435f143f8f975a1c0d13c13ccab7042d2a0394fdb8a",
+      "graphical_authorization_tested": false,
+      "full_desktop_updater_interaction_tested": false
+    }
+  ],
+  "visual_review": {
+    "sha256": "b6c141d9474b7716511eecc18463326c5e3451d65523748b15a396614f475ec0",
+    "linux_scenes": 22,
+    "linux_exact_pixel_transfers": 20,
+    "linux_changed_dialogs_directly_reviewed": 2,
+    "macos_desktop_review": "directly reviewed"
+  },
+  "conformance": {
+    "status": "passed",
+    "cases": 12,
+    "errors": 0,
+    "corpus_revision": "377728596647e40edf16003d68d620773ce96ec5",
+    "report_sha256": "baeb9b300e27c3f5df2f5b6ec4410fa2399a56c9721aa9dac2496b3e7b808591",
+    "validator": {
+      "version": "1.30.3",
+      "url": "https://software.verapdf.org/releases/1.30/verapdf-greenfield-1.30.3-installer.zip",
+      "bytes": 32971125,
+      "sha256": "b512bf24945503a33fc10738ecffc1f2dccaaf8593a448e94ee9ac86a9559a59"
+    },
+    "scope": "Machine validation of the specified profiles and first-page appearance; human PDF/UA semantics remain unqualified."
+  },
+  "packaging_fix": {
+    "scope": "Preserve pinned license text bytes in Windows Git checkouts.",
+    "checkout_regression_sha256": "53e5fbd0462e39b3ba5ca6a092af9144ec2f0477cd1d9b2538e15d9343528616",
+    "previous_unpublished_candidate_run": 40132025296,
+    "previous_failure": "Pinned dispatch license SHA256 differed after Windows newline conversion; application compilation succeeded."
+  },
+  "limitations": [
+    "Mac OCR, printing, certificate signing, protected Office import, persistent encrypted visual-signature storage and automatic update installation are unavailable.",
+    "Windows packages unsigned; macOS ad hoc signed, not notarized; independent update signing unavailable.",
+    "Windows ARM64 cross-built without native ARM64 execution. No physical GPU, Wayland, printer or human accessibility qualification.",
+    "The additional twelve historical CLI corpora were not rerun; their counts and historical Windows offscreen appearance observations are not attributed to 0.75.",
+    "No whole-roadmap, universal interoperability, private project-plan accuracy or general PDF/A/PDF/UA conformance claim."
+  ]
+}
