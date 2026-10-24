@@ -1,10 +1,25 @@
 # SuniPDF feature matrix
 
-Published release scope: **0.69.0**. See [qualification scope](RELEASE_0.69.0.md).
+Release scope: **0.70.0**. Published as a stable release. See [qualification scope](RELEASE_0.70.0.md).
 [Project status](PROJECT_STATUS.md) separates source/package evidence from untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
-## Added in 0.69.0
+## Added in 0.70.0
+
+| Area | Implemented behavior and limits |
+|---|---|
+| Numeric field units | Optional declared units on Number fields; one type/unit definition per column; explicit No unit; numeric sorting and value-with-unit search |
+| Geometric formulas | Checked six-decimal arithmetic within mm, cm, m, in or ft families, exponents one to three; equal-unit division is dimensionless; no mixed-family conversion, inverse units, mass or density |
+| Exports and history | Separate CSV unit cells only for unit-bearing columns; PDF/JSON/XLSX retain values and units; v2 Changes adds typed before/after custom fields as inert text |
+| Compatibility | Unitless v1 serialization, comparison hashes and XLSX columns preserved; current or pending unit-bearing baseline rows require v2; unsupported/mislabeled metadata refused |
+
+AEC-007, AEC-018 and AEC-019 remain **In progress**. Native desktop interaction, native spreadsheet interoperability and broader reader qualification remain open. Packages remain unsigned; ARM64 hardware, physical printing, human accessibility and private project plans retain their separate limits. No overall performance improvement, universal interoperability or PDF/A/PDF/UA conformance is claimed.
+
+The local development source passed formatting, strict workspace Clippy and desktop/CLI compilation, with **1,094 tests passed, zero failed and 15 ignored**. The English and French catalogs contain **1,871 matching keys**. The independent units corpus passed **1,992 assertions across 96 commands** (71 development CLI 0.70 commands, four packaged CLI 0.69 compatibility commands and 21 qpdf checks). These results are scoped to the recorded development binaries; they do not qualify a downloaded 0.70 release package.
+
+Qualification: Windows: 1,094 passed, 15 ignored; Linux: 1,075 passed, 10 ignored; zero failures. 7,019 assertions in nine downloaded-package corpora. See [qualification evidence](qa/RELEASE_0.70.0.json).
+
+## Retained from 0.69.0
 
 | Area | Implemented behavior and limits |
 |---|---|

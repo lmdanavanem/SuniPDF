@@ -1,6 +1,10 @@
 # Roadmap
 
-Updated 2026-10-24. [0.69.0](RELEASE_0.69.0.md) combines issue reports and quantity workbooks.
+Updated 2026-10-24T10:47:52.733228Z. [0.70.0](RELEASE_0.70.0.md) adds declared numeric-field units and explicit workbook field history. Published as a stable release. [Qualification evidence](qa/RELEASE_0.70.0.json).
+
+AEC-007 remains **In progress**: exact units and bounded geometric formulas are implemented, while native interaction and broader qualification remain open. AEC-018 and AEC-019 also retain their open criteria. Currency exchange, taxes, mass/density and broader estimating workflows remain extensions.
+
+Historical 0.69 record, updated 2026-10-24. [0.69.0](RELEASE_0.69.0.md) combines issue reports and quantity workbooks.
 Published with [Qualification evidence](qa/RELEASE_0.69.0.json).
 Full backlog cards stay open until their stated acceptance criteria are evidenced; implemented increments
 do not close missing native, interoperability, hardware or accessibility qualification.
@@ -97,7 +101,7 @@ criteria. Existing features are foundations for these extensions, not unimplemen
 | Area | Remaining extension | Required behavior |
 |---|---|---|
 | Register and libraries | Broaden saved-group capture only for reproducible appearances | Native shape-group capture retains relative geometry and supported styles. Foreign, text/image/stamp and extra-semantic records remain explicitly refused. |
-| Quantity calculations | Add unit-bearing custom fields and finish workbook qualification | Formula subtotals and 0.69 workbook refresh retain separate unit/precision totals and explicit errors. Native spreadsheet interoperability remains open; no implicit currency conversion or stale export. |
+| Quantity calculations | Qualify declared units and broaden explicit estimating rules | 0.70 adds optional field units and exact bounded geometry; 0.69 workbook refresh retains separate units and explicit errors. Native desktop/spreadsheet interoperability remains open; currency exchange, taxes and mass/density are not implemented. |
 | Dimensioned drawing | Extend supported geometry | Published rectangles use real width/height, an explicit anchor and local/page/region/automatic scale. Preview, Undo/Redo and save/reopen retain editable polygon geometry. Permanent constraints, other analytic shapes and independent X/Y scales remain extensions. |
 | Area and volume | Extend independent qualification of the delivered workflow | Polygon deductions and constant-depth quantities are delivered in 0.63. Editable external-reader interoperability and physical accuracy remain separate. |
 | Rooms and zones | Complete qualification and broaden explicit region support | The 0.67 release provides named rectangular hierarchies and shared assignments; retain explicit overlap, boundary, unknown and stale coverage. Qualify native interaction and broader plan interoperability. |

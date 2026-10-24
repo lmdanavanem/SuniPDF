@@ -18,17 +18,17 @@ The interface defaults to English; French is also available.
 
 Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
 
-## Download 0.69.0
+## Download 0.70.0
 
-The following files are available in the published 0.69.0 release.
+SuniPDF 0.70.0 is the latest stable release.
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.69.0/SuniPDF-0.69.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.69.0/SuniPDF-0.69.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.69.0/SuniPDF-0.69.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.69.0/SuniPDF-0.69.0-linux-amd64.deb) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.70.0/SuniPDF-0.70.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.70.0/SuniPDF-0.70.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.70.0/SuniPDF-0.70.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.70.0/SuniPDF-0.70.0-linux-amd64.deb) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.69.0) · [Qualification evidence](docs/qa/RELEASE_0.69.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.70.0) · [Qualification evidence](docs/qa/RELEASE_0.70.0.json)
 
 Packages are unsigned. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
 See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUES.md).
@@ -36,7 +36,7 @@ See [Ubuntu platform limits](docs/UBUNTU.md) and [known issues](docs/KNOWN_ISSUE
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.69.0-linux-amd64.deb`.
+- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.70.0-linux-amd64.deb`.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
 - Use **Ctrl+K** to find a command. Save your document to keep applied changes.
 
@@ -58,28 +58,22 @@ offering installation; Ubuntu opens the release download for installation throug
 
 [Feature matrix and limits](docs/FEATURE_MATRIX.md) · [User guide](docs/USER_GUIDE.en.md)
 
-## New in 0.69.0
+## New in 0.70.0
 
-Create PDF, CSV and JSON reports from the current annotation-register or quantity-table selection.
-Preview the actual PDF pages, review quantities, separate currency totals and missing values, then
-export a new file. Issue groups, supported style legends and annotation details follow the summary;
-source identities and calculation settings remain available in a technical appendix.
+- Add units to numeric fields such as `Depth: 0.25 m`, and keep them when saving PDFs or exporting reports.
+- Calculate areas and volumes from values in the same unit family, with explicit errors for incompatible or missing inputs.
+- Review old and new field values and units in the XLSX Changes sheet, including removed units and missing records.
 
-Export local XLSX quantity snapshots and compare a later PDF revision through a separate refresh
-manifest. Review changed, missing and ambiguous annotation identities before exporting a new workbook.
-The workflow does not import arbitrary spreadsheets, execute macros or overwrite previous outputs.
+A declared unit does not convert a number or calibrate a plan. Existing unitless v1 data stays compatible;
+fields with units use v2 metadata and require a reader that supports it.
 
-Windows: 1,083 passed, 15 ignored; Linux: 1,064 passed, 10 ignored. Eight independent package corpora passed 5,027 assertions across 326 commands. [Qualification evidence](docs/qa/RELEASE_0.69.0.json).
+[Quantity fields and formulas](docs/QUANTITY_TABLE.md) · [Workbook history](docs/QUANTITY_WORKBOOKS.md).
 
-Native interaction with these report and workbook workflows, and native spreadsheet interoperability,
-remain untested. AEC-018 and AEC-019 stay **In progress** until their remaining criteria are evidenced.
+Qualification: Windows: 1,094 passed, 15 ignored; Linux: 1,075 passed, 10 ignored; zero failures. 7,019 assertions in nine downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.70.0.json).
+Native desktop and spreadsheet interaction remain untested. See [release notes](docs/RELEASE_0.70.0.md)
+and [qualification limits](docs/PROJECT_STATUS.md).
 
-[Report guide](docs/ISSUE_REPORTS.md) · [Workbook guide](docs/QUANTITY_WORKBOOKS.md) ·
-[Release notes](docs/RELEASE_0.69.0.md) · [Qualification scope](docs/PROJECT_STATUS.md).
-
-Earlier releases added dimensioned rectangles, explicit historical-measurement recalibration, custom-field
-sorting, reusable supported annotation groups and bounded formulas with subtotals. Independent PDF/A/PDF/UA
-fixtures and PDFium/Poppler checks cover specified files and operations; see [conformance limits](docs/CONFORMANCE.md).
+For the earlier reports and workbook-refresh features, see the [0.69 release notes](docs/RELEASE_0.69.0.md).
 
 ## Documentation and development
 

@@ -60,7 +60,7 @@ uses version 1 after the last unit is removed; the comparison still retains the
 unit-bearing old values. Unsupported metadata versions are refused explicitly.
 
 See [numeric fields and formula units](QUANTITY_TABLE.md) and the
-[0.70 candidate qualification](RELEASE_0.70.0.md).
+[0.70 release qualification](RELEASE_0.70.0.md). Published as a stable release; [recorded package evidence](qa/RELEASE_0.70.0.json).
 
 ## Preservation and limits
 

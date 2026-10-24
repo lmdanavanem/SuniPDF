@@ -1,8 +1,27 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.69.0.md) · Published; see [qualification scope](RELEASE_0.69.0.md).
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.70 release scope](RELEASE_0.70.0.md) · Published as a stable release.
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
+
+## 0.70 increment and remaining qualification
+
+Declare optional units on Number custom fields and retain them in the table, formula previews,
+PDF/CSV/JSON reports and XLSX refreshes. Columns with the same name require one type and unit.
+Changing a unit changes its declaration without converting the value or calibrating a measurement.
+
+Checked decimal formulas combine lengths, areas and volumes within one exact unit family:
+`2 m * 3 m = 6 m2`, then `6 m2 * 0.25 m = 1.5 m3`. Mixed families, inverse dimensions,
+powers above three, mass and density remain unsupported. Missing values do not become zero.
+
+Version 2 XLSX Changes sheets expose typed **Before custom fields** and **After custom fields**
+as inert text. Absent comparison sides stay empty. Unitless version 1 data keeps its serialization,
+comparison hashes and original workbook columns. Unit-bearing data uses version 2; unsupported
+versions are refused rather than treated as dimensionless data.
+
+AEC-007, AEC-018 and AEC-019 remain **In progress**. Native desktop interaction, native spreadsheet interoperability and broader reader qualification remain open. Packages remain unsigned; ARM64 hardware, physical printing, human accessibility and private project plans retain their separate limits. No overall performance improvement, universal interoperability or PDF/A/PDF/UA conformance is claimed.
+
+Published as a stable release. Package evidence: Windows: 1,094 passed, 15 ignored; Linux: 1,075 passed, 10 ignored; zero failures. 7,019 assertions in nine downloaded-package corpora. See [qualification evidence](qa/RELEASE_0.70.0.json). [0.70 release scope](RELEASE_0.70.0.md).
 
 ## Delivered in 0.60
 
@@ -17,7 +36,7 @@ Full cards retain their broader acceptance gates; no entire P1/P2 category is cl
 
 ## Delivered in 0.62
 
-AEC-007 includes formula subtotals with checked sums of rounded row results, separate formula/group/unit/precision buckets and explicit error coverage. Signed numeric CSV values remain numeric; free text retains spreadsheet-formula protection. Unit-bearing custom fields and tax/currency conversion remain open, so the card stays **In progress**. The later 0.69 workbook increment adds reviewed manifest refresh under AEC-019; its native spreadsheet qualification remains open.
+AEC-007 includes formula subtotals with checked sums of rounded row results, separate formula/group/unit/precision buckets and explicit error coverage. Signed numeric CSV values remain numeric; free text retains spreadsheet-formula protection. At 0.62, unit-bearing custom fields and tax/currency conversion remained open. 0.70 adds declared field units; tax/currency conversion and the remaining qualification keep the card **In progress**. The later 0.69 workbook increment adds reviewed manifest refresh under AEC-019; its native spreadsheet qualification remains open.
 
 AEC-008 includes a shared dimensioned-rectangle constructor, CLI scale selection and a Measurements-panel placement workflow. The result is an editable four-vertex area measurement with current provenance and quantity-table support. Explicit page/region/reference selection, ambiguity refusal and storage-precision checks preserve the requested dimensions. Exact-source CI passed; earlier native development-build checks covered Preview/Apply, Undo/Redo and save/reopen. AEC-008 stays **In progress**: permanent rectangular constraints, arbitrary rotated shapes, dimensioned circles, independent X/Y scales and broader plan interoperability remain open. AEC-009 depth, holes and volumes are outside 0.62.
 
