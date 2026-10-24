@@ -5,16 +5,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-### Region fill
-
-- Inspect an enclosed page region from an explicit seed and manual closures, retaining its actual contour and holes.
-- Review the calibrated area preview before creating one editable measurement; refuse leaks, ambiguous geometry and partial results. Historical generation inputs are retained separately from the measurement record.
-- Keep window closing blocked while a plan-link copy is being saved, including when the active document has no unsaved changes; retain the completion result.
-- Preserve unsaved plan-set manifests and unapplied metadata when closing the window; finish active saves before quitting and keep failed saves available for retry.
-
-The 0.72 development increment is undergoing qualification. See [the workflow and limits](docs/REGION_FILL.md).
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.72.0] - 2026-10-24
+
+- Trace one page region from an explicit interior point and manual closures, retaining the actual raster contour and enclosed holes.
+- Preview and explicitly review a calibrated area before creating one editable measurement with one Undo.
+- Refuse leakage, ambiguous topology, excessive geometry, incomplete processing and stale candidates; retain historical generation inputs separately.
+- Provide CLI inspection, a strict review file, a calibrated PNG preview and guarded new-copy output.
+- Keep window closing blocked during plan-link copy saving, including with a clean active document, and retain the committed-copy result.
+- Preserve unsaved plan-set manifests and unapplied metadata when closing the window; finish active saves before quitting and keep failed saves available for retry.
+
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.72.0). Source `23c3f1846f8870b34865266a35ba6bd25753128b`.
+Windows: 1,135 passed, zero failed, 15 ignored; Linux: 1,116 passed, zero failed, 10 ignored. 8,432 assertions across 590 recorded commands in eleven downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.72.0.json).
+AEC-012 is **In progress**; native interaction and broader drawing qualification remain open.
+Raster resolution, threshold and printed-content deductions require review; no physical accuracy claim is made.
+[Workflow and limits](docs/REGION_FILL.md) · [Release scope](docs/RELEASE_0.72.0.md).
 
 ## [0.71.0] - 2026-10-24
 

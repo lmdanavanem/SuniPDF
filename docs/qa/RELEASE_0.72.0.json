@@ -1,0 +1,1683 @@
+{
+  "schema": 1,
+  "kind": "published-release-qualification-summary",
+  "version": "0.72.0",
+  "source": "23c3f1846f8870b34865266a35ba6bd25753128b",
+  "release_id": 422778152,
+  "tag": "v0.72.0",
+  "published_at": "2026-10-24T15:09:46Z",
+  "author": "lmdanavanem",
+  "stable_latest_verified": true,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.72.0",
+  "verified_at": "2026-10-24T15:11:57.923546Z",
+  "public_verification": {
+    "complete": true,
+    "mode": "anonymous public downloads",
+    "report_sha256": "ddcce74d82cec93ed21988a8843a1d967d9b5b1580e9f3d0456939d5da37f78c",
+    "tag_source_verified": true,
+    "sidecars_verified": true,
+    "assets_downloaded": 8
+  },
+  "workflows": [
+    {
+      "name": "ci",
+      "run": 40102458058,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458058",
+      "source": "23c3f1846f8870b34865266a35ba6bd25753128b",
+      "conclusion": "success",
+      "status": "completed"
+    },
+    {
+      "name": "linux",
+      "run": 40102458013,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458013",
+      "source": "23c3f1846f8870b34865266a35ba6bd25753128b",
+      "conclusion": "success",
+      "status": "completed"
+    },
+    {
+      "name": "release",
+      "run": 40102464218,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102464218",
+      "source": "23c3f1846f8870b34865266a35ba6bd25753128b",
+      "conclusion": "success",
+      "status": "completed"
+    },
+    {
+      "name": "codeql",
+      "run": 40102458663,
+      "run_attempt": 1,
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458663",
+      "source": "23c3f1846f8870b34865266a35ba6bd25753128b",
+      "conclusion": "success",
+      "status": "completed"
+    }
+  ],
+  "qualification": {
+    "windows": {
+      "passed": 1135,
+      "failed": 0,
+      "ignored": 15,
+      "suites": 102
+    },
+    "linux": {
+      "passed": 1116,
+      "failed": 0,
+      "ignored": 10,
+      "suites": 102
+    },
+    "release_linux": {
+      "passed": 1116,
+      "failed": 0,
+      "ignored": 10,
+      "suites": 102
+    },
+    "i18n": 1944,
+    "portable": {
+      "upgrades": 49,
+      "guards": 4,
+      "scenarios": 53
+    },
+    "msi": {
+      "baselines": 47,
+      "logs": 235
+    },
+    "open_code_scanning_alerts": 0
+  },
+  "check_runs": [
+    {
+      "name": "publish",
+      "id": 120905307732,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102464218/job/120905307732"
+    },
+    {
+      "name": "linux / Install and run on Ubuntu 24.04",
+      "id": 120899538511,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102464218/job/120899538511"
+    },
+    {
+      "name": "linux / PDF conformance and independent reader",
+      "id": 120899538500,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102464218/job/120899538500"
+    },
+    {
+      "name": "linux / Install and run on Ubuntu 22.04",
+      "id": 120899538481,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102464218/job/120899538481"
+    },
+    {
+      "name": "Install and run on Ubuntu 24.04",
+      "id": 120899220952,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458013/job/120899220952"
+    },
+    {
+      "name": "Install and run on Ubuntu 22.04",
+      "id": 120899220921,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458013/job/120899220921"
+    },
+    {
+      "name": "PDF conformance and independent reader",
+      "id": 120899220911,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458013/job/120899220911"
+    },
+    {
+      "name": "linux / Build Ubuntu 22.04 amd64",
+      "id": 120897278024,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102464218/job/120897278024"
+    },
+    {
+      "name": "Build Ubuntu 22.04 amd64",
+      "id": 120897257637,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458013/job/120897257637"
+    },
+    {
+      "name": "linux / Classify and validate documentation",
+      "id": 120897242775,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102464218/job/120897242775"
+    },
+    {
+      "name": "build (x64)",
+      "id": 120897242718,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102464218/job/120897242718"
+    },
+    {
+      "name": "build (arm64)",
+      "id": 120897242660,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102464218/job/120897242660"
+    },
+    {
+      "name": "Analyze (python)",
+      "id": 120897230841,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458663/job/120897230841"
+    },
+    {
+      "name": "Analyze (actions)",
+      "id": 120897230823,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458663/job/120897230823"
+    },
+    {
+      "name": "Analyze (rust)",
+      "id": 120897230727,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458663/job/120897230727"
+    },
+    {
+      "name": "windows",
+      "id": 120897226113,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458058/job/120897226113"
+    },
+    {
+      "name": "Classify and validate documentation",
+      "id": 120897225834,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458013/job/120897225834"
+    }
+  ],
+  "assets": [
+    {
+      "id": 672551507,
+      "name": "SuniPDF-0.72.0-linux-amd64.deb",
+      "size": 22487428,
+      "sha256": "160e90bf36ca93847fb42a98cb74fd119c99ae6be66829b78d07fe9fa7b286c9",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-linux-amd64.deb"
+    },
+    {
+      "id": 672551511,
+      "name": "SuniPDF-0.72.0-linux-amd64.deb.sha256",
+      "size": 97,
+      "sha256": "06e246ab14a53feefcc51fa67a244626c9d050dc88cce1f41f2551b258692415",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-linux-amd64.deb.sha256"
+    },
+    {
+      "id": 672551515,
+      "name": "SuniPDF-0.72.0-win-arm64-portable.zip",
+      "size": 34242865,
+      "sha256": "5144ea3520c05f98c8f43a46321df658b262fd86ef621fba74bb89dbc984601a",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-arm64-portable.zip"
+    },
+    {
+      "id": 672551509,
+      "name": "SuniPDF-0.72.0-win-arm64-portable.zip.sha256",
+      "size": 105,
+      "sha256": "aece6da60df7cb95391705e80df856996e8b980c5f0c63c1cb3996a96f89ba46",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-arm64-portable.zip.sha256"
+    },
+    {
+      "id": 672551512,
+      "name": "SuniPDF-0.72.0-win-x64-portable.zip",
+      "size": 36231851,
+      "sha256": "85af0387a2f2c2d85a16e80ae5cc797154f860fe734de00b4957d968964443cf",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-x64-portable.zip"
+    },
+    {
+      "id": 672551510,
+      "name": "SuniPDF-0.72.0-win-x64-portable.zip.sha256",
+      "size": 103,
+      "sha256": "05231f1c51965bff1f1e2d0863222d1106611402a20d2bae0d0bd10323ac2444",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-x64-portable.zip.sha256"
+    },
+    {
+      "id": 672551525,
+      "name": "SuniPDF-0.72.0-win-x64.msi",
+      "size": 34062336,
+      "sha256": "efb96e8b4dfa91e96784c9a5f61897f49f7b9c9fa239daa770469a9bb6e9792a",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-x64.msi"
+    },
+    {
+      "id": 672551506,
+      "name": "SuniPDF-0.72.0-win-x64.msi.sha256",
+      "size": 94,
+      "sha256": "4712636ffa66f2af55d9dc81f9ea145dbc059240051ec01af590b1efcb060f4b",
+      "public_unauthenticated": true,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.72.0/SuniPDF-0.72.0-win-x64.msi.sha256"
+    }
+  ],
+  "public_windows_runtime": {
+    "status": "passed",
+    "package_unchanged": true,
+    "totals": {
+      "recorded_commands": 590,
+      "current_sunipdf_cli": 510,
+      "qpdf": 74,
+      "validation_helpers": 2,
+      "legacy_sunipdf_cli": 4
+    },
+    "assertions": 8432,
+    "report_sha256": "41b973de58b36302fd099a8f7eb9c39d0deb9ebe3522f7383976729a34513a94",
+    "public_unauthenticated": true,
+    "scope": "Eleven corpora using the verified Windows x64 portable package and adjacent bundled runtime. Recorded commands exclude subprocesses internal to the Python/PowerShell validators. The workbook helper binds its PDFium setting to the verified package directory. The units corpus also uses the separately pinned published 0.69 package for old-reader controls; current and legacy CLI counts are distinct. Development, draft and public checks are separate repetitions, not additive coverage.",
+    "corpora": [
+      {
+        "name": "provenance_quantity",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 48,
+          "current_sunipdf_cli": 37,
+          "qpdf": 9,
+          "validation_helpers": 2,
+          "legacy_sunipdf_cli": 0
+        },
+        "assertions": 288,
+        "report_sha256": "3c2e081cf7ba771cadf56d1120e95e6466eb4c0a1c2d607d41deaec9bfc036c7"
+      },
+      {
+        "name": "plans_forms_volumes",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 20,
+          "current_sunipdf_cli": 18,
+          "qpdf": 2,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 680,
+        "report_sha256": "1731cffd37fa29be71bacafd6e709f366789e0959a93fa63c238ab3f75e9ac97"
+      },
+      {
+        "name": "revision_transfer",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 14,
+          "current_sunipdf_cli": 13,
+          "qpdf": 1,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 94,
+        "report_sha256": "668326df354ab97f427f6fec530ddf6f1e6705ec569ba10e91501094bbb9a75b"
+      },
+      {
+        "name": "plan_links",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 30,
+          "current_sunipdf_cli": 26,
+          "qpdf": 4,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 329,
+        "report_sha256": "abcdb5a78b4d20d15d38ecf1c896106e032ea98fbbe6c032f6a673c40c590e14"
+      },
+      {
+        "name": "revision_outlines",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 49,
+          "qpdf": 15,
+          "current_sunipdf_cli": 34,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 542,
+        "report_sha256": "3cdece460df7c6aa63cea667db32582d87c86045673d3e21e48d403f342527cf"
+      },
+      {
+        "name": "plan_zones",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 77,
+          "current_sunipdf_cli": 68,
+          "qpdf": 9,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 1670,
+        "report_sha256": "f5b31b27274e5932b6b237ec8a7d7ec8430c0dfda28c577e180c450a60c3832d"
+      },
+      {
+        "name": "issue_reports",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 46,
+          "current_sunipdf_cli": 41,
+          "qpdf": 5,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 664,
+        "report_sha256": "11d91266aa4390775c74768acd79ded6c0581bdb1702b12d8ff03c00dd9dd306"
+      },
+      {
+        "name": "quantity_workbooks",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 42,
+          "current_sunipdf_cli": 42,
+          "legacy_sunipdf_cli": 0,
+          "qpdf": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 760,
+        "report_sha256": "94148602e42073ff9151f13c772f5c51740f633e90a652912392bdc4c3e43720"
+      },
+      {
+        "name": "quantity_units",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 96,
+          "current_sunipdf_cli": 71,
+          "qpdf": 21,
+          "legacy_sunipdf_cli": 4,
+          "validation_helpers": 0
+        },
+        "assertions": 1992,
+        "report_sha256": "dd8f6152371ae9894aeade5ebfc33aa94199af758a202fb1bac86517c51e04de"
+      },
+      {
+        "name": "visual_search",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 71,
+          "current_sunipdf_cli": 68,
+          "qpdf": 3,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 390,
+        "report_sha256": "e5a39313a9cbedacccf2c8105b70625a8d0c104d56f965c4d7f1bb0d54494d76"
+      },
+      {
+        "name": "boundary_fill",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 97,
+          "current_sunipdf_cli": 92,
+          "qpdf": 5,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 1023,
+        "report_sha256": "f809c31615e0ce784bca9d220d30698db724fa0fbea682be9328a543db0ae333"
+      }
+    ]
+  },
+  "draft_windows_runtime": {
+    "status": "passed",
+    "package_unchanged": true,
+    "totals": {
+      "recorded_commands": 590,
+      "current_sunipdf_cli": 510,
+      "qpdf": 74,
+      "validation_helpers": 2,
+      "legacy_sunipdf_cli": 4
+    },
+    "assertions": 8432,
+    "report_sha256": "c72f74ac5b94b0fc7b8c99048d3766225e65ac8653168f2daf95980410febeb0",
+    "public_unauthenticated": false,
+    "scope": "Eleven corpora using the verified Windows x64 portable package and adjacent bundled runtime. Recorded commands exclude subprocesses internal to the Python/PowerShell validators. The workbook helper binds its PDFium setting to the verified package directory. The units corpus also uses the separately pinned published 0.69 package for old-reader controls; current and legacy CLI counts are distinct. Development, draft and public checks are separate repetitions, not additive coverage.",
+    "corpora": [
+      {
+        "name": "provenance_quantity",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 48,
+          "current_sunipdf_cli": 37,
+          "qpdf": 9,
+          "validation_helpers": 2,
+          "legacy_sunipdf_cli": 0
+        },
+        "assertions": 288,
+        "report_sha256": "85a6925e8a0ad716a725140573c471677a1a73d06674a9f75817e20cd2e0fd3b"
+      },
+      {
+        "name": "plans_forms_volumes",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 20,
+          "current_sunipdf_cli": 18,
+          "qpdf": 2,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 680,
+        "report_sha256": "8e4f5acd30f531523328615a395251145e76dbfeb9b52307716113e1d9ec18b8"
+      },
+      {
+        "name": "revision_transfer",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 14,
+          "current_sunipdf_cli": 13,
+          "qpdf": 1,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 94,
+        "report_sha256": "dcf9bbe11266f6d545d22a2e9146c7ae846d30297a0801c23e9acf1378c15b94"
+      },
+      {
+        "name": "plan_links",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 30,
+          "current_sunipdf_cli": 26,
+          "qpdf": 4,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 329,
+        "report_sha256": "4e6545259c408c6b5c4424936115f966e0ef0d66e9b04b1d9d51995d87600d07"
+      },
+      {
+        "name": "revision_outlines",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 49,
+          "qpdf": 15,
+          "current_sunipdf_cli": 34,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 542,
+        "report_sha256": "fee8b248d60fb24f48581381e08eca54dc3ae65c7bfd6a28d407d9fd136cc12d"
+      },
+      {
+        "name": "plan_zones",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 77,
+          "current_sunipdf_cli": 68,
+          "qpdf": 9,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 1670,
+        "report_sha256": "fba6fac9db53c41ec2e8f160e1c95a392ffaccf6aad040a307e9a6d2f4e0a21b"
+      },
+      {
+        "name": "issue_reports",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 46,
+          "current_sunipdf_cli": 41,
+          "qpdf": 5,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 664,
+        "report_sha256": "9b488c8c731e0b3f599799fd0670632b32494ef87179082153619c30f3975f97"
+      },
+      {
+        "name": "quantity_workbooks",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 42,
+          "current_sunipdf_cli": 42,
+          "legacy_sunipdf_cli": 0,
+          "qpdf": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 760,
+        "report_sha256": "924267f4ae28f51948187cc77a7e8aec55045518b08acc315c8b0766ee108605"
+      },
+      {
+        "name": "quantity_units",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 96,
+          "current_sunipdf_cli": 71,
+          "qpdf": 21,
+          "legacy_sunipdf_cli": 4,
+          "validation_helpers": 0
+        },
+        "assertions": 1992,
+        "report_sha256": "e2eafbbc3c1a9e8f02850d058fa2bf0967213b9a7c5358a122df729d2e037e60"
+      },
+      {
+        "name": "visual_search",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 71,
+          "current_sunipdf_cli": 68,
+          "qpdf": 3,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 390,
+        "report_sha256": "0874a3ee96ed7a2046bfd4798fb3a0e29684e71df6b14aa15d38035798f1b65a"
+      },
+      {
+        "name": "boundary_fill",
+        "status": "passed",
+        "counts": {
+          "recorded_commands": 97,
+          "current_sunipdf_cli": 92,
+          "qpdf": 5,
+          "legacy_sunipdf_cli": 0,
+          "validation_helpers": 0
+        },
+        "assertions": 1023,
+        "report_sha256": "fcd32261d65ce81db0c6b552d2b3f37ec62eca72de8ecb8661019806a1e07a9c"
+      }
+    ]
+  },
+  "local_retention": {
+    "status": "passed",
+    "assets": 8,
+    "all_asset_hashes_match_public_downloads": true,
+    "report_sha256": "099fc66367967bac56939fbac8c80711ed0f87fd3c3d70dd2bbab3a2107f814d",
+    "scope": "Byte-for-byte retained copies of the eight release assets; no additional runtime coverage."
+  },
+  "pdf_visual_review": {
+    "status": "passed",
+    "scale": 1.5,
+    "cli_sha256": "ff6047c4c7a0337588d63d1beeae5145ca9f7d0c798db6f3fab015b5e6572cdd",
+    "native_tested": false,
+    "reviewed_at": "2026-10-24T15:09:01.7928413Z",
+    "scope": "Visual inspection of seven specified pages rendered from four PDFs produced by the exact downloaded 0.72.0 draft package. These seven render commands are outside the eleven-corpus command totals. No native desktop interaction.",
+    "observations": [
+      "Complete and partial summaries are readable, with separate quantity, currency and missing-value/error coverage.",
+      "The technical appendix wraps its provenance and settings without clipping or collision with the page footer.",
+      "Latin accents and the displayed CJK text render legibly; supported legend samples are visible and unknown appearances remain explicitly marked.",
+      "Numeric fields and formula results retain their units and area/volume superscripts. All seven inspected pages have readable text and clear separation from their footers."
+    ],
+    "report_sha256": "31bab17e26228394335ed58c79c1e4be25ecc65d85e60f651531adaef0d8ea65",
+    "pages_reviewed": 7,
+    "images": [
+      {
+        "pdf": "counts-complete.pdf",
+        "image": "summary.png",
+        "page": 1,
+        "pdf_sha256": "837fa7b7d9d4da2f1c275342af981b98b15d38dc36717a0d7b804a63075b1843",
+        "image_sha256": "78aa76d6d17f9bc06afc386debb25e94f36132706432c421643a3868dd0b1d05"
+      },
+      {
+        "pdf": "all-formulas.pdf",
+        "image": "partial-summary.png",
+        "page": 1,
+        "pdf_sha256": "c8ddbd5aadd2a03fe23a9210610a3d908e2cc7808fc00ed5e01404fdb93b55f4",
+        "image_sha256": "86fca4b33e9172951dfbf2b8fa4282706523f1d27bef97ae3454813e3e23f78a"
+      },
+      {
+        "pdf": "counts-complete.pdf",
+        "image": "appendix.png",
+        "page": 4,
+        "pdf_sha256": "837fa7b7d9d4da2f1c275342af981b98b15d38dc36717a0d7b804a63075b1843",
+        "image_sha256": "393ab3c27270e3d808a9702a3c24eeac15fee39a71ad82045bf233a732dd55e5"
+      },
+      {
+        "pdf": "cjk.pdf",
+        "image": "cjk.png",
+        "page": 1,
+        "pdf_sha256": "5ee5e8d9de6f591692abef0ae16c32d1f3292652cf79550d2b23d94117d01d11",
+        "image_sha256": "c08fe97d82c854018d06045e63b65bfd1fb5843745a77b60e351a93842afae97"
+      },
+      {
+        "pdf": "all-formulas.pdf",
+        "image": "legend.png",
+        "page": 2,
+        "pdf_sha256": "c8ddbd5aadd2a03fe23a9210610a3d908e2cc7808fc00ed5e01404fdb93b55f4",
+        "image_sha256": "89a22c2b0505eee071e0c08edbdf09201e7ea4e8a6e87c82c1e326f17b7090c6"
+      },
+      {
+        "pdf": "report.pdf",
+        "image": "unit-summary.png",
+        "page": 1,
+        "pdf_sha256": "47e7660c3d393906f8c0eaed3f1bdd7a38472dbe40cdc603e601eba5f4bf507b",
+        "image_sha256": "52eb173ffb040fd64136d5fd5bf224d73abfc2e7de85f8a812a4d21f8fb1ed5e"
+      },
+      {
+        "pdf": "report.pdf",
+        "image": "unit-fields.png",
+        "page": 3,
+        "pdf_sha256": "47e7660c3d393906f8c0eaed3f1bdd7a38472dbe40cdc603e601eba5f4bf507b",
+        "image_sha256": "5e64258a5a32114e53326c127a939022c061aab5218179942fee1a7d79a1bf53"
+      }
+    ]
+  },
+  "development": {
+    "source_tree_matches_release": true,
+    "product_fingerprint": "2fd60f7d2460926811ab2cfa121eafc06874de819c52afef03def07b8190266f",
+    "pipeline_report_sha256": "b644f07cef47bfd0f6a9df8d0f98edf40b45e785f45a1283815930b5a2747928",
+    "suite": {
+      "passed": 1135,
+      "failed": 0,
+      "ignored": 15,
+      "suites": 102
+    },
+    "stages": [
+      {
+        "stage": "fmt",
+        "exit_code": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "stage": "clippy",
+        "exit_code": 0,
+        "sha256": "4fe1ab4a6fb69c0ba591939ed4a22c5ce404fa7069d3e3a9b3bcd36d9d9a3537"
+      },
+      {
+        "stage": "workspace-tests",
+        "exit_code": 0,
+        "sha256": "c165a8d296e6496d164206c76bc4e9e2a880de50843df16c9d26580bfcb0f117"
+      },
+      {
+        "stage": "build",
+        "exit_code": 0,
+        "sha256": "4f250ef21dc9b496e1120ea4c84d89efa39909c9631d2de3fee4eddf3ffbecaf"
+      }
+    ],
+    "profile": {
+      "dev_debug": 0,
+      "test_debug": 0,
+      "jobs": 1,
+      "incremental": "Cargo dev/test default; no override"
+    },
+    "binaries": [
+      {
+        "file": "sunipdf.exe",
+        "sha256": "623fbd82295d243290f7e7c0a63701acc6726d9607bd6464bca30c446ede9c45",
+        "bytes": 54977536
+      },
+      {
+        "file": "sunipdf-cli.exe",
+        "sha256": "06eac0ae765b578881b062283dc1599c08eda561044b252bc3f1e04540b83a55",
+        "bytes": 25206272
+      }
+    ],
+    "native_tested": false,
+    "scope": "Frozen development source. Separate from downloaded-package qualification; counts are not additive."
+  },
+  "native_plan_workflows": {
+    "status": "not-tested",
+    "scope": "Combined 0.72 interactive Windows workflows and native spreadsheet acceptance remain pending because the local application-control connection was unavailable. Offscreen reader scenes, Ubuntu container smoke tests and rendered report pages do not establish this acceptance."
+  },
+  "github_projects": {
+    "status": "not-verified",
+    "synchronized": false
+  },
+  "private_project_plan_qualification": {
+    "status": "deferred",
+    "reason": "Deferred at the owner request; synthetic evidence does not establish real-project survey accuracy."
+  },
+  "limitations": [
+    "Windows packages unsigned; ARM64 built without physical-hardware execution.",
+    "Development, draft and public corpus passes are repeated checks, not additive coverage.",
+    "Recorded commands exclude subprocesses internal to the two validation helpers.",
+    "Visual PDF review covers only the specified rendered pages, not native desktop interaction.",
+    "No universal PDF/A/PDF/UA, complete OOXML schema, physical printing, human accessibility or survey-accuracy claim.",
+    "Boundary fill is qualified on frozen synthetic raster geometry only. Resolution and threshold are explicit; open, ambiguous or excessive contours are refused. No physical measurement accuracy or native interaction is claimed.",
+    "Visual search accuracy is measured on controlled same-scale synthetic fixtures only; arbitrary symbol classes, angles and scale invariance are not qualified.",
+    "The 2-degree case is characterization only and is reported separately from required accuracy gates."
+  ],
+  "symbol_visual_review": {
+    "status": "passed",
+    "native_tested": false,
+    "source_fingerprint": "2fd60f7d2460926811ab2cfa121eafc06874de819c52afef03def07b8190266f",
+    "qualification_sha256": "0874a3ee96ed7a2046bfd4798fb3a0e29684e71df6b14aa15d38035798f1b65a",
+    "cli_sha256": "ff6047c4c7a0337588d63d1beeae5145ca9f7d0c798db6f3fab015b5e6572cdd",
+    "pdfium_sha256": "79d4676b656cfb1abcea88f9ade3b4b0826c5200382db5f4ec72a636c598c118",
+    "package_sha256": "85af0387a2f2c2d85a16e80ae5cc797154f860fe734de00b4957d968964443cf",
+    "reviewed_at": "2026-10-24T15:05:42.3265821Z",
+    "scope": "Visual inspection of three specified package-generated synthetic diagnostic images; not all images, not native desktop interaction or real drawing qualification.",
+    "observations": [
+      "The displayed templates retain the asymmetric inner shape and distinguish the separately characterized distorted raster.",
+      "Candidate boxes in the contact sheet align with the visible expected same-scale symbols; partial edge distractors remain excluded.",
+      "The cropped and rotated page-two comparison aligns all six displayed candidates with the expected quarter-turns; the mirrored symbol and empty square remain unselected.",
+      "The saved-page panels show count markers at explicitly selected centers, without marking the displayed unselected distractors."
+    ],
+    "report_sha256": "3fa463f7f129b94021d6ed4860b3a916004f23e444e98371970883fc67352bdb",
+    "generation_manifest_sha256": "856338b800de36a24f5e9567ef4263da61f716b838f0b498d2109cdb7ac30501",
+    "images_reviewed": 3,
+    "images": [
+      {
+        "image": "contact-sheet.png",
+        "sha256": "d1dbac5395e5679993865ee6721dacef1155efeda9a7a2a1933d025d762092fe"
+      },
+      {
+        "image": "template-windows.png",
+        "sha256": "9e34bffa4036aca796e1aa0695c0919608c51b97b46643267ebfbbffe0c3bcfe"
+      },
+      {
+        "image": "crop-and-page-rotation-p2-comparison.png",
+        "sha256": "29877a865e69364ca60a26116ead44c21357042cb0b020dc76920aa97f770883"
+      }
+    ]
+  },
+  "boundary_visual_review": {
+    "status": "passed",
+    "native_tested": false,
+    "physical_accuracy_claim": false,
+    "source_fingerprint": "2fd60f7d2460926811ab2cfa121eafc06874de819c52afef03def07b8190266f",
+    "qualification_sha256": "fcd32261d65ce81db0c6b552d2b3f37ec62eca72de8ecb8661019806a1e07a9c",
+    "cli_sha256": "ff6047c4c7a0337588d63d1beeae5145ca9f7d0c798db6f3fab015b5e6572cdd",
+    "pdfium_sha256": "79d4676b656cfb1abcea88f9ade3b4b0826c5200382db5f4ec72a636c598c118",
+    "package_sha256": "85af0387a2f2c2d85a16e80ae5cc797154f860fe734de00b4957d968964443cf",
+    "reviewed_at": "2026-10-24T15:07:00.6521219Z",
+    "scope": "Visual inspection of five specified package-generated synthetic images: analytic geometry comparisons, a saved raw PDF render and the actual CLI preview. Not all 22 images, not native desktop interaction or physical measurement accuracy.",
+    "observations": [
+      "The two-hole comparison aligns the displayed outer contour and both hole contours with the independently drawn analytic boundaries.",
+      "The saved raw PDF and CLI preview retain both deductions and show the same readable 2.9952 m2 area below the outer contour.",
+      "The 90-degree cropped-page comparison keeps the outer boundary and both holes aligned in the rotated displayed coordinates.",
+      "The manual doorway closure is explicit in orange and completes the displayed contour across the opening without a visible leak or added hole."
+    ],
+    "report_sha256": "16b122e14af970c764a78f5584e0afeb320d5fbeaaa63170ff4e88c173d2279b",
+    "generation_manifest_sha256": "756499d74748ad01da4fd1a4106e883c16f4bbcccc94bc4ddfe8cd03c5b9ec05",
+    "images_reviewed": 5,
+    "images": [
+      {
+        "image": "two-holes-comparison.png",
+        "sha256": "76b6337484eef6263d01831c48fe4bfb06dd32c5523ad0769a87d5ffdc7e5703"
+      },
+      {
+        "image": "two-holes-saved-raw.png",
+        "sha256": "6b49a3425f8116f025ce2abbebbdbdf40b56760f2f56afc04b81b43dc472baac"
+      },
+      {
+        "image": "two-holes-preview.png",
+        "sha256": "7cca7a2db76d99165b8622881efa375db2a13040d369ee485e9f17e583ecadb4"
+      },
+      {
+        "image": "crop-rotation-90-comparison.png",
+        "sha256": "ebf6aa90aa37450658ad39c8974fdce60e7b275221930e96322adff774fb4a0c"
+      },
+      {
+        "image": "manual-door-closure-comparison.png",
+        "sha256": "64d15e9b50a67e952dae1e91bfcd075d1a0b9c619242c8d516c4961e7118c7c2"
+      }
+    ]
+  },
+  "boundary_fill_metrics": [
+    {
+      "case": "rectangle-scale-0.25",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "rectangle-scale-0.5",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "rectangle-scale-1",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "rectangle-scale-2",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "one-hole",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 31232.0,
+        "expected_area_points2": 31232.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "two-holes",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "l-room",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 22016.0,
+        "expected_area_points2": 22016.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "open-door-leak",
+      "category": "required",
+      "status": "leaked",
+      "complete": false
+    },
+    {
+      "case": "manual-door-closure",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "blank-leak",
+      "category": "required",
+      "status": "leaked",
+      "complete": false
+    },
+    {
+      "case": "seed-on-wall",
+      "category": "required",
+      "status": "seed_blocked",
+      "complete": false
+    },
+    {
+      "case": "one-pixel-wall",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "thin-wall-high-resolution",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "subpixel-wall-characterization",
+      "category": "characterization",
+      "status": "leaked",
+      "complete": false
+    },
+    {
+      "case": "crop-rotation-0",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "crop-rotation-90",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "crop-rotation-180",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "crop-rotation-270",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "too-many-holes",
+      "category": "required",
+      "status": "complexity_limit",
+      "complete": false
+    },
+    {
+      "case": "diagonal-contact",
+      "category": "required",
+      "status": "topology_rejected",
+      "complete": false
+    },
+    {
+      "case": "rectangle-scale-1-annotated-content-only",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "two-holes-annotated-content-only",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "crop-rotation-90-annotated-content-only",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 29952.0,
+        "expected_area_points2": 29952.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    {
+      "case": "resource-max-work",
+      "category": "required",
+      "status": "work_limit",
+      "complete": false
+    },
+    {
+      "case": "resource-max-pixels",
+      "category": "required",
+      "status": "pixel_limit",
+      "complete": false
+    },
+    {
+      "case": "resource-max-frontier",
+      "category": "required",
+      "status": "frontier_limit",
+      "complete": false
+    },
+    {
+      "case": "resource-max-edges",
+      "category": "required",
+      "status": "edge_limit",
+      "complete": false
+    },
+    {
+      "case": "encrypted-editable",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "encrypted-editable-annotated-content-only",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "saved-page-scale",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    },
+    {
+      "case": "saved-page-scale-annotated-content-only",
+      "category": "required",
+      "status": "complete",
+      "geometry_checks": {
+        "finite bounded rings": true,
+        "total vertices bounded": true,
+        "simple rings": true,
+        "holes strictly inside": true,
+        "holes separate": true,
+        "positive net area": true,
+        "reported area matches polygon": true,
+        "reported pixels match area": true,
+        "seed belongs to region": true,
+        "analytic area": true,
+        "analytic outer boundary": true,
+        "analytic hole count": true,
+        "analytic hole boundaries": true
+      },
+      "details": {
+        "actual_area_points2": 32000.0,
+        "expected_area_points2": 32000.0,
+        "outer_boundary_distance_points": 0.0,
+        "hole_boundary_distances_points": []
+      }
+    }
+  ],
+  "visual_search_metrics": [
+    {
+      "case": "clean-vectors",
+      "category": "required",
+      "expected": 16,
+      "observed": 16,
+      "true_positives": 16,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "crop-and-page-rotation",
+      "category": "required",
+      "expected": 12,
+      "observed": 12,
+      "true_positives": 12,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "clean-raster",
+      "category": "required",
+      "expected": 16,
+      "observed": 16,
+      "true_positives": 16,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "noise-raster",
+      "category": "required",
+      "expected": 16,
+      "observed": 16,
+      "true_positives": 16,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "distort-raster",
+      "category": "characterization",
+      "expected": 16,
+      "observed": 5,
+      "true_positives": 5,
+      "false_positives": 0,
+      "false_negatives": 11,
+      "precision": 1.0,
+      "recall": 0.3125,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "dense-candidate-limit",
+      "category": "required",
+      "expected": 30,
+      "observed": 30,
+      "true_positives": 30,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "page-edges",
+      "category": "required",
+      "expected": 5,
+      "observed": 5,
+      "true_positives": 5,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    },
+    {
+      "case": "zero-rotation-only",
+      "category": "required",
+      "expected": 10,
+      "observed": 10,
+      "true_positives": 10,
+      "false_positives": 0,
+      "false_negatives": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "limits": {
+        "center_tolerance_points": 3.0,
+        "minimum_iou": 0.45,
+        "orientation_required": true,
+        "one_to_one": true
+      }
+    }
+  ],
+  "linux": {
+    "scope": "Ubuntu 22.04 and 24.04 clean containers; installed package under a normal user; Xvfb/software rendering; same-version remove and reinstall, not physical GPU qualification.",
+    "validation": [
+      {
+        "ubuntu": "24.04",
+        "run_id": 40102464218,
+        "source": "23c3f1846f8870b34865266a35ba6bd25753128b",
+        "artifact_id": 12563573068,
+        "artifact_sha256": "7d8f53109456f62d70906ff02f17bdb2d0a8eadf6b04214ea25be2da7936afab",
+        "deb_sha256": "160e90bf36ca93847fb42a98cb74fd119c99ae6be66829b78d07fe9fa7b286c9"
+      },
+      {
+        "ubuntu": "22.04",
+        "run_id": 40102464218,
+        "source": "23c3f1846f8870b34865266a35ba6bd25753128b",
+        "artifact_id": 12563294265,
+        "artifact_sha256": "afeb6258cc87b6a9d9d74b6f9e7954de87a3322450e3ab7476565b3f27d58479",
+        "deb_sha256": "160e90bf36ca93847fb42a98cb74fd119c99ae6be66829b78d07fe9fa7b286c9"
+      }
+    ]
+  },
+  "reader_ui": {
+    "artifact_id": 12563915131,
+    "run_id": 40102458058,
+    "source": "23c3f1846f8870b34865266a35ba6bd25753128b",
+    "artifact_sha256": "6c471cd612645bd02778dda309faf0702ec980a651f541620d0fcef639c01d6c",
+    "report_sha256": "5c3e287757215629c0b7ce8bfbcd4cbae92bf60af06503b1568770d51df481d4"
+  },
+  "conformance": [
+    {
+      "run": 40102458013,
+      "run_attempt": 1,
+      "source": "23c3f1846f8870b34865266a35ba6bd25753128b",
+      "artifact_id": 12563985733,
+      "archive_sha256": "50289258172b4501fa367709b8546621a9e3926ded3e79cdcab4e21cee7e67d0",
+      "result": {
+        "status": "passed",
+        "cases": 12,
+        "stages": 42,
+        "profiles": [
+          "1b",
+          "2b",
+          "ua1"
+        ],
+        "corpus_revision": "377728596647e40edf16003d68d620773ce96ec5",
+        "qpdf_negative_warning_cases": [
+          "ua1-form-label-fail",
+          "ua1-language-tags-fail"
+        ],
+        "cli_sha256": "0b0a33a0968e25538cc16b9ba441cc66a33f6805843f083b67c601b70d2a879c",
+        "packaged_cli_hash_verified": false,
+        "scope": "Machine validation of the specified profiles and first-page appearance; human PDF/UA semantics remain unqualified.",
+        "archive_sha256": "50289258172b4501fa367709b8546621a9e3926ded3e79cdcab4e21cee7e67d0",
+        "report_sha256": "3d70711ab1199f67cc86681be071f19ec9c2a2b85c51cd492de5bacc5b35e519"
+      }
+    },
+    {
+      "run": 40102464218,
+      "run_attempt": 1,
+      "source": "23c3f1846f8870b34865266a35ba6bd25753128b",
+      "artifact_id": 12564060749,
+      "archive_sha256": "0b8499966e1bc9a10bceee856312d02b3bd533d83c47c5734ab3b638f92aed91",
+      "result": {
+        "status": "passed",
+        "cases": 12,
+        "stages": 42,
+        "profiles": [
+          "1b",
+          "2b",
+          "ua1"
+        ],
+        "corpus_revision": "377728596647e40edf16003d68d620773ce96ec5",
+        "qpdf_negative_warning_cases": [
+          "ua1-form-label-fail",
+          "ua1-language-tags-fail"
+        ],
+        "cli_sha256": "0b0a33a0968e25538cc16b9ba441cc66a33f6805843f083b67c601b70d2a879c",
+        "packaged_cli_hash_verified": false,
+        "scope": "Machine validation of the specified profiles and first-page appearance; human PDF/UA semantics remain unqualified.",
+        "archive_sha256": "0b8499966e1bc9a10bceee856312d02b3bd533d83c47c5734ab3b638f92aed91",
+        "report_sha256": "1b8a6071f6be9b70bc2fca91dd50fdfd9d878118a2d61726459f2c304a4ca056"
+      }
+    }
+  ],
+  "upgrade_baseline": {
+    "version": "0.72.0",
+    "msi_product_code": "{4FFD9B2A-AFCA-4B31-93B6-61BE5EBB3C9E}",
+    "msi_language": "1033",
+    "msi_sha256": "efb96e8b4dfa91e96784c9a5f61897f49f7b9c9fa239daa770469a9bb6e9792a",
+    "portable_x64_sha256": "85af0387a2f2c2d85a16e80ae5cc797154f860fe734de00b4957d968964443cf"
+  }
+}

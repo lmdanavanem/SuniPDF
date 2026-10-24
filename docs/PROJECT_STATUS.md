@@ -1,60 +1,61 @@
 # Project status
 
-## 0.71.0 status
+## 0.72.0 status
 
-Published stable; verified 2026-10-24T13:39:38.272401Z. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.71.0) · [Release scope](RELEASE_0.71.0.md) · [qualification evidence](qa/RELEASE_0.71.0.json).
+Published stable; verified 2026-10-24T15:11:57.923546Z. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.72.0) · [Release scope](RELEASE_0.72.0.md) · [qualification evidence](qa/RELEASE_0.72.0.json).
 
-The release adds local visual template matching and reviewed count-marker batches.
-Page selection, quarter-turn rotations, similarity, previews, cancellation and resource
-limits are explicit. See [Find symbols](VISUAL_SEARCH.md).
+Region fill traces one page from an explicit interior point and optional manual closures. Review the
+actual outer contour and holes, choose an existing calibration, then preview and explicitly accept one
+editable area measurement. Changed source or settings invalidate the candidate; incomplete results
+cannot be applied. [Workflow and limits](REGION_FILL.md).
 
 ## Qualification
 
-| Evidence | Verified result |
+| Evidence scope | Verified result |
 |---|---|
-| Publication | Stable / Latest verified, 2026-10-24T13:38:02Z; release 422718479 |
-| Source | `fe6b6e912152d605e65a5ffb8b106a05007e0a24`, tree `5c8763bcdc4772b9131fad22eaf9428e1c59fb49` |
-| Windows | 1,114 passed, zero failed, 15 ignored; [CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40094035265) |
-| Linux | 1,095 passed, zero failed, 10 ignored; [CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40094035241) |
-| Release and scanning | [Packaging](https://github.com/lmdanavanem/SuniPDF/actions/runs/40094043637) and [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/40094035364) passed; zero open scanning alerts at verification |
-| Downloads | Eight assets: four packages and four SHA256 sidecars, verified through anonymous downloads |
-| Package regression corpus | 7,409 assertions across 493 recorded commands in ten corpora |
-| Updates | 48 portable baselines plus 4 guards; 46 MSI baselines and 230 installation logs |
-| Ubuntu installation | Clean-container installation checks on Ubuntu 22.04 and 24.04 with software rendering |
-| Visual inspection | Specified rendered report and symbol-search artifacts reviewed; no native desktop interaction |
+| Publication | Stable / Latest verified, published 2026-10-24T15:09:46Z; release 422778152 |
+| Immutable source | `23c3f1846f8870b34865266a35ba6bd25753128b`, tree `95fc9123c2b9d93af5f0f4bf4d997912bc1bb1d9` |
+| Windows | 1,135 passed, zero failed, 15 ignored; [CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458058) |
+| Linux | 1,116 passed, zero failed, 10 ignored; [CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458013) |
+| Packaging and scanning | [Release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/40102464218) and [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/40102458663) passed; zero open scanning alerts at verification |
+| Public assets and retention | Eight anonymous downloads: four packages and four sidecars; retained copies match verified asset hashes |
+| Downloaded-package corpus | 8,432 assertions / 590 recorded commands / eleven corpora |
+| Updates | 49 executed portable baselines plus 4 guards; 47 MSI baselines / 235 retained installation logs |
+| Rendered artifacts | 7 report pages, 3 symbol-search images and 5 region-fill images reviewed; no native interaction |
+| Native region-fill interaction | Not qualified in this session |
 
-Exact binary identities, corpus scopes and retained hashes are in [qualification evidence](qa/RELEASE_0.71.0.json).
-Development, draft and public repetitions are not additive coverage. The legacy 0.69
-reader controls are recorded separately from the current release CLI.
+The [qualification evidence](qa/RELEASE_0.72.0.json) binds workflow, binary and report identities. Its published JSON SHA256 is
+`06ee7d01c14e09b6df95031392f62584ec1dad0e7b110af108facfcfab5d70cf`. Development, draft and public repetitions are separate checks,
+not additive coverage. The 510 current-release CLI commands,
+4 legacy-reader commands, 74 qpdf commands
+and 2 recorded validation helpers retain their separate scopes;
+subprocesses inside the helpers are not added to these recorded-command totals.
 
 ## Remaining work
 
-AEC-011 remains **In progress**: native interaction and broader real-drawing
-qualification remain open. Matching uses one physical scale and exact quarter-turns;
-similarity is not a probability. Arbitrary angles, automatic scale matching and
-cross-file searches are outside this increment.
+AEC-012 remains **In progress** pending native interaction and broader drawing/interoperability
+qualification. Raster resolution and threshold affect the geometry; printed text and hatching
+can create deductions. Inspect every boundary and hole. Calibration does not establish physical accuracy.
 
-No entire P1/P2 category is closed. Windows packages remain unsigned; ARM64 hardware,
-physical printing, human accessibility, private plans and native spreadsheet checks
-remain separate open or deferred gates. No overall performance, universal interoperability,
-survey-accuracy or PDF/A/PDF/UA conformance claim is made.
+No complete P1/P2 category, universal interoperability or general PDF/A/PDF/UA conformance is claimed.
+Packages remain unsigned; ARM64 hardware, physical printing, human accessibility and native spreadsheet
+checks retain their separate open gates. Private project-plan qualification remains deferred at the
+owner's request. Repository documentation does not establish GitHub Projects synchronization.
 
-AEC-007, AEC-010, AEC-014, AEC-016, AEC-017, AEC-018 and AEC-019 retain their
-remaining criteria. AEC-005, AEC-009 and AEC-015 are Done only for their stated
-manual-count, constant-depth/deduction and indexed-plan-set criteria.
-See the [backlog](AEC_BACKLOG.md), [roadmap](ROADMAP.md), [known issues](KNOWN_ISSUES.md)
-and [1.0 criteria](RELEASE_1.0_CRITERIA.md).
+The next implementation priorities are multi-source plan-link batches (AEC-017), followed by
+independent synchronized reader views. Full criteria remain in the [backlog](AEC_BACKLOG.md),
+[roadmap](ROADMAP.md), [known issues](KNOWN_ISSUES.md) and [1.0 criteria](RELEASE_1.0_CRITERIA.md).
 
-GitHub Projects synchronization has not been verified. English is the default UI;
-detailed engine refusals may remain English in French mode.
+The [0.71 Find symbols workflow](VISUAL_SEARCH.md) and [release scope](RELEASE_0.71.0.md) remain
+available; AEC-011 retains its own open native and broader-drawing qualification. Other card statuses
+are unchanged by this increment. English remains the default UI; detailed engine refusals can remain English in French mode.
 
 ## Performance and history
 
-No paired 0.71 package performance result is claimed. The bounded 0.69/0.70 CLI
-comparison remains in [0.70 evidence](qa/RELEASE_0.70.0.json); it does not qualify
-0.71 or establish overall GUI performance.
+No overall performance claim is made. Cooperative processing does not make page loading or a native
+render preemptible. The separately recorded 0.69/0.70 CLI comparison keeps its original binary,
+machine and workload scope in [0.70 evidence](qa/RELEASE_0.70.0.json); it does not qualify 0.72.
 
-Earlier qualification is retained with [0.70](RELEASE_0.70.0.md),
+Earlier qualification remains with [0.71](RELEASE_0.71.0.md), [0.70](RELEASE_0.70.0.md),
 [0.69](RELEASE_0.69.0.md), [0.67](RELEASE_0.67.0.md) and the
-[historical status archive](archive/PROJECT_STATUS_PRE_0.60.md).
-Historical checks are not added to the current totals.
+[historical archive](archive/PROJECT_STATUS_PRE_0.60.md). Historical checks are not added to current totals.

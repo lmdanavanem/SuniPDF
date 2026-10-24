@@ -1,8 +1,17 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.71 release scope](RELEASE_0.71.0.md) · Published as a stable release.
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.72 release scope](RELEASE_0.72.0.md) · Published as a stable release.
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
+
+## Published region fill
+
+AEC-012 remains **In progress**. [0.72.0](RELEASE_0.72.0.md) provides explicit seeds, manual closures,
+actual outer contours and retained holes. Complete results require calibrated preview and explicit
+review before one undoable area measurement is created. Source changes, leakage, ambiguous geometry
+and limits prevent application. Published stable; verified 2026-10-24T15:11:57.923546Z. See [qualification evidence](qa/RELEASE_0.72.0.json).
+Native interaction and broader drawing/interoperability qualification remain open.
+[Workflow, raster/printed-content limits and CLI](REGION_FILL.md).
 
 ## Published visual symbol search
 
@@ -12,12 +21,6 @@ of accepted count markers. Windows: 1,114 passed, 15 ignored; Linux: 1,095 passe
 Native interaction and broader drawing qualification remain open.
 [Workflow and limits](VISUAL_SEARCH.md).
 
-## Current region-fill development
-
-AEC-012 is **In progress** for the 0.72 region-fill increment: bounded raster filling,
-explicit manual closures, retained holes and reviewed calibrated area creation.
-Leakage, ambiguous topology and incomplete processing prevent application.
-[Workflow and limits](REGION_FILL.md). Qualification remains in progress.
 
 ## 0.70 increment and remaining qualification
 
