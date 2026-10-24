@@ -513,20 +513,30 @@ impl SuniApp {
                     }
                     draw_editor(ui, edit, lang);
                 } else if let Some(report) = &report {
-                    let mut changed = crate::plan_zones_ui::zone_filter_ui(
-                        ui,
-                        lang,
-                        &mut state.options.filter,
-                        report.plan_zones(),
-                    );
-                    crate::plan_zones_ui::coverage_ui(
-                        ui,
-                        lang,
-                        &report.zone_coverage(&state.options.filter),
-                    );
+                    let mut changed = false;
                     ui.horizontal_wrapped(|ui| {
-                        ui.menu_button(tr(lang, "workspace.table.filters"), |ui| {
+                        let active_filters = crate::annotation_register::filter_summary(
+                            &state.options.filter,
+                            report.plan_zones(),
+                            lang,
+                        );
+                        let filter_label = if active_filters.is_empty() {
+                            tr(lang, "workspace.table.filters").into()
+                        } else {
+                            format!(
+                                "{} · {}",
+                                tr(lang, "workspace.table.filters"),
+                                active_filters.len()
+                            )
+                        };
+                        ui.menu_button(filter_label, |ui| {
                             ui.add_enabled_ui(idle, |ui| {
+                                changed |= crate::plan_zones_ui::zone_filter_ui(
+                                    ui,
+                                    lang,
+                                    &mut state.options.filter,
+                                    report.plan_zones(),
+                                );
                                 egui::Grid::new("quantity-filters")
                                     .num_columns(4)
                                     .show(ui, |ui| {
@@ -638,12 +648,36 @@ impl SuniApp {
                                         .changed();
                                 });
                             });
+                        })
+                        .response
+                        .on_hover_text(active_filters.join("\n"));
+                        let coverage = report.zone_coverage(&state.options.filter);
+                        let coverage_label = egui::RichText::new(if coverage.complete {
+                            tr(lang, "workspace.table.summary").into()
+                        } else {
+                            format!("{} !", tr(lang, "workspace.table.summary"))
+                        })
+                        .color(if coverage.complete {
+                            text_color
+                        } else {
+                            crate::theme::ERROR
                         });
-                        if let Some(summary) = &state.summary {
-                            ui.menu_button(tr(lang, "workspace.table.summary"), |ui| {
+                        ui.menu_button(coverage_label, |ui| {
+                            crate::plan_zones_ui::coverage_ui(ui, lang, &coverage);
+                            if let Some(summary) = &state.summary {
+                                ui.separator();
                                 draw_summary(ui, summary, lang);
-                            });
-                        }
+                            }
+                        })
+                        .response
+                        .on_hover_text(tr(
+                            lang,
+                            if coverage.complete {
+                                "zones.coverage"
+                            } else {
+                                "zones.incomplete"
+                            },
+                        ));
                         ui.menu_button(tr(lang, "quantity.custom"), |ui| {
                             ui.add(
                                 egui::TextEdit::singleline(&mut state.column_filter)

@@ -389,15 +389,49 @@ fn restricted_and_signed_documents_reject_edits_and_owner_output_keeps_encryptio
         user_doc.prepare_plan_zones(0, &zones(), false),
         Err(EngineError::SecurityRestricted)
     ));
-    let mut owner_doc = engine
+    let owner_doc = engine
         .open_bytes(encrypted.clone(), Some(&owner), Path::new("protected.pdf"))
         .unwrap();
+    // Loading with the owner credential does not waive the declared /P permissions.
+    assert!(!owner_doc.properties().can_copy && !owner_doc.properties().can_modify);
+    assert!(matches!(
+        owner_doc.prepare_plan_zones(0, &zones(), false),
+        Err(EngineError::SecurityRestricted)
+    ));
+    assert!(owner_doc.plan_zones(0).unwrap().zones.is_empty());
+    let permitted = security::protect(
+        &raw,
+        None,
+        &Protection {
+            user_password: user.clone(),
+            owner_password: owner.clone(),
+            allow_copy: true,
+            allow_modify: true,
+            aes256: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let mut owner_doc = engine
+        .open_bytes(permitted, Some(&owner), Path::new("permitted.pdf"))
+        .unwrap();
+    assert!(owner_doc.properties().can_copy && owner_doc.properties().can_modify);
     let p = owner_doc.prepare_plan_zones(0, &zones(), false).unwrap();
     owner_doc.apply_plan_zones(p).unwrap();
     let saved = owner_doc.snapshot().unwrap();
-    let mut check = Pdf::load_mem(&saved).unwrap();
+    let check = Pdf::load_mem(&saved).unwrap();
     assert!(check.is_encrypted());
-    check.decrypt(&owner).unwrap();
+    assert!(engine
+        .open_bytes(saved.clone(), None, Path::new("saved.pdf"))
+        .is_err());
+    for password in [&user, &owner] {
+        let reopened = engine
+            .open_bytes(saved.clone(), Some(password), Path::new("saved.pdf"))
+            .unwrap();
+        assert_eq!(reopened.plan_zones(0).unwrap().zones, zones());
+        let properties = reopened.properties();
+        assert!(properties.encrypted && properties.can_copy && properties.can_modify);
+    }
     let signed = rewrite(&raw, |pdf, _| {
         let sig=pdf.add_object(dictionary!{"FT"=>"Sig","T"=>Object::string_literal("Test signature"),"V"=>dictionary!{"Type"=>"Sig","ByteRange"=>vec![0.into(),1.into(),2.into(),3.into()],"Contents"=>Object::string_literal("test")}});
         let root = pdf.trailer.get(b"Root").unwrap().as_reference().unwrap();

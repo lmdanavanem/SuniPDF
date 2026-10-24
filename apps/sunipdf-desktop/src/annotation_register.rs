@@ -156,6 +156,59 @@ fn fields(status: &str, discipline: &str, custom: &str) -> Result<RegisterFields
     Ok(out)
 }
 
+pub(crate) fn filter_summary(
+    filter: &RegisterFilter,
+    plan_zones: &[sunipdf_core::plan_zones::PagePlanZones],
+    lang: sunipdf_i18n::Language,
+) -> Vec<String> {
+    let mut summary = Vec::new();
+    for (key, value) in [
+        ("register.search", &filter.query),
+        ("register.author", &filter.author),
+        ("register.business_status", &filter.business_status),
+        ("register.discipline", &filter.discipline),
+        ("register.review_status", &filter.review_status),
+        ("register.modified", &filter.modified),
+        ("register.kind", &filter.kind),
+        ("register.count_group", &filter.count_group),
+    ] {
+        if !value.trim().is_empty() {
+            summary.push(format!("{}: {value}", tr(lang, key)));
+        }
+    }
+    if let Some(page) = filter.page {
+        summary.push(format!("{}: {page}", tr(lang, "register.page_filter")));
+    }
+    if filter.include_replies {
+        summary.push(tr(lang, "register.include_replies").into());
+    }
+    if let Some(zone) = &filter.zone {
+        let name = plan_zones
+            .iter()
+            .find(|page| page.page == zone.page)
+            .and_then(|page| page.zones.iter().find(|item| item.id == zone.id))
+            .map_or(zone.id.as_str(), |item| item.name.as_str());
+        summary.push(format!(
+            "{}: {} · {name}{}",
+            tr(lang, "zones.filter"),
+            zone.page,
+            if zone.descendants {
+                format!(" ({})", tr(lang, "zones.include_children"))
+            } else {
+                String::new()
+            }
+        ));
+    }
+    if let Some(status) = filter.zone_status {
+        summary.push(format!(
+            "{}: {}",
+            tr(lang, "register.zone"),
+            tr(lang, &format!("zones.status.{}", status.id()))
+        ));
+    }
+    summary
+}
+
 impl SuniApp {
     pub(crate) fn open_annotation_register(&mut self) {
         if self.annotate.quantities.blocks_document() || self.annotate.measure.is_active_draft() {
@@ -369,22 +422,6 @@ impl SuniApp {
                     cancel_collection = ui.button(tr(lang, "register.cancel")).clicked();
                 }
                 if let Some(report) = &report {
-                    ui.horizontal_wrapped(|ui| {
-                        zones = ui
-                            .add_enabled(can_refresh, egui::Button::new(tr(lang, "zones.manage")))
-                            .clicked();
-                    });
-                    crate::plan_zones_ui::zone_filter_ui(
-                        ui,
-                        lang,
-                        &mut state.filter,
-                        &report.plan_zones,
-                    );
-                    crate::plan_zones_ui::coverage_ui(
-                        ui,
-                        lang,
-                        &report.zone_coverage(&state.filter),
-                    );
                     if let Err(error) = report.validate_zone_filter(&state.filter) {
                         ui.colored_label(crate::theme::ERROR, error.to_string());
                     }
@@ -405,7 +442,18 @@ impl SuniApp {
                     let totals = &selected.totals;
                     // Group totals are available without pushing the first result below the fold.
                     ui.horizontal_wrapped(|ui| {
-                        ui.menu_button(tr(lang, "workspace.table.filters"), |ui| {
+                        let active_filters =
+                            filter_summary(&state.filter, &report.plan_zones, lang);
+                        let filter_label = if active_filters.is_empty() {
+                            tr(lang, "workspace.table.filters").into()
+                        } else {
+                            format!(
+                                "{} · {}",
+                                tr(lang, "workspace.table.filters"),
+                                active_filters.len()
+                            )
+                        };
+                        ui.menu_button(filter_label, |ui| {
                             egui::Grid::new("register-filters")
                                 .num_columns(4)
                                 .show(ui, |ui| {
@@ -477,18 +525,54 @@ impl SuniApp {
                                     state.offset = 0;
                                 }
                             });
-                        });
+                            ui.separator();
+                            crate::plan_zones_ui::zone_filter_ui(
+                                ui,
+                                lang,
+                                &mut state.filter,
+                                &report.plan_zones,
+                            );
+                            zones = ui
+                                .add_enabled(
+                                    can_refresh,
+                                    egui::Button::new(tr(lang, "zones.manage")),
+                                )
+                                .clicked();
+                        })
+                        .response
+                        .on_hover_text(active_filters.join("\n"));
 
-                        if !totals.is_empty() {
-                            ui.menu_button(tr(lang, "workspace.table.summary"), |ui| {
+                        let coverage = report.zone_coverage(&state.filter);
+                        let coverage_label = egui::RichText::new(if coverage.complete {
+                            tr(lang, "workspace.table.summary").into()
+                        } else {
+                            format!("{} !", tr(lang, "workspace.table.summary"))
+                        })
+                        .color(if coverage.complete {
+                            text_color
+                        } else {
+                            crate::theme::ERROR
+                        });
+                        let coverage_menu = ui.menu_button(coverage_label, |ui| {
+                            crate::plan_zones_ui::coverage_ui(ui, lang, &coverage);
+                            if !totals.is_empty() {
+                                ui.separator();
                                 for (group, count) in totals.iter().take(20) {
                                     ui.label(format!("{group}: {count}"));
                                 }
                                 if totals.len() > 20 {
                                     ui.label(tr(lang, "register.more_groups"));
                                 }
-                            });
-                        }
+                            }
+                        });
+                        coverage_menu.response.on_hover_text(tr(
+                            lang,
+                            if coverage.complete {
+                                "zones.coverage"
+                            } else {
+                                "zones.incomplete"
+                            },
+                        ));
                         if ui
                             .add_enabled(
                                 state.offset > 0,

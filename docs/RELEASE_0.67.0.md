@@ -38,17 +38,24 @@ The limits are 64 zones per page and eight hierarchy levels. Zones do not infer 
 measurement calibration. JSON replacement and CLI inspection/preview/new-copy publication share the
 core. See [Rooms and zones](PLAN_ZONES.md).
 
+Zone filters now share the compact **Filters** menu in the annotation register and quantity table.
+The button shows the active filter count, with their values available on hover. Assignment coverage
+and totals are grouped under **Totals**; incomplete coverage keeps a visible warning on the button.
+
 ## Qualification in progress
 
-The isolated plan-link lot passed 1,013 workspace tests (15 ignored), 30 independent CLI commands
-and 329 assertions, plus native English/French save/reopen/navigation and refusal checks. Independently
-inspected native outputs passed 95 checks each; a final overlapping variant passed 96 checks and is
-not added to those counts.
+The combined Windows development candidate passed formatting, Clippy, compilation and 1,045
+workspace tests across 94 suites; 15 tests were ignored. Both language catalogs contain 1,789 keys.
+Against that same candidate, the independent plan-link corpus passed 30 CLI commands and 329
+assertions, and the revision-outline corpus passed 49 commands and 542 assertions.
 
-The isolated revision-outline lot passed 1,029 workspace tests (15 ignored), formatting, Clippy and
-builds, plus 49 independent CLI commands and 542 assertions. Native interaction checks are in progress.
-The combined room/zone source and its tests are written but have not yet passed the final workspace,
-native and package gates. Earlier build results do not qualify the combined 0.67 binaries.
+The zone corpus and final native checks remain incomplete. These development results do not yet
+qualify the release packages. Final source and binary identities, native results and package evidence
+will be recorded when those checks finish.
+
+The release pipeline also checks Windows and Ubuntu packages, independent PDF readers, code scanning
+and upgrades from 45 portable and 43 MSI baselines, including 0.64.0. These are configured gates;
+their successful completion and the public package verification are still pending.
 
 ## Continuing limits
 

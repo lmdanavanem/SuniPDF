@@ -1396,9 +1396,15 @@ mod tests {
     }
 
     #[test]
-    fn hub_ids_use_hub_prefix() {
+    fn tools_keep_hub_ids_and_explicit_document_workflow_ids() {
         for info in Command::in_menu(Menu::Tools) {
-            assert!(info.id.starts_with("hub."), "{}", info.id);
+            if info.command == Command::PlanZones {
+                assert_eq!(info.id, "tools.plan_zones");
+                assert!(info.needs_document);
+                assert_eq!(Command::from_id(info.id), Some(Command::PlanZones));
+            } else {
+                assert!(info.id.starts_with("hub."), "{}", info.id);
+            }
         }
     }
 
