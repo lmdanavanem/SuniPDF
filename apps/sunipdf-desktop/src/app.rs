@@ -588,6 +588,12 @@ impl SuniApp {
                 Response::PlanLinksDone { generation, result } => {
                     self.on_plan_links(ctx, generation, result);
                 }
+                Response::PlanLinksProgress {
+                    generation,
+                    progress,
+                } => {
+                    self.on_plan_links_progress(generation, progress);
+                }
                 Response::RevisionOutlinesProgress {
                     generation,
                     progress,
@@ -1535,7 +1541,11 @@ impl SuniApp {
     }
 
     pub fn update_title(&self, ctx: &egui::Context) {
-        let title = match &self.document {
+        ctx.send_viewport_cmd(egui::ViewportCommand::Title(self.window_title()));
+    }
+
+    pub(crate) fn window_title(&self) -> String {
+        match &self.document {
             Some(doc) => tr_args(
                 self.lang(),
                 if self.has_unsaved_changes() {
@@ -1546,8 +1556,7 @@ impl SuniApp {
                 &[("name", &file_name(&doc.info.path))],
             ),
             None => self.t("app.title").to_string(),
-        };
-        ctx.send_viewport_cmd(egui::ViewportCommand::Title(title));
+        }
     }
 
     // ----- Entrées ---------------------------------------------------------
@@ -3304,6 +3313,9 @@ impl SuniApp {
 
 impl eframe::App for SuniApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        #[cfg(target_os = "linux")]
+        crate::window_chrome::frame(ui, self.reading_full_screen, |ui| self.render_ui(ui));
+        #[cfg(not(target_os = "linux"))]
         self.render_ui(ui);
     }
 }
@@ -3342,6 +3354,15 @@ impl SuniApp {
         };
 
         if !self.reading_full_screen {
+            #[cfg(target_os = "linux")]
+            if crate::window_chrome::show(
+                ui,
+                self.lang(),
+                self.settings.dark_theme,
+                &self.window_title(),
+            ) {
+                self.execute(&ctx, Command::Quit);
+            }
             egui::Panel::top("tabstrip")
                 .frame(chrome(p.chrome))
                 .show(ui, |ui| self.tab_strip(&ctx, ui));

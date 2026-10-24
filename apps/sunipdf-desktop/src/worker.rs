@@ -1003,6 +1003,10 @@ pub enum Response {
         generation: u64,
         result: Box<Result<crate::revision_outlines_ui::Outcome, EngineError>>,
     },
+    PlanLinksProgress {
+        generation: u64,
+        progress: sunipdf_core::plan_links::PlanLinkBatchProgress,
+    },
     PlanLinksDone {
         generation: u64,
         result: Result<crate::plan_links_ui::Outcome, EngineError>,
@@ -2577,7 +2581,13 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         }
         let response = match request {
             Request::PlanLinks { generation, job } => {
-                let mut result = plan_links.run(&engine, job);
+                let mut result = plan_links.run(&engine, job, |progress| {
+                    let _ = tx.send(Response::PlanLinksProgress {
+                        generation,
+                        progress: progress.clone(),
+                    });
+                    ctx.request_repaint();
+                });
                 if let Ok(crate::plan_links_ui::Outcome::Navigate(navigation)) = &mut result {
                     navigation.active_source = state
                         .document

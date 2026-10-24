@@ -1,5 +1,11 @@
 # Project status
 
+## Candidate under qualification
+
+[0.73.0](RELEASE_0.73.0.md) implements reviewed links across several source PDFs and round Linux
+window controls. Source tests, package qualification and native Ubuntu checks are in progress.
+The stable release below remains the published reference until this candidate is qualified.
+
 ## 0.72.0 status
 
 Published stable; verified 2026-10-24T15:11:57.923546Z. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.72.0) · [Release scope](RELEASE_0.72.0.md) · [qualification evidence](qa/RELEASE_0.72.0.json).

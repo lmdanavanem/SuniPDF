@@ -20,6 +20,9 @@ pub const MAX_REPORT_BYTES: usize = 2 * 1024 * 1024;
 pub const MAX_CANDIDATE_BYTES: usize = 160 * 1024 * 1024;
 pub const MAX_PREVIEW_SIDE: u32 = 1536;
 
+mod batch;
+pub use batch::*;
+
 fn failure(message: impl Into<String>) -> EngineError {
     EngineError::Other(format!("Plan links: {}", message.into()))
 }
@@ -661,6 +664,27 @@ fn scan_internal(
     credentials: &PlanLinkCredentials<'_>,
     cancel: &AtomicBool,
 ) -> Result<(PlanLinkInspection, Sources, plan_set::VerifiedSheet), EngineError> {
+    scan_internal_bounded(
+        engine,
+        manifest,
+        set,
+        scan,
+        credentials,
+        cancel,
+        MAX_OCCURRENCES,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn scan_internal_bounded(
+    engine: &Engine,
+    manifest: &Path,
+    set: &plan_set::PlanSet,
+    scan: &PlanLinkScanRequest,
+    credentials: &PlanLinkCredentials<'_>,
+    cancel: &AtomicBool,
+    occurrence_budget: usize,
+) -> Result<(PlanLinkInspection, Sources, plan_set::VerifiedSheet), EngineError> {
     validate_scan(scan, set)?;
     cancelled(cancel)?;
     let mut sources = Sources::load(manifest, set)?;
@@ -855,7 +879,7 @@ fn scan_internal(
             let Some(targets) = numbers.get(&token) else {
                 continue;
             };
-            if report.occurrences.len() == MAX_OCCURRENCES {
+            if report.occurrences.len() == occurrence_budget.min(MAX_OCCURRENCES) {
                 report.truncated = true;
                 break;
             }
@@ -1055,9 +1079,37 @@ pub fn prepare_plan_links(
     credentials: &PlanLinkCredentials<'_>,
     cancel: &AtomicBool,
 ) -> Result<PreparedPlanLinks, EngineError> {
+    prepare_plan_links_bounded(
+        engine,
+        manifest,
+        set,
+        review,
+        credentials,
+        cancel,
+        MAX_OCCURRENCES,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prepare_plan_links_bounded(
+    engine: &Engine,
+    manifest: &Path,
+    set: &plan_set::PlanSet,
+    review: &PlanLinkReview,
+    credentials: &PlanLinkCredentials<'_>,
+    cancel: &AtomicBool,
+    occurrence_budget: usize,
+) -> Result<PreparedPlanLinks, EngineError> {
     validate_review(review)?;
-    let (inspection, sources, source) =
-        scan_internal(engine, manifest, set, &review.scan, credentials, cancel)?;
+    let (inspection, sources, source) = scan_internal_bounded(
+        engine,
+        manifest,
+        set,
+        &review.scan,
+        credentials,
+        cancel,
+        occurrence_budget,
+    )?;
     if review.manifest_sha256 != inspection.manifest_sha256
         || review.source_sha256 != inspection.source_sha256
     {
@@ -1201,6 +1253,15 @@ pub fn publish_plan_links(
     output: &Path,
     cancel: &AtomicBool,
 ) -> Result<PlanLinkReceipt, EngineError> {
+    publish_plan_links_checked(prepared, output, cancel, || Ok(()))
+}
+
+fn publish_plan_links_checked(
+    prepared: PreparedPlanLinks,
+    output: &Path,
+    cancel: &AtomicBool,
+    before_commit: impl FnOnce() -> Result<(), EngineError>,
+) -> Result<PlanLinkReceipt, EngineError> {
     prepared.revalidate_sources(cancel)?;
     let output = absolute(output)?;
     let parent = output
@@ -1234,6 +1295,7 @@ pub fn publish_plan_links(
     temporary.flush()?;
     temporary.as_file().sync_all()?;
     prepared.revalidate_sources(cancel)?;
+    before_commit()?;
     cancelled(cancel)?;
     // A collision appearing after the earlier check is refused at the actual commit.
     temporary

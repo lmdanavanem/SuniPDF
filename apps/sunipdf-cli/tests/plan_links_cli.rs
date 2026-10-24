@@ -295,3 +295,157 @@ fn password_sources_are_explicit_and_errors_do_not_echo_values() {
     );
     assert!(!report.to_string().contains(environment));
 }
+
+#[test]
+fn batch_preflights_every_output_and_keeps_mutual_links_pointing_to_originals() {
+    let dir = tempfile::tempdir().unwrap();
+    let originals = [dir.path().join("A.pdf"), dir.path().join("B.pdf")];
+    std::fs::write(&originals[0], pdf("A-20")).unwrap();
+    std::fs::write(&originals[1], pdf("A-10")).unwrap();
+    let manifest = dir.path().join("set.json");
+    result(
+        cli()
+            .args(["plan-set", "create"])
+            .args(&originals)
+            .args(["--name", "Mutual references", "--out"])
+            .arg(&manifest)
+            .output()
+            .unwrap(),
+        0,
+    );
+    let mut set: Value = serde_json::from_slice(&std::fs::read(&manifest).unwrap()).unwrap();
+    set["sheets"][0]["number"] = json!("A-10");
+    set["sheets"][1]["number"] = json!("A-20");
+    std::fs::write(&manifest, serde_json::to_vec_pretty(&set).unwrap()).unwrap();
+    let original_bytes: Vec<_> = originals
+        .iter()
+        .map(|p| std::fs::read(p).unwrap())
+        .collect();
+    let sources: Vec<_> = (0..2)
+        .map(|i| {
+            json!({
+                "source_file_id":set["sheets"][i]["file_id"], "pages":[1],
+                "target_sheet_ids":[set["sheets"][1-i]["id"]]
+            })
+        })
+        .collect();
+    let request = dir.path().join("request.json");
+    std::fs::write(
+        &request,
+        serde_json::to_vec(&json!({"sources":sources})).unwrap(),
+    )
+    .unwrap();
+    let inspection = result(
+        cli()
+            .args(["plan-links", "batch-inspect"])
+            .arg(&manifest)
+            .arg("--request")
+            .arg(&request)
+            .output()
+            .unwrap(),
+        0,
+    );
+    let reports = inspection["inspection"]["files"].as_array().unwrap();
+    assert_eq!(reports.len(), 2);
+    let files: Vec<_> = reports
+        .iter()
+        .enumerate()
+        .map(|(i, report)| {
+            assert_eq!(report["occurrences"].as_array().unwrap().len(), 1);
+            let occurrence = &report["occurrences"][0];
+            json!({"output_name":format!("linked-{i}.pdf"), "review":{
+            "version":1,"manifest_sha256":report["manifest_sha256"],
+            "source_sha256":report["source_sha256"],"scan":sources[i],
+            "selections":[{"occurrence_id":occurrence["id"],"fingerprint":occurrence["fingerprint"],
+                "target_sheet_id":set["sheets"][1-i]["id"],"confirmed":true}]}})
+        })
+        .collect();
+    let recipe = json!({"version":1,"manifest_sha256":reports[0]["manifest_sha256"],"files":files});
+    let review = dir.path().join("review.json");
+    std::fs::write(&review, serde_json::to_vec(&recipe).unwrap()).unwrap();
+    let output_a = dir.path().join("linked-0.pdf");
+    let output_b = dir.path().join("linked-1.pdf");
+    std::fs::write(&output_b, b"Keep existing bytes").unwrap();
+    refused(
+        cli()
+            .args(["plan-links", "batch-apply"])
+            .arg(&manifest)
+            .arg("--review")
+            .arg(&review)
+            .arg("--overwrite")
+            .output()
+            .unwrap(),
+    );
+    assert!(
+        !output_a.exists(),
+        "the second output must be checked before the first is written"
+    );
+    assert_eq!(std::fs::read(&output_b).unwrap(), b"Keep existing bytes");
+    std::fs::remove_file(&output_b).unwrap();
+    let preview = dir.path().join("batch-preview.png");
+    let report = result(
+        cli()
+            .args(["plan-links", "batch-preview"])
+            .arg(&manifest)
+            .arg("--review")
+            .arg(&review)
+            .arg("--source-file")
+            .arg(set["sheets"][0]["file_id"].as_str().unwrap())
+            .arg("--preview-out")
+            .arg(&preview)
+            .args(["--preview-long-side", "320"])
+            .output()
+            .unwrap(),
+        0,
+    );
+    assert_eq!(report["published"], false);
+    let image = image::open(preview).unwrap();
+    assert_eq!(image.width().max(image.height()), 320);
+    assert!(!output_a.exists() && !output_b.exists());
+    let applied = result(
+        cli()
+            .args(["plan-links", "batch-apply"])
+            .arg(&manifest)
+            .arg("--review")
+            .arg(&review)
+            .output()
+            .unwrap(),
+        0,
+    );
+    assert_eq!(applied["complete"], true);
+    assert_eq!(applied["atomicity"], "per_file");
+    let receipts = applied["outcome"]["completed"].as_array().unwrap();
+    assert_eq!(receipts.len(), 2);
+    for (i, output) in [output_a, output_b].iter().enumerate() {
+        let doc = Document::load(output).unwrap();
+        let page = doc.get_dictionary(doc.get_pages()[&1]).unwrap();
+        let annotations = page.get(b"Annots").unwrap().as_array().unwrap();
+        assert_eq!(annotations.len(), 2, "original note plus one reviewed link");
+        let link = annotations
+            .iter()
+            .map(|v| doc.dereference(v).unwrap().1.as_dict().unwrap())
+            .find(|a| a.get(b"Subtype").unwrap().as_name().unwrap() == b"Link")
+            .unwrap();
+        let action = link.get(b"A").unwrap().as_dict().unwrap();
+        let target: Value =
+            serde_json::from_slice(action.get(b"SuniPDFPlanTarget").unwrap().as_str().unwrap())
+                .unwrap();
+        assert_eq!(
+            target["relative_path"],
+            if i == 0 { "B.pdf" } else { "A.pdf" }
+        );
+        assert_eq!(std::fs::read(&originals[i]).unwrap(), original_bytes[i]);
+    }
+    let mut invalid = recipe;
+    invalid["files"][1]["output_name"] = json!("../escape.pdf");
+    std::fs::write(&review, serde_json::to_vec(&invalid).unwrap()).unwrap();
+    refused(
+        cli()
+            .args(["plan-links", "batch-apply"])
+            .arg(&manifest)
+            .arg("--review")
+            .arg(&review)
+            .output()
+            .unwrap(),
+    );
+}

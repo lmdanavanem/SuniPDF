@@ -5,8 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-### Added
-
+- Review links across up to 16 indexed source PDFs with explicit per-source destinations, output names and occurrence confirmations.
+- Preflight every batch output, create new copies sequentially and retain completed-file receipts after cancellation or partial failure.
+- Add batch inspection, previews and publication to the CLI while preserving single-source commands.
+- Replace Linux fallback window buttons with round, accessible controls for minimizing, maximizing/restoring and guarded closing; retain native move and resize gestures.
+- Correct the welcome and About descriptions to include Linux.
 - macOS preview (local build, not published): `scripts/package-macos.sh [--install]` builds an ad hoc signed `SuniPDF.app` with PDFium; same interface with San Francisco text and the bundled icon font; settings and recovery under `~/Library/Application Support/SuniPDF`; PDFs open from the Finder; native menu bar built from the same command registry as the in-app Menu (⌘Q asks about unsaved changes); “Use SuniPDF as Default PDF App” in the SuniPDF menu; ⌘ and ⌃ are distinct shortcut modifiers, ⌘⌫ deletes the page, ⌃Tab switches tabs. Printing, certificate signatures, saved visual signatures, OCR, Office conversion and automatic updates remain unavailable on macOS.
 
 Further work remains in the [roadmap](docs/ROADMAP.md).

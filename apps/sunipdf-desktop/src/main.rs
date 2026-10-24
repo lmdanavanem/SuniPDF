@@ -67,6 +67,8 @@ mod tools;
 mod updater;
 mod view;
 mod visual_search_ui;
+#[cfg(any(target_os = "linux", test))]
+mod window_chrome;
 mod worker;
 mod workspace;
 mod workspace_table;
@@ -79,15 +81,18 @@ fn main() -> eframe::Result<()> {
         .skip(1)
         .map(|a| std::path::absolute(&a).unwrap_or_else(|_| a.into()))
         .collect();
+    let viewport = egui::ViewportBuilder::default()
+        .with_title("SuniPDF")
+        .with_app_id("sunipdf")
+        .with_inner_size([1280.0, 780.0])
+        .with_min_inner_size([720.0, 480.0])
+        .with_drag_and_drop(true)
+        .with_icon(window_icon());
+    #[cfg(target_os = "linux")]
+    let viewport = viewport.with_decorations(false);
     let options = eframe::NativeOptions {
         renderer: renderer(std::env::var("SUNIPDF_RENDERER").ok().as_deref()),
-        viewport: egui::ViewportBuilder::default()
-            .with_title("SuniPDF")
-            .with_app_id("sunipdf")
-            .with_inner_size([1280.0, 780.0])
-            .with_min_inner_size([720.0, 480.0])
-            .with_drag_and_drop(true)
-            .with_icon(window_icon()),
+        viewport,
         ..Default::default()
     };
     log::info!("Rendering backend: {}", options.renderer);
