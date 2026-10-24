@@ -5,13 +5,18 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+- Add a macOS Apple silicon package: `release.yml` builds `SuniPDF-<version>-macos-arm64.dmg` (desktop app, CLI, pinned PDFium and verified license inventory, ad hoc signed, not notarized), checked by mounting it, running the packaged CLI and starting the app; `scripts/package-macos.sh [--install]` builds it locally. Same interface with San Francisco text and the bundled icon font, native menu bar, PDFs opened from the Finder and an optional default-PDF-app entry; ⌘ and ⌃ stay distinct shortcut modifiers. Printing, certificate signatures, saved visual signatures, OCR, Office import and in-app updates remain unavailable on macOS ([limits](docs/MACOS.md)).
+
+Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.74.0] - 2026-10-24
+
 - Add Settings → Theme with Classic and Liquid Glass styles and independent System, Light and Dark color modes.
 - Apply appearance changes immediately, preserve existing preferences and retain the previous theme when saving fails.
 - Add reduced transparency, consistent themed chrome and keyboard-accessible appearance previews.
 - Download and install Ubuntu updates from the application with independent installed-helper verification, normal administrator authorization and save-protected restart.
-- Add a macOS Apple silicon package: `release.yml` builds `SuniPDF-<version>-macos-arm64.dmg` (desktop app, CLI, pinned PDFium and verified license inventory, ad hoc signed, not notarized), checked by mounting it, running the packaged CLI and starting the app; `scripts/package-macos.sh [--install]` builds it locally. Same interface with San Francisco text and the bundled icon font, native menu bar, PDFs opened from the Finder and an optional default-PDF-app entry; ⌘ and ⌃ stay distinct shortcut modifiers. Printing, certificate signatures, saved visual signatures, OCR, Office import and in-app updates remain unavailable on macOS ([limits](docs/MACOS.md)).
 
-Further work remains in the [roadmap](docs/ROADMAP.md).
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.74.0). See [qualification and limits](docs/RELEASE_0.74.0.md).
 
 ## [0.73.0] - 2026-10-24
 

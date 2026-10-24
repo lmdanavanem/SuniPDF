@@ -18,32 +18,34 @@ The interface defaults to English; French is also available.
 
 Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
 
-## Download 0.73.0
+## Download 0.74.0
 
-SuniPDF 0.73.0 is the latest stable release, verified 2026-10-24T17:32:54.306206Z.
+SuniPDF 0.74.0 is the latest stable release, verified 2026-10-24T20:55:13.647205+00:00.
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.73.0/SuniPDF-0.73.0-linux-amd64.deb) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-linux-amd64.deb) |
 | macOS 12+ Apple silicon | DMG image from the next release, on the [releases page](https://github.com/lmdanavanem/SuniPDF/releases) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.73.0) · [qualification evidence](docs/qa/RELEASE_0.73.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.74.0) · [qualification evidence](docs/qa/RELEASE_0.74.0.json)
 
 Packages are unsigned; the macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
 See [Ubuntu platform limits](docs/UBUNTU.md), [macOS platform limits](docs/MACOS.md) and [known issues](docs/KNOWN_ISSUES.md).
 
+Open **Menu > Settings > Theme** for Classic or Liquid Glass, System/Light/Dark colors and reduced transparency.
+
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.73.0-linux-amd64.deb`.
+- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.74.0-linux-amd64.deb`.
 - **macOS:** open the DMG and drag **SuniPDF** to **Applications**. On first launch, allow it in **System Settings > Privacy & Security > Open Anyway**.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
 - Use **Ctrl+K** to find a command. Save your document to keep applied changes.
 
 Update notifications appear at startup and can be disabled in About. Windows downloads and verifies the update before
-offering installation; Ubuntu opens the release download for installation through APT. On macOS, download the new DMG from the releases page. PDF processing and OCR stay local.
+offering installation. Ubuntu 0.74 adds verified downloads, administrator authorization and save-protected restart; users on 0.73 or earlier install 0.74 manually once. On macOS, download the new DMG from the releases page. PDF processing and OCR stay local.
 
 ## What you can do
 

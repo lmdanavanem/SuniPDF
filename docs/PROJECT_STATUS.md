@@ -1,40 +1,16 @@
 # Project status
 
-## Candidate under qualification
+## Published 0.74.0
 
-[0.74.0](RELEASE_0.74.0.md) adds a dedicated Theme settings panel, Classic and
-Liquid Glass styles, independent System/Light/Dark modes and reduced transparency.
-It also adds verified in-app Ubuntu update downloads and authorized package installation.
-Source, rendered UI, installed Ubuntu interaction and package checks are in progress.
-The published reference below remains valid until this candidate is qualified.
+[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.74.0) · [Release notes](RELEASE_0.74.0.md) · [Qualification evidence](qa/RELEASE_0.74.0.json).
 
-## 0.73.0 status
+Theme settings offer Classic and Liquid Glass, System/Light/Dark modes and reduced transparency. Ubuntu can download verified updates, request administrator authorization and restart through the existing save guards. Versions through 0.73 require one manual upgrade.
 
-Published stable; verified 2026-10-24T17:32:54.306206Z. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.73.0) · [Release scope](RELEASE_0.73.0.md) · [qualification evidence](qa/RELEASE_0.73.0.json).
+The tagged Windows and Ubuntu package checks passed: 51 portable upgrade baselines plus four guards, 49 MSI baselines and eight anonymously verified public files. The owner completed publication after the workflow upload was denied; this transport failure remains recorded. Native Ubuntu theme/window tests and ten Windows offscreen scenes were reviewed. Full graphical authentication, physical hardware and human accessibility remain separate qualifications.
 
-Review links across several source PDFs, explicitly confirm each destination and preview, then save new
-copies with per-file receipts. Linux has round window controls with larger click targets and unsaved-work protection.
+## Next release
 
-## Qualification
-
-| Evidence scope | Verified result |
-|---|---|
-| Publication | Stable / Latest verified 2026-10-24T17:32:54.306206Z; published 2026-10-24T17:30:04Z; release 422857302 |
-| Source | `ecb292f23cf360a2330879ddb6e5ceb4fa59024b`, tree `566fe9328645e1b072f18bb08b74a07930a11211` |
-| Windows | 1,159 passed, zero failed, 15 ignored; [CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402153) |
-| Linux | 1,140 passed, zero failed, 10 ignored; [CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402204) |
-| Packaging and scanning | [Release](https://github.com/lmdanavanem/SuniPDF/actions/runs/40113416651) and [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/40113402451) passed; zero open scanning alerts at verification |
-| Public assets | Eight anonymous downloads: four packages and four SHA256 files; retained copies match |
-| Package corpus | 9,827 assertions / 668 recorded commands / twelve corpora |
-| Updates | 50 portable baselines plus 4 guards; 48 MSI baselines / 240 retained installation logs |
-| Native window controls | Ubuntu 22.04 / 24.04 X11, light theme: minimize, maximize/restore, title double-click, drag, resize and unsaved-close protection; image review passed |
-
-The [qualification evidence](qa/RELEASE_0.73.0.json) records exact workflow, package and report identities. Published JSON SHA256:
-`afc81f65b07ab3baa9288fcb34ad39bf2a017196067760616893b4bcba4a64b4`. Development, draft and public repetitions are not additive coverage.
-Recorded commands comprise 566 current CLI, 4 legacy CLI,
-96 qpdf and 2 validation helpers; internal helper subprocesses are excluded.
-
-Window controls passed native interaction and image review on Ubuntu 22.04 and 24.04 under X11/Openbox/Xvfb with software rendering in the light theme. Dark-theme appearance, Wayland, physical GPUs and Windows interaction were not exercised. This does not qualify the plan-link interface's native workflow.
+Apple Silicon packaging and platform integration are under qualification for 0.75.0. Its final package checks also include upgrades from the published 0.74.0 packages. No Intel Mac package is planned for this release.
 
 ## Remaining work
 
@@ -51,8 +27,10 @@ Repository documentation does not establish GitHub Projects synchronization. Eng
 
 ## History
 
+[0.73 qualification](RELEASE_0.73.0.md) retains its original counts, source and limits.
+
 Earlier qualification stays with [0.72](RELEASE_0.72.0.md), [0.71](RELEASE_0.71.0.md),
 [0.70](RELEASE_0.70.0.md), [0.69](RELEASE_0.69.0.md), [0.67](RELEASE_0.67.0.md) and the
 [historical archive](archive/PROJECT_STATUS_PRE_0.60.md). Historical counts are not added to this release.
 The 0.69/0.70 CLI performance comparison retains its original binary, machine and workload scope in
-[0.70 evidence](qa/RELEASE_0.70.0.json); it does not qualify 0.73.
+[0.70 evidence](qa/RELEASE_0.70.0.json); it does not qualify later releases.

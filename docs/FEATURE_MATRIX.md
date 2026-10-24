@@ -4,6 +4,12 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
+## Added in 0.74.0
+
+- Classic and Liquid Glass appearance, System/Light/Dark modes, reduced transparency and persistent Theme settings.
+- Verified Ubuntu update downloads, administrator-authorized installation and save-protected restart. One manual upgrade is needed from 0.73 or earlier.
+- [Qualification and limits](RELEASE_0.74.0.md); full graphical authentication and physical-hardware acceptance remain open.
+
 ## Added in 0.73.0
 
 | Area | Implemented behavior and limits |

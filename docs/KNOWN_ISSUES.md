@@ -1,6 +1,6 @@
 # Known limitations
 
-Current scope: [SuniPDF 0.61.0](RELEASE_0.61.0.md). This page lists supported boundaries
+Current scope: [SuniPDF 0.74.0](RELEASE_0.74.0.md). This page lists supported boundaries
 and remaining qualification gaps. See [project status](PROJECT_STATUS.md) for executed
 checks and the [roadmap](ROADMAP.md) for planned work.
 
@@ -12,9 +12,9 @@ checks and the [roadmap](ROADMAP.md) for planned work.
 - Automated Windows UI evidence uses offscreen rendering. Physical GPU/window behavior,
   touch/pen input, Narrator and interactive installer/updater dialogs still need native checks.
 - Ubuntu supports 22.04/24.04 amd64. Its checks use Xvfb/software rendering and removal/reinstall
-  of the same candidate; previous-version Linux upgrades and physical desktops are unqualified.
+  of the same candidate, plus a real upgrade between pinned public releases through the candidate helper. Physical desktops remain unqualified.
 - Ubuntu versions through 0.73 open the release page and require manual package installation.
-  The 0.74 source adds direct downloads and authorized installation; one manual upgrade is needed
+  Version 0.74 adds direct downloads and authorized installation; one manual upgrade is needed
   to obtain that flow. Graphical authentication-agent behavior needs native qualification.
   Native printing, certificate signing/trust checks, protected Office import and persistent
   encrypted visual-signature storage remain Windows-only. See [Ubuntu](UBUNTU.md).
