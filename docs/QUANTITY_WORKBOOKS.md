@@ -1,8 +1,11 @@
 # Quantity workbooks
 
-The 0.69 candidate adds local XLSX quantity snapshots and reviewed refreshes.
-Qualification is in progress; this guide does not describe a published package.
-See [release qualification](RELEASE_0.69.0.md).
+SuniPDF 0.69 adds local XLSX quantity snapshots and reviewed refreshes.
+See the [release notes](RELEASE_0.69.0.md) and
+[qualification evidence](qa/RELEASE_0.69.0.json).
+
+Native desktop interaction and native spreadsheet interoperability remain
+untested; AEC-019 stays In progress.
 
 ## Create a snapshot
 
@@ -48,10 +51,10 @@ Copy permissions apply. A derived workbook does not inherit source encryption or
 its digital signatures. Changes to the document or saved source invalidate the
 prepared export. Cancellation and oversized inputs are refused explicitly.
 
-The development bounds are 10,000 rows, a 32 MiB manifest and a 128 MiB OOXML
-package. Incomplete coverage or unresolved entries do not establish complete
-quantities. Native spreadsheet interoperability and final package qualification
-remain pending.
+The bounds are 10,000 rows, a 32 MiB manifest and a 128 MiB OOXML package.
+Incomplete coverage or unresolved entries do not establish complete quantities.
+Automated OOXML validation does not replace native desktop or spreadsheet
+interaction. See the release record for the exact source/package checks actually executed.
 
 See [quantity tables](QUANTITY_TABLE.md), [issue reports](ISSUE_REPORTS.md) and
 [the backlog](AEC_BACKLOG.md).

@@ -1,6 +1,6 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.64.0.md)
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.69.0.md) · Published; see [qualification scope](RELEASE_0.69.0.md).
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
 
@@ -17,7 +17,7 @@ Full cards retain their broader acceptance gates; no entire P1/P2 category is cl
 
 ## Delivered in 0.62
 
-AEC-007 includes formula subtotals with checked sums of rounded row results, separate formula/group/unit/precision buckets and explicit error coverage. Signed numeric CSV values remain numeric; free text retains spreadsheet-formula protection. Unit-bearing custom fields, tax/currency conversion and spreadsheet refresh remain open, so the card stays **In progress**.
+AEC-007 includes formula subtotals with checked sums of rounded row results, separate formula/group/unit/precision buckets and explicit error coverage. Signed numeric CSV values remain numeric; free text retains spreadsheet-formula protection. Unit-bearing custom fields and tax/currency conversion remain open, so the card stays **In progress**. The later 0.69 workbook increment adds reviewed manifest refresh under AEC-019; its native spreadsheet qualification remains open.
 
 AEC-008 includes a shared dimensioned-rectangle constructor, CLI scale selection and a Measurements-panel placement workflow. The result is an editable four-vertex area measurement with current provenance and quantity-table support. Explicit page/region/reference selection, ambiguity refusal and storage-precision checks preserve the requested dimensions. Exact-source CI passed; earlier native development-build checks covered Preview/Apply, Undo/Redo and save/reopen. AEC-008 stays **In progress**: permanent rectangular constraints, arbitrary rotated shapes, dimensioned circles, independent X/Y scales and broader plan interoperability remain open. AEC-009 depth, holes and volumes are outside 0.62.
 
@@ -57,9 +57,24 @@ semantic annotations are excluded rather than silently copied.
 82 commands / 1,062 assertions on the downloaded Windows CLI. Native development-build output
 inspection passed 27 independent assertions. See [qualification limits](RELEASE_0.64.0.md).
 
-AEC-017 reviewed cross-document links, AEC-014 reviewed revision outlines and AEC-010 named zones
-are development work planned for combined 0.67 qualification. They remain In progress and are not
-included in 0.64. No entire P1/P2 category is closed.
+## Retained from 0.67
+
+AEC-017 provides reviewed links from one indexed source PDF; broader multi-source batches remain
+open. AEC-014 provides classified raster proposals and reviewed outlines for one old/new page pair.
+AEC-010 provides named rectangular zone hierarchies and shared annotation/quantity coverage. All
+three remain **In progress**, with native interaction and broader qualification still open.
+
+## Added in 0.69
+
+AEC-018 adds shared filtered PDF/CSV/JSON reports, actual paginated previews, readable quantity/cost
+summaries, issue groups and supported style legends. A technical appendix retains full provenance
+and settings. AEC-019 adds XLSX snapshots and reviewed refresh from a separate manifest, preserving
+missing/ambiguous baseline entries and recalculating current values from the PDF.
+
+Both cards remain **In progress**. Native desktop interaction, native spreadsheet interoperability
+and remaining report-reader qualification are untested or open. The report font/bounds limits and
+the workbook's no-arbitrary-XLSX-import/no-external-edit-preservation limits remain explicit.
+Windows: 1,083 passed, 15 ignored; Linux: 1,064 passed, 10 ignored. Eight independent package corpora passed 5,027 assertions across 326 commands. [Qualification evidence](qa/RELEASE_0.69.0.json). No entire P1/P2 category is closed.
 
 ## Capabilities and acceptance
 
