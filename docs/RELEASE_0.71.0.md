@@ -1,7 +1,6 @@
 # SuniPDF 0.71.0
 
-Publication: candidate under qualification. The currently published version and its
-downloads are listed in [project status](PROJECT_STATUS.md).
+Published stable on 2026-10-24T13:38:02Z. [Downloads and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.71.0) · [qualification evidence](qa/RELEASE_0.71.0.json).
 
 ## Find symbols and review counts
 
@@ -32,7 +31,29 @@ probability or a recognition guarantee. Noise, closely related symbols, overlap 
 changed backgrounds can cause missed or false matches. Automatic scale matching,
 arbitrary angles and searching across separate files remain outside this increment.
 
-Local tests and an independent synthetic corpus are being qualified against the
-candidate. Downloaded-package qualification and publication have not been completed.
-Native desktop interaction is untested in this session. AEC-011 remains **In progress**;
-no entire priority category or complete feature parity is claimed.
+| Evidence | Verified result |
+|---|---|
+| Publication | Stable / Latest verified, 2026-10-24T13:38:02Z; release 422718479 |
+| Source | `fe6b6e912152d605e65a5ffb8b106a05007e0a24`, tree `5c8763bcdc4772b9131fad22eaf9428e1c59fb49` |
+| Windows | 1,114 passed, zero failed, 15 ignored; [CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40094035265) |
+| Linux | 1,095 passed, zero failed, 10 ignored; [CI](https://github.com/lmdanavanem/SuniPDF/actions/runs/40094035241) |
+| Release and scanning | [Packaging](https://github.com/lmdanavanem/SuniPDF/actions/runs/40094043637) and [CodeQL](https://github.com/lmdanavanem/SuniPDF/actions/runs/40094035364) passed; zero open scanning alerts at verification |
+| Downloads | Eight assets: four packages and four SHA256 sidecars, verified through anonymous downloads |
+| Package regression corpus | 7,409 assertions across 493 recorded commands in ten corpora |
+| Updates | 48 portable baselines plus 4 guards; 46 MSI baselines and 230 installation logs |
+| Ubuntu installation | Clean-container installation checks on Ubuntu 22.04 and 24.04 with software rendering |
+| Visual inspection | Specified rendered report and symbol-search artifacts reviewed; no native desktop interaction |
+
+Exact binary identities, corpus scopes and retained hashes are in [qualification evidence](qa/RELEASE_0.71.0.json).
+Development, draft and public repetitions are not additive coverage. The legacy 0.69
+reader controls are recorded separately from the current release CLI.
+
+AEC-011 remains **In progress**: native interaction and broader real-drawing
+qualification remain open. Matching uses one physical scale and exact quarter-turns;
+similarity is not a probability. Arbitrary angles, automatic scale matching and
+cross-file searches are outside this increment.
+
+No entire P1/P2 category is closed. Windows packages remain unsigned; ARM64 hardware,
+physical printing, human accessibility, private plans and native spreadsheet checks
+remain separate open or deferred gates. No overall performance, universal interoperability,
+survey-accuracy or PDF/A/PDF/UA conformance claim is made.
