@@ -5,7 +5,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-Further plan-workflow work is tracked in the [roadmap](docs/ROADMAP.md).
+Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.67.0] - 2026-10-24
+
+- Review exact searchable sheet references against indexed plan destinations and create relative PDF links in a new copy, with ambiguous/missing targets and changed sources refused explicitly.
+- Classify bounded raster differences between an explicit old/new page pair, review each selected decision and write editable revision outlines with source/region provenance in a new PDF copy.
+- Define named rectangular page zones with parent zones, preview deterministic annotation assignments and use shared register/quantity filters with visible boundary, overlap, unknown and stale coverage.
+- Keep zone filters in the compact Filters menu and group coverage and quantities under Totals.
+
+Published as stable Latest after exact-source CI and package qualification. Windows recorded 1,045
+passed / 15 ignored; Linux recorded 1,026 passed / 10 ignored. Portable upgrade checks cover 45
+baselines plus four guards; MSI covers 43 baselines / 215 logs. All eight public assets were verified
+anonymously; the downloaded Windows x64 package passed 238 recorded commands / 3,603 assertions.
+Native interaction with the new
+0.67 plan workflows remains untested. [Release notes and qualification limits](docs/RELEASE_0.67.0.md).
 
 ## [0.64.0] - 2026-10-24
 

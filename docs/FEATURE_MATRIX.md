@@ -1,8 +1,22 @@
 # SuniPDF feature matrix
 
-Current release scope: **0.64.0**. Features below are implemented within the stated limits.
-[Project status](PROJECT_STATUS.md) records executed checks. Physical devices, arbitrary documents and
-third-party readers retain separate qualification gates; planned work is in the [roadmap](ROADMAP.md).
+Published release scope: **0.67.0**. The workflows below retain explicit limits.
+[Project status](PROJECT_STATUS.md) distinguishes executed development checks, package evidence
+and the untested native plan workflows.
+
+## Delivered in 0.67.0
+
+| Area | Implemented behavior and limits |
+|---|---|
+| Plan links | Exact indexed sheet identifiers in existing searchable text; one source PDF, up to 32 pages and 512 occurrences; explicit destination review, relative PDF links and new-copy output; broader batches remain open |
+| Revision outlines | One old/new page pair; manual or two-point alignment; classified raster proposals and individual confirmation; at most 1,536 pixels on the longest side, 512 proposals and 64 selected decisions; no claim of full drawing equivalence |
+| Rooms and zones | Up to 64 named rectangular zones per page and eight hierarchy levels; full-bounds assignment and shared register/quantity filters; boundary, overlap, unknown and stale records remain explicit; no area inference or scale changes |
+| Compact tables | Active zone filters in Filters, with coverage and quantity summaries under Totals |
+
+Exact-source CI recorded 1,045 Windows and 1,026 Linux tests passed, with ignored results separate.
+Portable upgrades cover 45 baselines plus four guards; MSI covers 43 baselines / 215 logs. Independent
+development checks recorded 128 SuniPDF CLI plus 28 qpdf processes / 2,541 assertions. Native interaction with the new 0.67
+plan workflows remains untested. See [0.67 qualification and limits](RELEASE_0.67.0.md).
 
 ## Delivered in 0.64.0
 
@@ -75,7 +89,7 @@ See [project status](PROJECT_STATUS.md) and
 | Report formulas | Up to eight tab-local arithmetic columns using decimal constants, numeric fields and an exact-unit quantity; six-decimal checked arithmetic, explicit cell errors and JSON configuration reuse; subtotals separate groups, units and precision; no PDF field mutation |
 | Table workspace | Docked or floating tables with saved placement/height, row-to-annotation navigation and cached filtering/sorting/totals |
 | Annotation library | Local templates and flat groups of up to 16 primitives; capture supported saved native shapes/lines/polygons/clouds with declared provenance and exact appearance checks; placement preview, fresh identities, one Undo and bounded JSON import/export; arbitrary/text/image/stamp capture, measurements and review threads excluded |
-| Comparison | Local text/geometry comparison and two-page magenta/cyan overlays; manual or two-point alignment and new PNG/JSON exports; automatic registration and change outlines remain open |
+| Comparison | Local text/geometry comparison and two-page magenta/cyan overlays; manual or two-point alignment and new PNG/JSON exports; automatic registration remains open; reviewed revision outlines are part of the 0.67 release, with native workflow interaction still unqualified |
 | Multi-file search | Literal text search across explicitly selected local PDFs, page excerpts/navigation, per-file failures and cancellation; partial results remain explicit |
 
 Saved scales validate page content and resources within documented bounds; unsupported or stale records require explicit
