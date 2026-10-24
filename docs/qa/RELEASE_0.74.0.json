@@ -1,0 +1,193 @@
+{
+  "schema": 1,
+  "version": "0.74.0",
+  "source": "185542d22609626cb13452c6106c630b0c4dad6f",
+  "tag": "v0.74.0",
+  "release_id": 422952982,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.74.0",
+  "author": "lmdanavanem",
+  "published_at": "2026-10-24T20:51:25Z",
+  "verified_at": "2026-10-24T20:55:13.647205+00:00",
+  "stable_latest_verified": true,
+  "assets": [
+    {
+      "name": "SuniPDF-0.74.0-linux-amd64.deb",
+      "size": 22647968,
+      "sha256": "74658755990f893989441e28c14ea388045fbd16afa732b70dcb3b9cb2ef2dd4",
+      "artifact_id": 12574421349,
+      "artifact_sha256": "1deea97334a17add9bbbfd43c2fdf510c6fdc2880cf5034f28e64aca21646826",
+      "id": 673266133,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-linux-amd64.deb",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.74.0-linux-amd64.deb.sha256",
+      "size": 97,
+      "sha256": "59b8fcd796ad60f44c518b80ae4c8046b5dfa979c2639e77ac69e36b1d3284e8",
+      "artifact_id": 12574421349,
+      "artifact_sha256": "1deea97334a17add9bbbfd43c2fdf510c6fdc2880cf5034f28e64aca21646826",
+      "id": 673266225,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-linux-amd64.deb.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.74.0-win-arm64-portable.zip",
+      "size": 34452521,
+      "sha256": "8c33545462a0ac24e1dfa608fa63dd3235850597e2fee697135452a67da01a21",
+      "artifact_id": 12574475820,
+      "artifact_sha256": "22fec766fa6db6aac486f99cf09cac5b57b9782b340ceb6ee1ddf8bb1a519826",
+      "id": 673266250,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-arm64-portable.zip",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.74.0-win-arm64-portable.zip.sha256",
+      "size": 105,
+      "sha256": "a55422235902eddbbe7720fa87c795729603b1324d1ca2309f86f8d6b8e33e3a",
+      "artifact_id": 12574475820,
+      "artifact_sha256": "22fec766fa6db6aac486f99cf09cac5b57b9782b340ceb6ee1ddf8bb1a519826",
+      "id": 673266349,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-arm64-portable.zip.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.74.0-win-x64-portable.zip",
+      "size": 36464524,
+      "sha256": "5b98572492f80dbb027f3757fba066aab035fc79055134e69903d752785688ae",
+      "artifact_id": 12574719646,
+      "artifact_sha256": "10f9a47dbf4affabc457413ec4ada07d4b9a102b58ddab108c2f537a53aec9ff",
+      "id": 673266374,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-x64-portable.zip",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.74.0-win-x64-portable.zip.sha256",
+      "size": 103,
+      "sha256": "c635cc9a75d501b6c4f77f41efacd6c995836bc0c04d4d8532c215992b8c8c74",
+      "artifact_id": 12574719646,
+      "artifact_sha256": "10f9a47dbf4affabc457413ec4ada07d4b9a102b58ddab108c2f537a53aec9ff",
+      "id": 673266456,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-x64-portable.zip.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.74.0-win-x64.msi",
+      "size": 34283520,
+      "sha256": "cd8d5157399e081c11348477af6a1e9e7c3c5154935a993e35ac55e08364c9c7",
+      "artifact_id": 12574719646,
+      "artifact_sha256": "10f9a47dbf4affabc457413ec4ada07d4b9a102b58ddab108c2f537a53aec9ff",
+      "id": 673266480,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-x64.msi",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.74.0-win-x64.msi.sha256",
+      "size": 94,
+      "sha256": "c8ff73af374e9a8cb762bf3a8a672d9d14c878bb3410fb7260e937a7412826db",
+      "artifact_id": 12574719646,
+      "artifact_sha256": "10f9a47dbf4affabc457413ec4ada07d4b9a102b58ddab108c2f537a53aec9ff",
+      "id": 673266599,
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-x64.msi.sha256",
+      "public_unauthenticated": true
+    }
+  ],
+  "qualification": {
+    "release_run": 40128048158,
+    "release_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40128048158",
+    "jobs": [
+      {
+        "id": 120973601373,
+        "name": "build (x64)",
+        "conclusion": "success"
+      },
+      {
+        "id": 120973601573,
+        "name": "build (arm64)",
+        "conclusion": "success"
+      },
+      {
+        "id": 120973601638,
+        "name": "linux / Classify and validate documentation",
+        "conclusion": "success"
+      },
+      {
+        "id": 120973634919,
+        "name": "linux / Build Ubuntu 22.04 amd64",
+        "conclusion": "success"
+      },
+      {
+        "id": 120976359955,
+        "name": "linux / Install and run on Ubuntu 22.04",
+        "conclusion": "success"
+      },
+      {
+        "id": 120976359970,
+        "name": "linux / PDF conformance and independent reader",
+        "conclusion": "success"
+      },
+      {
+        "id": 120976360042,
+        "name": "linux / Install and run on Ubuntu 24.04",
+        "conclusion": "success"
+      }
+    ],
+    "portable_upgrade_baselines": 51,
+    "portable_guard_cases": 4,
+    "msi_upgrade_baselines": 49,
+    "scope": "Exact tagged Windows and Ubuntu builds, workspace tests, independent readers, package installation and upgrade checks passed. Windows ARM64 was built, without native ARM64 execution."
+  },
+  "publication_transport": {
+    "workflow_conclusion": "failure",
+    "failed_job": {
+      "id": 120982081058,
+      "name": "publish",
+      "conclusion": "failure",
+      "http_status": 403,
+      "log_sha256": "60fc8bea44952ff1bd5a2244927088b225d35a433185a97d2d3ca7ebb659b3f6",
+      "reason": "GITHUB_TOKEN was denied updating the owner-created draft."
+    },
+    "method": "owner-authenticated upload of unchanged qualified artifacts",
+    "proof_sha256": "47fae13e15ed74ba1063b231fb614e0c3af86a80d29596b95291085ca8cd473f",
+    "source_artifacts": [
+      {
+        "id": 12574719646,
+        "name": "sunipdf-x64",
+        "size": 70333909,
+        "sha256": "10f9a47dbf4affabc457413ec4ada07d4b9a102b58ddab108c2f537a53aec9ff",
+        "source": "185542d22609626cb13452c6106c630b0c4dad6f",
+        "run_id": 40128048158
+      },
+      {
+        "id": 12574475820,
+        "name": "sunipdf-arm64",
+        "size": 34272521,
+        "sha256": "22fec766fa6db6aac486f99cf09cac5b57b9782b340ceb6ee1ddf8bb1a519826",
+        "source": "185542d22609626cb13452c6106c630b0c4dad6f",
+        "run_id": 40128048158
+      },
+      {
+        "id": 12574421349,
+        "name": "sunipdf-linux-amd64",
+        "size": 22655042,
+        "sha256": "1deea97334a17add9bbbfd43c2fdf510c6fdc2880cf5034f28e64aca21646826",
+        "source": "185542d22609626cb13452c6106c630b0c4dad6f",
+        "run_id": 40128048158
+      }
+    ],
+    "public_downloads_sha256": "f7b351ae87f2becd92168bdd922de2ac9b631b04bf8ab2ec0b77d11510a65df6"
+  },
+  "appearance": {
+    "ubuntu_native_review_sha256": "2d82f658979044f1de18e1a5c084638d004a7c087132433293f5e8643f4e91ad",
+    "windows_warp_review_sha256": "4ce592c04c11e447d47f37f712150755a8edba6ead26502ed351ac124cf80550",
+    "scope": "Ubuntu 22.04/24.04 X11/Openbox/Xvfb theme persistence, restart, window controls and reviewed images. Ten Windows DX12 WARP offscreen scenes reviewed; not native Windows interaction."
+  },
+  "linux_updates": {
+    "scope": "The installed candidate helper upgraded public 0.72 to 0.73, refused corrupt and same-version packages, then restored the candidate. The graphical polkit prompt and full desktop updater interaction were not exercised."
+  },
+  "limitations": [
+    "Windows packages unsigned; independent update signing unavailable.",
+    "No physical ARM64, physical GPU, Wayland, human accessibility or printer qualification.",
+    "The additional twelve public CLI corpora were not rerun for this interface/update release; historical counts are not attributed to 0.74.",
+    "No complete roadmap category, universal PDF/A/PDF/UA or private project-plan accuracy claim."
+  ]
+}

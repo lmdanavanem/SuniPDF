@@ -2,14 +2,16 @@
 
 ## Next development
 
-The 0.74 candidate adds [Theme settings and appearance choices](APPEARANCE.md).
+Published 0.74 adds [Theme settings and appearance choices](APPEARANCE.md).
 It also adds direct [Ubuntu updates](UBUNTU.md#settings-recovery-and-updates).
-Its qualification is in progress; this interface increment does not close plan-workflow cards.
+Its [package qualification](RELEASE_0.74.0.md) is complete within the recorded scope; this interface increment does not close plan-workflow cards. Apple Silicon packages are under qualification for 0.75.
 
 Priority: independent synchronized reader views. Native plan-link interaction and broader drawing/
 interoperability qualification remain open. Implementation and complete acceptance are tracked separately.
 
 ## Published scope
+
+[0.74.0](RELEASE_0.74.0.md) is the current stable release, adding themes and direct Ubuntu updates. Earlier evidence below retains its original scope.
 
 Updated 2026-10-24T17:32:54.306206Z. [0.73.0](RELEASE_0.73.0.md) adds reviewed multi-source plan-link batches and clearer
 Linux window controls. Published stable with [qualification evidence](qa/RELEASE_0.73.0.json). AEC-017 remains **In progress**.

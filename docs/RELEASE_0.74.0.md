@@ -1,7 +1,6 @@
 # SuniPDF 0.74.0
 
-Candidate under qualification. The current published version and completed checks
-remain in [project status](PROJECT_STATUS.md).
+Published stable. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.74.0) · [Qualification evidence](qa/RELEASE_0.74.0.json).
 
 ## Settings and themes
 
@@ -32,9 +31,12 @@ stages verified bytes as root and uses APT without removing other packages or al
 GitHub remains the distribution trust boundary. Users on 0.73 or earlier need one manual installation
 of 0.74 to obtain this flow. [Ubuntu installation and updates](UBUNTU.md).
 
-## Qualification scope
+## Qualification
 
-Source, rendered-interface, installed Ubuntu interaction and published-package
-checks are being recorded separately. This document does not yet qualify a
-published 0.74.0 package. Native Windows interaction, Wayland and physical GPU
-behavior require their own evidence. Backlog acceptance statuses remain unchanged.
+The exact tagged Windows and Ubuntu builds, workspace tests, independent readers and package checks passed. Updates covered 51 portable baselines plus four guards and 49 MSI baselines. Eight public files were downloaded without authentication and verified against their SHA256 records.
+
+The automated release upload received HTTP 403. The owner uploaded the unchanged qualified artifacts; the failed transport and matching hashes remain recorded in the evidence.
+
+Theme persistence, restart and window controls were exercised on Ubuntu 22.04/24.04 under X11/Openbox/Xvfb. Ten Windows DX12 WARP scenes were reviewed offscreen. The installed Ubuntu helper upgraded two actual public DEB releases and checked refusals; the polkit dialog and complete desktop update interaction were not tested end to end.
+
+Windows ARM64 is cross-built. Physical GPUs, Wayland, physical printing and human accessibility remain open. Backlog acceptance statuses are unchanged. Historical CLI corpus counts are not reused as 0.74 results.
