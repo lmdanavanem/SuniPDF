@@ -1,10 +1,9 @@
 # Reviewed annotation transfer
 
-The development workflow transfers selected supported native shapes from one saved PDF revision to
+The published workflow transfers selected supported native shapes from one saved PDF revision to
 another. It prepares a separate candidate, retains the revised PDF's existing contents and writes a
-new PDF only after review. Source files remain unchanged. Final local source tests and independent
-CLI output checks passed; native and package qualification remain pending. This implementation is
-not part of the published 0.63.0 package.
+new PDF only after review. Source files remain unchanged. The 0.64 source, native development-build
+workflow and downloaded-package checks passed within the [recorded qualification](RELEASE_0.64.0.md).
 
 ## Choose sources and pages
 

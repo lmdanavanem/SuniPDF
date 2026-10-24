@@ -1,8 +1,10 @@
 # SuniPDF 0.64.0
 
-Status: **development candidate; not published**. This lot adds reviewed annotation transfer between
-saved revisions and grouped navigation of local plan sets. Final-source validation, native workflows,
-exact-source CI and package qualification remain release gates.
+Status: **published as stable Latest on 2026-10-24**.
+[Download packages](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.64.0) ·
+[Qualification evidence](qa/RELEASE_0.64.0.json).
+
+This release adds reviewed annotation transfer between saved revisions and grouped navigation of local plan sets.
 
 ## Transfer supported annotations between revisions
 
@@ -20,7 +22,7 @@ Every match needs confirmation. Unmatched and ambiguous sheets are identified fo
 revision names do not establish drawing equivalence or chronology.
 
 The supported subset comprises native rectangles, ellipses, lines, arrows, polygons, polylines and
-revision clouds with reproducible appearances. Measurement, price, review-thread and unsupported
+revision outlines with reproducible appearances. Measurement, price, review-thread and unsupported
 semantic data cause an explicit exclusion. Source and destination permissions remain enforced;
 signed destinations are refused and supported encryption retained. See [workflow and limits](REVISION_TRANSFER.md).
 
@@ -47,14 +49,44 @@ if cancellation arrives after the atomic commit.
 
 ## Qualification
 
-Final local formatting, workspace Clippy, build and the complete workspace suite passed:
-994 test executions passed, none failed and 15 were ignored across 88 suite results. All 1,670
-English/French translation keys were validated. The final CLI passed 14 independent process commands
-and 94 output assertions, including rotated/cropped pages, retained destination content, styles,
-fresh annotation identities, source changes, duplicate-transfer acknowledgement and refusal to
-overwrite. Protected input files remained unchanged.
+Release `422528678` was published at `2026-10-24T05:42:14Z` from
+`71854ef09886c94519775c345de1b45078c9d706` through [PR #41](https://github.com/lmdanavanem/SuniPDF/pull/41).
+Its tree matches the qualified local source. The final local Windows suite passed 994 tests,
+with 15 ignored and no failures across 88 suites; formatting, Clippy and desktop/CLI builds passed.
+The final local transfer CLI corpus passed 14 commands / 94 independent output assertions.
 
-Native workflows and exact-source package qualification are still in progress. These local checks
-do not qualify a published 0.64 package. Physical-platform, independent-reader, accessibility and
-private-project document checks remain separate from automated structural and synthetic-corpus
-coverage.
+The exact release source passed all four workflows. Windows recorded 994 passed tests
+and 15 ignored results; Linux recorded 974 passed and 10 ignored per run,
+with no failures. All 1,670 English/French keys matched. Portable upgrades covered
+44 baselines and 4 guards (48 scenarios); MSI lifecycle checks covered
+42 baselines and 210 logs. Ubuntu 22.04/24.04 installation and the pinned conformance corpus passed.
+
+Eight public assets and checksum sidecars were downloaded anonymously and verified against GitHub digests.
+The downloaded Windows CLI passed 82 process commands and 1,062 assertions with its bundled runtime.
+Its three corpora cover provenance/quantities, plans/forms/volumes and revision transfer. Packaged files,
+test helpers and protected inputs remained unchanged. The DEB's embedded CLI matched both conformance runs;
+that additional payload inspection executed no program. See [machine-readable evidence](qa/RELEASE_0.64.0.json).
+
+The final development build also passed native English/light and French/dark workflows: natural sorting,
+filtering, grouping, physical-page navigation, explicit matches, both destination previews, four transferred
+annotations over two pages, Save new copy and reopening. Ambiguous/unmatched sheets remained explicit;
+closing a candidate wrote no output, and changing a scratch destination after preview refused save.
+Independent inspection of the saved native output passed 27 assertions with qpdf and pypdf.
+
+These native checks used a development build with an explicitly supplied PDFium runtime. They do not
+establish distributed-GUI execution or local installer qualification. Dirty-tab guards, cancellation races
+and two-anchor alignment retain automated/CLI evidence; they were not repeated in the native run.
+Detailed engine refusals can remain English inside the French interface.
+
+Code scanning has zero open findings after individual review: two generated integration-test credentials
+were classified as used in tests, and one full-PDF SHA256 identity digest was classified as a false positive
+for password hashing. Exact source, locations and call paths were reviewed. The original failed aggregate
+checks remain in history; scanners and repository rules were not disabled.
+
+## Remaining limits
+
+Windows packages remain unsigned. Physical ARM64, printers, production code signing, independent
+update authenticity, human accessibility and private-project plans remain unqualified. Ubuntu checks use
+containers and software rendering. Specified synthetic/licensed corpus results do not establish universal
+PDF/A, PDF/UA, external-reader compatibility or survey accuracy. Ignored tests are not passed checks;
+separate runs and earlier failures are not added to the final counts.
