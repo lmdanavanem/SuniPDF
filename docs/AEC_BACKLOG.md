@@ -1,6 +1,6 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.61.0.md)
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [Current release](RELEASE_0.62.0.md)
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
 
@@ -15,9 +15,13 @@ Custom-field sorting, supported saved native shape groups and bounded report for
 
 Full cards retain their broader acceptance gates; no entire P1/P2 category is closed.
 
-## Rectangle increment awaiting qualification
+## Delivered in 0.62
 
-AEC-008 now includes a shared dimensioned-rectangle constructor, CLI scale selection and a Measurements-panel placement workflow. The result is a normal area measurement with current provenance and quantity-table support. The increment retains explicit page/region/reference selection, refuses ambiguous automatic selection and never clips dimensions to fit. Regression cases cover known dimensions, units, rotations/crops, refusals, encrypted copies and reopening; their exact-source results and native UI qualification remain release gates. AEC-008 stays **In progress**: arbitrary rotated shapes, dimensioned circles and broader plan interoperability remain open. AEC-009 depth, holes and volumes are unchanged.
+AEC-007 includes formula subtotals with checked sums of rounded row results, separate formula/group/unit/precision buckets and explicit error coverage. Signed numeric CSV values remain numeric; free text retains spreadsheet-formula protection. Unit-bearing custom fields, tax/currency conversion and spreadsheet refresh remain open, so the card stays **In progress**.
+
+AEC-008 includes a shared dimensioned-rectangle constructor, CLI scale selection and a Measurements-panel placement workflow. The result is an editable four-vertex area measurement with current provenance and quantity-table support. Explicit page/region/reference selection, ambiguity refusal and storage-precision checks preserve the requested dimensions. Exact-source CI passed; earlier native development-build checks covered Preview/Apply, Undo/Redo and save/reopen. AEC-008 stays **In progress**: permanent rectangular constraints, arbitrary rotated shapes, dimensioned circles, independent X/Y scales and broader plan interoperability remain open. AEC-009 depth, holes and volumes are outside 0.62.
+
+[Release evidence](qa/RELEASE_0.62.0.json) records verified public packages and the published Windows x64 CLI run: 48 process commands / 288 assertions. This post-download run did not repeat GUI or local installation testing. Physical-device and broader interoperability gates remain separate.
 
 ## Capabilities and acceptance
 

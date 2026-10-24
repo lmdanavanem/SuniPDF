@@ -1,24 +1,25 @@
 # Roadmap
 
-Updated 2026-10-24 for the [0.62.0 candidate](RELEASE_0.62.0.md).
-The current stable release remains [0.61.0](RELEASE_0.61.0.md), published on 2026-10-23.
-Current priorities are below; [release evidence](qa/RELEASE_0.61.0.json) records executed checks.
+Updated 2026-10-24 for [0.62.0](RELEASE_0.62.0.md), published as stable Latest.
+Current priorities are below; [release evidence](qa/RELEASE_0.62.0.json) records executed checks.
 Custom-field sorting, supported saved-group capture and bounded report formulas are delivered.
 Full backlog cards remain open until all acceptance criteria are evidenced.
 
-## 0.62.0 candidate: local qualification complete, release checks pending
+## Delivered in 0.62.0
 
-The candidate adds dimensioned rectangles, formula subtotals and coverage, shared formula evaluation,
+The release adds dimensioned rectangles, formula subtotals and coverage, shared formula evaluation,
 signed numeric CSV handling, final CLI destination checks, transactional restoration, encrypted-signing
 refusal and tab lifecycle/state corrections. Saved measurements bind to page evidence; historical values
 remain visible but cannot supply active quantities or prices without explicit current-reference recalibration.
 Older page defaults and named regions require recalibration or removal. Quantity formatting and control
 contrast have been checked in English/French and light/dark themes.
 
-Local Windows development qualification passed: 904 tests, zero failures, 15 ignored; 44 CLI commands with
-276 assertions; 19 independent output/source checks. Native rectangle and historical-price workflows cover
-Preview/Apply, Undo/Redo and save/reopen. Exact-version CI, Windows/Ubuntu packaging, upgrades and public
-download verification remain pending. See [current implementation status](PROJECT_STATUS.md#unreleased-working-branch).
+Exact-source CI passed: Windows 904 tests with zero failures and 15 ignored; Linux 885 tests with zero failures
+and 10 ignored in each main and package-build run. Portable upgrade checks passed 46 scenarios and MSI
+lifecycle checks covered 40 baselines. All eight public assets were verified; the published Windows x64 CLI
+passed 48 process commands and 288 assertions. Earlier native development-build rectangle and historical-price
+workflows covered Preview/Apply, Undo/Redo and save/reopen. The post-download check did not repeat GUI or local
+installation testing. See [qualification scope](PROJECT_STATUS.md).
 
 A bounded whole-command benchmark found the 300-row/eight-formula case faster and the optimization/output
 case 23 ms slower. Investigate the latter without weakening atomic output creation. Native capture timings
@@ -59,7 +60,7 @@ not only an implementation or a successful build.
 | P1 | Independent interoperability | Record exact reader versions and outcomes for encrypted PDFs, XMP, forms, replies/statuses, ink, FreeText, shapes, redaction and signatures. Structural qpdf checks alone do not establish appearance or trust. |
 | P1 | PDF/A and PDF/UA qualification | Select supported profiles, retain independent validator reports and complete applicable human accessibility checks. Preserving identification metadata is not conformance validation. |
 
-Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.61.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans.
+Automated qualification passed for 12 pinned licensed fixtures / 42 recorded stages per run, PDF/A-1b, PDF/A-2b and PDF/UA-1; source preservation, specified rewrites and first-page PDFium/Poppler checks. Positive and expected-negative outcomes are retained in [release evidence](qa/RELEASE_0.62.0.json). This does not establish universal conformance, human accessibility, physical-device support or compatibility with private project plans. Validator CLI hashes are recorded; the publication verifier did not independently match that executable against the DEB payload.
 
 Private real-project plan qualification is **deferred at the owner's request**.
 Known synthetic geometry and retained licensed/public PDFs remain the automated baseline;
@@ -74,8 +75,8 @@ criteria. Existing features are foundations for these extensions, not unimplemen
 | Area | Remaining extension | Required behavior |
 |---|---|---|
 | Register and libraries | Broaden saved-group capture only for reproducible appearances | Native shape-group capture retains relative geometry and supported styles. Foreign, text/image/stamp and extra-semantic records remain explicitly refused. |
-| Quantity calculations | Release-qualify formula subtotals; add unit-bearing custom fields and spreadsheet refresh | The locally tested candidate sums rounded formula results with separate unit/precision totals and explicit error coverage. Exact-package checks remain pending. Existing prices/currencies remain separate; no implicit conversion or stale export. |
-| Dimensioned drawing | Release-qualify rectangles and extend supported geometry | The locally tested rectangle uses real width/height, an explicit anchor and local/page/region/automatic scale. Preview, Undo/Redo and save/reopen retain editable polygon geometry. Permanent constraints, other analytic shapes and independent X/Y scales remain extensions. |
+| Quantity calculations | Add unit-bearing custom fields and spreadsheet refresh | Published formula subtotals sum rounded results with separate unit/precision totals and explicit error coverage. Existing prices/currencies remain separate; no implicit conversion or stale export. |
+| Dimensioned drawing | Extend supported geometry | Published rectangles use real width/height, an explicit anchor and local/page/region/automatic scale. Preview, Undo/Redo and save/reopen retain editable polygon geometry. Permanent constraints, other analytic shapes and independent X/Y scales remain extensions. |
 | Area and volume | Depth, deducted areas and retained holes | Unit-safe calculations; reject degenerate or self-intersecting geometry and retain all inputs. |
 | Rooms and zones | Named hierarchical regions and assignment rules | Expose overlapping and unassigned annotations; filter and report by room or floor. |
 | Visual recognition | Symbol search and boundary-based region proposals | Bounded work, candidate previews, explicit tolerance and user confirmation before creating counts or measurements. |
