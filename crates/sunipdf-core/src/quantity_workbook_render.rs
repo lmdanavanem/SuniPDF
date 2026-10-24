@@ -326,7 +326,7 @@ pub(crate) fn render(
         }
     }
     let mut changes = Worksheet::new();
-    changes.row(headers(&[
+    let mut change_header = headers(&[
         "Annotation ID",
         "Status",
         "Before page",
@@ -343,13 +343,17 @@ pub(crate) fn render(
         "After formulas",
         "Before comparison SHA256",
         "After comparison SHA256",
-    ]))?;
+    ]);
+    if model.version >= 2 {
+        change_header.extend(headers(&["Before custom fields", "After custom fields"]));
+    }
+    changes.row(change_header)?;
     for change in &model.changes {
         cancelled(cancel)?;
         let value = serde_json::to_value(change).map_err(|e| invalid(&e.to_string()))?;
         let b = &value["before"]["row"];
         let a = &value["after"]["row"];
-        changes.row(vec![
+        let mut cells = vec![
             Cell::value(&value["annotation_id"]),
             Cell::text(change.status.id()),
             Cell::numeric(&b["register"]["page"]),
@@ -366,7 +370,14 @@ pub(crate) fn render(
             Cell::value(&value["after"]["formulas"]),
             Cell::value(&value["before"]["comparison_sha256"]),
             Cell::value(&value["after"]["comparison_sha256"]),
-        ])?;
+        ];
+        if model.version >= 2 {
+            cells.extend([
+                Cell::value(&b["fields"]["custom"]),
+                Cell::value(&a["fields"]["custom"]),
+            ]);
+        }
+        changes.row(cells)?;
     }
     let mut info = Worksheet::new();
     info.row(headers(&["Property", "Value"]))?;

@@ -1,0 +1,11 @@
+{
+  "origin": "SuniPDF synthetic quantity workbook regression corpus",
+  "license": "MIT OR Apache-2.0",
+  "producer_version": "0.69.0",
+  "producer_kind": "development build",
+  "producer_commit": "d95f76f7c448feaea072bbe56c818a915ba2a04b",
+  "producer_cli_sha256": "744a6855c97443613ca689b7702b2a9fcb4a1e66ea424a7f9055d2332b4c88cf",
+  "manifest_sha256": "4175bcae41a5c18c21bee3975fb557126d389b4b320a79c9642599f7a7134e3e",
+  "pdf_sha256": "67fa6823eba967bebdb7d5e7615bb018939b407a6e26b62c58915f1a0150842a",
+  "purpose": "Retain an actual version-1 export to detect canonical serialization and refresh-hash regressions. Text resembling spreadsheet expressions is intentional inert test data."
+}

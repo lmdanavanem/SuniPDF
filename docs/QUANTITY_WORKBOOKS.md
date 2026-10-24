@@ -40,6 +40,28 @@ origin. Verify that it belongs to the revision you intend to compare. A serializ
 document snapshot hash and a saved PDF file hash identify different byte sequences;
 the interface keeps those identities separate.
 
+## Numeric field units in 0.70
+
+Version 0.70 adds optional units to numeric custom fields. The preview shows each
+field's declared unit and each formula's computed result unit. A unit change is a
+change to the field declaration, not a numeric conversion or recalibration.
+
+Version 2 exports add **Before custom fields** and **After custom fields** to the
+Changes worksheet. These cells contain typed JSON as inert text, including exact
+decimal values and units. An absent side of the comparison stays empty. Changing
+only a field's unit remains visible; removing the unit retains the former unit in
+the comparison. Entries without a measured quantity retain the **Unquantified**
+status even when their custom fields change, so inspect their before/after values.
+
+Manifests preserve units in both current and unresolved baseline rows. Existing
+unitless version 1 manifests remain readable, and version 1 XLSX output keeps its
+original Changes columns. A comparison may use version 2 while its new manifest
+uses version 1 after the last unit is removed; the comparison still retains the
+unit-bearing old values. Unsupported metadata versions are refused explicitly.
+
+See [numeric fields and formula units](QUANTITY_TABLE.md) and the
+[0.70 candidate qualification](RELEASE_0.70.0.md).
+
 ## Preservation and limits
 
 Export creates a new file and refuses an existing destination. The source PDF and

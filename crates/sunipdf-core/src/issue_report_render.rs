@@ -602,10 +602,15 @@ fn annotation(output: &mut Vec<Block>, row: &Value, formulas: Option<&&Value>) {
             body(
                 output,
                 format!(
-                    "{} ({}): {}",
+                    "{} ({}): {}{}",
                     visible(name),
                     label(&value["type"]),
-                    value_text(&value["value"])
+                    value_text(&value["value"]),
+                    if value["unit"].is_null() {
+                        String::new()
+                    } else {
+                        format!(" {}", unit(&value["unit"]))
+                    }
                 ),
             );
             if let Some(options) = value["options"].as_array() {

@@ -142,8 +142,15 @@ impl QuantityWorkbookManifest {
         Ok(manifest)
     }
     fn validate(&self) -> Result<(), EngineError> {
+        let version = self
+            .rows
+            .iter()
+            .chain(&self.pending_rows)
+            .map(|row| u32::from(row.row.fields.format_version()))
+            .max()
+            .unwrap_or(1);
         if self.schema != SCHEMA
-            || self.version != 1
+            || self.version != version
             || self.rows.len().saturating_add(self.pending_rows.len()) > MAX_WORKBOOK_ROWS
             || !valid_sha(&self.provenance.snapshot_sha256)
             || self
@@ -626,9 +633,20 @@ impl Document<'_> {
                     .is_some_and(|id| by_id[id].len() == 1)
             })
             .count();
+        let model_version = rows
+            .iter()
+            .map(|row| u32::from(row.row.fields.format_version()))
+            .chain(
+                changes
+                    .iter()
+                    .flat_map(|change| change.before.iter().chain(&change.after))
+                    .map(|row| u32::from(row.row.fields.format_version())),
+            )
+            .max()
+            .unwrap_or(1);
         let model = QuantityWorkbookModel {
             schema: SCHEMA,
-            version: 1,
+            version: model_version,
             title: options.title.clone(),
             provenance: provenance.clone(),
             quantities,
@@ -656,9 +674,15 @@ impl Document<'_> {
         if rows.len().saturating_add(pending_rows.len()) > MAX_WORKBOOK_ROWS {
             return Err(invalid("more than 10000 current and unresolved rows"));
         }
+        let manifest_version = rows
+            .iter()
+            .chain(&pending_rows)
+            .map(|row| u32::from(row.row.fields.format_version()))
+            .max()
+            .unwrap_or(1);
         let manifest = QuantityWorkbookManifest {
             schema: SCHEMA.into(),
-            version: 1,
+            version: manifest_version,
             options: options.clone(),
             provenance,
             rows,

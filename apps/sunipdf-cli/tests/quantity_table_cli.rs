@@ -255,6 +255,138 @@ fn set(source: &Path, expected: &Path, fields: &Path, out: &Path) -> Command {
     command
 }
 
+#[test]
+fn number_units_survive_cli_roundtrip_and_reject_mixed_columns_without_overwriting() {
+    let directory = tempfile::tempdir().unwrap();
+    let (source, expected, fields_path) = seed(directory.path());
+    let source_bytes = std::fs::read(&source).unwrap();
+    let mut declared = fields();
+    declared["custom"]["Depth"] = json!({"type":"number","value":"0.250000","unit":"m"});
+    write_json(&fields_path, &declared);
+    let output = directory.path().join("unit-fields.pdf");
+    success(
+        set(&source, &expected, &fields_path, &output)
+            .output()
+            .unwrap(),
+    );
+    let current = table(&output);
+    assert_eq!(current["version"], 2);
+    assert_eq!(
+        row(&current, 1)["fields"]["custom"]["Depth"],
+        json!({"type":"number","value":"0.25","unit":"m"})
+    );
+    assert_eq!(
+        row(&current, 1)["quantity"],
+        row(&table(&source), 1)["quantity"]
+    );
+    assert_eq!(row(&current, 1)["line_total"]["amount"], "25.00");
+    let found = success(
+        cli("quantity-table", &output)
+            .args(["--query", "0.25 m"])
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(found["rows"].as_array().unwrap().len(), 1);
+    let configuration = directory.path().join("dimensions.json");
+    write_json(
+        &configuration,
+        &json!([
+            {"name":"Section","expression":"quantity * [Depth]","quantity_unit":"m","rounding_decimals":2},
+            {"name":"Depth area","expression":"[Depth] * [Depth]","quantity_unit":null,"rounding_decimals":2}
+        ]),
+    );
+    let calculated = success(
+        cli("quantity-table", &output)
+            .arg("--formulas")
+            .arg(&configuration)
+            .output()
+            .unwrap(),
+    );
+    let measured = calculated["formula_rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["index"] == 1)
+        .unwrap();
+    assert_eq!(measured["values"]["Section"]["value"], "2.50");
+    assert_eq!(measured["values"]["Section"]["unit"], "m2");
+    assert_eq!(measured["values"]["Depth area"]["value"], "0.06");
+    assert_eq!(measured["values"]["Depth area"]["unit"], "m2");
+    let csv = directory.path().join("units.csv");
+    success(
+        cli("quantity-table", &output)
+            .args(["--format", "csv", "--out"])
+            .arg(&csv)
+            .output()
+            .unwrap(),
+    );
+    let text = std::fs::read_to_string(&csv).unwrap();
+    assert!(text.contains("\"custom:Depth:value\",\"custom:Depth:unit\""));
+    assert!(text.contains("\"number\",\"0.25\",\"m\""));
+    let bytes = std::fs::read(&output).unwrap();
+    failure(
+        set(&source, &expected, &fields_path, &output)
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(std::fs::read(&output).unwrap(), bytes);
+    write_json(&expected, row(&current, 0));
+    for unit in [Value::Null, json!("cm")] {
+        write_json(
+            &fields_path,
+            &json!({"unit_price":null,"custom":{"Depth":{"type":"number","value":"1","unit":unit}}}),
+        );
+        let refused = directory.path().join("conflicting-unit.pdf");
+        let error = failure(
+            set(&output, &expected, &fields_path, &refused)
+                .output()
+                .unwrap(),
+        );
+        assert!(error
+            .to_string()
+            .contains("conflicting type, unit or choice definitions"));
+        assert!(!refused.exists());
+        assert_eq!(std::fs::read(&output).unwrap(), bytes);
+    }
+    let mut malformed = lopdf::Document::load(&output).unwrap();
+    for object in malformed.objects.values_mut() {
+        let Ok(dict) = object.as_dict_mut() else {
+            continue;
+        };
+        let Ok(raw) = dict.get(b"SuniPDFQuantity") else {
+            continue;
+        };
+        let mut record: Value = serde_json::from_slice(raw.as_str().unwrap()).unwrap();
+        record["version"] = 1.into();
+        dict.set(
+            "SuniPDFQuantity",
+            lopdf::Object::string_literal(record.to_string()),
+        );
+    }
+    let invalid = directory.path().join("mislabeled-v1.pdf");
+    malformed.save(&invalid).unwrap();
+    assert!(failure(cli("quantity-table", &invalid).output().unwrap())
+        .to_string()
+        .contains("metadata version"));
+    write_json(&expected, row(&current, 1));
+    declared["custom"]["Depth"]["unit"] = Value::Null;
+    write_json(&fields_path, &declared);
+    let plain = directory.path().join("plain-number.pdf");
+    success(
+        set(&output, &expected, &fields_path, &plain)
+            .output()
+            .unwrap(),
+    );
+    let after = table(&plain);
+    assert_eq!(after["version"], 1);
+    assert!(row(&after, 1)["fields"]["custom"]["Depth"]
+        .get("unit")
+        .is_none());
+    assert_eq!(row(&after, 1)["fields"]["custom"]["Depth"]["value"], "0.25");
+    assert_eq!(std::fs::read(&source).unwrap(), source_bytes);
+    assert_eq!(std::fs::read(output).unwrap(), bytes);
+}
+
 fn auth(mut command: Command, password: &str) -> Command {
     command
         .args(["--password-env", "SUNIPDF_TEST_QUANTITY_PASSWORD"])

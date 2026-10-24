@@ -5,6 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+### Quantity fields and revision history
+
+- Declare optional units on numeric custom fields, with consistent column definitions and exact geometric products and quotients within each unit family. Keep missing values, incompatible dimensions and unsupported calculations explicit.
+- Preserve field values and units across PDF saves, quantity reports and workbook refreshes. Version 2 XLSX comparisons include before/after custom fields; existing unitless version 1 data and comparison identities remain compatible.
+- Show computed units in quantity and workbook previews, and retain the existing numeric/text export safeguards.
+
+See the [0.70.0 candidate scope](docs/RELEASE_0.70.0.md). Package qualification remains in progress.
+
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.69.0] - 2026-10-24

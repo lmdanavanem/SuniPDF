@@ -1,12 +1,13 @@
 use lopdf::{dictionary, Document as Pdf, Object, Stream};
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use sunipdf_core::issue_report::SavedReportSource;
 use sunipdf_core::quantity_table::{
-    DecimalValue, FormulaColumn, QuantityFields, QuantityUnit, UnitPrice,
+    DecimalValue, FormulaColumn, QuantityFields, QuantityUnit, TypedValue, UnitPrice,
 };
 use sunipdf_core::quantity_workbook::*;
 use sunipdf_core::{security, Engine, EngineError, Protection};
@@ -98,6 +99,35 @@ fn parts(bytes: &[u8]) -> BTreeMap<String, String> {
     assert_eq!(&bytes[pos..pos + 4], b"PK\x01\x02");
     found
 }
+fn worksheet_cells(xml: &str) -> BTreeMap<String, String> {
+    use xml::reader::XmlEvent;
+    let mut cells = BTreeMap::new();
+    let mut current = None;
+    for event in xml::reader::EventReader::from_str(xml) {
+        match event.unwrap() {
+            XmlEvent::StartElement {
+                name, attributes, ..
+            } if name.local_name == "c" => {
+                let reference = attributes
+                    .iter()
+                    .find(|attribute| attribute.name.local_name == "r")
+                    .unwrap()
+                    .value
+                    .clone();
+                assert!(cells.insert(reference.clone(), String::new()).is_none());
+                current = Some(reference);
+            }
+            XmlEvent::Characters(text) | XmlEvent::Whitespace(text) | XmlEvent::CData(text) => {
+                if let Some(reference) = &current {
+                    cells.get_mut(reference).unwrap().push_str(&text);
+                }
+            }
+            XmlEvent::EndElement { name } if name.local_name == "c" => current = None,
+            _ => {}
+        }
+    }
+    cells
+}
 fn formulas() -> Vec<FormulaColumn> {
     vec![FormulaColumn {
         name: "Double".into(),
@@ -125,6 +155,422 @@ fn status(model: &QuantityWorkbookModel, id: &str) -> WorkbookChangeStatus {
         .find(|row| row.annotation_id.as_deref() == Some(id))
         .unwrap()
         .status
+}
+
+#[test]
+fn actual_069_manifest_preserves_canonical_rows_and_refresh_comparison_hashes() {
+    const LEGACY: &[u8] = include_bytes!("fixtures/quantity-workbook-0.69-v1.json");
+    const SOURCE: &[u8] = include_bytes!("fixtures/quantity-workbook-0.69-v1.pdf");
+    assert_eq!(
+        Sha256::digest(LEGACY)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>(),
+        "4175bcae41a5c18c21bee3975fb557126d389b4b320a79c9642599f7a7134e3e"
+    );
+    assert_eq!(
+        Sha256::digest(SOURCE)
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>(),
+        "67fa6823eba967bebdb7d5e7615bb018939b407a6e26b62c58915f1a0150842a"
+    );
+    let manifest = QuantityWorkbookManifest::from_json(LEGACY).unwrap();
+    assert_eq!(manifest.version, 1);
+    assert_eq!(
+        manifest.json(),
+        serde_json::from_slice::<Value>(LEGACY).unwrap()
+    );
+    assert!(manifest.rows.iter().all(|row| row
+        .row
+        .fields
+        .custom
+        .values()
+        .all(|value| value.unit().is_none())));
+    let engine = engine();
+    let doc = engine
+        .open_bytes(SOURCE.to_vec(), None, Path::new("legacy.pdf"))
+        .unwrap();
+    let prepared = doc
+        .prepare_quantity_workbook(
+            &doc.quantity_table().unwrap(),
+            &manifest.options,
+            Some(&manifest),
+            false,
+            None,
+            &AtomicBool::new(false),
+            |_| {},
+        )
+        .unwrap();
+    assert_eq!(prepared.manifest().version, 1);
+    assert_eq!(prepared.manifest().rows.len(), manifest.rows.len());
+    for (current, previous) in prepared.manifest().rows.iter().zip(&manifest.rows) {
+        assert_eq!(current.comparison_sha256, previous.comparison_sha256);
+    }
+    assert!(prepared
+        .model()
+        .changes
+        .iter()
+        .all(|change| change.status == WorkbookChangeStatus::Unchanged));
+}
+
+#[test]
+fn newly_added_unit_rows_version_only_the_model_that_includes_their_values() {
+    let engine = engine();
+    let cancel = AtomicBool::new(false);
+    let options = QuantityWorkbookOptions::default();
+    let original = engine
+        .open_bytes(
+            fixture(&[("SuniPDF-A", "Baseline", true, 1)]),
+            None,
+            Path::new("baseline.pdf"),
+        )
+        .unwrap();
+    let baseline = original
+        .prepare_quantity_workbook(
+            &original.quantity_table().unwrap(),
+            &options,
+            None,
+            false,
+            None,
+            &cancel,
+            |_| {},
+        )
+        .unwrap();
+    assert_eq!(baseline.manifest().version, 1);
+    let mut current = engine
+        .open_bytes(
+            fixture(&[
+                ("SuniPDF-A", "Baseline", true, 1),
+                ("SuniPDF-B", "Added depth", true, 1),
+            ]),
+            None,
+            Path::new("added.pdf"),
+        )
+        .unwrap();
+    let table = current.quantity_table().unwrap();
+    let added = table
+        .rows()
+        .iter()
+        .find(|row| row.register.annotation_id.as_deref() == Some("SuniPDF-B"))
+        .unwrap();
+    current.set_quantity_fields(&table.target(added).unwrap(),
+        &QuantityFields::from_json(br#"{"unit_price":null,"custom":{"Depth":{"type":"number","value":"0.25","unit":"m"}}}"#).unwrap()).unwrap();
+    for include_new in [false, true] {
+        let refreshed = current
+            .prepare_quantity_workbook(
+                &current.quantity_table().unwrap(),
+                &options,
+                Some(baseline.manifest()),
+                include_new,
+                None,
+                &cancel,
+                |_| {},
+            )
+            .unwrap();
+        let added = refreshed
+            .model()
+            .changes
+            .iter()
+            .find(|change| change.annotation_id.as_deref() == Some("SuniPDF-B"))
+            .unwrap();
+        assert!(added.before.is_none());
+        assert_eq!(added.after.is_some(), include_new);
+        assert_eq!(
+            added.status,
+            if include_new {
+                WorkbookChangeStatus::Added
+            } else {
+                WorkbookChangeStatus::ExcludedNew
+            }
+        );
+        let version = if include_new { 2 } else { 1 };
+        assert_eq!(refreshed.model().version, version);
+        assert_eq!(refreshed.manifest().version, version);
+        assert_eq!(refreshed.model().quantities["version"], version);
+        assert!(QuantityWorkbookManifest::from_json(
+            &serde_json::to_vec(&refreshed.manifest_json()).unwrap()
+        )
+        .is_ok());
+        if let Some(after) = &added.after {
+            assert_eq!(
+                after.row.fields.custom["Depth"].unit(),
+                Some(QuantityUnit::Metres)
+            );
+        }
+    }
+}
+
+#[test]
+fn unit_changes_remain_explicit_in_workbook_refresh_and_pending_baselines() {
+    let engine = engine();
+    let cancel = AtomicBool::new(false);
+    let directory = tempfile::tempdir().unwrap();
+    let mut doc = engine
+        .open_bytes(
+            fixture(&[("SuniPDF-depth", "Depth", true, 1)]),
+            None,
+            Path::new("units.pdf"),
+        )
+        .unwrap();
+    let options = QuantityWorkbookOptions {
+        quantities: sunipdf_core::quantity_table::QuantityOptions {
+            formulas: vec![FormulaColumn {
+                name: "Double depth".into(),
+                expression: "[Depth] * 2".into(),
+                quantity_unit: None,
+                rounding_decimals: 2,
+            }],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let fields = |unit| QuantityFields {
+        custom: BTreeMap::from([
+            (
+                "Depth".into(),
+                TypedValue::Number {
+                    value: DecimalValue::parse("0.25").unwrap(),
+                    unit: Some(unit),
+                },
+            ),
+            (
+                "Note".into(),
+                TypedValue::Text {
+                    value: "=SUM(A1)".into(),
+                },
+            ),
+        ]),
+        ..Default::default()
+    };
+    let table = doc.quantity_table().unwrap();
+    doc.set_quantity_fields(
+        &table.target(&table.rows()[0]).unwrap(),
+        &fields(QuantityUnit::Metres),
+    )
+    .unwrap();
+    let first = doc
+        .prepare_quantity_workbook(
+            &doc.quantity_table().unwrap(),
+            &options,
+            None,
+            false,
+            None,
+            &cancel,
+            |_| {},
+        )
+        .unwrap();
+    assert_eq!(first.model().version, 2);
+    let output = directory.path().join("first.xlsx");
+    doc.publish_quantity_workbook(&first, WorkbookFormat::Xlsx, &output, &cancel)
+        .unwrap();
+    let package = parts(&std::fs::read(&output).unwrap());
+    let cells = worksheet_cells(&package["xl/worksheets/sheet3.xml"]);
+    assert_eq!(cells["Q1"], "Before custom fields");
+    assert_eq!(cells["R1"], "After custom fields");
+    assert_eq!(cells["Q2"], "");
+    assert_eq!(
+        serde_json::from_str::<Value>(&cells["R2"]).unwrap(),
+        serde_json::to_value(&fields(QuantityUnit::Metres).custom).unwrap()
+    );
+    let old =
+        QuantityWorkbookManifest::from_json(&serde_json::to_vec(&first.manifest_json()).unwrap())
+            .unwrap();
+    assert_eq!(old.version, 2);
+    let mut wrong_version = old.json();
+    wrong_version["version"] = 1.into();
+    assert!(
+        QuantityWorkbookManifest::from_json(&serde_json::to_vec(&wrong_version).unwrap()).is_err()
+    );
+    let table = doc.quantity_table().unwrap();
+    doc.set_quantity_fields(
+        &table.target(&table.rows()[0]).unwrap(),
+        &fields(QuantityUnit::Centimetres),
+    )
+    .unwrap();
+    let changed = doc
+        .prepare_quantity_workbook(
+            &doc.quantity_table().unwrap(),
+            &options,
+            Some(&old),
+            false,
+            None,
+            &cancel,
+            |_| {},
+        )
+        .unwrap();
+    assert_eq!(
+        status(changed.model(), "SuniPDF-depth"),
+        WorkbookChangeStatus::Changed
+    );
+    let change = &changed.model().changes[0];
+    assert_eq!(
+        change.before.as_ref().unwrap().row.fields.custom["Depth"].unit(),
+        Some(QuantityUnit::Metres)
+    );
+    assert_eq!(
+        change.after.as_ref().unwrap().row.fields.custom["Depth"].unit(),
+        Some(QuantityUnit::Centimetres)
+    );
+    assert_eq!(
+        change.after.as_ref().unwrap().formulas["Double depth"].unit,
+        Some(QuantityUnit::Centimetres)
+    );
+    let output = directory.path().join("units.xlsx");
+    doc.publish_quantity_workbook(&changed, WorkbookFormat::Xlsx, &output, &cancel)
+        .unwrap();
+    let package = parts(&std::fs::read(output).unwrap());
+    let changes = worksheet_cells(&package["xl/worksheets/sheet3.xml"]);
+    for (reference, unit) in [
+        ("Q2", QuantityUnit::Metres),
+        ("R2", QuantityUnit::Centimetres),
+    ] {
+        let custom: Value = serde_json::from_str(&changes[reference]).unwrap();
+        assert_eq!(custom, serde_json::to_value(&fields(unit).custom).unwrap());
+        assert_eq!(custom["Depth"]["value"], "0.25");
+        assert_eq!(custom["Depth"]["unit"], unit.id());
+        assert_eq!(custom["Note"]["value"], "=SUM(A1)");
+        assert!(package["xl/worksheets/sheet3.xml"]
+            .contains(&format!("r=\"{reference}\" t=\"inlineStr\"")));
+    }
+    assert!(package
+        .values()
+        .all(|xml| !xml.contains("<f>") && !xml.contains("TargetMode=\"External\"")));
+    let cells = |part: &str| {
+        xml::reader::EventReader::from_str(&package[part])
+            .into_iter()
+            .filter_map(|event| match event.unwrap() {
+                xml::reader::XmlEvent::Characters(text) => Some(text),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let custom_json: Vec<Value> = cells("xl/worksheets/sheet1.xml")
+        .iter()
+        .filter_map(|text| serde_json::from_str::<Value>(text).ok())
+        .collect();
+    assert!(custom_json
+        .iter()
+        .any(|value| value["Depth"]["unit"] == "cm" && value["Depth"]["value"] == "0.25"));
+    let current =
+        QuantityWorkbookManifest::from_json(&serde_json::to_vec(&changed.manifest_json()).unwrap())
+            .unwrap();
+    let repeated = doc
+        .prepare_quantity_workbook(
+            &doc.quantity_table().unwrap(),
+            &options,
+            Some(&current),
+            false,
+            None,
+            &cancel,
+            |_| {},
+        )
+        .unwrap();
+    assert_eq!(
+        status(repeated.model(), "SuniPDF-depth"),
+        WorkbookChangeStatus::Unchanged
+    );
+    let empty = engine
+        .open_bytes(fixture(&[]), None, Path::new("missing.pdf"))
+        .unwrap();
+    let missing = empty
+        .prepare_quantity_workbook(
+            &empty.quantity_table().unwrap(),
+            &options,
+            Some(&current),
+            false,
+            None,
+            &cancel,
+            |_| {},
+        )
+        .unwrap();
+    assert_eq!(missing.manifest().version, 2);
+    assert!(missing.manifest().rows.is_empty());
+    assert_eq!(missing.manifest().pending_rows.len(), 1);
+    let output = directory.path().join("missing.xlsx");
+    empty
+        .publish_quantity_workbook(&missing, WorkbookFormat::Xlsx, &output, &cancel)
+        .unwrap();
+    let package = parts(&std::fs::read(&output).unwrap());
+    let changes = worksheet_cells(&package["xl/worksheets/sheet3.xml"]);
+    assert_eq!(
+        serde_json::from_str::<Value>(&changes["Q2"]).unwrap()["Depth"]["unit"],
+        "cm"
+    );
+    assert_eq!(changes["R2"], "");
+    let pending =
+        QuantityWorkbookManifest::from_json(&serde_json::to_vec(&missing.manifest_json()).unwrap())
+            .unwrap();
+    assert_eq!(
+        pending.pending_rows[0].row.fields.custom["Depth"].unit(),
+        Some(QuantityUnit::Centimetres)
+    );
+    let restored = doc
+        .prepare_quantity_workbook(
+            &doc.quantity_table().unwrap(),
+            &options,
+            Some(&pending),
+            false,
+            None,
+            &cancel,
+            |_| {},
+        )
+        .unwrap();
+    assert_eq!(
+        status(restored.model(), "SuniPDF-depth"),
+        WorkbookChangeStatus::Unchanged
+    );
+    let mut unitless = fields(QuantityUnit::Centimetres);
+    if let TypedValue::Number { unit, .. } = unitless.custom.get_mut("Depth").unwrap() {
+        *unit = None;
+    }
+    let table = doc.quantity_table().unwrap();
+    doc.set_quantity_fields(&table.target(&table.rows()[0]).unwrap(), &unitless)
+        .unwrap();
+    let removed = doc
+        .prepare_quantity_workbook(
+            &doc.quantity_table().unwrap(),
+            &options,
+            Some(&current),
+            false,
+            None,
+            &cancel,
+            |_| {},
+        )
+        .unwrap();
+    assert_eq!(
+        status(removed.model(), "SuniPDF-depth"),
+        WorkbookChangeStatus::Changed
+    );
+    assert_eq!(removed.model().version, 2);
+    assert_eq!(removed.model().quantities["version"], 1);
+    assert_eq!(removed.manifest().version, 1);
+    let output = directory.path().join("removed-unit.xlsx");
+    doc.publish_quantity_workbook(&removed, WorkbookFormat::Xlsx, &output, &cancel)
+        .unwrap();
+    let package = parts(&std::fs::read(&output).unwrap());
+    let changes = worksheet_cells(&package["xl/worksheets/sheet3.xml"]);
+    let before: Value = serde_json::from_str(&changes["Q2"]).unwrap();
+    let after: Value = serde_json::from_str(&changes["R2"]).unwrap();
+    assert_eq!(before["Depth"]["unit"], "cm");
+    assert_eq!(before["Depth"]["value"], "0.25");
+    assert!(after["Depth"].get("unit").is_none());
+    assert_eq!(after, serde_json::to_value(&unitless.custom).unwrap());
+    assert_eq!(
+        removed.model().changes[0]
+            .before
+            .as_ref()
+            .unwrap()
+            .row
+            .fields
+            .custom["Depth"]
+            .unit(),
+        Some(QuantityUnit::Centimetres)
+    );
+    assert!(QuantityWorkbookManifest::from_json(
+        &serde_json::to_vec(&removed.manifest_json()).unwrap()
+    )
+    .is_ok());
 }
 
 #[test]
@@ -171,6 +617,11 @@ fn workbook_cells_share_the_quantity_model_and_preserve_exact_values_without_for
         .unwrap();
     let archive = parts(&std::fs::read(out).unwrap());
     assert_eq!(archive.len(), 9);
+    let changes = worksheet_cells(&archive["xl/worksheets/sheet3.xml"]);
+    assert_eq!(prepared.model().version, 1);
+    assert_eq!(changes["P1"], "After comparison SHA256");
+    assert!(!changes.contains_key("Q1"));
+    assert!(!changes.contains_key("R1"));
     let rows = &archive["xl/worksheets/sheet1.xml"];
     assert!(rows.contains("=SUM(A1) Étage 日本語"));
     assert!(rows.contains("123456789012.123456</t>"));

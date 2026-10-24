@@ -5766,10 +5766,16 @@ mod tests {
                 per_unit: QuantityUnit::Each,
                 rounding_decimals: 2,
             }),
-            custom: std::collections::BTreeMap::from([(
-                "Package".into(),
-                TypedValue::Text { value: "A".into() },
-            )]),
+            custom: std::collections::BTreeMap::from([
+                ("Package".into(), TypedValue::Text { value: "A".into() }),
+                (
+                    "Depth".into(),
+                    TypedValue::Number {
+                        value: DecimalValue::parse("0.25").unwrap(),
+                        unit: Some(QuantityUnit::Metres),
+                    },
+                ),
+            ]),
         };
         let target = original.target(&original.rows()[0]).unwrap();
         worker.send(Request::Edit(EditOp::SetQuantityFields {
@@ -5786,6 +5792,7 @@ mod tests {
         ));
         let edited = read();
         assert_eq!(edited.rows()[0].fields, fields);
+        crate::quantity_table::tests::verify_loaded_unit_draft(&edited);
         assert_eq!(edited.rows()[0].line_total.as_ref().unwrap().amount, "3.50");
         assert_eq!(
             edited.rows()[0].register.annotation_id,

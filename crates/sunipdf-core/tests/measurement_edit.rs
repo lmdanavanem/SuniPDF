@@ -123,6 +123,7 @@ fn quantity_fields(per_unit: QuantityUnit) -> QuantityFields {
                 "Allowance".into(),
                 TypedValue::Number {
                     value: DecimalValue::parse("0.125").unwrap(),
+                    unit: None,
                 },
             ),
             (
