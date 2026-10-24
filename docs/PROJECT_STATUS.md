@@ -1,16 +1,14 @@
 # Project status
 
-## Published 0.74.0
+## Published 0.75.0
 
-[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.74.0) · [Release notes](RELEASE_0.74.0.md) · [Qualification evidence](qa/RELEASE_0.74.0.json).
+[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.75.0) · [Release notes](RELEASE_0.75.0.md) · [Qualification evidence](qa/RELEASE_0.75.0.json).
 
-Theme settings offer Classic and Liquid Glass, System/Light/Dark modes and reduced transparency. Ubuntu can download verified updates, request administrator authorization and restart through the existing save guards. Versions through 0.73 require one manual upgrade.
+Apple Silicon Macs now have a native DMG, menus, Command shortcuts, Finder opening and macOS settings/recovery paths. Theme settings retain Classic and Liquid Glass, System/Light/Dark modes and reduced transparency. Mac update notifications link to manual installation; Ubuntu retains verified in-app installation.
 
-The tagged Windows and Ubuntu package checks passed: 51 portable upgrade baselines plus four guards, 49 MSI baselines and eight anonymously verified public files. The owner completed publication after the workflow upload was denied; this transport failure remains recorded. Native Ubuntu theme/window tests and ten Windows offscreen scenes were reviewed. Full graphical authentication, physical hardware and human accessibility remain separate qualifications.
+The exact tagged packages passed Windows, Ubuntu and macOS qualification. Coverage includes 52 portable upgrade baselines plus four guards, 50 MSI baselines, Ubuntu 22.04/24.04 installation and native window/theme checks, and seven installed Mac checks on macOS 15. The Mac PDF display was reviewed. All ten public downloads were checked anonymously against their SHA256 values.
 
-## Next release
-
-Apple Silicon packaging and platform integration are under qualification for 0.75.0. Its final package checks also include upgrades from the published 0.74.0 packages. No Intel Mac package is planned for this release.
+The Mac package targets Apple Silicon only, with a binary-checked macOS 12 deployment minimum. It is ad hoc signed, not notarized. Physical Macs, interactive Finder opening and clipboard interoperability remain unqualified. Graphical Linux authentication, physical Windows hardware and human accessibility remain separate gates.
 
 ## Remaining work
 
@@ -26,6 +24,8 @@ general PDF/A/PDF/UA conformance or overall performance claim is made.
 Repository documentation does not establish GitHub Projects synchronization. English remains the default UI.
 
 ## History
+
+[0.74 qualification](RELEASE_0.74.0.md) retains the original theme and Ubuntu-update evidence.
 
 [0.73 qualification](RELEASE_0.73.0.md) retains its original counts, source and limits.
 

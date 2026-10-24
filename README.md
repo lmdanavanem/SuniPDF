@@ -18,20 +18,20 @@ The interface defaults to English; French is also available.
 
 Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
 
-## Download 0.74.0
+## Download 0.75.0
 
-SuniPDF 0.74.0 is the latest stable release, verified 2026-10-24T20:55:13.647205+00:00.
+SuniPDF 0.75.0 is the latest stable release, verified 2026-10-24T22:17:40.026028+00:00.
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.74.0/SuniPDF-0.74.0-linux-amd64.deb) |
-| macOS 12+ Apple silicon | DMG image from the next release, on the [releases page](https://github.com/lmdanavanem/SuniPDF/releases) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-linux-amd64.deb) |
+| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.75.0/SuniPDF-0.75.0-macos-arm64.dmg) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.74.0) · [qualification evidence](docs/qa/RELEASE_0.74.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.75.0) · [qualification evidence](docs/qa/RELEASE_0.75.0.json)
 
-Packages are unsigned; the macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
+Windows packages are unsigned; the macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
 See [Ubuntu platform limits](docs/UBUNTU.md), [macOS platform limits](docs/MACOS.md) and [known issues](docs/KNOWN_ISSUES.md).
 
 Open **Menu > Settings > Theme** for Classic or Liquid Glass, System/Light/Dark colors and reduced transparency.
@@ -39,13 +39,13 @@ Open **Menu > Settings > Theme** for Classic or Liquid Glass, System/Light/Dark 
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.74.0-linux-amd64.deb`.
+- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.75.0-linux-amd64.deb`.
 - **macOS:** open the DMG and drag **SuniPDF** to **Applications**. On first launch, allow it in **System Settings > Privacy & Security > Open Anyway**.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
-- Use **Ctrl+K** to find a command. Save your document to keep applied changes.
+- Use **Ctrl+K** (**⌘K** on macOS) to find a command. Save your document to keep applied changes.
 
 Update notifications appear at startup and can be disabled in About. Windows downloads and verifies the update before
-offering installation. Ubuntu 0.74 adds verified downloads, administrator authorization and save-protected restart; users on 0.73 or earlier install 0.74 manually once. On macOS, download the new DMG from the releases page. PDF processing and OCR stay local.
+offering installation. Ubuntu 0.74 adds verified downloads, administrator authorization and save-protected restart; users on 0.73 or earlier install the current DEB manually once. On macOS, download the new DMG from the releases page. PDF processing stays local. Local OCR is available on Windows and Ubuntu.
 
 ## What you can do
 
@@ -62,15 +62,14 @@ offering installation. Ubuntu 0.74 adds verified downloads, administrator author
 
 [Feature matrix and limits](docs/FEATURE_MATRIX.md) · [User guide](docs/USER_GUIDE.en.md)
 
-## New in 0.73.0
+## New in 0.75.0
 
-- Review links across several indexed PDFs using **Tools → Review & measure → Plan links → Link multiple PDFs…**.
-- Confirm destinations and previews for each source, then save new copies with per-file progress and retained partial results.
-- Use clearer round Linux window controls, larger click targets and guarded closing. Native Ubuntu/X11 interaction was tested.
+- Native Apple Silicon application with macOS menus, Command shortcuts, Finder opening and system clipboard support.
+- Theme settings from the native menu, with the Classic and Liquid Glass styles introduced in 0.74.
+- Verified DMG installation, PDF rendering and edit/save/reopen checks on macOS 15.
+- Windows upgrades from the published 0.74 packages; Ubuntu retains direct verified updates.
 
-Windows: 1,159 passed, 15 ignored; Linux: 1,140 passed, 10 ignored; zero failures. 9,827 assertions across 668 recorded commands in twelve downloaded-package corpora. See [qualification evidence](docs/qa/RELEASE_0.73.0.json).
-Native plan-link interaction and broader interoperability remain open; AEC-017 is **In progress**.
-[Plan-link workflow](docs/PLAN_LINKS.md) · [Release notes](docs/RELEASE_0.73.0.md) · [Project status](docs/PROJECT_STATUS.md).
+[Release scope and platform limits](docs/RELEASE_0.75.0.md) · [Qualification evidence](docs/qa/RELEASE_0.75.0.json) · [Project status](docs/PROJECT_STATUS.md).
 
 Earlier additions include [region fill](docs/REGION_FILL.md), [Find symbols](docs/VISUAL_SEARCH.md),
 [quantity units](docs/RELEASE_0.70.0.md) and [reports and workbook refresh](docs/RELEASE_0.69.0.md).
