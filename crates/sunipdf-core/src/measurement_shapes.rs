@@ -11,6 +11,9 @@ use std::sync::Arc;
 const MAX_SOURCE_BYTES: usize = 128 * 1024 * 1024;
 // Reject dimensions that cannot survive f32 page coordinates within 0.001% per side.
 const SIDE_RELATIVE_TOLERANCE: f64 = 1e-5;
+// The product of two sides that meet the side tolerance has this relative area bound.
+const AREA_RELATIVE_TOLERANCE: f64 =
+    2.0 * SIDE_RELATIVE_TOLERANCE + SIDE_RELATIVE_TOLERANCE * SIDE_RELATIVE_TOLERANCE;
 
 /// A temporary reference captured when the user establishes its scale on the live document.
 /// It cannot be rebound by editing the dimensions or by passing an old calibration at preview.
@@ -50,13 +53,16 @@ pub enum RectangleScale {
     Automatic,
 }
 
-/// The anchor is the bottom-left corner in displayed-page coordinates. The rectangle extends
-/// right and up. Width and height are real distances in `unit`, not PDF points.
+/// At zero rotation the anchor is the bottom-left corner in displayed-page coordinates and
+/// the rectangle extends right and up. Rotation is clockwise around that same anchor.
+/// Width and height are real distances in `unit`, not PDF points. Saved area vertices retain
+/// the orientation; this request does not create a persistent parametric constraint.
 #[derive(Debug, Clone)]
 pub struct DimensionedRectangle {
     pub anchor: (f32, f32),
     pub width: f64,
     pub height: f64,
+    pub rotation_degrees: f64,
     pub unit: MeasurementUnit,
     pub precision: usize,
     pub scale: RectangleScale,
@@ -72,53 +78,243 @@ fn close_side(actual: f64, expected: f64) -> bool {
         && (actual - expected).abs() <= expected * SIDE_RELATIVE_TOLERANCE
 }
 
+/// Normalize a finite clockwise angle to [0, 360), including arbitrarily large finite inputs.
+/// Reduction happens before radians/trigonometry so an extreme angle cannot overflow it.
+pub fn normalize_rectangle_rotation(degrees: f64) -> Result<f64, EngineError> {
+    if !degrees.is_finite() {
+        return Err(invalid("rotation must be a finite angle"));
+    }
+    let normalized = degrees.rem_euclid(360.0);
+    // Floating remainder can round a tiny negative input to the upper endpoint.
+    Ok(if normalized == 0.0 || normalized == 360.0 {
+        0.0
+    } else {
+        normalized
+    })
+}
+
+fn rotation_sin_cos(normalized: f64) -> (f64, f64) {
+    match normalized {
+        0.0 => (0.0, 1.0),
+        90.0 => (1.0, 0.0),
+        180.0 => (0.0, -1.0),
+        270.0 => (-1.0, 0.0),
+        _ => normalized.to_radians().sin_cos(),
+    }
+}
+
+struct ResolvedDimensions {
+    width_points: f64,
+    height_points: f64,
+    known_distance: f64,
+    units_per_point: f64,
+}
+
+fn resolved_dimensions(
+    width: f64,
+    height: f64,
+    unit: MeasurementUnit,
+    calibration: &PageCalibration,
+    page_size: (f32, f32),
+) -> Result<ResolvedDimensions, EngineError> {
+    calibration.validate()?;
+    if !page_size.0.is_finite()
+        || !page_size.1.is_finite()
+        || page_size.0 <= 0.0
+        || page_size.1 <= 0.0
+        || calibration
+            .points
+            .iter()
+            .any(|&(x, y)| x < 0.0 || y < 0.0 || x > page_size.0 || y > page_size.1)
+    {
+        return Err(invalid("reference points are outside the displayed page"));
+    }
+    if !width.is_finite() || !height.is_finite() || width <= 0.0 || height <= 0.0 {
+        return Err(invalid("enter positive finite dimensions"));
+    }
+    let reference = (f64::from(calibration.points[1].0) - f64::from(calibration.points[0].0))
+        .hypot(f64::from(calibration.points[1].1) - f64::from(calibration.points[0].1));
+    let known_distance = calibration.known_distance * calibration.unit.metres() / unit.metres();
+    let units_per_point = known_distance / reference;
+    let width_points = width / units_per_point;
+    let height_points = height / units_per_point;
+    if !known_distance.is_finite()
+        || known_distance <= 0.0
+        || !units_per_point.is_finite()
+        || units_per_point <= 0.0
+        || !width_points.is_finite()
+        || !height_points.is_finite()
+    {
+        return Err(invalid(
+            "dimensions cannot be resolved against this reference",
+        ));
+    }
+    Ok(ResolvedDimensions {
+        width_points,
+        height_points,
+        known_distance,
+        units_per_point,
+    })
+}
+
+/// Resolve real dimensions to displayed-page points using the same arithmetic as construction.
+/// This validates the supplied calibration's geometry; live document methods additionally
+/// validate its provenance and the selected named region before an annotation can be saved.
+pub fn dimensioned_rectangle_point_dimensions(
+    width: f64,
+    height: f64,
+    unit: MeasurementUnit,
+    calibration: &PageCalibration,
+    page_size: (f32, f32),
+) -> Result<(f64, f64), EngineError> {
+    let dimensions = resolved_dimensions(width, height, unit, calibration, page_size)?;
+    Ok((dimensions.width_points, dimensions.height_points))
+}
+
+fn checked_rectangle_precision(
+    points: &[(f32, f32)],
+    units_per_point: f64,
+    expected_width: f64,
+    expected_height: f64,
+) -> Result<(), EngineError> {
+    if points.len() != 4 || !units_per_point.is_finite() || units_per_point <= 0.0 {
+        return Err(invalid(
+            "dimensions cannot be represented accurately at this page position",
+        ));
+    }
+    let mut edges = [(0.0_f64, 0.0_f64); 4];
+    for (index, edge) in edges.iter_mut().enumerate() {
+        let next = (index + 1) % 4;
+        let dx = f64::from(points[next].0) - f64::from(points[index].0);
+        let dy = f64::from(points[next].1) - f64::from(points[index].1);
+        let length = dx.hypot(dy);
+        let expected = if index.is_multiple_of(2) {
+            expected_width
+        } else {
+            expected_height
+        };
+        if !close_side(length * units_per_point, expected) {
+            return Err(invalid(
+                "dimensions cannot be represented accurately at this page position",
+            ));
+        }
+        *edge = (dx / length, dy / length);
+    }
+    for (index, edge) in edges.iter().enumerate() {
+        let next = (index + 1) % 4;
+        let dot = edge.0 * edges[next].0 + edge.1 * edges[next].1;
+        if !dot.is_finite() || dot.abs() > SIDE_RELATIVE_TOLERANCE {
+            return Err(invalid(
+                "right angles cannot be represented accurately at this page position",
+            ));
+        }
+    }
+    // Translate to the anchor before taking cross products; large crop origins must not
+    // cause cancellation in an otherwise small rectangle's area calculation.
+    let vector = |index: usize| {
+        (
+            f64::from(points[index].0) - f64::from(points[0].0),
+            f64::from(points[index].1) - f64::from(points[0].1),
+        )
+    };
+    let a = vector(1);
+    let b = vector(2);
+    let c = vector(3);
+    let area = ((a.0 * b.1 - a.1 * b.0) + (b.0 * c.1 - b.1 * c.0))
+        * 0.5
+        * units_per_point
+        * units_per_point;
+    let expected_area = expected_width * expected_height;
+    if !area.is_finite()
+        || area <= 0.0
+        || !expected_area.is_finite()
+        || expected_area <= 0.0
+        || (area - expected_area).abs() > expected_area * AREA_RELATIVE_TOLERANCE
+    {
+        return Err(invalid(
+            "area cannot be represented accurately at this page position",
+        ));
+    }
+    Ok(())
+}
+
+/// Four clockwise-rotated corners in displayed coordinates (positive Y points upward).
+/// The first corner is always the original anchor. Exact cardinal rotations avoid tiny
+/// trigonometric residues at page edges. No clipping or silent dimension adjustment occurs.
+pub fn dimensioned_rectangle_corners(
+    anchor: (f32, f32),
+    width_points: f64,
+    height_points: f64,
+    rotation_degrees: f64,
+    page_size: (f32, f32),
+) -> Result<[(f32, f32); 4], EngineError> {
+    let rotation = normalize_rectangle_rotation(rotation_degrees)?;
+    if !anchor.0.is_finite()
+        || !anchor.1.is_finite()
+        || !width_points.is_finite()
+        || !height_points.is_finite()
+        || width_points < 0.01
+        || height_points < 0.01
+        || !page_size.0.is_finite()
+        || !page_size.1.is_finite()
+        || page_size.0 <= 0.0
+        || page_size.1 <= 0.0
+    {
+        return Err(invalid(
+            "enter finite dimensions of at least 0.01 points and a finite anchor",
+        ));
+    }
+    let (sin, cos) = rotation_sin_cos(rotation);
+    let width = (width_points * cos, -width_points * sin);
+    let height = (height_points * sin, height_points * cos);
+    let x = f64::from(anchor.0);
+    let y = f64::from(anchor.1);
+    let precise = [
+        (x, y),
+        (x + width.0, y + width.1),
+        (x + width.0 + height.0, y + width.1 + height.1),
+        (x + height.0, y + height.1),
+    ];
+    if precise.iter().any(|&(x, y)| {
+        !x.is_finite()
+            || !y.is_finite()
+            || x < 0.0
+            || y < 0.0
+            || x > f64::from(page_size.0)
+            || y > f64::from(page_size.1)
+    }) {
+        return Err(invalid(
+            "rectangle is too small or extends outside the displayed page",
+        ));
+    }
+    let points = precise.map(|(x, y)| (x as f32, y as f32));
+    checked_rectangle_precision(&points, 1.0, width_points, height_points)?;
+    Ok(points)
+}
+
 fn rectangle(
     request: &DimensionedRectangle,
     calibration: &PageCalibration,
     geo: &PageGeometry,
 ) -> Result<Measurement, EngineError> {
+    if request.precision > 4 {
+        return Err(invalid("choose 0 to 4 decimals"));
+    }
     calibration.validate_on_page(geo)?;
-    if !request.width.is_finite()
-        || !request.height.is_finite()
-        || request.width <= 0.0
-        || request.height <= 0.0
-        || !request.anchor.0.is_finite()
-        || !request.anchor.1.is_finite()
-        || request.precision > 4
-    {
-        return Err(invalid(
-            "enter positive finite dimensions, a finite anchor and 0 to 4 decimals",
-        ));
-    }
-    let reference = (f64::from(calibration.points[1].0) - f64::from(calibration.points[0].0))
-        .hypot(f64::from(calibration.points[1].1) - f64::from(calibration.points[0].1));
-    let known_distance =
-        calibration.known_distance * calibration.unit.metres() / request.unit.metres();
-    let units_per_point = known_distance / reference;
-    let width = request.width / units_per_point;
-    let height = request.height / units_per_point;
-    let right = f64::from(request.anchor.0) + width;
-    let top = f64::from(request.anchor.1) + height;
-    let (page_width, page_height) = geo.display_size();
-    if !width.is_finite()
-        || !height.is_finite()
-        || width < 0.01
-        || height < 0.01
-        || request.anchor.0 < 0.0
-        || request.anchor.1 < 0.0
-        || right > f64::from(page_width)
-        || top > f64::from(page_height)
-    {
-        return Err(invalid(
-            "rectangle is too small or extends outside the displayed page",
-        ));
-    }
-    let points = vec![
-        request.anchor,
-        (right as f32, request.anchor.1),
-        (right as f32, top as f32),
-        (request.anchor.0, top as f32),
-    ];
+    let dimensions = resolved_dimensions(
+        request.width,
+        request.height,
+        request.unit,
+        calibration,
+        geo.display_size(),
+    )?;
+    let width = dimensions.width_points;
+    let height = dimensions.height_points;
+    let known_distance = dimensions.known_distance;
+    let units_per_point = dimensions.units_per_point;
+    let rotation = normalize_rectangle_rotation(request.rotation_degrees)?;
+    let points =
+        dimensioned_rectangle_corners(request.anchor, width, height, rotation, geo.display_size())?;
     // The PDF stores user-space f32 coordinates. Test that conversion as well as displayed
     // coordinates, especially on pages whose crop origin is far from zero.
     let to_stored_display = |(x, y)| {
@@ -132,22 +328,17 @@ fn rectangle(
     .hypot(f64::from(stored_calibration[1].1) - f64::from(stored_calibration[0].1));
     let stored_units_per_point = known_distance / stored_reference;
     for (represented, units_per_point) in [
-        (&points, units_per_point),
-        (&roundtrip, stored_units_per_point),
+        (points.as_slice(), units_per_point),
+        (roundtrip.as_slice(), stored_units_per_point),
     ] {
-        let actual_width =
-            (f64::from(represented[1].0) - f64::from(represented[0].0)) * units_per_point;
-        let actual_height =
-            (f64::from(represented[3].1) - f64::from(represented[0].1)) * units_per_point;
-        if !close_side(actual_width, request.width) || !close_side(actual_height, request.height) {
-            return Err(invalid(
-                "dimensions cannot be represented accurately at this page position",
-            ));
-        }
+        checked_rectangle_precision(represented, units_per_point, request.width, request.height)?;
     }
+    let (sin, cos) = rotation_sin_cos(rotation);
     if points.iter().zip(&roundtrip).any(|(a, b)| {
-        (f64::from(a.0) - f64::from(b.0)).abs() > width * SIDE_RELATIVE_TOLERANCE
-            || (f64::from(a.1) - f64::from(b.1)).abs() > height * SIDE_RELATIVE_TOLERANCE
+        let dx = f64::from(a.0) - f64::from(b.0);
+        let dy = f64::from(a.1) - f64::from(b.1);
+        (dx * cos - dy * sin).abs() > width * SIDE_RELATIVE_TOLERANCE
+            || (dx * sin + dy * cos).abs() > height * SIDE_RELATIVE_TOLERANCE
     }) {
         return Err(invalid(
             "anchor cannot be represented accurately at this page position",
@@ -364,5 +555,161 @@ impl Document<'_> {
     ) -> Result<usize, EngineError> {
         let measurement = self.dimensioned_rectangle(page, request)?;
         self.add_measurement_annotation(page, &measurement, author)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cardinal_rotations_keep_exact_page_edges_and_clockwise_corner_order() {
+        for (angle, anchor, page, expected) in [
+            (
+                0.0,
+                (0.0, 0.0),
+                (100.0, 50.0),
+                [(0.0, 0.0), (100.0, 0.0), (100.0, 50.0), (0.0, 50.0)],
+            ),
+            (
+                90.0,
+                (0.0, 100.0),
+                (50.0, 100.0),
+                [(0.0, 100.0), (0.0, 0.0), (50.0, 0.0), (50.0, 100.0)],
+            ),
+            (
+                180.0,
+                (100.0, 50.0),
+                (100.0, 50.0),
+                [(100.0, 50.0), (0.0, 50.0), (0.0, 0.0), (100.0, 0.0)],
+            ),
+            (
+                270.0,
+                (50.0, 0.0),
+                (50.0, 100.0),
+                [(50.0, 0.0), (50.0, 100.0), (0.0, 100.0), (0.0, 0.0)],
+            ),
+        ] {
+            assert_eq!(
+                dimensioned_rectangle_corners(anchor, 100.0, 50.0, angle, page).unwrap(),
+                expected
+            );
+        }
+    }
+
+    #[test]
+    fn arbitrary_angles_are_normalized_before_trigonometry_without_changing_the_anchor() {
+        let expected =
+            dimensioned_rectangle_corners((100.0, 100.0), 40.0, 20.0, 45.0, (300.0, 300.0))
+                .unwrap();
+        assert_eq!(expected[0], (100.0, 100.0));
+        assert!(
+            expected[1].0 > 100.0 && expected[1].1 < 100.0,
+            "positive rotation is clockwise"
+        );
+        for equivalent in [-315.0, 405.0, 1125.0] {
+            assert_eq!(
+                dimensioned_rectangle_corners(
+                    (100.0, 100.0),
+                    40.0,
+                    20.0,
+                    equivalent,
+                    (300.0, 300.0)
+                )
+                .unwrap(),
+                expected
+            );
+        }
+        assert_eq!(normalize_rectangle_rotation(-90.0).unwrap(), 270.0);
+        assert_eq!(
+            normalize_rectangle_rotation(-720.0).unwrap().to_bits(),
+            0.0_f64.to_bits()
+        );
+        for extreme in [f64::MAX, -f64::MAX, 1e300, -1e300] {
+            let normalized = normalize_rectangle_rotation(extreme).unwrap();
+            assert!((0.0..360.0).contains(&normalized));
+            let corners =
+                dimensioned_rectangle_corners((150.0, 150.0), 40.0, 20.0, extreme, (300.0, 300.0))
+                    .unwrap();
+            assert_eq!(
+                corners,
+                dimensioned_rectangle_corners(
+                    (150.0, 150.0),
+                    40.0,
+                    20.0,
+                    normalized,
+                    (300.0, 300.0)
+                )
+                .unwrap()
+            );
+        }
+        for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert!(normalize_rectangle_rotation(invalid).is_err());
+            assert!(dimensioned_rectangle_corners(
+                (100.0, 100.0),
+                40.0,
+                20.0,
+                invalid,
+                (300.0, 300.0)
+            )
+            .is_err());
+        }
+    }
+
+    #[test]
+    fn every_edge_right_angle_and_signed_area_must_survive_coordinate_rounding() {
+        assert!(checked_rectangle_precision(
+            &[(0.0, 0.0), (100.0, 0.0), (100.0, 100.0), (0.0, 100.0)],
+            1.0,
+            100.0,
+            100.0
+        )
+        .is_ok());
+        // The two edges formerly checked still have exact lengths; the opposite edge does not.
+        assert!(checked_rectangle_precision(
+            &[(0.0, 0.0), (100.0, 0.0), (100.002, 100.0), (0.0, 100.0)],
+            1.0,
+            100.0,
+            100.0
+        )
+        .is_err());
+        // All four side lengths satisfy the tolerance, but this is a sheared parallelogram.
+        assert!(checked_rectangle_precision(
+            &[(0.0, 0.0), (100.0, 0.0), (100.01, 100.0), (0.01, 100.0)],
+            1.0,
+            100.0,
+            100.0
+        )
+        .is_err());
+        assert!(checked_rectangle_precision(
+            &[(0.0, 0.0), (100.0, 0.0), (100.0, -100.0), (0.0, -100.0)],
+            1.0,
+            100.0,
+            100.0
+        )
+        .is_err());
+        assert!(
+            dimensioned_rectangle_corners((100.0, 100.0), 0.0099, 20.0, 45.0, (300.0, 300.0))
+                .is_err()
+        );
+        assert!(dimensioned_rectangle_corners(
+            (1_000_000.0, 1_000_000.0),
+            10.0,
+            10.0,
+            45.0,
+            (2_000_000.0, 2_000_000.0)
+        )
+        .is_err());
+        assert!(dimensioned_rectangle_corners(
+            (1_000_000.0, 1_000_000.0),
+            10.0,
+            10.0,
+            0.0,
+            (2_000_000.0, 2_000_000.0)
+        )
+        .is_ok());
+        assert!(
+            dimensioned_rectangle_corners((0.0, 0.0), 40.0, 20.0, 45.0, (300.0, 300.0)).is_err()
+        );
     }
 }

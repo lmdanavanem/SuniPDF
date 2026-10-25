@@ -2067,5 +2067,8 @@
   "plan_links.saved_result": "Dernière copie enregistrée",
   "plan_links.open_saved_copy": "Vérifier et ouvrir la copie enregistrée",
   "plan_links.export_receipt": "Exporter le rapport d’enregistrement",
-  "plan_links.receipt_exported": "Rapport d’enregistrement exporté :"
+  "plan_links.receipt_exported": "Rapport d’enregistrement exporté :",
+  "measure.rectangle.rotation": "Rotation (degrés horaires)",
+  "measure.rectangle.rotation_help": "Rotation horaire autour du coin inférieur gauche placé. La largeur et la hauteur suivent les côtés orientés.",
+  "measure.rectangle.invalid_rotation": "Saisissez un angle fini en degrés."
 }

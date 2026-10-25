@@ -163,6 +163,27 @@ impl Canvas {
         );
     }
 
+    fn rectangle_rotation(&mut self, app: &mut SuniApp, value: &str) {
+        self.control(app, "measure.rectangle.rotation");
+        self.ctx.memory_mut(|memory| {
+            memory.request_focus(egui::Id::new("dimensioned-rectangle-rotation"))
+        });
+        self.frame(
+            app,
+            vec![
+                Event::Key {
+                    key: Key::A,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Modifiers::COMMAND,
+                },
+                Event::Text(value.into()),
+            ],
+        );
+        self.key(app, Key::Tab);
+    }
+
     fn calibrate(&mut self, app: &mut SuniApp, known_distance: &str) {
         self.control(app, "measure.calibrate");
         assert!(app.annotate.measure.is_active_draft());
@@ -317,6 +338,7 @@ fn dimensioned_rectangle_apply_closes_the_modal_and_allows_next_placement() {
         canvas.calibrate(&mut app, "10");
         canvas.control(&mut app, "measure.rectangle.automatic");
         canvas.control(&mut app, "measure.rectangle.local");
+        canvas.rectangle_rotation(&mut app, "33.5");
         canvas.control(&mut app, "measure.rectangle.place");
         canvas.point(&mut app, (80.0, 450.0), false);
         let (page, epoch, generation) = requests
@@ -330,6 +352,7 @@ fn dimensioned_rectangle_apply_closes_the_modal_and_allows_next_placement() {
                     ..
                 } => {
                     assert_eq!((rectangle.width, rectangle.height), (2.0, 3.0));
+                    assert_eq!(rectangle.rotation_degrees, 33.5);
                     Some((page, epoch, generation))
                 }
                 _ => None,
@@ -406,6 +429,7 @@ fn dimensioned_rectangle_controls_capture_reference_place_once_and_cancel_withou
         assert_eq!(captures[0].1.known_distance, 10.0);
         canvas.control(&mut app, "measure.rectangle.automatic");
         canvas.control(&mut app, "measure.rectangle.local");
+        canvas.rectangle_rotation(&mut app, "33.5");
         canvas.control(&mut app, "measure.rectangle.place");
         assert!(app.annotate.measure.is_active_draft());
         assert!(!app.suspend_active());
@@ -428,6 +452,7 @@ fn dimensioned_rectangle_controls_capture_reference_place_once_and_cancel_withou
         let (page, rectangle, epoch, generation) = &previews[0];
         assert_eq!(*page, 0);
         assert_eq!((rectangle.width, rectangle.height), (2.0, 3.0));
+        assert_eq!(rectangle.rotation_degrees, 33.5);
         assert!((rectangle.anchor.0 - 80.0).abs() < 0.01);
         assert!((rectangle.anchor.1 - 450.0).abs() < 0.01);
         assert!(
@@ -983,6 +1008,14 @@ fn narrow_measurement_panel_scrolls_without_overflow_and_keeps_busy_cancel_reach
                 "long translated type labels must not widen the panel: {language}, dark={dark}"
             );
             assert!(canvas.panel_content_size.y > canvas.panel_rect.height());
+            canvas.rectangle_rotation(&mut app, "-22.5");
+            let output = canvas.frame(&mut app, Vec::new());
+            assert!(
+                text_position(&output.shapes, tr(app.lang(), "measure.rectangle.rotation"))
+                    .is_some()
+            );
+            assert!(canvas.panel_content_size.x <= canvas.panel_rect.width() + 1.0);
+            assert_no_edit_or_preview(&requests);
             canvas.control(&mut app, "measure.calibrate");
             assert!(app.annotate.measure.is_active_draft());
             app.saving = true;

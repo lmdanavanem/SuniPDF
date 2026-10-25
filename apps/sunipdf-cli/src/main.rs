@@ -106,7 +106,7 @@ enum Command {
     RecalibrateMeasurements(measurement_workspace_cmd::RecalibrateArgs),
     /// Find a real vector endpoint or straight-segment intersection near a displayed point.
     MeasurementSnap(measurement_workspace_cmd::SnapArgs),
-    /// Place an axis-aligned rectangle using real dimensions and an explicit scale source.
+    /// Place a clockwise-rotated rectangle using real dimensions and an explicit scale source.
     DimensionedRectangle(dimensioned_shape_cmd::RectangleArgs),
     /// Add a calibrated measurement annotation in a new PDF copy.
     Measure {
@@ -3740,6 +3740,41 @@ mod tests {
             "--use-page-calibration",
         ])
         .is_err());
+    }
+
+    #[test]
+    fn dimensioned_rectangle_rotation_defaults_to_zero_normalizes_and_rejects_nonfinite_input() {
+        let base = [
+            "sunipdf-cli",
+            "dimensioned-rectangle",
+            "source.pdf",
+            "--anchor",
+            "220,260",
+            "--width",
+            "0.8",
+            "--height",
+            "1.1",
+            "--out",
+            "copy.pdf",
+            "--use-page-calibration",
+        ];
+        let Command::DimensionedRectangle(defaults) = parse_cli(base).unwrap().command else {
+            panic!("rectangle command expected")
+        };
+        assert_eq!(defaults.rotation_degrees, 0.0);
+        for (value, expected) in [("-90", 270.0), ("450", 90.0), ("37.5", 37.5)] {
+            let Command::DimensionedRectangle(args) =
+                parse_cli(base.into_iter().chain(["--rotation-degrees", value]))
+                    .unwrap()
+                    .command
+            else {
+                panic!("rectangle command expected")
+            };
+            assert_eq!(args.rotation_degrees, expected);
+        }
+        for value in ["NaN", "inf", "-inf", "1e999", "clockwise"] {
+            assert!(parse_cli(base.into_iter().chain(["--rotation-degrees", value])).is_err());
+        }
     }
 
     #[test]

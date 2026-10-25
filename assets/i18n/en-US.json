@@ -2067,5 +2067,8 @@
   "plan_links.saved_result": "Last saved copy",
   "plan_links.open_saved_copy": "Verify and open saved copy",
   "plan_links.export_receipt": "Export save receipt",
-  "plan_links.receipt_exported": "Save receipt exported:"
+  "plan_links.receipt_exported": "Save receipt exported:",
+  "measure.rectangle.rotation": "Rotation (clockwise degrees)",
+  "measure.rectangle.rotation_help": "Rotate clockwise around the placed lower-left corner. Width and height follow the rotated sides.",
+  "measure.rectangle.invalid_rotation": "Enter a finite angle in degrees."
 }

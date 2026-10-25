@@ -19,7 +19,8 @@ pub use crate::measurement_area::{
 pub use crate::measurement_batch::{RecalibrationChange, RecalibrationPlan, RecalibrationRequest};
 pub use crate::measurement_distance::parse_measurement_distance;
 pub use crate::measurement_shapes::{
-    DimensionedRectangle, LocalCalibrationReference, RectangleScale,
+    dimensioned_rectangle_corners, dimensioned_rectangle_point_dimensions,
+    normalize_rectangle_rotation, DimensionedRectangle, LocalCalibrationReference, RectangleScale,
 };
 pub use crate::measurement_snap::{SnapKind, SnapPoint, VectorSnapGeometry};
 pub use crate::measurement_viewports::{
