@@ -583,6 +583,34 @@ def dark_theme_ocr_input(image):
     return mask.resize((image.width * 2, image.height * 2), resample=Image.NEAREST)
 
 
+def unsaved_close_dialog_text(prompt):
+    """Read the same native capture with a bounded dark-text fallback for older OCR."""
+    from PIL import Image
+    original_sha = sha(prompt)
+    for normalize_dark in (False, True):
+        ocr_path = prompt
+        suffix = "-raw-ocr"
+        if normalize_dark:
+            ocr_path = prompt.with_name(prompt.stem + "-normalized.pgm")
+            with Image.open(prompt) as image:
+                dark_theme_ocr_input(image).save(ocr_path)
+            suffix = "-normalized-ocr"
+        text = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", 11], timeout=30)
+        transcript = prompt.with_name(prompt.stem + suffix + ".txt")
+        transcript.write_text(text + "\n", encoding="utf-8")
+        if re.search(r"unsaved\s+changes", text, re.I):
+            assert sha(prompt) == original_sha, "OCR normalization changed the native capture"
+            prompt.with_name(prompt.stem + "-ocr.json").write_text(json.dumps({
+                "nativeCapture": prompt.name, "nativeCaptureSha256": original_sha,
+                "method": "normalized-light-text" if normalize_dark else "native-capture",
+                "ocrInput": ocr_path.name, "ocrInputSha256": sha(ocr_path),
+                "transcript": transcript.name, "transcriptSha256": sha(transcript),
+                "unsavedChangesRecognized": True,
+            }, indent=2) + "\n", encoding="utf-8")
+            return text
+    return None
+
+
 THEME_TITLEBAR_PATCH = (40, 16, 48, 24)
 GLASS_DARK_CHROME_RGB = (32, 34, 38)
 THEME_RGB_TOLERANCE = 3
@@ -882,8 +910,7 @@ def window_controls(app, window, evidence):
 
     def unsaved_prompt():
         command(["import", "-window", window, prompt], timeout=15)
-        text = command(["tesseract", prompt, "stdout", "-l", "eng", "--psm", 11], timeout=30)
-        return text if re.search(r"unsaved\s+changes", text, re.I) else None
+        return unsaved_close_dialog_text(prompt)
 
     text = wait_for("guard custom close with unsaved-changes dialog", unsaved_prompt)
     (evidence / "native-window-unsaved-close.txt").write_text(text + "\n")
