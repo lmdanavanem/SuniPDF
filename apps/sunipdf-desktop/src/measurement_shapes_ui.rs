@@ -686,7 +686,9 @@ mod tests {
         };
         assert_eq!(tools.dimensions(), Some((6.5, 6.5)));
         tools.change_unit(MeasurementUnit::Inches);
-        assert_eq!(tools.dimensions(), Some((78.0, 78.0)));
+        let (length, hidden_height) = tools.dimensions().unwrap();
+        assert!((length - 78.0).abs() < 1e-12);
+        assert_eq!(hidden_height, length);
         let calibration = PageCalibration {
             points: [(10.0, 10.0), (110.0, 10.0)],
             known_distance: 10.0,
