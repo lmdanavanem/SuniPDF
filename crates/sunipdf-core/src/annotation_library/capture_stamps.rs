@@ -246,7 +246,7 @@ fn image(
     };
     let mut rgba = Vec::with_capacity(pixels * 4);
     let mut visible = false;
-    for (index, color) in rgb.chunks_exact(3).enumerate() {
+    for (index, color) in rgb.as_chunks::<3>().0.iter().enumerate() {
         let opacity = alpha.as_ref().map_or(255, |values| values[index]);
         if opacity == 0 && color.iter().any(|value| *value != 0) {
             return Err(unsupported());
