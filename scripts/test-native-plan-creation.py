@@ -43,7 +43,7 @@ class NativeCommandPaletteTests(unittest.TestCase):
             prepared = MagicMock()
             source.resize.return_value = prepared
             prepared.save.side_effect = lambda path: path.write_bytes(b"offline full-frame resize stand-in")
-            image_api = SimpleNamespace(open=MagicMock(return_value=source), NEAREST="nearest")
+            image_api = SimpleNamespace(open=MagicMock(return_value=source), NEAREST="nearest", LANCZOS="lanczos")
             calls = []
             transcript = tsv([(90, "Plan links")])
 
@@ -69,6 +69,57 @@ class NativeCommandPaletteTests(unittest.TestCase):
             self.assertEqual((root / observed["ocr"]).read_text(encoding="utf-8"), transcript)
             read_capture(path)
             self.assertEqual(calls[-1][0][-2:], ["11", "tsv"], "other native controls retain sparse-text OCR")
+            source.reset_mock()
+            prepared.reset_mock()
+            observed = read_capture(path, psm=6, smooth=True)
+            self.assertEqual(observed["scale"], 4)
+            source.resize.assert_called_once_with((1280, 720), resample=image_api.LANCZOS)
+            source.crop.assert_not_called()
+            self.assertEqual(observed["pngSha256"], native.sha(path))
+            self.assertEqual(observed["ocrInputSha256"], native.sha(root / observed["ocrInput"]))
+            self.assertEqual(calls[-1][0][-2:], ["6", "tsv"])
+            before = len(calls)
+            with self.assertRaisesRegex(AssertionError, "original OCR mask"):
+                read_capture(path, "blue", psm=6, smooth=True)
+            self.assertEqual(len(calls), before)
+
+    def test_smooth_capture_is_routed_only_to_typed_manifest_path_scene(self):
+        tree = ast.parse(Path(__file__).with_name("test-deb.py").read_text(encoding="utf-8"))
+        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
+                 and isinstance(node.func, ast.Name) and node.func.id == "scene"
+                 and any(keyword.arg == "smooth" for keyword in node.keywords)]
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(ast.literal_eval(calls[0].args[0]), "creation-manifest-path-entered")
+        self.assertEqual({keyword.arg: ast.literal_eval(keyword.value) for keyword in calls[0].keywords},
+                         {"pattern": r"plan-set\.json", "psm": 6, "smooth": True})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            retained = root / "scenes"
+            retained.mkdir()
+            observed = {"text": "plan-set.json", "ink": 0, "tsv": "offline fixture", "scale": 4, "size": (320, 180)}
+            for field, suffix in (("png", ".png"), ("ocrInput", "-ocr.png"), ("ocr", ".tsv")):
+                path = root / ("source" + suffix)
+                path.write_bytes(("offline full-frame fixture: " + field).encode())
+                observed[field], observed[field + "Sha256"] = path.name, native.sha(path)
+            read_capture = MagicMock(return_value=observed)
+            namespace = {"time": SimpleNamespace(monotonic=lambda: 0), "read_capture": read_capture,
+                         "capture": lambda: root / observed["png"], "command": lambda args: "SuniPDF",
+                         "window": "offline-window", "re": re, "scenes": [], "scene_directory": retained,
+                         "evidence": root, "sha": native.sha}
+            creation_helper("evidence_fields", namespace)
+            scene = creation_helper("scene", namespace)
+            for name, options in (("creation-command-open", {"psm": 6}),
+                                  ("creation-manifest-path-entered", {"psm": 11}),
+                                  ("creation-manifest-path-entered", {"psm": 6, "kind": "alpha"})):
+                with self.subTest(name=name, options=options), self.assertRaisesRegex(AssertionError, "restricted"):
+                    scene(name, pattern=r"plan-set\.json", smooth=True, **options)
+            read_capture.assert_not_called()
+            value = scene("creation-manifest-path-entered", pattern=r"plan-set\.json", psm=6, smooth=True)
+            read_capture.assert_called_once_with(root / observed["png"], None, psm=6, smooth=True)
+            self.assertEqual(namespace["scenes"], [value])
+            for field in ("png", "ocrInput", "ocr"):
+                self.assertEqual((root / value[field]).read_bytes(), (root / observed[field]).read_bytes())
+                self.assertEqual(native.sha(root / value[field]), value[field + "Sha256"])
 
     def test_command_keeps_native_keyboard_and_requires_observed_result_before_enter(self):
         calls = []

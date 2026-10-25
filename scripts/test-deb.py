@@ -587,7 +587,8 @@ def plan_link_creation(evidence, version):
         command(["import", "-window", target or window, path], timeout=15)
         return path
 
-    def read_capture(path, color=None, *, psm=11):
+    def read_capture(path, color=None, *, psm=11, smooth=False):
+        assert not (smooth and color), "Coloured PDF fixtures retain their original OCR mask"
         with Image.open(path) as image:
             size = image.size
             if color:
@@ -595,8 +596,9 @@ def plan_link_creation(evidence, version):
                 prepared = Image.frombytes("L", size, mask)
             else:
                 prepared, ink = image.convert("RGB"), 0
-            scale = 3 if color else 2
-            prepared = prepared.resize((size[0] * scale, size[1] * scale), resample=Image.NEAREST)
+            scale = 3 if color else 4 if smooth else 2
+            prepared = prepared.resize((size[0] * scale, size[1] * scale),
+                                       resample=Image.LANCZOS if smooth else Image.NEAREST)
             ocr_path = path.with_name(path.stem + ("-" + color if color else "-controls") + ".png")
             prepared.save(ocr_path)
         tsv = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", str(psm), "tsv"], timeout=25)
@@ -660,12 +662,14 @@ def plan_link_creation(evidence, version):
         time.sleep(0.2)
         return point
 
-    def scene(name, *, pattern=None, kind=None, caption=None, allow_scroll=False, psm=11):
+    def scene(name, *, pattern=None, kind=None, caption=None, allow_scroll=False, psm=11, smooth=False):
+        assert not smooth or (name == "creation-manifest-path-entered" and kind is None and psm == 6), \
+            "Smooth OCR is restricted to the typed manifest path scene"
         deadline = time.monotonic() + 35
         attempts = 0
         while time.monotonic() < deadline:
             color = "red" if kind == "destination" else "blue" if kind else None
-            observed = read_capture(capture(), color, psm=psm)
+            observed = read_capture(capture(), color, psm=psm, smooth=smooth)
             title = command(["xdotool", "getwindowname", window])
             matched = (fixtures.fixture_visible(kind, observed["ink"], observed["text"]) if kind
                        else re.search(pattern, observed["text"], re.I) is not None)
@@ -774,7 +778,9 @@ def plan_link_creation(evidence, version):
             open_command("Plan links", "creation-command-open")
             scene("creation-manifest-field", pattern=r"Manifest\s+path")
             type_text(fixture["manifest"])
-            scene("creation-manifest-path-entered", pattern=r"plan-set\.json")
+            # Keep the full capture: smooth enlargement separates the small
+            # filename suffix from its adjacent caret without hiding any pixels.
+            scene("creation-manifest-path-entered", pattern=r"plan-set\.json", psm=6, smooth=True)
             click("Load manifest", allow_scroll=False)
             scene("creation-loaded-manifest", pattern=r"Native\s+creation\s+fixture")
             click("Link multiple PDFs", allow_scroll=False)
