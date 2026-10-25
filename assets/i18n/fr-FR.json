@@ -2112,5 +2112,22 @@
   "register.bulk.empty": "Non défini",
   "register.bulk.select": "Sélectionner",
   "register.bulk.select_row": "Sélectionner la page {page}, annotation {index}",
-  "register.bulk.clear_selection": "Effacer la sélection"
+  "register.bulk.clear_selection": "Effacer la sélection",
+  "register.presets.title": "Filtres enregistrés",
+  "register.presets.scope": "Enregistrez les critères et le tri pour les réutiliser. Le chargement conserve le périmètre de page et de zone, efface la sélection des annotations et annule tout aperçu des champs.",
+  "register.presets.name": "Nom du filtre",
+  "register.presets.save": "Enregistrer le filtre actuel",
+  "register.presets.saved": "Filtres enregistrés",
+  "register.presets.choose": "Choisir un filtre enregistré",
+  "register.presets.load": "Appliquer",
+  "register.presets.delete": "Supprimer",
+  "register.presets.import": "Importer...",
+  "register.presets.export": "Exporter...",
+  "register.presets.import_help": "Jusqu’à 16 filtres. L’import ajoute tous les filtres ensemble et refuse les noms en double. L’export crée un nouveau fichier.",
+  "register.presets.file_type": "Filtres du registre",
+  "register.presets.saved_notice": "Filtre actuel enregistré.",
+  "register.presets.loaded": "Filtre chargé. Périmètre de page et de zone conservé ; sélection des annotations effacée.",
+  "register.presets.deleted": "Filtre enregistré supprimé. Critères actuels conservés.",
+  "register.presets.imported": "Filtres importés. Choisissez un filtre puis chargez-le pour utiliser ses critères.",
+  "register.presets.exported": "Filtres exportés dans un nouveau fichier."
 }

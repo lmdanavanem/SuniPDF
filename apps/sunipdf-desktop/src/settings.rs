@@ -60,6 +60,8 @@ pub struct Settings {
     pub office_profile: String,
     pub shortcuts: crate::shortcuts::Bindings,
     pub stamp_presets: crate::stamp_presets::StampPresets,
+    #[serde(deserialize_with = "deserialize_register_presets")]
+    pub register_presets: sunipdf_core::register_presets::RegisterPresetLibrary,
     pub tables: crate::workspace_table::Preferences,
 }
 
@@ -82,6 +84,7 @@ impl Default for Settings {
             office_profile: "standard".into(),
             shortcuts: Default::default(),
             stamp_presets: Default::default(),
+            register_presets: Default::default(),
             tables: Default::default(),
         }
     }
@@ -101,6 +104,23 @@ where
 {
     let value = serde_json::Value::deserialize(deserializer)?;
     Ok(serde_json::from_value(value).ok())
+}
+
+fn deserialize_register_presets<'de, D>(
+    deserializer: D,
+) -> Result<sunipdf_core::register_presets::RegisterPresetLibrary, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    // A malformed optional library must not reset unrelated preferences. The settings
+    // reader bounds the whole file; the portable parser also bounds this field.
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::to_vec(&value)
+        .ok()
+        .and_then(|bytes| {
+            sunipdf_core::register_presets::RegisterPresetLibrary::from_json(&bytes).ok()
+        })
+        .unwrap_or_default())
 }
 
 impl Settings {
@@ -194,6 +214,21 @@ impl Settings {
         Ok(())
     }
 
+    pub fn commit_register_presets(
+        &mut self,
+        presets: sunipdf_core::register_presets::RegisterPresetLibrary,
+        writer: impl FnOnce(&Self) -> std::io::Result<()>,
+    ) -> std::io::Result<()> {
+        presets.to_json().map_err(|error| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, error.to_string())
+        })?;
+        let mut next = self.clone();
+        next.register_presets = presets;
+        writer(&next)?;
+        *self = next;
+        Ok(())
+    }
+
     #[cfg_attr(test, allow(dead_code))]
     pub fn save(&self) -> std::io::Result<()> {
         let Some(path) = Self::path() else {
@@ -228,6 +263,83 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn register_preset_migration_and_invalid_library_keep_unrelated_preferences() {
+        for library in [
+            "null".to_owned(),
+            r#"{"format":"sunipdf-register-filter-presets","version":99,"presets":[]}"#.into(),
+            format!("{{\"invalid\":\"{}\"}}", "x".repeat(128 * 1024)),
+        ] {
+            let settings: Settings = serde_json::from_str(&format!(
+                r#"{{"language":"fr-FR","dark_theme":true,"author":"Reviewer","recent":["drawing.pdf"],"register_presets":{library}}}"#
+            )).unwrap();
+            assert_eq!(settings.language, "fr-FR");
+            assert!(settings.dark_theme);
+            assert_eq!(settings.author, "Reviewer");
+            assert_eq!(settings.recent, vec!["drawing.pdf"]);
+            assert!(settings.register_presets.entries().is_empty());
+        }
+        let previous: Settings =
+            serde_json::from_str(r#"{"language":"fr-FR","autosave":false}"#).unwrap();
+        assert_eq!(previous.language, "fr-FR");
+        assert!(!previous.autosave);
+        assert!(previous.register_presets.entries().is_empty());
+    }
+
+    #[test]
+    fn register_presets_commit_and_reopen_without_losing_preferences_or_failed_changes() {
+        use sunipdf_core::{
+            annotation_register::{RegisterFilter, RegisterSort},
+            register_presets::{RegisterPreset, RegisterPresetLibrary},
+        };
+        let mut settings = Settings {
+            language: "fr-FR".into(),
+            author: "Reviewer".into(),
+            reduce_transparency: true,
+            recent: vec!["drawing.pdf".into()],
+            ..Default::default()
+        };
+        let original = settings.clone();
+        let mut library = RegisterPresetLibrary::default();
+        library
+            .insert(
+                RegisterPreset::capture(
+                    "Electrical",
+                    &RegisterFilter {
+                        discipline: "Electrical".into(),
+                        custom_sort: Some("Room".into()),
+                        ..Default::default()
+                    },
+                    RegisterSort::Author,
+                    true,
+                )
+                .unwrap(),
+            )
+            .unwrap();
+        assert!(settings
+            .commit_register_presets(library.clone(), |_| {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "offline refusal",
+                ))
+            })
+            .is_err());
+        assert_eq!(settings, original);
+        let dir =
+            std::env::temp_dir().join(format!("sunipdf-register-prefs-{}", std::process::id()));
+        let path = dir.join("settings.json");
+        settings
+            .commit_register_presets(library.clone(), |next| next.save_to(&path))
+            .unwrap();
+        let reopened: Settings = serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(reopened, settings);
+        let mut expected = original;
+        expected.register_presets = library;
+        assert_eq!(settings, expected);
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
 
     #[test]
     fn round_trip_and_defaults() {

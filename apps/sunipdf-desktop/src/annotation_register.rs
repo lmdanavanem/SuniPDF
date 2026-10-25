@@ -1,6 +1,7 @@
 //! Per-tab markup table and explicit, on-plan manual counting.
 
 pub(crate) mod bulk;
+mod presets;
 
 use crate::{
     annotate::Tool,
@@ -43,6 +44,7 @@ pub struct RegisterState {
     bulk_selected: BTreeSet<(usize, usize)>,
     bulk_filter: RegisterFilter,
     bulk: bulk::Draft,
+    presets: presets::Draft,
 }
 
 #[derive(Default)]
@@ -113,11 +115,27 @@ impl Default for RegisterState {
             bulk_selected: BTreeSet::new(),
             bulk_filter: RegisterFilter::default(),
             bulk: bulk::Draft::default(),
+            presets: presets::Draft::default(),
         }
     }
 }
 
 impl RegisterState {
+    fn load_preset(
+        &mut self,
+        preset: &sunipdf_core::register_presets::RegisterPreset,
+    ) -> Result<(), EngineError> {
+        preset.apply_to(&mut self.filter, &mut self.sort, &mut self.descending)?;
+        self.page = self.filter.page.unwrap_or(0);
+        self.offset = 0;
+        self.selection = SelectionCache::default();
+        // Loading is an explicit scope decision, even when the criteria happen to match.
+        self.bulk_selected.clear();
+        self.bulk.source_changed();
+        self.sync_bulk_filter();
+        Ok(())
+    }
+
     fn sync_bulk_filter(&mut self) {
         let mut current = self.filter.clone();
         current.custom_sort = None;
@@ -147,7 +165,7 @@ impl RegisterState {
         )
     }
     pub fn dialog_open(&self) -> bool {
-        self.count_open || self.edit.is_some() || self.bulk.open
+        self.count_open || self.edit.is_some() || self.bulk.open || self.presets.open
     }
     pub fn invalidate(&mut self) {
         self.generation = self.generation.wrapping_add(1);
@@ -425,7 +443,8 @@ impl SuniApp {
         let mut open_bulk = false;
         let report = state.report.clone();
         let enabled = !self.worker.has_pending_mutations();
-        let row_actions_enabled = enabled && state.edit.is_none() && !state.bulk.open;
+        let row_actions_enabled =
+            enabled && state.edit.is_none() && !state.bulk.open && !state.presets.open;
         let can_refresh = row_actions_enabled;
         let can_export = can_refresh
             && report
@@ -433,7 +452,8 @@ impl SuniApp {
                 .is_some_and(|r| r.validate_zone_filter(&state.filter).is_ok());
         let can_close = state.edit.as_ref().is_none_or(|e| !e.applying)
             && !state.bulk.applying
-            && !state.bulk.open;
+            && !state.bulk.open
+            && !state.presets.open;
         let width = (ctx.content_rect().width() - 60.0).clamp(420.0, 1050.0);
         let selection = self
             .annotate
@@ -524,6 +544,8 @@ impl SuniApp {
                             )
                         };
                         ui.menu_button(filter_label, |ui| {
+                            state.presets.menu(ui, lang, row_actions_enabled);
+                            ui.separator();
                             egui::Grid::new("register-filters")
                                 .num_columns(4)
                                 .show(ui, |ui| {
@@ -872,6 +894,7 @@ impl SuniApp {
         if layout_changed {
             self.persist_settings();
         }
+        presets::show(&mut state, &mut self.settings, ctx, lang, self.has_icons);
         if open_bulk && !state.bulk_selected.is_empty() {
             if let Some(report) = &report {
                 let rows = report

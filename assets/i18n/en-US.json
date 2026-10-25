@@ -2112,5 +2112,22 @@
   "register.bulk.empty": "Not set",
   "register.bulk.select": "Select",
   "register.bulk.select_row": "Select page {page}, annotation {index}",
-  "register.bulk.clear_selection": "Clear selection"
+  "register.bulk.clear_selection": "Clear selection",
+  "register.presets.title": "Saved filters",
+  "register.presets.scope": "Save search criteria and sorting for reuse. Loading a filter keeps the current page and zone scope, clears annotation selection and discards any field preview.",
+  "register.presets.name": "Filter name",
+  "register.presets.save": "Save current filter",
+  "register.presets.saved": "Saved filters",
+  "register.presets.choose": "Choose a saved filter",
+  "register.presets.load": "Apply",
+  "register.presets.delete": "Delete",
+  "register.presets.import": "Import...",
+  "register.presets.export": "Export...",
+  "register.presets.import_help": "Up to 16 filters. Imports add all filters together and refuse duplicate names. Export creates a new file.",
+  "register.presets.file_type": "Register filters",
+  "register.presets.saved_notice": "Current filter saved.",
+  "register.presets.loaded": "Filter loaded. Current page and zone scope kept; annotation selection cleared.",
+  "register.presets.deleted": "Saved filter deleted. Current criteria kept.",
+  "register.presets.imported": "Filters imported. Choose a filter and load it to use its criteria.",
+  "register.presets.exported": "Filters exported to a new file."
 }
