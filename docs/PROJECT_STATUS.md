@@ -1,25 +1,31 @@
 # Project status
 
-## Published 0.78.0
+## Published 0.79.0
 
-[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.78.0) | [Release notes](RELEASE_0.78.0.md) | [Qualification evidence](qa/RELEASE_0.78.0.json).
+[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.79.0) | [Release notes](RELEASE_0.79.0.md) | [Qualification evidence](qa/RELEASE_0.79.0.json).
 
-Glass uses a continuous neutral workspace in light and dark modes, with compact task families and Open/Recent priority on the welcome screen. After following a verified plan link, Return to source restores the original open document and reading positions. Unsaved changes remain in memory; the latest successful return is session-only.
+Reviewed transfer batches and clearer plan-link creation. Queue up to 16 reviewed old/new PDF pairs and save separate new copies. Preflight the whole queue and retain completed copies and receipts after cancellation or a later failure. Use source-bound CLI batch preview/apply with explicit page mappings. Select plan-link pages by ranges or indexed entries, filter destinations and reopen verified completed copies.
 
 The tagged source passed all 11 release jobs. Windows qualification includes
-16 offscreen interface scenes (3 Home and 13 PDF/settings scenes), 55 portable upgrade baselines plus
-4 guards, and 53 MSI upgrade baselines. Ubuntu 22.04 and 24.04
+16 offscreen interface scenes (3 Home and 13 PDF/settings scenes), 56 portable upgrade baselines plus
+4 guards, and 54 MSI upgrade baselines. Ubuntu 22.04 and 24.04
 each passed 22 installed runtime cases, including 6 plan-link cases.
 Apple Silicon passed 7 installed checks on macOS 15.7.9.
 
 Independent PDF validation passed the recorded 12-fixture corpus. The public
 DEB contains the same CLI bytes as that conformance run. All ten public downloads
-were checked anonymously against their SHA256 values, verified 2026-10-25T02:42:58.071611+00:00.
+were checked anonymously against their SHA256 values, verified 2026-10-25T05:43:29.006968+00:00.
 
 Visual review covers 16 recorded images. Windows captures use offscreen software
 rendering; Ubuntu interaction uses the recorded X11/Openbox/Xvfb environment.
 Capture identities, review methods and exact-source limits are retained in
-[qualification evidence](qa/RELEASE_0.78.0.json).
+[qualification evidence](qa/RELEASE_0.79.0.json).
+
+Independent packaged-CLI corpora:
+
+- Reviewed transfer batches: 69 checks across 27 recorded commands.
+
+Each output is committed separately; the queue is not a transaction across files. Transfers retain the existing supported native annotation types and do not replace incoming page content. Native queue creation/review/saving and complete plan-link creation retain separate qualification gates.
 
 Native plan-link navigation uses synthetic PDFs prepared by the installed CLI.
 It covers preview/cancel, changed or missing input refusals and the correct
@@ -42,6 +48,8 @@ interactive Finder opening and clipboard interoperability remain unqualified.
 Ubuntu updater-helper checks do not establish graphical authorization or a
 complete desktop updater interaction. Physical GPUs, Wayland, printers and
 human accessibility remain separate gates.
+
+Full backlog cards remain open until all stated acceptance criteria are evidenced.
 
 ## Remaining work
 
