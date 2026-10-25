@@ -1232,6 +1232,7 @@ pub(crate) mod tests {
     #[test]
     fn narrow_bilingual_stamp_capture_keeps_refusals_and_cancel_reachable() {
         for language in ["en-US", "fr-FR"] {
+            let locale = sunipdf_i18n::Language::from_code(language).unwrap();
             let (mut app, requests, _) = crate::app::tests::test_app();
             let directory = storage(&mut app);
             app.settings.language = language.into();
@@ -1239,7 +1240,7 @@ pub(crate) mod tests {
             app.library.loaded = true;
             let mut controls = Controls::new();
             controls.size = egui::vec2(560.0, 640.0);
-            controls.click_scrolled(&mut app, tr(language, "library.capture_page"));
+            controls.click_scrolled(&mut app, tr(locale, "library.capture_page"));
             let (epoch, generation) = match requests.recv().unwrap() {
                 Request::LibraryCaptureCandidates {
                     epoch, generation, ..
@@ -1274,25 +1275,25 @@ pub(crate) mod tests {
             );
             controls.seek_text(
                 &mut app,
-                &sunipdf_i18n::tr_args(language, "library.capture_refusal", &[("reason", reason)]),
+                &sunipdf_i18n::tr_args(locale, "library.capture_refusal", &[("reason", reason)]),
             );
             let draft = app.library.capture.as_mut().unwrap();
             draft.name = "Owned stamp".into();
             draft.source = "Owned drawing".into();
-            controls.click_scrolled(&mut app, tr(language, "library.capture_save"));
+            controls.click_scrolled(&mut app, tr(locale, "library.capture_save"));
             assert!(matches!(
                 requests.recv().unwrap(),
                 Request::CaptureLibraryEntry { .. }
             ));
             let output = controls.frame(&mut app, vec![]);
             for key in ["library.close", "library.create"] {
-                let position = Controls::control_position(&output, tr(language, key)).unwrap();
+                let position = Controls::control_position(&output, tr(locale, key)).unwrap();
                 assert!(
                     Rect::from_min_size(Pos2::ZERO, controls.size).contains(position),
                     "{language}: {key}"
                 );
             }
-            controls.click_scrolled(&mut app, tr(language, "library.cancel"));
+            controls.click_scrolled(&mut app, tr(locale, "library.cancel"));
             assert!(app.library.capture.is_none());
             app.on_library_entry_captured(epoch, generation, Ok(entry("late", "Late result")));
             assert!(app.library.data.entries().is_empty());
