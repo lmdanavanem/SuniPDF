@@ -331,6 +331,19 @@ jobs:
           name: visual-signature-evidence
           path: target/visual-signature-report.json
           if-no-files-found: ignore
+      - name: Overlay stack independent pixel checks
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          python .\scripts\test-overlay-stack.py --cli "$env:SUNIPDF_QA_CLI" --directory target\overlay-stack-evidence --expected-version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Overlay stack pixel regression failed.' }
+      - name: Overlay stack evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: overlay-stack-evidence
+          path: target/overlay-stack-evidence/
+          if-no-files-found: ignore
       - name: Page decorations regression
         if: steps.changes.outputs.docs_only != 'true'
         run: |

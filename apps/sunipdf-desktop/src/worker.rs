@@ -2699,7 +2699,18 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             }
             Request::RevisionOverlay { generation, job } => Response::RevisionOverlayDone {
                 generation,
-                result: crate::revision_overlay::run_job(&engine, job),
+                result: if state.modified()
+                    && state
+                        .document
+                        .as_ref()
+                        .is_some_and(|doc| job.touches_source(&doc.info().path))
+                {
+                    Err(EngineError::Other(
+                        "Save or close the modified overlay source before continuing".into(),
+                    ))
+                } else {
+                    crate::revision_overlay::run_job(&engine, job)
+                },
             },
             Request::LocalReview(job) => {
                 let result =
@@ -5973,7 +5984,7 @@ mod tests {
     fn revision_overlay_jobs_preserve_sources_and_guard_exports(worker: &Worker) {
         use crate::revision_overlay::{Job, Outcome};
         use std::sync::atomic::AtomicBool;
-        use sunipdf_core::revision_overlay::OverlayOptions;
+        use sunipdf_core::revision_overlay::stack::{OverlayStackLayer, OverlayStackOptions};
         let dir = tempfile::tempdir().unwrap();
         let bytes = std::fs::read(
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -5984,6 +5995,10 @@ mod tests {
         let revision = dir.path().join("revision.pdf");
         std::fs::write(&base, &bytes).unwrap();
         std::fs::write(&revision, &bytes).unwrap();
+        let third = dir.path().join("third.pdf");
+        let fourth = dir.path().join("fourth.pdf");
+        std::fs::write(&third, &bytes).unwrap();
+        std::fs::write(&fourth, &bytes).unwrap();
         let prepare = |generation,
                        base: PathBuf,
                        passwords: [zeroize::Zeroizing<String>; 2],
@@ -5991,13 +6006,20 @@ mod tests {
             worker.send(Request::RevisionOverlay {
                 generation,
                 job: Job::Preview {
-                    base,
-                    revision: revision.clone(),
-                    options: OverlayOptions {
+                    options: OverlayStackOptions {
+                        layers: [base, revision.clone(), third.clone(), fourth.clone()]
+                            .into_iter()
+                            .enumerate()
+                            .map(|(index, path)| OverlayStackLayer::new(path, 1, index))
+                            .collect(),
                         long_side: 512,
-                        ..Default::default()
                     },
-                    passwords,
+                    passwords: vec![
+                        passwords[0].clone(),
+                        passwords[1].clone(),
+                        Default::default(),
+                        Default::default(),
+                    ],
                     cancel: Arc::new(AtomicBool::new(cancel)),
                 },
             });
@@ -6018,6 +6040,27 @@ mod tests {
         };
         assert!(!worker.has_pending_mutations());
         crate::revision_overlay::tests::verify_prepared_controls(&preview);
+        let mut three_options = preview.options().clone();
+        three_options.layers.pop();
+        worker.send(Request::RevisionOverlay {
+            generation: 500,
+            job: Job::Preview {
+                options: three_options,
+                passwords: (0..3).map(|_| Default::default()).collect(),
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        });
+        match next_response(worker) {
+            Response::RevisionOverlayDone {
+                result: Ok(Outcome::Preview(three)),
+                ..
+            } => {
+                assert_eq!(three.options().layers.len(), 3);
+                crate::revision_overlay::tests::verify_prepared_controls(&three);
+            }
+            _ => panic!("three-layer overlay preview"),
+        }
+
         let export = |generation, path: PathBuf, json, cancel: bool| {
             worker.send(Request::RevisionOverlay {
                 generation,
@@ -6058,10 +6101,11 @@ mod tests {
         ));
         let report: serde_json::Value =
             serde_json::from_slice(&std::fs::read(json).unwrap()).unwrap();
-        assert_eq!(report["schema"], "sunipdf-revision-overlay");
+        assert_eq!(report["schema"], "sunipdf-revision-overlay-stack");
+        assert_eq!(report["layers"].as_array().unwrap().len(), 4);
         assert_eq!(
-            report["base"]["source_sha256"],
-            preview.report()["base"]["source_sha256"]
+            report["layers"][0]["source"]["source_sha256"],
+            preview.report()["layers"][0]["source"]["source_sha256"]
         );
         assert_eq!(std::fs::read(&base).unwrap(), bytes);
         assert_eq!(std::fs::read(&revision).unwrap(), bytes);
@@ -6082,6 +6126,32 @@ mod tests {
         assert!(export(507, stale.clone(), true, false).is_err());
         assert!(!stale.exists());
         std::fs::write(&revision, &bytes).unwrap();
+        worker.send(Request::Open {
+            path: fourth.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Edit(EditOp::AddText {
+            page: 0,
+            x: 200.0,
+            y: 200.0,
+            text: "Unsaved overlay source".into(),
+            style: TextStyle::default(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(prepare(510, base.clone(), Default::default(), false).is_err());
+        let dirty_export = dir.path().join("dirty-source.png");
+        assert!(export(511, dirty_export.clone(), false, false).is_err());
+        assert!(!dirty_export.exists());
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(prepare(512, base.clone(), Default::default(), false).is_ok());
         for aes256 in [false, true] {
             let protected = dir.path().join(format!("restricted-{aes256}.pdf"));
             let user = format!(

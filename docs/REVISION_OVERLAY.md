@@ -1,16 +1,14 @@
 # Revision overlays
-[0.47 scope and qualification status](RELEASE_0.47.0.md)
-
-Available in [0.47.0](RELEASE_0.47.0.md). [Evidence](qa/RELEASE_0.47.0.json).
+[Original two-page qualification](RELEASE_0.47.0.md) · [Multi-layer 0.81 candidate](RELEASE_0.81.0.md).
 
 ## Desktop
 
-1. Open **Revision overlay** from **All tools**, or use the same button in **Compare files**. The latter preselects the comparison's files and starting pages. No open PDF tab is required.
-2. Use **Choose base PDF** and **Choose revision PDF**, then set each **Page**. Page numbers are physical and start at 1. Each source has its own masked **Password (optional)** field. Select saved files: unsaved changes in open tabs are not included.
-3. Choose **Manual alignment** and set **Horizontal offset**, **Vertical offset**, **Clockwise rotation** and **Scale factor**. Choose **Preview** to load the two source images and the combined result.
-4. Alternatively, choose **Two-point alignment**, then **Preview** to load the sources. Click point 1 and point 2 on the base image, then the corresponding points in the same order on the revision. Choose **Preview** again to calculate the alignment. Each pair must contain two distinct points inside its page. **Reset alignment** clears all four points and restores zero offsets, zero rotation and scale 1.
-5. Adjust **Revision opacity** and **Maximum image side** as needed. The base stays magenta at full density; the revision is cyan. Choose **Preview** again after any setting changes. Export stays disabled while the shown preview is out of date. Changing a source file or page also clears its previous images and alignment.
-6. Inspect **Overlay preview** and, if needed, expand **Source fingerprints (SHA-256)**. Use **Export PNG** or **Export report JSON** and choose a new filename. Each export writes one file and checks both saved sources again. If either source changed, prepare a new preview.
+1. Open **Revision overlay** from **Tools**, or use the same button in **Compare files**. The latter preselects the comparison's files and starting pages. No open PDF tab is required.
+2. Choose the base and second saved PDF, then set each **Page**. The 0.81 candidate supports **Add layer** up to four layers. Pages are physical and start at 1; each source has its own masked password field. Save or close modified source tabs first, since the overlay reads saved files.
+3. Select a non-base layer to align. Choose **Manual alignment** and set **Horizontal offset**, **Vertical offset**, **Clockwise rotation** and **Scale factor**. **Preview** loads the base, selected source and combined result.
+4. Alternatively, choose **Two-point alignment**, then **Preview** to load the sources. Click two points on the base image and the corresponding points in the same order on the selected source. **Preview** recalculates alignment. Each pair must contain two distinct in-page points. **Reset alignment** clears the selected layer's points and restores the identity transform.
+5. Adjust each layer's color, visibility and opacity. The initial pair remains magenta/full density and cyan/0.65 density. At least one layer must remain visible. **Maximum image side** limits the source and output rasters. Changed settings disable export until a fresh preview succeeds. Changing a non-base source or page clears its alignment; changing the base clears every relative alignment.
+6. Inspect **Overlay preview** and **Source fingerprints (SHA-256)**. **Export PNG** or **Export report JSON** creates one new file, rechecking every source, including hidden layers. Changed, missing or retargeted sources require a new preview.
 
 Switching from a completed two-point alignment to manual alignment retains its calculated transform for refinement. The point selections remain available until reset or a source/page change. Resetting alignment leaves the opacity and resolution settings intact. No alignment settings are written into either PDF.
 
@@ -27,17 +25,56 @@ The base page fixes the output width, height and crop. Revision content outside 
 | Setting | Limit |
 |---|---|
 | Saved PDF size | 64 MiB per source |
-| Selected pages | One physical page from each PDF |
+| Selected pages | One physical page from each of 2–4 layers |
 | Maximum image side | Default 1536 px; desktop choices 512, 1024, 1536 or 2048; CLI 64–2048 |
-| Revision opacity | 0–1; default 0.65 |
+| Layer opacity | 0–1; default 1 for the base and 0.65 for others |
+| Retained RGBA rasters | Up to 80 MiB for all sources and the composite; excludes native-document and PNG-encoding memory |
 | Uniform scale | 0.01–100 |
 | Clockwise rotation | −360° to 360° |
 | Horizontal/vertical offset | −1,000,000 to 1,000,000 pt |
 | Anchor pairs | Two points per page, at least 0.001 pt apart, within the displayed page |
 
-Both sources must permit copying, including when an owner password is supplied. PNG and JSON exports are ordinary files; source PDF encryption is unchanged because no source is rewritten. Source hashes identify exact file bytes, not the accuracy of alignment or the completeness of a revision review.
+Every source must permit copying, including hidden layers and when an owner password is supplied. Sources are opened, rendered and released sequentially. PNG and JSON exports are ordinary files; source PDF encryption is unchanged because no source is rewritten. Source hashes identify exact file bytes, not the accuracy of alignment or the completeness of a revision review.
 
-## CLI
+Composition multiplies each visible layer's tinted darkness over white. Layer order does not change the pixels. The first layer still defines the canvas when hidden, so isolating another layer does not change its alignment or output dimensions.
+
+## Multi-layer CLI
+
+The 0.81 candidate adds `revision-overlay-stack`. Create a UTF-8 manifest of at most 256 KiB:
+
+```json
+{
+  "version": 1,
+  "long_side": 1536,
+  "layers": [
+    {"path": "base.pdf", "page": 1, "color": [255, 0, 255], "opacity": 1},
+    {
+      "path": "revision.pdf",
+      "page": 1,
+      "color": [0, 255, 255],
+      "opacity": 0.65,
+      "alignment": {
+        "mode": "manual",
+        "transform": {"translation": [10, -10], "rotation_degrees": 0, "scale": 1}
+      }
+    },
+    {"path": "services.pdf", "page": 1, "color": [0, 180, 70], "visible": true}
+  ]
+}
+```
+
+```powershell
+sunipdf-cli revision-overlay-stack --manifest layers.json --out coordinated.png
+sunipdf-cli revision-overlay-stack --manifest layers.json --format json --out coordinated-report.json
+```
+
+There must be two to four layers. Relative paths resolve against the manifest directory; explicit local absolute paths are accepted. Remote paths, unknown fields and unsupported versions are refused. The first layer requires identity manual alignment. Other layers may use the same `two_points` representation described below. Omitted pages default to 1, omitted visibility to true, and omitted styles use the four-layer palette. All-hidden stacks are refused.
+
+Each layer may add `expected_sha256` to require exact saved source bytes. Protected sources may name an existing environment variable in `password_env`; passwords are never stored in the manifest or report. Global password flags are refused for this command. Each invocation writes one new PNG or JSON file and refuses existing destinations, even with `--overwrite`.
+
+The stack report has `schema: "sunipdf-revision-overlay-stack"`, `version: 1` and a `layers` array. Each zero-based layer entry records its source identity, selected path, resolved transform, alignment, color, visibility and opacity. `canvas.base_layer` is 0. This report describes the reviewed snapshot; it is not a desktop-importable recipe.
+
+## Two-page CLI
 
 These examples assume that the selected pages contain the listed reference points. Start with manual alignment:
 
@@ -87,4 +124,4 @@ The report uses `schema: "sunipdf-revision-overlay"` and `version: 1`. Its `base
 
 For two-point alignment, `alignment.mode` is `two_points` and `alignment.base` and `alignment.revision` contain the two point pairs. The report also records the base canvas and clipping, colors, opacity, pixel limit, bilinear sampling and raster limitations. It contains no PDF content edits. Opening a report to restore desktop settings is not part of this release; the CLI accepts explicit parameters and optional expected source hashes.
 
-AEC-013 remains partial. Automatic registration, automatic change outlines and tracked revision changes under AEC-014 remain open. This tool does not compare vectors, perform OCR, merge PDFs or recalibrate measurements.
+AEC-013 remains In progress. Automatic registration, layered/vector PDF output, desktop recipe import and broader native/interoperability qualification remain open. Reviewed change-outline proposals are a separate comparison workflow. This tool does not compare vectors, perform OCR, merge PDFs or recalibrate measurements.

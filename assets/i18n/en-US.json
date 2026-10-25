@@ -2070,5 +2070,16 @@
   "plan_links.receipt_exported": "Save receipt exported:",
   "measure.rectangle.rotation": "Rotation (clockwise degrees)",
   "measure.rectangle.rotation_help": "Rotate clockwise around the placed lower-left corner. Width and height follow the rotated sides.",
-  "measure.rectangle.invalid_rotation": "Enter a finite angle in degrees."
+  "measure.rectangle.invalid_rotation": "Enter a finite angle in degrees.",
+  "overlay.stack.limits": "Compare 2 to 4 saved PDF pages on the base-page canvas. Rendering and exports stay local; hidden layers are still checked.",
+  "overlay.stack.base": "Base layer",
+  "overlay.stack.layer": "Layer {number}",
+  "overlay.stack.visible": "Visible",
+  "overlay.stack.choose": "Choose PDF",
+  "overlay.stack.remove": "Remove",
+  "overlay.stack.color": "Color",
+  "overlay.stack.add": "Add layer",
+  "overlay.stack.align": "Align layer {number} to the base",
+  "overlay.stack.selected": "Selected layer",
+  "overlay.stack.dirty_source": "Save or close every modified source PDF before preparing or exporting the overlay."
 }

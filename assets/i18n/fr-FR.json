@@ -2070,5 +2070,16 @@
   "plan_links.receipt_exported": "Rapport d’enregistrement exporté :",
   "measure.rectangle.rotation": "Rotation (degrés horaires)",
   "measure.rectangle.rotation_help": "Rotation horaire autour du coin inférieur gauche placé. La largeur et la hauteur suivent les côtés orientés.",
-  "measure.rectangle.invalid_rotation": "Saisissez un angle fini en degrés."
+  "measure.rectangle.invalid_rotation": "Saisissez un angle fini en degrés.",
+  "overlay.stack.limits": "Comparez 2 à 4 pages PDF enregistrées sur le canevas de base. Rendu et exports restent locaux ; les calques masqués sont aussi vérifiés.",
+  "overlay.stack.base": "Calque de base",
+  "overlay.stack.layer": "Calque {number}",
+  "overlay.stack.visible": "Visible",
+  "overlay.stack.choose": "Choisir un PDF",
+  "overlay.stack.remove": "Retirer",
+  "overlay.stack.color": "Couleur",
+  "overlay.stack.add": "Ajouter un calque",
+  "overlay.stack.align": "Aligner le calque {number} sur la base",
+  "overlay.stack.selected": "Calque sélectionné",
+  "overlay.stack.dirty_source": "Enregistrez ou fermez chaque PDF source modifié avant de préparer ou d’exporter la superposition."
 }
