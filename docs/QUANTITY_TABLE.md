@@ -58,7 +58,7 @@ Open **Custom columns → Formula columns**, enter a unique column name and expr
 
 Expressions accept decimal constants, unary signs, `+ - * /`, parentheses, `quantity` and exact case-sensitive numeric field references such as `[Waste %]`. Only typed **Number** fields participate; register text fields and other formula results are not inputs. For example, `quantity * (1 + [Waste %] / 100)` applies a dimensionless allowance to each row's actual quantity.
 
-- `quantity_unit` constrains the input token `quantity`, not the computed result unit. `quantity` requires the exact declared unit. The 0.85 candidate adds explicit `convert(expression, unit)` after this source check; the existing price-basis conversion is separate.
+- `quantity_unit` constrains the input token `quantity`, not the computed result unit. `quantity` requires the exact declared unit. The 0.91 candidate adds explicit `convert(expression, unit)` after this source check; the existing price-basis conversion is separate.
 - Numeric fields use their explicitly declared unit; fields with **No unit** and constants are dimensionless. Addition/subtraction require identical units. A scalar can multiply a unit-bearing value, and division by a scalar retains the unit. Equal-unit division produces a dimensionless result.
 - Products and quotients within one exact geometric family support length, area and volume: `m * m` gives `m2`, `m2 * m` gives `m3`, and `m3 / m` gives `m2`. The same rules apply separately to `mm`, `cm`, `in` and `ft`. Mixed families such as `m * cm`, inverse units and powers above three are refused. Counts and angles do not implicitly become dimensionless; mass and density units are unsupported.
 - Arithmetic uses checked decimal values with six fractional places. Multiplication/division round half away from zero at each operation; the final result uses the selected `0`–`6` decimal places with the same rule. Intermediate values must remain within the supported one-trillion absolute limit.
@@ -94,7 +94,7 @@ conversion before it is combined with metres; formulas never convert it implicit
 
 ### Explicit unit conversion
 
-The 0.85 candidate adds `convert(expression, unit)`. The second argument is a
+The 0.91 candidate adds `convert(expression, unit)`. The second argument is a
 literal unit: `mm`, `cm`, `m`, `in`, `ft`, or its square/cubic form such as `m2`
 or `ft3`. The expression must already carry a length, area or volume unit with
 the same dimension. Counts, angles and dimensionless values cannot be converted.

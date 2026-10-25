@@ -1,10 +1,73 @@
 # SuniPDF 0.91.0 - candidate
 
-This cumulative candidate adds reviewed bulk edits, saved register filters,
-reusable rich-text annotations, exact custom-field filtering and dimensioned
-circles, ellipses and straight segments. It follows 0.85.0; intermediate
-development versions are not separate public releases. Publication and package
-qualification are pending.
+This cumulative candidate combines the plan-review changes since 0.79.0.
+Development increments 0.80 through 0.90 are not separate public releases.
+Publication and package qualification are pending.
+
+## Rotated dimensioned rectangles
+
+Place a rectangle with real width, height and clockwise rotation around its
+lower-left anchor. Preview and saved geometry share the same corners; the entire
+polygon must fit its page and selected scale region. Changing the angle requires
+a new preview. The saved result is an ordinary editable four-vertex area
+measurement, without permanent rectangular constraints.
+
+## Compare multiple plan layers
+
+Compare two to four saved PDF pages on a fixed base-page canvas. Each layer has
+its own color, visibility, opacity and manual or two-point alignment. Review the
+individual pages and composite before exporting PNG and JSON to new files.
+Changed inputs or settings require a fresh preview. The existing two-page CLI
+remains available.
+
+## Capture saved stamps and images
+
+Capture supported native standard and image stamps together with supported
+shapes as a reusable local annotation-library group. Verified image pixels become
+a self-contained PNG, retaining transparency and already-applied opacity.
+Placement provides a preview, fresh annotation identities and one Undo step.
+Changed fingerprints, missing copy permission, unsupported members and foreign
+appearances refuse capture. The original PDF remains unchanged.
+
+## Save reusable overlay setups
+
+Save a reviewed overlay's pages, colors and alignments to a local setup file.
+Every source hash is retained, including hidden layers. Relative paths support
+moving a complete local bundle together. Missing, changed or retargeted inputs
+refuse Preview; explicitly replacing a source clears its binding and alignment.
+Replacing the base clears all alignments.
+
+Setups contain no PDF data, rendered rasters or credentials. Limits remain two
+to four layers, 64 MiB per source, a longest image side of 2048 pixels and 80 MiB
+for retained rasters plus the composite. This is not a total process-memory cap.
+Automatic registration and layered PDF output remain outside this scope.
+
+## Desktop plan-link workflow and Ubuntu update checks
+
+The planned installed-Ubuntu qualification creates and reviews two linked source
+PDFs through native controls, saves new copies, exports the actual receipt and
+reopens the physical destination page. It retains occupied-output refusal and
+independent PDF content, resource and link checks. Its original synthetic
+drawings do not establish behavior on private project plans.
+
+The Ubuntu updater verifies the staged package's size and SHA256 before
+requesting public release metadata. Corrupt downloads fail locally; the official
+release identity must still match before parsing or installation. Network refusal
+preserves the installation and removes the temporary copy.
+
+## Explicit formula unit conversions
+
+Use `convert(expression, unit)` to explicitly convert compatible lengths, areas
+or volumes before combining values. For example, an area in `m2` multiplied by
+`convert([Depth], m)` can use a depth field declared in `cm`. The declared source
+quantity unit must still match exactly; there is no implicit conversion.
+
+Conversions use exact unit ratios and checked integer arithmetic, then round
+half away from zero at six decimal places. Sub-micro values can round to zero,
+and repeated conversions need not recover the original value exactly. Existing
+formula limits and explicit cell errors remain. Counts, angles, dimensionless
+values, currencies, mass and density are outside these geometric conversions.
+JSON, CSV, issue-report PDF and workbook outputs share the same calculated values.
 
 ## Review and edit annotation fields together
 
@@ -89,7 +152,8 @@ constructor and refuses existing output paths.
 
 ## Qualification scope
 
-The planned gates include source tests for atomic changes, stale selections,
+Ten packaged CLI corpora are required. The planned gates include source tests
+for atomic changes, stale selections,
 settings persistence, literal filtering, geometry, permissions and source
 preservation. Separate packaged CLI/QPDF corpora inspect actual annotation
 dictionaries, complete appearance paths, standard fonts, mixed groups, calibrated

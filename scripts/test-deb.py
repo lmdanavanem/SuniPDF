@@ -654,6 +654,7 @@ def plan_link_creation(evidence, version):
     def locate(label, *, line_contains=None, exact_line=False, color=None, target=None, allow_scroll=True,
                below_label=None, above_label=None, within=None):
         for attempt in range(12 if allow_scroll and target is None else 6):
+            missing_observations = []
             for observed in observations(capture(target), color):
                 size = tuple(value * observed["scale"] for value in observed["size"])
                 try:
@@ -670,14 +671,16 @@ def plan_link_creation(evidence, version):
                                              within=tuple(value * observed["scale"] for value in within) if within else None)
                     return observed, box
                 except fixtures.LabelMissing:
-                    pass
+                    missing_observations.append(observed)
             if allow_scroll and target is None:
                 if attempt == 2:
                     scroll("up", 18)
                 elif attempt > 2:
                     scroll("down", 3)
             time.sleep(0.2)
-        raise fixtures.LabelMissing(f"Native control never became visible: {label!r}; last OCR: {observed['text']}")
+        error = fixtures.LabelMissing(f"Native control never became visible: {label!r}; last OCR: {observed['text']}")
+        error.observations = missing_observations
+        raise error
 
     def click(label, **options):
         observed, box = locate(label, **options)
@@ -688,9 +691,34 @@ def plan_link_creation(evidence, version):
                         "belowLabel": options.get("below_label"), "aboveLabel": options.get("above_label"),
                         "within": options.get("within"), "exactLine": options.get("exact_line", False),
                         "window": target, **evidence_fields(observed)})
-        command(["xdotool", "mousemove", "--window", target, *map(str, point), "click", "1"])
+        # Let the application process the observed pointer location before the
+        # button event. Moving and clicking in one command can miss a combo's
+        # first interaction while leaving only its hover state visible.
+        command(["xdotool", "mousemove", "--window", target, *map(str, point)])
+        time.sleep(0.15)
+        command(["xdotool", "click", "1"])
         time.sleep(0.2)
         return point
+
+    def choose_popup(combo, option, *, line_contains, margins, exact_line=False):
+        # Opening a native popup is an observed transition, not an assumed
+        # consequence of an input event. Retry only this same source-bound
+        # control; never send Escape, which could close the whole dialog.
+        for attempt in range(1, 4):
+            x, y = click(combo, line_contains=line_contains)
+            left, top, right, bottom = margins
+            within = (max(0, x - left), max(0, y - top), x + right, y + bottom)
+            try:
+                return click(option, allow_scroll=False, within=within, exact_line=exact_line)
+            except fixtures.LabelMissing as error:
+                if attempt == 3:
+                    raise
+                # Preserve every preparation from the same last frame so an
+                # independent reader can verify the missing option and scope.
+                actions.append({"popupRetry": combo, "option": option, "lineContains": line_contains,
+                                "attempt": attempt, "nextAttempt": attempt + 1, "within": within,
+                                "exactLine": exact_line,
+                                "observations": [evidence_fields(item) for item in error.observations]})
 
     def verify_control(label, **options):
         observed, box = locate(label, **options)
@@ -749,19 +777,17 @@ def plan_link_creation(evidence, version):
         # occurrences in headings and preview captions cannot become click targets.
         for index, name in enumerate(("Alpha.pdf", "Beta.pdf")):
             if index:
-                x, y = click("Alpha.pdf", line_contains="Preview source")
                 # The popup can flip above the combo near the viewport bottom.
                 # Its exact option must still be unique beside this observed row.
-                click(name, exact_line=True, allow_scroll=False,
-                      within=(max(0, x - 80), max(0, y - 120), x + 220, y + 120))
+                choose_popup("Alpha.pdf", name, line_contains="Preview source",
+                             exact_line=True, margins=(80, 120, 220, 120))
             click("Preview source", line_contains=name)
             scene("created-preview-" + name[:-4].lower(), kind=("alpha", "beta")[index], allow_scroll=True)
-            x, y = click("Choose a destination", line_contains=name)
             # The native popup may open above or below its observed combo. Keep
             # its unique literal option near that row, away from other sources
             # and from the rendered PDF title further down the dialog.
-            click("Native destination two", allow_scroll=False,
-                  within=(max(0, x - 180), max(0, y - 120), x + 360, y + 120))
+            choose_popup("Choose a destination", "Native destination two", line_contains=name,
+                         margins=(180, 120, 360, 120))
             click("Preview destination", line_contains=name)
             scene("created-destination-for-" + name[:-4].lower(), kind="destination", allow_scroll=True)
 

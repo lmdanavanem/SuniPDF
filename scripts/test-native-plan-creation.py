@@ -311,17 +311,103 @@ class NativeCommandPaletteTests(unittest.TestCase):
         self.assertEqual(action["ocrPreparation"], self.PREPARATIONS[0])
         self.assertNotIn("click", action)
 
+    def test_click_processes_observed_pointer_before_button_event(self):
+        observed = self.observation([(110, "Choose a destination")])
+        events, actions = [], []
+        namespace = {"locate": MagicMock(return_value=(observed, (100, 110, 180, 130))),
+                     "actions": actions, "window": "native-window",
+                     "command": lambda arguments: events.append(("command", arguments)),
+                     "time": SimpleNamespace(sleep=lambda seconds: events.append(("sleep", seconds)))}
+        creation_helper("evidence_fields", namespace)
+        click = creation_helper("click", namespace)
+        self.assertEqual(click("Choose a destination", line_contains="Beta.pdf"), [70, 60])
+        self.assertEqual(events, [
+            ("command", ["xdotool", "mousemove", "--window", "native-window", "70", "60"]),
+            ("sleep", 0.15), ("command", ["xdotool", "click", "1"]), ("sleep", 0.2)])
+        self.assertEqual(actions[0]["lineContains"], "Beta.pdf")
+        self.assertEqual(actions[0]["point"], [70, 60])
+        self.assertEqual(actions[0]["ocrPreparation"], self.PREPARATIONS[0])
+
+    def test_missing_popup_preserves_last_full_frame_for_every_preparation(self):
+        observations = [self.observation([(100, "Beta.pdf Choose a destination")], tag)
+                        for _ in range(6) for tag in self.PREPARATIONS]
+        locate, capture, reader = self.locator(observations)
+        with self.assertRaises(native.LabelMissing) as raised:
+            locate("Native destination two", allow_scroll=False, within=(0, 0, 450, 200))
+        self.assertEqual(raised.exception.observations, observations[-4:])
+        self.assertEqual(capture.call_count, 6)
+        self.assertEqual(reader.call_count, 24)
+
+    def test_popup_retries_only_the_same_observed_combo_and_records_missing_frames(self):
+        missing = native.LabelMissing("Option absent")
+        missing.observations = [self.observation([(100, "Beta.pdf Choose a destination")], tag)
+                                for tag in self.PREPARATIONS]
+        calls, actions = [], []
+        option_attempts = 0
+        def click(label, **options):
+            nonlocal option_attempts
+            calls.append((label, options))
+            if label == "Choose a destination":
+                return (552, 581)
+            option_attempts += 1
+            if option_attempts == 1:
+                raise missing
+            return (609, 619)
+        namespace = {"click": click, "fixtures": native, "actions": actions}
+        creation_helper("evidence_fields", namespace)
+        choose = creation_helper("choose_popup", namespace)
+        self.assertEqual(choose("Choose a destination", "Native destination two", line_contains="Beta.pdf",
+                                margins=(180, 120, 360, 120)), (609, 619))
+        self.assertEqual(calls, [
+            ("Choose a destination", {"line_contains": "Beta.pdf"}),
+            ("Native destination two", {"allow_scroll": False, "within": (372, 461, 912, 701), "exact_line": False})] * 2)
+        self.assertEqual(len(actions), 1)
+        self.assertEqual(actions[0], {"popupRetry": "Choose a destination", "option": "Native destination two",
+                                     "lineContains": "Beta.pdf", "attempt": 1, "nextAttempt": 2,
+                                     "within": (372, 461, 912, 701), "exactLine": False,
+                                     "observations": [namespace["evidence_fields"](item) for item in missing.observations]})
+        self.assertNotIn("key", actions[0])
+
+    def test_popup_attempts_are_finite_and_ambiguity_never_retries(self):
+        for failure, expected_clicks, expected_retries in (
+                (native.LabelMissing("Still absent"), 6, 2), (AssertionError("Ambiguous"), 2, 0)):
+            failure.observations = [self.observation([(100, "Choose a destination")], tag)
+                                    for tag in self.PREPARATIONS]
+            click = MagicMock(side_effect=lambda label, **options: (552, 581) if label == "Choose a destination"
+                             else (_ for _ in ()).throw(failure))
+            namespace = {"click": click, "fixtures": native, "actions": []}
+            creation_helper("evidence_fields", namespace)
+            choose = creation_helper("choose_popup", namespace)
+            with self.subTest(failure=str(failure)), self.assertRaises(type(failure)):
+                choose("Choose a destination", "Native destination two", line_contains="Beta.pdf",
+                       margins=(180, 120, 360, 120))
+            self.assertEqual(click.call_count, expected_clicks)
+            self.assertEqual(len(namespace["actions"]), expected_retries)
+        namespace = {"click": MagicMock(side_effect=native.LabelMissing("Source combo absent")),
+                     "fixtures": native, "actions": []}
+        choose = creation_helper("choose_popup", namespace)
+        with self.assertRaisesRegex(native.LabelMissing, "Source combo"):
+            choose("Choose a destination", "Native destination two", line_contains="Beta.pdf",
+                   margins=(180, 120, 360, 120))
+        namespace["click"].assert_called_once()
+        self.assertEqual(namespace["actions"], [])
+
     def test_preview_destination_popup_is_bound_to_observed_combo_in_both_directions(self):
         calls = []
         def click(label, **options):
             calls.append((label, options))
             return (552, 581) if label == "Choose a destination" else (180, 581)
-        helper = creation_helper("preview_sources", {"click": click, "scene": MagicMock()})
+        namespace = {"click": click, "scene": MagicMock(), "fixtures": native, "actions": []}
+        creation_helper("choose_popup", namespace)
+        helper = creation_helper("preview_sources", namespace)
         helper()
         choices = [options for label, options in calls if label == "Native destination two"]
-        self.assertEqual(choices, [{"allow_scroll": False, "within": (372, 461, 912, 701)}] * 2)
+        self.assertEqual(choices, [{"allow_scroll": False, "within": (372, 461, 912, 701), "exact_line": False}] * 2)
         self.assertEqual([options["line_contains"] for label, options in calls if label == "Choose a destination"],
                          ["Alpha.pdf", "Beta.pdf"])
+        self.assertEqual([options for label, options in calls if label == "Beta.pdf"],
+                         [{"allow_scroll": False, "within": (100, 461, 400, 701), "exact_line": True}])
+        self.assertEqual(namespace["actions"], [])
 
 
 def qpdf_document(link=None):
