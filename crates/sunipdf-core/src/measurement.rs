@@ -18,6 +18,10 @@ pub use crate::measurement_area::{
 };
 pub use crate::measurement_batch::{RecalibrationChange, RecalibrationPlan, RecalibrationRequest};
 pub use crate::measurement_distance::parse_measurement_distance;
+pub use crate::measurement_ellipses::{
+    dimensioned_ellipse_point_diameters, dimensioned_ellipse_points, DimensionedEllipse,
+    DIMENSIONED_ELLIPSE_SEGMENTS,
+};
 pub use crate::measurement_shapes::{
     dimensioned_rectangle_corners, dimensioned_rectangle_point_dimensions,
     normalize_rectangle_rotation, DimensionedRectangle, LocalCalibrationReference, RectangleScale,

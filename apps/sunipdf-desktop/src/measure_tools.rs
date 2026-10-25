@@ -1166,6 +1166,7 @@ mod tests {
                     page: 0,
                     epoch: app.view.epoch,
                     placement: crate::measurement_shapes_ui::RectanglePlacement {
+                        shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
                         anchor: (20.0, 30.0),
                         width: 2.0,
                         height: 3.0,

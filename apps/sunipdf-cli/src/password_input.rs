@@ -95,6 +95,8 @@ fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
         Command::RemovePageCalibration(args) => Some(&mut args.password),
         Command::EditMeasurement(args) => Some(&mut args.password),
         Command::DimensionedRectangle(args) => Some(&mut args.password),
+        Command::DimensionedCircle(args) => Some(&mut args.common.password),
+        Command::DimensionedEllipse(args) => Some(&mut args.common.password),
         Command::MeasurementViewports(args) => Some(&mut args.password),
         Command::SetMeasurementViewports(args) => Some(&mut args.password),
         Command::ClearMeasurementViewports(args) => Some(&mut args.password),

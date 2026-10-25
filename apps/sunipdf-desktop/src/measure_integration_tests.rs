@@ -331,144 +331,198 @@ fn canvas_measurement_controls_calibrate_preview_and_apply_exactly_once() {
 
 #[test]
 fn dimensioned_rectangle_apply_closes_the_modal_and_allows_next_placement() {
-    for language in ["en-US", "fr-FR"] {
-        let (mut app, requests, responses) = crate::app::tests::test_app();
-        app.settings.language = language.into();
-        let mut canvas = Canvas::new(&mut app);
-        canvas.calibrate(&mut app, "10");
-        canvas.control(&mut app, "measure.rectangle.automatic");
-        canvas.control(&mut app, "measure.rectangle.local");
-        canvas.rectangle_rotation(&mut app, "33.5");
-        canvas.control(&mut app, "measure.rectangle.place");
-        canvas.point(&mut app, (80.0, 450.0), false);
-        let (page, epoch, generation) = requests
-            .try_iter()
-            .find_map(|request| match request {
-                Request::PreviewDimensionedRectangle {
-                    page,
-                    rectangle,
+    use crate::measurement_shapes_ui::DimensionedShape;
+    for (shape, title, place, height) in [
+        (
+            DimensionedShape::Rectangle,
+            "measure.rectangle.title",
+            "measure.rectangle.place",
+            3.0,
+        ),
+        (
+            DimensionedShape::Circle,
+            "measure.circle.title",
+            "measure.circle.place",
+            2.0,
+        ),
+        (
+            DimensionedShape::Ellipse,
+            "measure.ellipse.title",
+            "measure.ellipse.place",
+            3.0,
+        ),
+    ] {
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, responses) = crate::app::tests::test_app();
+            app.settings.language = language.into();
+            let mut canvas = Canvas::new(&mut app);
+            canvas.calibrate(&mut app, "10");
+            if shape != DimensionedShape::Rectangle {
+                canvas.control(&mut app, "measure.rectangle.title");
+                canvas.control(&mut app, title);
+            }
+            canvas.control(&mut app, "measure.rectangle.automatic");
+            canvas.control(&mut app, "measure.rectangle.local");
+            canvas.rectangle_rotation(&mut app, "33.5");
+            canvas.control(&mut app, place);
+            canvas.point(&mut app, (80.0, 450.0), false);
+            let (page, epoch, generation) = requests
+                .try_iter()
+                .find_map(|request| match request {
+                    Request::PreviewDimensionedRectangle {
+                        page,
+                        rectangle,
+                        epoch,
+                        generation,
+                        ..
+                    } => {
+                        assert_eq!(rectangle.shape, shape);
+                        assert_eq!((rectangle.width, rectangle.height), (2.0, height));
+                        assert_eq!(rectangle.rotation_degrees, 33.5);
+                        Some((page, epoch, generation))
+                    }
+                    _ => None,
+                })
+                .expect("rectangle placement requested its preview");
+            responses
+                .send(crate::worker::Response::RichAnnotationPreview {
                     epoch,
                     generation,
-                    ..
-                } => {
-                    assert_eq!((rectangle.width, rectangle.height), (2.0, 3.0));
-                    assert_eq!(rectangle.rotation_degrees, 33.5);
-                    Some((page, epoch, generation))
-                }
-                _ => None,
-            })
-            .expect("rectangle placement requested its preview");
-        responses
-            .send(crate::worker::Response::RichAnnotationPreview {
-                epoch,
-                generation,
-                result: Ok(preview_image(page)),
-            })
-            .unwrap();
-        app.handle_responses(&canvas.ctx);
-        canvas.control(&mut app, "bar.apply");
-        let commits = requests
-            .try_iter()
-            .filter(|request| {
-                matches!(
-                    request,
-                    Request::Edit(EditOp::CommitRichAnnotationPreview { .. })
-                )
-            })
-            .count();
-        assert_eq!(commits, 1);
-        responses
-            .send(crate::worker::Response::DocumentChanged(
-                crate::worker::DocState {
-                    info: app.document.as_ref().unwrap().info.clone(),
-                    can_undo: true,
-                    can_redo: false,
-                    pages_unchanged: true,
-                    measurement_scales_unchanged: true,
-                    modified: true,
-                    has_signatures: false,
-                },
-            ))
-            .unwrap();
-        app.handle_responses(&canvas.ctx);
-        canvas.frame(&mut app, Vec::new());
-        assert!(app.annotate.adv.rich.is_none());
-        assert!(!app.annotate.adv.dialog_open());
-        assert!(app.dirty && app.can_undo);
-        responses
-            .send(crate::worker::Response::MutationFinished)
-            .unwrap();
-        app.handle_responses(&canvas.ctx);
-        canvas.control(&mut app, "measure.rectangle.place");
-        assert!(app.annotate.measure.is_active_draft());
-        canvas.key(&mut app, Key::Escape);
-        assert!(!app.annotate.measure.is_active_draft());
-        assert_no_edit_or_preview(&requests);
+                    result: Ok(preview_image(page)),
+                })
+                .unwrap();
+            app.handle_responses(&canvas.ctx);
+            canvas.control(&mut app, "bar.apply");
+            let commits = requests
+                .try_iter()
+                .filter(|request| {
+                    matches!(
+                        request,
+                        Request::Edit(EditOp::CommitRichAnnotationPreview { .. })
+                    )
+                })
+                .count();
+            assert_eq!(commits, 1);
+            responses
+                .send(crate::worker::Response::DocumentChanged(
+                    crate::worker::DocState {
+                        info: app.document.as_ref().unwrap().info.clone(),
+                        can_undo: true,
+                        can_redo: false,
+                        pages_unchanged: true,
+                        measurement_scales_unchanged: true,
+                        modified: true,
+                        has_signatures: false,
+                    },
+                ))
+                .unwrap();
+            app.handle_responses(&canvas.ctx);
+            canvas.frame(&mut app, Vec::new());
+            assert!(app.annotate.adv.rich.is_none());
+            assert!(!app.annotate.adv.dialog_open());
+            assert!(app.dirty && app.can_undo);
+            responses
+                .send(crate::worker::Response::MutationFinished)
+                .unwrap();
+            app.handle_responses(&canvas.ctx);
+            canvas.control(&mut app, place);
+            assert!(app.annotate.measure.is_active_draft());
+            canvas.key(&mut app, Key::Escape);
+            assert!(!app.annotate.measure.is_active_draft());
+            assert_no_edit_or_preview(&requests);
+        }
     }
 }
 
 #[test]
 fn dimensioned_rectangle_controls_capture_reference_place_once_and_cancel_without_editing() {
-    for language in ["en-US", "fr-FR"] {
-        let (mut app, requests, _) = crate::app::tests::test_app();
-        app.settings.language = language.into();
-        let mut canvas = Canvas::new(&mut app);
-        canvas.calibrate(&mut app, "10");
-        let captures: Vec<_> = requests
-            .try_iter()
-            .filter_map(|request| match request {
-                Request::CaptureRectangleCalibration { page, calibration } => {
-                    Some((page, calibration))
-                }
-                Request::Edit(_) => panic!("calibration must not edit the document"),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(captures.len(), 1);
-        assert_eq!(captures[0].0, 0);
-        assert_eq!(captures[0].1.known_distance, 10.0);
-        canvas.control(&mut app, "measure.rectangle.automatic");
-        canvas.control(&mut app, "measure.rectangle.local");
-        canvas.rectangle_rotation(&mut app, "33.5");
-        canvas.control(&mut app, "measure.rectangle.place");
-        assert!(app.annotate.measure.is_active_draft());
-        assert!(!app.suspend_active());
-        canvas.point(&mut app, (80.0, 450.0), false);
-        let previews: Vec<_> = requests
-            .try_iter()
-            .filter_map(|request| match request {
-                Request::PreviewDimensionedRectangle {
-                    page,
-                    rectangle,
-                    epoch,
-                    generation,
-                    ..
-                } => Some((page, rectangle, epoch, generation)),
-                Request::Edit(_) => panic!("placement must not apply the rectangle"),
-                _ => None,
-            })
-            .collect();
-        assert_eq!(previews.len(), 1);
-        let (page, rectangle, epoch, generation) = &previews[0];
-        assert_eq!(*page, 0);
-        assert_eq!((rectangle.width, rectangle.height), (2.0, 3.0));
-        assert_eq!(rectangle.rotation_degrees, 33.5);
-        assert!((rectangle.anchor.0 - 80.0).abs() < 0.01);
-        assert!((rectangle.anchor.1 - 450.0).abs() < 0.01);
-        assert!(
-            matches!(&rectangle.scale, crate::measurement_shapes_ui::RectangleScaleSelection::Local(calibration) if calibration == &captures[0].1)
-        );
-        app.apply_rich_draft();
-        assert_no_edit_or_preview(&requests);
-        app.on_rich_preview(&canvas.ctx, *epoch, *generation, Ok(preview_image(*page)));
-        canvas.key(&mut app, Key::Escape);
-        assert!(app.annotate.adv.rich.is_none());
-        assert!(!app.has_unsaved_changes());
-        assert_no_edit_or_preview(&requests);
-        canvas.control(&mut app, "measure.rectangle.place");
-        canvas.key(&mut app, Key::Escape);
-        assert!(!app.annotate.measure.is_active_draft());
-        assert_no_edit_or_preview(&requests);
+    use crate::measurement_shapes_ui::DimensionedShape;
+    for (shape, title, place, height) in [
+        (
+            DimensionedShape::Rectangle,
+            "measure.rectangle.title",
+            "measure.rectangle.place",
+            3.0,
+        ),
+        (
+            DimensionedShape::Circle,
+            "measure.circle.title",
+            "measure.circle.place",
+            2.0,
+        ),
+        (
+            DimensionedShape::Ellipse,
+            "measure.ellipse.title",
+            "measure.ellipse.place",
+            3.0,
+        ),
+    ] {
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.settings.language = language.into();
+            let mut canvas = Canvas::new(&mut app);
+            canvas.calibrate(&mut app, "10");
+            if shape != DimensionedShape::Rectangle {
+                canvas.control(&mut app, "measure.rectangle.title");
+                canvas.control(&mut app, title);
+            }
+            let captures: Vec<_> = requests
+                .try_iter()
+                .filter_map(|request| match request {
+                    Request::CaptureRectangleCalibration { page, calibration } => {
+                        Some((page, calibration))
+                    }
+                    Request::Edit(_) => panic!("calibration must not edit the document"),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(captures.len(), 1);
+            assert_eq!(captures[0].0, 0);
+            assert_eq!(captures[0].1.known_distance, 10.0);
+            canvas.control(&mut app, "measure.rectangle.automatic");
+            canvas.control(&mut app, "measure.rectangle.local");
+            canvas.rectangle_rotation(&mut app, "33.5");
+            canvas.control(&mut app, place);
+            assert!(app.annotate.measure.is_active_draft());
+            assert!(!app.suspend_active());
+            canvas.point(&mut app, (80.0, 450.0), false);
+            let previews: Vec<_> = requests
+                .try_iter()
+                .filter_map(|request| match request {
+                    Request::PreviewDimensionedRectangle {
+                        page,
+                        rectangle,
+                        epoch,
+                        generation,
+                        ..
+                    } => Some((page, rectangle, epoch, generation)),
+                    Request::Edit(_) => panic!("placement must not apply the rectangle"),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(previews.len(), 1);
+            let (page, rectangle, epoch, generation) = &previews[0];
+            assert_eq!(*page, 0);
+            assert_eq!(rectangle.shape, shape);
+            assert_eq!((rectangle.width, rectangle.height), (2.0, height));
+            assert_eq!(rectangle.rotation_degrees, 33.5);
+            assert!((rectangle.anchor.0 - 80.0).abs() < 0.01);
+            assert!((rectangle.anchor.1 - 450.0).abs() < 0.01);
+            assert!(
+                matches!(&rectangle.scale, crate::measurement_shapes_ui::RectangleScaleSelection::Local(calibration) if calibration == &captures[0].1)
+            );
+            app.apply_rich_draft();
+            assert_no_edit_or_preview(&requests);
+            app.on_rich_preview(&canvas.ctx, *epoch, *generation, Ok(preview_image(*page)));
+            canvas.key(&mut app, Key::Escape);
+            assert!(app.annotate.adv.rich.is_none());
+            assert!(!app.has_unsaved_changes());
+            assert_no_edit_or_preview(&requests);
+            canvas.control(&mut app, place);
+            canvas.key(&mut app, Key::Escape);
+            assert!(!app.annotate.measure.is_active_draft());
+            assert_no_edit_or_preview(&requests);
+        }
     }
 }
 

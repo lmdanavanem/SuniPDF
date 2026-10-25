@@ -25,6 +25,14 @@ The angle can be changed before placement or in the preview. Changing it invalid
 
 The original axis-aligned increment is published in [0.62.0](RELEASE_0.62.0.md); [0.85 rotation qualification](RELEASE_0.85.0.md) remains in progress. Rotation persists through the four saved vertices, not permanent rectangle constraints. Subsequent polygon editing is unconstrained; exact circles remain a separate backlog item. [Deducted areas and constant-depth volumes](MEASUREMENT_VOLUMES.md) retain their own qualification scope.
 
+## Place a dimensioned circle or ellipse
+
+The [0.90 candidate](DIMENSIONED_ELLIPSES.md) adds a centre and diameter(s), with
+an optional clockwise angle, to the same calibrated preview workflow. It creates
+an editable 128-vertex area approximation. The visible approximation and actual
+saved polygon area remain explicit; it does not introduce analytic curves or
+permanent shape constraints. Package qualification is pending.
+
 ## Recalibrate a selected batch
 
 1. Confirm the intended reference scale. Open batch recalibration and choose the physical page range.

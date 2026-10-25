@@ -1768,6 +1768,7 @@ mod tests {
             let (mut app, requests, _) = crate::app::tests::test_app();
             app.settings.language = language.into();
             let rectangle = crate::measurement_shapes_ui::RectanglePlacement {
+                shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
                 anchor: (50.0, 100.0),
                 width: 2.0,
                 height: 3.0,
@@ -1837,6 +1838,7 @@ mod tests {
         let size = app.document.as_ref().unwrap().info.page_sizes[0];
         app.document.as_mut().unwrap().info.page_sizes.push(size);
         let rectangle = crate::measurement_shapes_ui::RectanglePlacement {
+            shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
             anchor: (50.0, 100.0),
             width: 2.0,
             height: 3.0,
@@ -1898,6 +1900,7 @@ mod tests {
             assert!(app.open_dimensioned_rectangle_preview(
                 0,
                 crate::measurement_shapes_ui::RectanglePlacement {
+                    shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
                     anchor: (100.0, 100.0),
                     width: 2.0,
                     height: 3.0,
@@ -2660,6 +2663,7 @@ mod tests {
                 assert!(app.open_dimensioned_rectangle_preview(
                     0,
                     crate::measurement_shapes_ui::RectanglePlacement {
+                        shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
                         anchor: (50.0, 100.0),
                         width: 2.0,
                         height: 3.0,

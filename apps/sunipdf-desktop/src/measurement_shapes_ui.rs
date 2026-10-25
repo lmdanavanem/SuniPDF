@@ -1,12 +1,47 @@
-//! Dimensioned rectangles keep their physical inputs through placement and preview.
+//! Dimensioned shapes keep their physical inputs through placement and preview.
 
 use crate::{app::SuniApp, measure_tools::measurement_panel_button};
 use egui::{Color32, Painter, Pos2, Rect, Stroke};
 use sunipdf_core::measurement::{
-    dimensioned_rectangle_corners, dimensioned_rectangle_point_dimensions,
-    normalize_rectangle_rotation, MeasurementUnit, PageCalibration,
+    dimensioned_ellipse_point_diameters, dimensioned_ellipse_points, dimensioned_rectangle_corners,
+    dimensioned_rectangle_point_dimensions, normalize_rectangle_rotation, MeasurementUnit,
+    PageCalibration,
 };
 use sunipdf_i18n::{tr, tr_args, Language};
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum DimensionedShape {
+    #[default]
+    Rectangle,
+    Circle,
+    Ellipse,
+}
+
+impl DimensionedShape {
+    fn title(self) -> &'static str {
+        match self {
+            Self::Rectangle => "measure.rectangle.title",
+            Self::Circle => "measure.circle.title",
+            Self::Ellipse => "measure.ellipse.title",
+        }
+    }
+
+    fn place(self) -> &'static str {
+        match self {
+            Self::Rectangle => "measure.rectangle.place",
+            Self::Circle => "measure.circle.place",
+            Self::Ellipse => "measure.ellipse.place",
+        }
+    }
+
+    fn rotation_help(self) -> &'static str {
+        if self == Self::Rectangle {
+            "measure.rectangle.rotation_help"
+        } else {
+            "measure.ellipse.rotation_help"
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum RectangleScaleSelection {
@@ -18,6 +53,7 @@ pub(crate) enum RectangleScaleSelection {
 
 #[derive(Clone, Debug)]
 pub(crate) struct RectanglePlacement {
+    pub shape: DimensionedShape,
     pub anchor: (f32, f32),
     pub width: f64,
     pub height: f64,
@@ -34,6 +70,7 @@ impl RectanglePlacement {
             && self.rotation_degrees.is_finite()
             && self.width > 0.0
             && self.height > 0.0
+            && (self.shape != DimensionedShape::Circle || self.width == self.height)
             && (self.width * self.height).is_finite()
             && self.anchor.0.is_finite()
             && self.anchor.1.is_finite()
@@ -41,30 +78,42 @@ impl RectanglePlacement {
     }
 
     pub(crate) fn summary(&mut self, ui: &mut egui::Ui, lang: Language) -> bool {
-        ui.strong(tr(lang, "measure.rectangle.title"));
+        ui.strong(tr(lang, self.shape.title()));
         ui.label(tr_args(
             lang,
-            "measure.rectangle.dimensions",
+            if self.shape == DimensionedShape::Rectangle {
+                "measure.rectangle.dimensions"
+            } else {
+                "measure.ellipse.dimensions"
+            },
             &[
                 ("width", &self.width.to_string()),
                 ("height", &self.height.to_string()),
                 ("unit", self.unit.id()),
             ],
         ));
+        if self.shape == DimensionedShape::Rectangle {
+            ui.label(tr_args(
+                lang,
+                "measure.rectangle.area",
+                &[
+                    (
+                        "value",
+                        &format!("{:.*}", self.precision, self.width * self.height),
+                    ),
+                    ("unit", self.unit.id()),
+                ],
+            ));
+        } else {
+            ui.small(tr(lang, "measure.ellipse.approximation"));
+        }
         ui.label(tr_args(
             lang,
-            "measure.rectangle.area",
-            &[
-                (
-                    "value",
-                    &format!("{:.*}", self.precision, self.width * self.height),
-                ),
-                ("unit", self.unit.id()),
-            ],
-        ));
-        ui.label(tr_args(
-            lang,
-            "measure.rectangle.anchor",
+            if self.shape == DimensionedShape::Rectangle {
+                "measure.rectangle.anchor"
+            } else {
+                "measure.ellipse.center"
+            },
             &[
                 ("x", &format!("{:.2}", self.anchor.0)),
                 ("y", &format!("{:.2}", self.anchor.1)),
@@ -98,8 +147,15 @@ impl RectanglePlacement {
                 self.rotation_degrees = angle;
             }
         }
-        ui.small(tr(lang, "measure.rectangle.rotation_help"));
-        ui.small(tr(lang, "measure.rectangle.preview_note"));
+        ui.small(tr(lang, self.shape.rotation_help()));
+        ui.small(tr(
+            lang,
+            if self.shape == DimensionedShape::Rectangle {
+                "measure.rectangle.preview_note"
+            } else {
+                "measure.ellipse.preview_note"
+            },
+        ));
         changed
     }
 }
@@ -114,6 +170,7 @@ enum ScaleChoice {
 }
 
 pub(crate) struct RectangleToolsState {
+    shape: DimensionedShape,
     width: String,
     height: String,
     rotation: String,
@@ -133,6 +190,7 @@ pub(crate) struct RectangleDraft {
 impl Default for RectangleToolsState {
     fn default() -> Self {
         Self {
+            shape: DimensionedShape::Rectangle,
             width: "2".into(),
             height: "3".into(),
             rotation: "0".into(),
@@ -154,7 +212,12 @@ impl RectangleToolsState {
         let parse = |value: &str| {
             sunipdf_core::measurement::parse_measurement_distance(value, self.unit).ok()
         };
-        let (width, height) = (parse(&self.width)?, parse(&self.height)?);
+        let width = parse(&self.width)?;
+        let height = if self.shape == DimensionedShape::Circle {
+            width
+        } else {
+            parse(&self.height)?
+        };
         (width > 0.0 && height > 0.0 && (width * height).is_finite()).then_some((width, height))
     }
 
@@ -197,10 +260,33 @@ impl SuniApp {
         let can_start = ready && !self.annotate.measure.is_active_draft();
         let tools = &mut self.annotate.measure.rectangle;
         ui.separator();
-        ui.label(egui::RichText::new(tr(lang, "measure.rectangle.title")).strong());
+        let label = ui.label(egui::RichText::new(tr(lang, "measure.shape.title")).strong());
+        ui.add_enabled_ui(can_start, |ui| {
+            egui::ComboBox::from_id_salt("dimensioned-shape-kind")
+                .width(ui.available_width())
+                .selected_text(tr(lang, tools.shape.title()))
+                .show_ui(ui, |ui| {
+                    for shape in [
+                        DimensionedShape::Rectangle,
+                        DimensionedShape::Circle,
+                        DimensionedShape::Ellipse,
+                    ] {
+                        ui.selectable_value(&mut tools.shape, shape, tr(lang, shape.title()));
+                    }
+                })
+                .response
+                .labelled_by(label.id);
+        });
         ui.scope(|ui| {
             ui.columns(2, |columns| {
-                let width_label = columns[0].label(tr(lang, "measure.rectangle.width"));
+                let width_label = columns[0].label(tr(
+                    lang,
+                    match tools.shape {
+                        DimensionedShape::Rectangle => "measure.rectangle.width",
+                        DimensionedShape::Circle => "measure.circle.diameter",
+                        DimensionedShape::Ellipse => "measure.ellipse.diameter_x",
+                    },
+                ));
                 columns[0]
                     .add_enabled(
                         can_start,
@@ -209,15 +295,26 @@ impl SuniApp {
                             .desired_width(f32::INFINITY),
                     )
                     .labelled_by(width_label.id);
-                let height_label = columns[1].label(tr(lang, "measure.rectangle.height"));
-                columns[1]
-                    .add_enabled(
-                        can_start,
-                        egui::TextEdit::singleline(&mut tools.height)
-                            .char_limit(64)
-                            .desired_width(f32::INFINITY),
-                    )
-                    .labelled_by(height_label.id);
+                if tools.shape == DimensionedShape::Circle {
+                    columns[1].small(tr(lang, "measure.circle.equal_diameters"));
+                } else {
+                    let height_label = columns[1].label(tr(
+                        lang,
+                        if tools.shape == DimensionedShape::Rectangle {
+                            "measure.rectangle.height"
+                        } else {
+                            "measure.ellipse.diameter_y"
+                        },
+                    ));
+                    columns[1]
+                        .add_enabled(
+                            can_start,
+                            egui::TextEdit::singleline(&mut tools.height)
+                                .char_limit(64)
+                                .desired_width(f32::INFINITY),
+                        )
+                        .labelled_by(height_label.id);
+                }
             });
             ui.columns(2, |columns| {
                 let label = columns[0].label(tr(lang, "measure.unit"));
@@ -252,7 +349,10 @@ impl SuniApp {
                     .desired_width(f32::INFINITY),
             )
             .labelled_by(label.id);
-            ui.small(tr(lang, "measure.rectangle.rotation_help"));
+            ui.small(tr(lang, tools.shape.rotation_help()));
+            if tools.shape != DimensionedShape::Rectangle {
+                ui.small(tr(lang, "measure.ellipse.approximation"));
+            }
             let selected = match &tools.scale {
                 ScaleChoice::Local => tr(lang, "measure.rectangle.local").to_string(),
                 ScaleChoice::Page => tr(lang, "measure.rectangle.page").to_string(),
@@ -309,7 +409,7 @@ impl SuniApp {
         if measurement_panel_button(
             ui,
             can_start && dimensions.is_some() && rotation.is_some() && source_available,
-            tr(lang, "measure.rectangle.place"),
+            tr(lang, tools.shape.place()),
         )
         .clicked()
         {
@@ -324,6 +424,7 @@ impl SuniApp {
                 page,
                 epoch: self.view.epoch,
                 placement: RectanglePlacement {
+                    shape: tools.shape,
                     anchor: (0.0, 0.0),
                     width,
                     height,
@@ -340,7 +441,14 @@ impl SuniApp {
         if dimensions.is_none() {
             ui.colored_label(
                 crate::theme::palette_for(ui.ctx()).error,
-                tr(lang, "measure.rectangle.invalid_dimensions"),
+                tr(
+                    lang,
+                    if tools.shape == DimensionedShape::Rectangle {
+                        "measure.rectangle.invalid_dimensions"
+                    } else {
+                        "measure.ellipse.invalid_dimensions"
+                    },
+                ),
             );
         }
         if rotation.is_none() {
@@ -350,7 +458,14 @@ impl SuniApp {
             );
         }
         if tools.draft.is_some() {
-            ui.label(tr(lang, "measure.rectangle.place_hint"));
+            ui.label(tr(
+                lang,
+                if tools.shape == DimensionedShape::Rectangle {
+                    "measure.rectangle.place_hint"
+                } else {
+                    "measure.ellipse.place_hint"
+                },
+            ));
         }
     }
 
@@ -464,9 +579,12 @@ impl SuniApp {
         } else {
             Color32::from_rgb(200, 45, 55)
         };
-        for index in 0..4 {
+        for index in 0..points.len() {
             painter.line_segment(
-                [screen(points[index]), screen(points[(index + 1) % 4])],
+                [
+                    screen(points[index]),
+                    screen(points[(index + 1) % points.len()]),
+                ],
                 Stroke::new(2.0, color),
             );
         }
@@ -479,11 +597,16 @@ pub(crate) fn indicative_outline(
     anchor: (f32, f32),
     calibration: &PageCalibration,
     page_size: (f32, f32),
-) -> Option<[(f32, f32); 4]> {
+) -> Option<Vec<(f32, f32)>> {
     if !placement.valid() {
         return None;
     }
-    let (width, height) = dimensioned_rectangle_point_dimensions(
+    let dimensions = if placement.shape == DimensionedShape::Rectangle {
+        dimensioned_rectangle_point_dimensions
+    } else {
+        dimensioned_ellipse_point_diameters
+    };
+    let (width, height) = dimensions(
         placement.width,
         placement.height,
         placement.unit,
@@ -491,12 +614,101 @@ pub(crate) fn indicative_outline(
         page_size,
     )
     .ok()?;
-    dimensioned_rectangle_corners(anchor, width, height, placement.rotation_degrees, page_size).ok()
+    if placement.shape == DimensionedShape::Rectangle {
+        dimensioned_rectangle_corners(anchor, width, height, placement.rotation_degrees, page_size)
+            .ok()
+            .map(|points| points.to_vec())
+    } else {
+        dimensioned_ellipse_points(anchor, width, height, placement.rotation_degrees, page_size)
+            .ok()
+            .map(|points| points.to_vec())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn circles_keep_equal_diameters_and_unit_changes_preserve_their_size() {
+        let mut tools = RectangleToolsState {
+            shape: DimensionedShape::Circle,
+            width: "2".into(),
+            height: "not used by a circle".into(),
+            ..Default::default()
+        };
+        assert_eq!(tools.dimensions(), Some((2.0, 2.0)));
+        tools.change_unit(MeasurementUnit::Centimetres);
+        assert_eq!(tools.dimensions(), Some((200.0, 200.0)));
+        tools.shape = DimensionedShape::Ellipse;
+        assert!(
+            tools.dimensions().is_none(),
+            "ellipse must validate both diameters"
+        );
+        tools.height = "300".into();
+        assert_eq!(tools.dimensions(), Some((200.0, 300.0)));
+        for value in ["0", "-1", "NaN", "inf", ""] {
+            tools.width = value.into();
+            assert!(tools.dimensions().is_none());
+        }
+    }
+
+    #[test]
+    fn ellipse_ghost_uses_shared_points_and_never_substitutes_a_bounding_rectangle() {
+        let calibration = PageCalibration {
+            points: [(40.0, 40.0), (140.0, 40.0)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Metres,
+        };
+        for shape in [DimensionedShape::Circle, DimensionedShape::Ellipse] {
+            for rotation_degrees in [0.0, 33.5, 90.0, 180.0, 270.0, -27.0] {
+                let mut placement = RectanglePlacement {
+                    shape,
+                    anchor: (200.0, 200.0),
+                    width: 2.0,
+                    height: if shape == DimensionedShape::Circle {
+                        2.0
+                    } else {
+                        3.0
+                    },
+                    rotation_degrees,
+                    unit: MeasurementUnit::Metres,
+                    precision: 3,
+                    scale: RectangleScaleSelection::Local(calibration.clone()),
+                };
+                let size = (600.0, 800.0);
+                let points =
+                    indicative_outline(&placement, placement.anchor, &calibration, size).unwrap();
+                let (dx, dy) = dimensioned_ellipse_point_diameters(
+                    placement.width,
+                    placement.height,
+                    placement.unit,
+                    &calibration,
+                    size,
+                )
+                .unwrap();
+                assert_eq!(
+                    points,
+                    dimensioned_ellipse_points(placement.anchor, dx, dy, rotation_degrees, size)
+                        .unwrap()
+                );
+                assert_eq!(
+                    points.len(),
+                    sunipdf_core::measurement::DIMENSIONED_ELLIPSE_SEGMENTS
+                );
+                assert!(indicative_outline(&placement, (0.0, 0.0), &calibration, size).is_none());
+                placement.rotation_degrees = f64::NAN;
+                assert!(
+                    indicative_outline(&placement, placement.anchor, &calibration, size).is_none()
+                );
+                placement.rotation_degrees = 0.0;
+                if shape == DimensionedShape::Circle {
+                    placement.height = 3.0;
+                    assert!(!placement.valid(), "circle cannot carry unequal diameters");
+                }
+            }
+        }
+    }
 
     #[test]
     fn rotation_input_normalizes_full_turns_and_rejects_nonfinite_angles() {
@@ -521,6 +733,7 @@ mod tests {
         };
         for rotation in [0.0, 33.5, 90.0, 180.0, 270.0, -405.0] {
             let placement = RectanglePlacement {
+                shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
                 anchor: (200.0, 200.0),
                 width: 0.2,
                 height: 0.3,
@@ -543,7 +756,7 @@ mod tests {
                     .unwrap();
             assert_eq!(
                 indicative_outline(&placement, placement.anchor, &calibration, size),
-                Some(expected)
+                Some(expected.to_vec())
             );
             let outside = (-10.0, -10.0);
             assert!(indicative_outline(&placement, outside, &calibration, size).is_none());
@@ -587,6 +800,7 @@ mod tests {
                 page: 0,
                 epoch,
                 placement: RectanglePlacement {
+                    shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
                     anchor: (0.0, 0.0),
                     width: 2.0,
                     height: 3.0,
@@ -649,6 +863,7 @@ mod tests {
                 page: 0,
                 epoch: app.view.epoch,
                 placement: RectanglePlacement {
+                    shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
                     anchor: (50.0, 100.0),
                     width: 2.0,
                     height: 3.0,

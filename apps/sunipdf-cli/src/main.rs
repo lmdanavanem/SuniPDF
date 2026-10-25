@@ -4,6 +4,7 @@
 mod annot_cmd;
 mod boundary_fill_cmd;
 mod calibration_cmd;
+mod dimensioned_ellipse_cmd;
 mod dimensioned_shape_cmd;
 mod feature_cmd;
 mod issue_report_cmd;
@@ -114,6 +115,10 @@ enum Command {
     MeasurementSnap(measurement_workspace_cmd::SnapArgs),
     /// Place a clockwise-rotated rectangle using real dimensions and an explicit scale source.
     DimensionedRectangle(dimensioned_shape_cmd::RectangleArgs),
+    /// Create an editable 128-segment circular area using a real diameter and explicit scale.
+    DimensionedCircle(dimensioned_ellipse_cmd::CircleArgs),
+    /// Create an editable 128-segment elliptical area using real diameters and explicit scale.
+    DimensionedEllipse(dimensioned_ellipse_cmd::EllipseArgs),
     /// Add a calibrated measurement annotation in a new PDF copy.
     Measure {
         file: PathBuf,
@@ -1683,6 +1688,8 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         }
         Command::MeasurementSnap(args) => measurement_workspace_cmd::snap(&engine, args),
         Command::DimensionedRectangle(args) => dimensioned_shape_cmd::rectangle(&engine, args),
+        Command::DimensionedCircle(args) => dimensioned_ellipse_cmd::circle(&engine, args),
+        Command::DimensionedEllipse(args) => dimensioned_ellipse_cmd::ellipse(&engine, args),
         Command::Measure {
             file,
             kind,
@@ -3074,6 +3081,8 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::RemovePageCalibration(args) => Some(&args.out),
         Command::EditMeasurement(args) => Some(&args.out),
         Command::DimensionedRectangle(args) => Some(&args.out),
+        Command::DimensionedCircle(args) => Some(&args.common.out),
+        Command::DimensionedEllipse(args) => Some(&args.common.out),
         Command::SetMeasurementViewports(args) => Some(&args.out),
         Command::ClearMeasurementViewports(args) => Some(&args.out),
         Command::RecalibrateMeasurements(args) => args.out.as_deref(),

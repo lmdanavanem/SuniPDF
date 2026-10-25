@@ -252,14 +252,22 @@ fn encrypted_sources_require_credentials_again_without_saving_secrets(engine: &E
     let cancel = AtomicBool::new(false);
     for aes256 in [false, true] {
         for allowed in [false, true] {
-            let user = "overlay setup reader secret";
-            let owner = "overlay setup owner secret";
+            let password = || {
+                let mut bytes = [0u8; 24];
+                getrandom::fill(&mut bytes).unwrap();
+                bytes
+                    .iter()
+                    .map(|byte| format!("{byte:02x}"))
+                    .collect::<String>()
+            };
+            let user = password();
+            let owner = password();
             let encrypted = security::protect(
                 &plain,
                 None,
                 &Protection {
-                    user_password: user.into(),
-                    owner_password: owner.into(),
+                    user_password: user.clone(),
+                    owner_password: owner.clone(),
                     allow_copy: allowed,
                     allow_modify: false,
                     allow_annotate: false,
@@ -271,8 +279,12 @@ fn encrypted_sources_require_credentials_again_without_saving_secrets(engine: &E
             for (index, path) in paths.iter().enumerate() {
                 std::fs::write(path, if index == 2 { &encrypted } else { &plain }).unwrap();
             }
-            let preview =
-                prepare_overlay_stack(engine, options(&paths), &[None, None, Some(user)], &cancel);
+            let preview = prepare_overlay_stack(
+                engine,
+                options(&paths),
+                &[None, None, Some(user.as_str())],
+                &cancel,
+            );
             if !allowed {
                 assert!(matches!(preview, Err(EngineError::SecurityRestricted)));
                 continue;
@@ -282,7 +294,7 @@ fn encrypted_sources_require_credentials_again_without_saving_secrets(engine: &E
             let saved = recipe::save_new(&preview, &output, &cancel).unwrap();
             let bytes = std::fs::read(&output).unwrap();
             let text = String::from_utf8(bytes).unwrap();
-            for secret in [user, owner, "password_env", "password"] {
+            for secret in [user.as_str(), owner.as_str(), "password_env", "password"] {
                 assert!(!text.contains(secret));
             }
             let mut cli: Manifest = saved.clone();
@@ -293,7 +305,7 @@ fn encrypted_sources_require_credentials_again_without_saving_secrets(engine: &E
                 Err(EngineError::PasswordRequired)
             ));
             assert_eq!(
-                loaded_preview(engine, &output, &[None, None, Some(user)])
+                loaded_preview(engine, &output, &[None, None, Some(user.as_str())])
                     .image()
                     .rgba,
                 preview.image().rgba
@@ -304,7 +316,7 @@ fn encrypted_sources_require_credentials_again_without_saving_secrets(engine: &E
                     engine,
                     &cli,
                     directory.path(),
-                    &[None, None, Some(user)],
+                    &[None, None, Some(user.as_str())],
                     &cancel
                 )
                 .unwrap()

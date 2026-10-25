@@ -3479,14 +3479,21 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 epoch,
                 generation,
             } => {
-                use crate::measurement_shapes_ui::RectangleScaleSelection;
-                use sunipdf_core::measurement::{DimensionedRectangle, RectangleScale};
+                use crate::measurement_shapes_ui::{DimensionedShape, RectangleScaleSelection};
+                use sunipdf_core::measurement::{
+                    DimensionedEllipse, DimensionedRectangle, RectangleScale,
+                };
                 state.rich_preview = None;
                 let result = state
                     .document
                     .as_ref()
                     .ok_or(EngineError::PageOutOfRange(page))
                     .and_then(|doc| {
+                        if !rectangle.valid() {
+                            return Err(EngineError::Other(
+                                "invalid dimensioned shape inputs".into(),
+                            ));
+                        }
                         let scale = match rectangle.scale {
                             RectangleScaleSelection::Local(calibration) => {
                                 let capture =
@@ -3499,7 +3506,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                             RectangleScaleSelection::Region(id) => RectangleScale::Region(id),
                             RectangleScaleSelection::Automatic => RectangleScale::Automatic,
                         };
-                        let annotation =
+                        let annotation = if rectangle.shape == DimensionedShape::Rectangle {
                             sunipdf_core::annot_rich::RichAnnotation::DimensionedRectangle(
                                 DimensionedRectangle {
                                     anchor: rectangle.anchor,
@@ -3510,14 +3517,25 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                                     precision: rectangle.precision,
                                     scale,
                                 },
-                            );
+                            )
+                        } else {
+                            sunipdf_core::annot_rich::RichAnnotation::DimensionedEllipse(
+                                DimensionedEllipse {
+                                    center: rectangle.anchor,
+                                    diameter_x: rectangle.width,
+                                    diameter_y: rectangle.height,
+                                    rotation_degrees: rectangle.rotation_degrees,
+                                    unit: rectangle.unit,
+                                    precision: rectangle.precision,
+                                    scale,
+                                },
+                            )
+                        };
                         doc.preview_rich_annotation(page, &annotation, author.as_deref())
                     })
                     .and_then(|mut preview| {
                         let prepared = preview.prepared.take().ok_or_else(|| {
-                            EngineError::Other(
-                                "missing prepared dimensioned rectangle preview".into(),
-                            )
+                            EngineError::Other("missing prepared dimensioned shape preview".into())
                         })?;
                         state.rich_preview = Some((epoch, generation, prepared));
                         Ok(preview)
@@ -6988,302 +7006,346 @@ mod tests {
     fn dimensioned_rectangles_preview_commit_and_revalidate_the_captured_reference(
         worker: &Worker,
     ) {
-        use crate::measurement_shapes_ui::{RectanglePlacement, RectangleScaleSelection};
+        use crate::measurement_shapes_ui::{
+            DimensionedShape, RectanglePlacement, RectangleScaleSelection,
+        };
         use sunipdf_core::measurement::{MeasurementKind, MeasurementUnit, PageCalibration};
-        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
-        let original_bytes = std::fs::read(&source).unwrap();
-        worker.send(Request::Open {
-            path: source.clone(),
-            password: None,
-        });
-        let size = match next_response(worker) {
-            Response::Opened(state) => state.info.page_sizes[0],
-            _ => panic!("opened rectangle fixture"),
-        };
-        let calibration = PageCalibration {
-            points: [(40.0, 40.0), (140.0, 40.0)],
-            known_distance: 10.0,
-            unit: MeasurementUnit::Metres,
-        };
-        let rectangle = RectanglePlacement {
-            anchor: (50.0, 100.0),
-            width: 2.0,
-            height: 3.0,
-            rotation_degrees: 33.5,
-            unit: MeasurementUnit::Metres,
-            precision: 2,
-            scale: RectangleScaleSelection::Local(calibration.clone()),
-        };
-        let preview = |generation| {
+        for shape in [
+            DimensionedShape::Rectangle,
+            DimensionedShape::Circle,
+            DimensionedShape::Ellipse,
+        ] {
+            let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+            let original_bytes = std::fs::read(&source).unwrap();
+            worker.send(Request::Open {
+                path: source.clone(),
+                password: None,
+            });
+            let size = match next_response(worker) {
+                Response::Opened(state) => state.info.page_sizes[0],
+                _ => panic!("opened rectangle fixture"),
+            };
+            let calibration = PageCalibration {
+                points: [(40.0, 40.0), (140.0, 40.0)],
+                known_distance: 10.0,
+                unit: MeasurementUnit::Metres,
+            };
+            let rectangle = RectanglePlacement {
+                shape,
+                anchor: (50.0, 100.0),
+                width: 2.0,
+                height: if shape == DimensionedShape::Circle {
+                    2.0
+                } else {
+                    3.0
+                },
+                rotation_degrees: 33.5,
+                unit: MeasurementUnit::Metres,
+                precision: 2,
+                scale: RectangleScaleSelection::Local(calibration.clone()),
+            };
+            let preview = |generation| {
+                worker.send(Request::PreviewDimensionedRectangle {
+                    page: 0,
+                    rectangle: rectangle.clone(),
+                    author: Some("lmdanavanem".into()),
+                    epoch: 92,
+                    generation,
+                });
+                match next_response(worker) {
+                    Response::RichAnnotationPreview { result, .. } => result,
+                    _ => panic!("dimensioned rectangle preview response"),
+                }
+            };
+            let read = || {
+                worker.send(Request::MeasurementPage {
+                    page: 0,
+                    epoch: 92,
+                    generation: 1,
+                });
+                match next_response(worker) {
+                    Response::MeasurementPage {
+                        result: Ok(data), ..
+                    } => data.records.unwrap(),
+                    _ => panic!("rectangle inventory"),
+                }
+            };
+            assert!(preview(1).is_err(), "old UI calibration alone is not proof");
+            assert!(read().is_empty());
+            worker.send(Request::CaptureRectangleCalibration {
+                page: 0,
+                calibration: calibration.clone(),
+            });
+            assert!(preview(2).is_ok());
+            assert!(read().is_empty(), "preview leaves the document unchanged");
+            for (generation, anchor, angle) in [
+                (30, (0.0, 0.0), 45.0),
+                (31, (0.0, 0.0), 180.0),
+                (32, (50.0, 100.0), f64::NAN),
+            ] {
+                let mut invalid = rectangle.clone();
+                invalid.anchor = anchor;
+                invalid.rotation_degrees = angle;
+                worker.send(Request::PreviewDimensionedRectangle {
+                    page: 0,
+                    rectangle: invalid,
+                    author: None,
+                    epoch: 92,
+                    generation,
+                });
+                assert!(matches!(
+                    next_response(worker),
+                    Response::RichAnnotationPreview { result: Err(_), .. }
+                ));
+                worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                    epoch: 92,
+                    generation,
+                }));
+                assert!(matches!(
+                    next_response(worker),
+                    Response::OperationFailed(_)
+                ));
+                assert!(
+                    read().is_empty(),
+                    "rejected rotated preview never changes the document"
+                );
+            }
+
+            let mut invalid = calibration.clone();
+            invalid.known_distance = 0.0;
+            worker.send(Request::CaptureRectangleCalibration {
+                page: 0,
+                calibration: invalid.clone(),
+            });
+            assert!(
+                matches!(preview(20), Err(EngineError::Other(message)) if message == RECTANGLE_REFERENCE_REQUIRED),
+                "failed capture must replace the earlier valid token"
+            );
+            let mut rejected_rectangle = rectangle.clone();
+            rejected_rectangle.scale = RectangleScaleSelection::Local(invalid);
             worker.send(Request::PreviewDimensionedRectangle {
                 page: 0,
-                rectangle: rectangle.clone(),
-                author: Some("lmdanavanem".into()),
+                rectangle: rejected_rectangle,
+                author: None,
                 epoch: 92,
-                generation,
+                generation: 21,
             });
-            match next_response(worker) {
-                Response::RichAnnotationPreview { result, .. } => result,
-                _ => panic!("dimensioned rectangle preview response"),
-            }
-        };
-        let read = || {
-            worker.send(Request::MeasurementPage {
+            assert!(
+                matches!(next_response(worker), Response::RichAnnotationPreview {result: Err(EngineError::Other(message)), ..}
+            if message.starts_with(RECTANGLE_CAPTURE_FAILED)),
+                "capture failure retains its actual cause"
+            );
+            worker.send(Request::PreviewRichAnnotation {
                 page: 0,
+                annotation: sunipdf_core::annot_rich::RichAnnotation::Measurement(
+                    sunipdf_core::measurement::Measurement {
+                        holes: Vec::new(),
+                        depth: None,
+                        kind: MeasurementKind::Length,
+                        points: vec![(40.0, 100.0), (140.0, 100.0)],
+                        calibration: calibration.points,
+                        known_distance: calibration.known_distance,
+                        unit: calibration.unit,
+                        precision: 2,
+                    },
+                ),
+                author: None,
+                epoch: 92,
+                generation: 22,
+            });
+            assert!(
+                matches!(
+                    next_response(worker),
+                    Response::RichAnnotationPreview { result: Ok(_), .. }
+                ),
+                "a rectangle capture failure does not disable ordinary measurements"
+            );
+            assert!(read().is_empty());
+            worker.send(Request::CaptureRectangleCalibration {
+                page: 0,
+                calibration: calibration.clone(),
+            });
+            assert!(preview(2).is_ok());
+            worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                epoch: 92,
+                generation: 2,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            let records = read();
+            assert_eq!(records.len(), 1);
+            assert!(records[0].validity.is_current());
+            assert_eq!(records[0].measurement.kind, MeasurementKind::Area);
+            let hover = crate::measurement_shapes_ui::indicative_outline(
+                &rectangle,
+                rectangle.anchor,
+                &calibration,
+                (size.width_pt, size.height_pt),
+            )
+            .unwrap();
+            assert_eq!(records[0].measurement.points, hover.to_vec());
+            let area = records[0].measurement.value().unwrap();
+            let expected_area = if shape == DimensionedShape::Rectangle {
+                rectangle.width * rectangle.height
+            } else {
+                let n = sunipdf_core::measurement::DIMENSIONED_ELLIPSE_SEGMENTS as f64;
+                n * (std::f64::consts::TAU / n).sin() * rectangle.width * rectangle.height / 8.0
+            };
+            assert!((area - expected_area).abs() < 1e-4);
+            assert_eq!(
+                records[0].measurement.points.len(),
+                if shape == DimensionedShape::Rectangle {
+                    4
+                } else {
+                    128
+                }
+            );
+            worker.send(Request::QuantityTable {
                 epoch: 92,
                 generation: 1,
             });
             match next_response(worker) {
-                Response::MeasurementPage {
-                    result: Ok(data), ..
-                } => data.records.unwrap(),
-                _ => panic!("rectangle inventory"),
-            }
-        };
-        assert!(preview(1).is_err(), "old UI calibration alone is not proof");
-        assert!(read().is_empty());
-        worker.send(Request::CaptureRectangleCalibration {
-            page: 0,
-            calibration: calibration.clone(),
-        });
-        assert!(preview(2).is_ok());
-        assert!(read().is_empty(), "preview leaves the document unchanged");
-        for (generation, anchor, angle) in [
-            (30, (0.0, 0.0), 45.0),
-            (31, (0.0, 0.0), 180.0),
-            (32, (50.0, 100.0), f64::NAN),
-        ] {
-            let mut invalid = rectangle.clone();
-            invalid.anchor = anchor;
-            invalid.rotation_degrees = angle;
-            worker.send(Request::PreviewDimensionedRectangle {
-                page: 0,
-                rectangle: invalid,
-                author: None,
-                epoch: 92,
-                generation,
-            });
-            assert!(matches!(
-                next_response(worker),
-                Response::RichAnnotationPreview { result: Err(_), .. }
-            ));
-            worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
-                epoch: 92,
-                generation,
-            }));
-            assert!(matches!(
-                next_response(worker),
-                Response::OperationFailed(_)
-            ));
-            assert!(
-                read().is_empty(),
-                "rejected rotated preview never changes the document"
-            );
-        }
-
-        let mut invalid = calibration.clone();
-        invalid.known_distance = 0.0;
-        worker.send(Request::CaptureRectangleCalibration {
-            page: 0,
-            calibration: invalid.clone(),
-        });
-        assert!(
-            matches!(preview(20), Err(EngineError::Other(message)) if message == RECTANGLE_REFERENCE_REQUIRED),
-            "failed capture must replace the earlier valid token"
-        );
-        let mut rejected_rectangle = rectangle.clone();
-        rejected_rectangle.scale = RectangleScaleSelection::Local(invalid);
-        worker.send(Request::PreviewDimensionedRectangle {
-            page: 0,
-            rectangle: rejected_rectangle,
-            author: None,
-            epoch: 92,
-            generation: 21,
-        });
-        assert!(
-            matches!(next_response(worker), Response::RichAnnotationPreview {result: Err(EngineError::Other(message)), ..}
-            if message.starts_with(RECTANGLE_CAPTURE_FAILED)),
-            "capture failure retains its actual cause"
-        );
-        worker.send(Request::PreviewRichAnnotation {
-            page: 0,
-            annotation: sunipdf_core::annot_rich::RichAnnotation::Measurement(
-                sunipdf_core::measurement::Measurement {
-                    holes: Vec::new(),
-                    depth: None,
-                    kind: MeasurementKind::Length,
-                    points: vec![(40.0, 100.0), (140.0, 100.0)],
-                    calibration: calibration.points,
-                    known_distance: calibration.known_distance,
-                    unit: calibration.unit,
-                    precision: 2,
-                },
-            ),
-            author: None,
-            epoch: 92,
-            generation: 22,
-        });
-        assert!(
-            matches!(
-                next_response(worker),
-                Response::RichAnnotationPreview { result: Ok(_), .. }
-            ),
-            "a rectangle capture failure does not disable ordinary measurements"
-        );
-        assert!(read().is_empty());
-        worker.send(Request::CaptureRectangleCalibration {
-            page: 0,
-            calibration: calibration.clone(),
-        });
-        assert!(preview(2).is_ok());
-        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
-            epoch: 92,
-            generation: 2,
-        }));
-        assert!(matches!(
-            next_response(worker),
-            Response::DocumentChanged(_)
-        ));
-        let records = read();
-        assert_eq!(records.len(), 1);
-        assert!(records[0].validity.is_current());
-        assert_eq!(records[0].measurement.kind, MeasurementKind::Area);
-        let hover = crate::measurement_shapes_ui::indicative_outline(
-            &rectangle,
-            rectangle.anchor,
-            &calibration,
-            (size.width_pt, size.height_pt),
-        )
-        .unwrap();
-        assert_eq!(records[0].measurement.points, hover.to_vec());
-        assert!((records[0].measurement.value().unwrap() - 6.0).abs() < 1e-4);
-        assert!(
-            preview(3).is_ok(),
-            "annotation-only changes retain a verified local scale"
-        );
-        worker.send(Request::DiscardRichAnnotationPreview {
-            epoch: 92,
-            generation: 3,
-        });
-        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
-            epoch: 92,
-            generation: 3,
-        }));
-        assert!(matches!(
-            next_response(worker),
-            Response::OperationFailed(_)
-        ));
-        worker.send(Request::Undo);
-        assert!(matches!(
-            next_response(worker),
-            Response::DocumentChanged(_)
-        ));
-        assert!(read().is_empty(), "one Undo removes the only rectangle");
-        worker.send(Request::Redo);
-        assert!(matches!(
-            next_response(worker),
-            Response::DocumentChanged(_)
-        ));
-        assert_eq!(read(), records);
-        let temp = tempfile::tempdir().unwrap();
-        let output = temp.path().join("dimensioned-rectangle.pdf");
-        worker.send(Request::Save {
-            path: output.clone(),
-        });
-        assert!(matches!(next_response(worker), Response::Saved { .. }));
-        worker.send(Request::Open {
-            path: output,
-            password: None,
-        });
-        assert!(matches!(next_response(worker), Response::Opened(_)));
-        assert_eq!(read(), records);
-        assert!(
-            preview(4).is_err(),
-            "opening a document clears temporary proof"
-        );
-        worker.send(Request::CaptureRectangleCalibration {
-            page: 0,
-            calibration: calibration.clone(),
-        });
-        assert!(preview(5).is_ok());
-        worker.send(Request::Edit(EditOp::AddText {
-            page: 0,
-            x: 200.0,
-            y: 200.0,
-            text: "Changed drawing".into(),
-            style: TextStyle::default(),
-        }));
-        assert!(matches!(
-            next_response(worker),
-            Response::DocumentChanged(_)
-        ));
-        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
-            epoch: 92,
-            generation: 5,
-        }));
-        assert!(
-            matches!(next_response(worker), Response::OperationFailed(_)),
-            "a mutation discards the prepared candidate"
-        );
-        assert!(
-            preview(6).is_err(),
-            "page content changes invalidate the earlier reference"
-        );
-        assert_eq!(read().len(), 1);
-        worker.send(Request::Edit(EditOp::SetMeasurementViewports {
-            page: 0,
-            expected: Vec::new(),
-            replacement: vec![sunipdf_core::measurement::MeasurementViewport {
-                id: "detail".into(),
-                name: "Detail".into(),
-                bounds: PointRect {
-                    left: 30.0,
-                    bottom: 30.0,
-                    right: 150.0,
-                    top: 150.0,
-                },
-                calibration: calibration.clone(),
-            }],
-        }));
-        assert!(matches!(
-            next_response(worker),
-            Response::DocumentChanged(_)
-        ));
-        for (generation, anchor, accepted) in
-            [(40, (80.0, 100.0), true), (41, (140.0, 100.0), false)]
-        {
-            let mut region_rectangle = rectangle.clone();
-            region_rectangle.anchor = anchor;
-            region_rectangle.scale = RectangleScaleSelection::Region("detail".into());
-            worker.send(Request::PreviewDimensionedRectangle {
-                page: 0,
-                rectangle: region_rectangle,
-                author: None,
-                epoch: 92,
-                generation,
-            });
-            match next_response(worker) {
-                Response::RichAnnotationPreview { result, .. } => {
-                    assert_eq!(result.is_ok(), accepted)
+                Response::QuantityTable {
+                    result: Ok(table), ..
+                } => {
+                    let result = table.json(&Default::default()).unwrap();
+                    assert_eq!(result["summary"]["matched_rows"], 1);
+                    assert!(
+                        (table.rows()[0].quantity.as_ref().unwrap().value - area).abs() < 1e-10
+                    );
                 }
-                _ => panic!("bounded rotated region preview"),
+                _ => panic!("dimensioned shape quantity table"),
             }
+            assert!(
+                preview(3).is_ok(),
+                "annotation-only changes retain a verified local scale"
+            );
             worker.send(Request::DiscardRichAnnotationPreview {
                 epoch: 92,
-                generation,
+                generation: 3,
             });
             worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
                 epoch: 92,
-                generation,
+                generation: 3,
             }));
             assert!(matches!(
                 next_response(worker),
                 Response::OperationFailed(_)
             ));
+            worker.send(Request::Undo);
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            assert!(read().is_empty(), "one Undo removes the only rectangle");
+            worker.send(Request::Redo);
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            assert_eq!(read(), records);
+            let temp = tempfile::tempdir().unwrap();
+            let output = temp.path().join("dimensioned-rectangle.pdf");
+            worker.send(Request::Save {
+                path: output.clone(),
+            });
+            assert!(matches!(next_response(worker), Response::Saved { .. }));
+            worker.send(Request::Open {
+                path: output,
+                password: None,
+            });
+            assert!(matches!(next_response(worker), Response::Opened(_)));
+            assert_eq!(read(), records);
+            assert!(
+                preview(4).is_err(),
+                "opening a document clears temporary proof"
+            );
+            worker.send(Request::CaptureRectangleCalibration {
+                page: 0,
+                calibration: calibration.clone(),
+            });
+            assert!(preview(5).is_ok());
+            worker.send(Request::Edit(EditOp::AddText {
+                page: 0,
+                x: 200.0,
+                y: 200.0,
+                text: "Changed drawing".into(),
+                style: TextStyle::default(),
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                epoch: 92,
+                generation: 5,
+            }));
+            assert!(
+                matches!(next_response(worker), Response::OperationFailed(_)),
+                "a mutation discards the prepared candidate"
+            );
+            assert!(
+                preview(6).is_err(),
+                "page content changes invalidate the earlier reference"
+            );
             assert_eq!(read().len(), 1);
+            worker.send(Request::Edit(EditOp::SetMeasurementViewports {
+                page: 0,
+                expected: Vec::new(),
+                replacement: vec![sunipdf_core::measurement::MeasurementViewport {
+                    id: "detail".into(),
+                    name: "Detail".into(),
+                    bounds: PointRect {
+                        left: 30.0,
+                        bottom: 30.0,
+                        right: 150.0,
+                        top: 150.0,
+                    },
+                    calibration: calibration.clone(),
+                }],
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            for (generation, anchor, accepted) in
+                [(40, (80.0, 100.0), true), (41, (145.0, 100.0), false)]
+            {
+                let mut region_rectangle = rectangle.clone();
+                region_rectangle.anchor = anchor;
+                region_rectangle.scale = RectangleScaleSelection::Region("detail".into());
+                worker.send(Request::PreviewDimensionedRectangle {
+                    page: 0,
+                    rectangle: region_rectangle,
+                    author: None,
+                    epoch: 92,
+                    generation,
+                });
+                match next_response(worker) {
+                    Response::RichAnnotationPreview { result, .. } => {
+                        assert_eq!(result.is_ok(), accepted)
+                    }
+                    _ => panic!("bounded rotated region preview"),
+                }
+                worker.send(Request::DiscardRichAnnotationPreview {
+                    epoch: 92,
+                    generation,
+                });
+                worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                    epoch: 92,
+                    generation,
+                }));
+                assert!(matches!(
+                    next_response(worker),
+                    Response::OperationFailed(_)
+                ));
+                assert_eq!(read().len(), 1);
+            }
+            assert_eq!(std::fs::read(source).unwrap(), original_bytes);
         }
-        assert_eq!(std::fs::read(source).unwrap(), original_bytes);
     }
 
     fn saved_measurement_edits_replace_in_place_and_keep_history(worker: &Worker) {

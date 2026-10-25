@@ -630,9 +630,14 @@ def plan_link_creation(evidence, version):
 
     def locate(label, *, line_contains=None, exact_line=False, color=None, target=None, allow_scroll=True,
                below_label=None, above_label=None, within=None, psm=11, smooth=False):
-        assert not smooth or (label == "Native destination two" and color is None and target is None and psm == 6
-                              and (below_label, above_label) in (("Alpha.pdf", "Beta.pdf"), ("Beta.pdf", "Target.pdf"))), \
-            "Smooth control OCR is restricted to an explicitly scoped destination selection"
+        destination = (label == "Native destination two" and psm == 6
+                       and (below_label, above_label) in (("Alpha.pdf", "Beta.pdf"), ("Beta.pdf", "Target.pdf")))
+        approval = (psm == 11 and above_label is None and
+                    ((label in ("Alpha.pdf", "Beta.pdf") and line_contains == "0 Approved links" and below_label is None)
+                     or (label == "A-101" and line_contains == "Page 1"
+                         and below_label in (("Alpha.pdf", "0 Approved links"), ("Beta.pdf", "0 Approved links")))))
+        assert not smooth or (color is None and target is None and (destination or approval)), \
+            "Smooth control OCR is restricted to an explicit destination or approval context"
         for attempt in range(12 if allow_scroll and target is None else 6):
             observed = read_capture(capture(target), color, psm=psm, smooth=smooth)
             try:
@@ -662,7 +667,7 @@ def plan_link_creation(evidence, version):
         target = options.get("target") or window
         actions.append({"click": label, "lineContains": options.get("line_contains"), "point": point,
                         "belowLabel": options.get("below_label"), "aboveLabel": options.get("above_label"),
-                        **({"ocrPreparation": "full-rgb-lanczos-4x-psm6"} if options.get("smooth") else {}),
+                        **({"ocrPreparation": f"full-rgb-lanczos-4x-psm{options.get('psm', 11)}"} if options.get("smooth") else {}),
                         "window": target, **evidence_fields(observed)})
         command(["xdotool", "mousemove", "--window", target, *map(str, point), "click", "1"])
         time.sleep(0.2)
@@ -677,8 +682,10 @@ def plan_link_creation(evidence, version):
                         **evidence_fields(observed)})
 
     def scene(name, *, pattern=None, kind=None, caption=None, allow_scroll=False, psm=11, smooth=False):
-        assert not smooth or (name == "creation-manifest-path-entered" and kind is None and psm == 6), \
-            "Smooth OCR is restricted to the typed manifest path scene"
+        assert not smooth or (kind is None and
+                              ((name == "creation-manifest-path-entered" and psm == 6)
+                               or (name in ("creation-approved-alpha", "creation-approved-beta") and psm == 11))), \
+            "Smooth scene OCR is restricted to the typed manifest path or an approval scene"
         deadline = time.monotonic() + 35
         attempts = 0
         while time.monotonic() < deadline:
@@ -687,6 +694,14 @@ def plan_link_creation(evidence, version):
             title = command(["xdotool", "getwindowname", window])
             matched = (fixtures.fixture_visible(kind, observed["ink"], observed["text"]) if kind
                        else re.search(pattern, observed["text"], re.I) is not None)
+            if matched and name in ("creation-approved-alpha", "creation-approved-beta"):
+                source_name = "Alpha.pdf" if name.endswith("alpha") else "Beta.pdf"
+                try:
+                    fixtures.label_box(observed["tsv"], source_name,
+                                       tuple(value * observed["scale"] for value in observed["size"]),
+                                       line_contains="1 Approved links")
+                except fixtures.LabelMissing:
+                    matched = False
             if matched and (caption is None or caption in title):
                 assert not any(item["name"] == name for item in scenes), "Native creation scene name is not unique"
                 stable = evidence_fields(observed)
@@ -723,7 +738,10 @@ def plan_link_creation(evidence, version):
         for index, name in enumerate(("Alpha.pdf", "Beta.pdf")):
             if index:
                 x, y = click("Alpha.pdf", line_contains="Preview source")
-                click(name, exact_line=True, allow_scroll=False, within=(max(0, x - 80), y + 6, x + 220, y + 120))
+                # The popup can flip above the combo near the viewport bottom.
+                # Its exact option must still be unique beside this observed row.
+                click(name, exact_line=True, allow_scroll=False,
+                      within=(max(0, x - 80), max(0, y - 120), x + 220, y + 120))
             click("Preview source", line_contains=name)
             scene("created-preview-" + name[:-4].lower(), kind=("alpha", "beta")[index], allow_scroll=True)
             click("Choose a destination", line_contains=name)
@@ -812,10 +830,12 @@ def plan_link_creation(evidence, version):
             click("Find references")
             scene("creation-two-scanned-sources", pattern=r"Pages\s+checked\s*:?\s*2.*References\s+found\s*:?\s*2", allow_scroll=True)
             for source in fixture["sources"]:
-                click(source.name, line_contains="0 Approved links")
-                click("A-101", line_contains="Page 1")
-                scene("creation-approved-" + source.stem.lower(), pattern=re.escape(source.name) + r".*1\s+Approved\s+links")
-                click(source.name, line_contains="1 Approved links")
+                click(source.name, line_contains="0 Approved links", psm=11, smooth=True)
+                click("A-101", line_contains="Page 1", below_label=(source.name, "0 Approved links"), psm=11, smooth=True)
+                scene("creation-approved-" + source.stem.lower(), pattern=re.escape(source.name) + r".*1\s+Approved\s+links",
+                      psm=11, smooth=True)
+                # Approval changes the result header identity and collapses it.
+                # Do not reopen it before approving the next source's reference.
             click("Validate batch preview")
             scene("creation-two-validated-outputs", pattern=r"Validated\s+output\s+files", allow_scroll=True)
             preview_sources()
