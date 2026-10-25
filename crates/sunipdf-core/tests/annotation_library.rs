@@ -470,7 +470,7 @@ fn saved_groups_capture_round_trip_and_refuse_stale_or_mixed_sources(engine: &En
                     right: 150.0,
                     top: 340.0,
                 },
-                "Saved text needs font proof",
+                "Saved text",
                 &Default::default(),
                 None,
             )
