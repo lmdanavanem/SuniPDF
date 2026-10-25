@@ -6372,11 +6372,14 @@ mod tests {
     }
 
     fn library_groups_use_one_preview_and_one_history_step(worker: &Worker) {
-        use sunipdf_core::annotation_library::{LibraryPlacement, LibraryPrimitive, LibraryStamp};
+        use sunipdf_core::annotation_library::{
+            AnnotationLibrary, EmbeddedPng, LibraryPlacement, LibraryPrimitive, LibraryStamp,
+        };
         let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        let original_source = std::fs::read(&source).unwrap();
         worker.send(Request::Open {
-            path: source,
+            path: source.clone(),
             password: None,
         });
         assert!(matches!(next_response(worker), Response::Opened(_)));
@@ -6403,6 +6406,15 @@ mod tests {
         entry.primitives.push(LibraryPrimitive::Stamp {
             rect: [80.0, 0.0, 200.0, 40.0],
             stamp: LibraryStamp::Approved,
+        });
+        let mut png_bytes = std::io::Cursor::new(Vec::new());
+        image::RgbaImage::from_pixel(6, 4, image::Rgba([50, 100, 150, 240]))
+            .write_to(&mut png_bytes, image::ImageFormat::Png)
+            .unwrap();
+        entry.primitives.push(LibraryPrimitive::Image {
+            rect: [0.0, 60.0, 60.0, 100.0],
+            png: EmbeddedPng::from_png_bytes(png_bytes.get_ref()).unwrap(),
+            opacity: 0.5,
         });
         let preview = |generation| {
             worker.send(Request::PreviewRichAnnotation {
@@ -6451,10 +6463,11 @@ mod tests {
             Response::DocumentChanged(DocState { can_undo: true, .. })
         ));
         let after = details();
-        assert_eq!(after.len(), before.len() + 2);
+        assert_eq!(after.len(), before.len() + 3);
         let added = &after[before.len()..];
         assert_eq!(added[0].subtype, "Square");
         assert_eq!(added[1].subtype, "Stamp");
+        assert_eq!(added[2].subtype, "Stamp");
         assert!(added
             .iter()
             .all(|detail| detail.name.is_some() && detail.parent.is_none()));
@@ -6472,20 +6485,30 @@ mod tests {
             } => candidates,
             _ => panic!("library capture inventory"),
         };
-        let square = candidates
+        assert_eq!(
+            candidates
+                .iter()
+                .filter(|row| row.fingerprint.is_some())
+                .count(),
+            3
+        );
+        let selections: Vec<_> = candidates
             .iter()
-            .find(|row| row.subtype == "Square")
-            .unwrap();
-        let selections = vec![sunipdf_core::annotation_library::LibraryCaptureSelection {
-            index: square.index,
-            fingerprint: square.fingerprint.clone().unwrap(),
-        }];
+            .filter_map(|row| {
+                row.fingerprint.as_ref().map(|fingerprint| {
+                    sunipdf_core::annotation_library::LibraryCaptureSelection {
+                        index: row.index,
+                        fingerprint: fingerprint.clone(),
+                    }
+                })
+            })
+            .collect();
         let capture = || {
             worker.send(Request::CaptureLibraryEntry {
                 page: 0,
                 selections: selections.clone(),
-                id: "captured-square".into(),
-                name: "Captured square".into(),
+                id: "captured-symbols".into(),
+                name: "Captured symbols".into(),
                 provenance: sunipdf_core::annotation_library::LibraryProvenance {
                     source: Some("Test drawing".into()),
                     ..Default::default()
@@ -6501,7 +6524,7 @@ mod tests {
                 epoch: 92,
                 generation: 21,
                 result: Ok(ref entry),
-            } if entry.primitives.len() == 1
+            } if entry.primitives.len() == 3
         ));
         assert_eq!(
             details(),
@@ -6557,11 +6580,158 @@ mod tests {
         worker.send(Request::Save { path: path.clone() });
         assert!(matches!(next_response(worker), Response::Saved { .. }));
         worker.send(Request::Open {
-            path,
+            path: path.clone(),
             password: None,
         });
         assert!(matches!(next_response(worker), Response::Opened(_)));
         assert_eq!(details(), after);
+        let saved_source = std::fs::read(&path).unwrap();
+        worker.send(Request::LibraryCaptureCandidates {
+            page: 0,
+            epoch: 93,
+            generation: 30,
+        });
+        let saved_candidates = match next_response(worker) {
+            Response::LibraryCaptureCandidates {
+                result: Ok(candidates),
+                ..
+            } => candidates,
+            _ => panic!("saved stamp capture inventory"),
+        };
+        let selections = saved_candidates
+            .iter()
+            .filter_map(|row| {
+                row.fingerprint.as_ref().map(|fingerprint| {
+                    sunipdf_core::annotation_library::LibraryCaptureSelection {
+                        index: row.index,
+                        fingerprint: fingerprint.clone(),
+                    }
+                })
+            })
+            .collect();
+        worker.send(Request::CaptureLibraryEntry {
+            page: 0,
+            selections,
+            id: "saved-stamp-group".into(),
+            name: "Saved inspection stamps".into(),
+            provenance: sunipdf_core::annotation_library::LibraryProvenance {
+                source: Some("Owned saved test drawing".into()),
+                ..Default::default()
+            },
+            epoch: 93,
+            generation: 31,
+        });
+        let captured = match next_response(worker) {
+            Response::LibraryEntryCaptured {
+                result: Ok(entry), ..
+            } => entry,
+            _ => panic!("capture native standard and image stamps from reopened PDF"),
+        };
+        assert_eq!(captured.primitives.len(), 3);
+        assert!(captured.primitives.iter().any(|primitive| matches!(
+            primitive,
+            LibraryPrimitive::Stamp {
+                stamp: LibraryStamp::Approved,
+                ..
+            }
+        )));
+        let (png, opacity) = captured
+            .primitives
+            .iter()
+            .find_map(|primitive| match primitive {
+                LibraryPrimitive::Image { png, opacity, .. } => Some((png, *opacity)),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(
+            opacity, 1.0,
+            "captured image alpha already includes the original opacity"
+        );
+        let decoded = image::load_from_memory(&png.png_bytes().unwrap())
+            .unwrap()
+            .to_rgba8();
+        assert!(decoded.pixels().all(|pixel| pixel.0 == [50, 100, 150, 120]));
+        let mut library = AnnotationLibrary::default();
+        library.insert(captured.clone()).unwrap();
+        let library_path = directory.path().join("saved-stamps.json");
+        std::fs::write(&library_path, library.to_json().unwrap()).unwrap();
+        let library = AnnotationLibrary::from_json(&std::fs::read(&library_path).unwrap()).unwrap();
+        assert_eq!(library.entries(), [captured.clone()]);
+        assert_eq!(
+            details(),
+            after,
+            "library capture and JSON persistence leave PDF history unchanged"
+        );
+        assert_eq!(std::fs::read(&path).unwrap(), saved_source);
+        worker.send(Request::PreviewRichAnnotation {
+            page: 0,
+            annotation: sunipdf_core::annot_rich::RichAnnotation::LibraryPlacement {
+                entry: library.entries()[0].clone(),
+                placement: LibraryPlacement {
+                    origin: (50.0, 300.0),
+                    scale: 1.0,
+                },
+            },
+            author: Some("lmdanavanem".into()),
+            epoch: 93,
+            generation: 32,
+        });
+        let rendered = match next_response(worker) {
+            Response::RichAnnotationPreview {
+                result: Ok(preview),
+                ..
+            } => preview,
+            _ => panic!("captured mixed group preview"),
+        };
+        crate::annotation_library::tests::verify_saved_stamp_capture_controls(
+            &saved_candidates,
+            &captured,
+            &rendered,
+        );
+        assert_eq!(
+            details(),
+            after,
+            "prepared placement does not edit the source PDF"
+        );
+        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+            epoch: 93,
+            generation: 32,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState { can_undo: true, .. })
+        ));
+        let copied = details();
+        assert_eq!(copied.len(), after.len() + 3);
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
+        ));
+        assert_eq!(details(), after);
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(details(), copied);
+        let placed_path = directory.path().join("saved-stamps-placed.pdf");
+        worker.send(Request::Save {
+            path: placed_path.clone(),
+        });
+        assert!(matches!(next_response(worker), Response::Saved { .. }));
+        worker.send(Request::Open {
+            path: placed_path,
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        assert_eq!(details(), copied);
+        assert_eq!(std::fs::read(&path).unwrap(), saved_source);
+        assert_eq!(std::fs::read(&source).unwrap(), original_source);
     }
 
     fn dimensioned_rectangles_preview_commit_and_revalidate_the_captured_reference(

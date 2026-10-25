@@ -22,13 +22,17 @@ Scale is a uniform size multiplier: `1` keeps the template size. It is independe
 ## Capture a group from an existing page
 
 1. Open the source PDF at the desired page, then open the library and choose **Capture from current page**.
-2. Select 1–16 supported saved annotations. Native SuniPDF rectangles, ellipses, lines/arrows, polygons, polylines and clouds are eligible when their geometry, style and appearance can be reproduced. Unsupported rows stay visible but disabled; hover for the refusal reason. Nothing is selected automatically.
+2. Select 1–16 supported saved annotations. Native SuniPDF rectangles, ellipses, lines/arrows, polygons, polylines and clouds are eligible when their geometry, style and appearance can be reproduced. The [0.82 candidate](RELEASE_0.82.0.md) also accepts supported native standard stamps and image stamps with verified appearances. Unsupported rows stay visible but disabled; hover for the refusal reason. Nothing is selected automatically.
 3. Enter a unique name and declare **Source or provenance**. Credit and licence remain optional declarations. Choose **Save selected annotations as a group**. This saves a local library entry without modifying the PDF.
 4. Reuse it through **Place on page**, preview and apply. Relative displayed-page geometry, stroke/fill colors, width, dashes and opacity are retained. Each placed member gets a fresh identity, and the complete placement has one Undo step.
 
 Capture requires copying permission and supports documents up to 128 MiB and source pages with at most 512 annotations. It refuses changed source fingerprints, duplicates, clipped/incompatible geometry and unsupported members as a complete operation. A document/tab change invalidates an outstanding capture. Cancel and start capture again to refresh the selection.
 
-Saved FreeText, image/stamp annotations, foreign/custom appearances, review threads, measurements, page scales and extra annotation semantics are excluded from this capture path. Supported text, stamp and PNG templates can still be created from new drafts as described above. The library never silently drops an unsupported selected member.
+The 0.82 candidate accepts the native Approved, Draft, Confidential and Rejected stamps. Native image stamps require a verified RGB image, optional matching alpha mask and reproducible aspect-fit appearance. Capture produces a metadata-free embedded PNG. Its template opacity is 1 because the saved pixels already contain the original opacity; this prevents applying transparency twice. Mixed supported shapes, stamps and images may be captured as one group.
+
+Saved FreeText, foreign/custom appearances, review threads, measurements, page scales and extra annotation semantics remain excluded. Saved text needs stronger font-resource validation before capture can reproduce it. Supported text templates can still be created from new drafts as described above. The library never silently drops an unsupported selected member, and these additions do not change the revision-transfer workflow's supported annotation types.
+
+Canonical appearance inspection retains its 2 MiB graph budget, including decoded resources. An image may satisfy the general PNG limits yet still exceed this stricter saved-appearance capture budget; the candidate is then refused explicitly.
 
 ## CLI example
 

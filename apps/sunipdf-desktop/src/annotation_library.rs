@@ -346,7 +346,7 @@ impl SuniApp {
         let selections: Vec<_> = draft
             .candidates
             .iter()
-            .filter(|row| draft.selected.contains(&row.index))
+            .filter(|row| draft.selected.contains(&row.index) && row.refusal.is_none())
             .filter_map(|row| {
                 row.fingerprint
                     .as_ref()
@@ -499,6 +499,7 @@ impl SuniApp {
                                 for row in &draft.candidates {
                                     let mut selected = draft.selected.contains(&row.index);
                                     let enabled = row.fingerprint.is_some()
+                                        && row.refusal.is_none()
                                         && (selected
                                             || draft.selected.len() < MAX_GROUP_PRIMITIVES);
                                     let response = ui.add_enabled(
@@ -517,6 +518,17 @@ impl SuniApp {
                                     }
                                     if let Some(reason) = &row.refusal {
                                         response.on_hover_text(reason);
+                                        ui.add(
+                                            egui::Label::new(
+                                                egui::RichText::new(sunipdf_i18n::tr_args(
+                                                    lang,
+                                                    "library.capture_refusal",
+                                                    &[("reason", reason)],
+                                                ))
+                                                .small(),
+                                            )
+                                            .wrap(),
+                                        );
                                     }
                                 }
                             });
@@ -527,8 +539,13 @@ impl SuniApp {
                             ("library.credit", &mut draft.credit),
                         ] {
                             ui.horizontal(|ui| {
-                                ui.label(tr(lang, key));
-                                ui.add(egui::TextEdit::singleline(value).char_limit(1024));
+                                let label = ui.label(tr(lang, key));
+                                ui.add(
+                                    egui::TextEdit::singleline(value)
+                                        .char_limit(1024)
+                                        .desired_width(ui.available_width()),
+                                )
+                                .labelled_by(label.id);
                             });
                         }
                         capture_save = ui
@@ -952,6 +969,7 @@ pub(crate) mod tests {
         pub(crate) ctx: egui::Context,
         time: f64,
         canvas: bool,
+        size: egui::Vec2,
     }
     impl Controls {
         pub(crate) fn new() -> Self {
@@ -961,13 +979,14 @@ pub(crate) mod tests {
                 ctx,
                 time: 1.0,
                 canvas: false,
+                size: egui::vec2(1600.0, 1100.0),
             }
         }
         pub(crate) fn frame(&mut self, app: &mut SuniApp, events: Vec<Event>) -> FullOutput {
             self.time += 0.025;
             let mut result = self.ctx.run_ui(
                 egui::RawInput {
-                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1600.0, 1100.0))),
+                    screen_rect: Some(Rect::from_min_size(Pos2::ZERO, self.size)),
                     time: Some(self.time),
                     events,
                     ..Default::default()
@@ -1052,6 +1071,234 @@ pub(crate) mod tests {
                 );
             }
             self.frame(app, vec![]);
+        }
+
+        fn seek_text(&mut self, app: &mut SuniApp, label: &str) -> Pos2 {
+            let screen = Rect::from_min_size(Pos2::ZERO, self.size);
+            for direction in [1.0, -1.0] {
+                for _ in 0..32 {
+                    let output = self.frame(app, vec![]);
+                    if let Some(position) = Self::control_position(&output, label)
+                        .filter(|position| screen.contains(*position))
+                    {
+                        return position;
+                    }
+                    self.frame(
+                        app,
+                        vec![
+                            Event::PointerMoved(egui::pos2(self.size.x / 2.0, self.size.y - 140.0)),
+                            Event::MouseWheel {
+                                unit: egui::MouseWheelUnit::Point,
+                                delta: egui::vec2(0.0, direction * 140.0),
+                                phase: egui::TouchPhase::Move,
+                                source: egui::MouseWheelSource::Wheel,
+                                modifiers: Modifiers::NONE,
+                            },
+                        ],
+                    );
+                }
+            }
+            panic!("reachable library control: {label}");
+        }
+
+        fn click_scrolled(&mut self, app: &mut SuniApp, label: &str) {
+            self.seek_text(app, label);
+            self.click_text(app, label);
+        }
+    }
+
+    pub(crate) fn verify_saved_stamp_capture_controls(
+        candidates: &[LibraryCaptureCandidate],
+        captured: &LibraryEntry,
+        rendered: &sunipdf_core::annot_rich::RichAnnotationPreview,
+    ) {
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let directory = storage(&mut app);
+            app.settings.language = language.into();
+            let mut controls = Controls::new();
+            controls.click(&mut app, "library.short");
+            controls.click(&mut app, "library.capture_page");
+            let (epoch, generation) = match requests.recv().unwrap() {
+                Request::LibraryCaptureCandidates {
+                    epoch, generation, ..
+                } => (epoch, generation),
+                _ => panic!("read-only saved stamp inventory"),
+            };
+            app.on_library_capture_candidates(epoch, generation, Ok(candidates.to_vec()));
+            assert!(app.library.capture.as_ref().unwrap().selected.is_empty());
+            for candidate in candidates
+                .iter()
+                .filter(|candidate| candidate.fingerprint.is_some())
+            {
+                controls.click_text(
+                    &mut app,
+                    &format!("{} \u{b7} {}", candidate.index + 1, candidate.subtype),
+                );
+            }
+            let draft = app.library.capture.as_mut().unwrap();
+            draft.name.clone_from(&captured.name);
+            draft.source = "Owned saved test drawing".into();
+            controls.click(&mut app, "library.capture_save");
+            let mut saved_entry = captured.clone();
+            match requests.recv().unwrap() {
+                Request::CaptureLibraryEntry {
+                    selections,
+                    id,
+                    name,
+                    provenance,
+                    epoch: sent_epoch,
+                    generation: sent_generation,
+                    ..
+                } => {
+                    assert_eq!((sent_epoch, sent_generation), (epoch, generation));
+                    assert_eq!(selections.len(), 3);
+                    for selected in &selections {
+                        let source = candidates
+                            .iter()
+                            .find(|candidate| candidate.index == selected.index)
+                            .unwrap();
+                        assert_eq!(
+                            source.fingerprint.as_deref(),
+                            Some(selected.fingerprint.as_str())
+                        );
+                        assert!(source.refusal.is_none());
+                    }
+                    saved_entry.id = id;
+                    saved_entry.name = name;
+                    saved_entry.provenance = provenance;
+                }
+                _ => panic!("capture cannot edit the PDF"),
+            }
+            app.on_library_entry_captured(
+                epoch,
+                generation.wrapping_sub(1),
+                Ok(saved_entry.clone()),
+            );
+            assert!(app.library.data.entries().is_empty());
+            app.on_library_entry_captured(epoch, generation, Ok(saved_entry.clone()));
+            assert_eq!(
+                AnnotationLibrary::from_json(
+                    &std::fs::read(directory.path().join("annotations.json")).unwrap()
+                )
+                .unwrap()
+                .entries(),
+                [saved_entry.clone()]
+            );
+            assert!(!app.dirty);
+            assert!(requests.try_recv().is_err());
+
+            controls.click(&mut app, "library.place");
+            app.library_click(0, (50.0, 300.0));
+            let (epoch, generation) = match requests.recv().unwrap() {
+                Request::PreviewRichAnnotation {
+                    annotation:
+                        sunipdf_core::annot_rich::RichAnnotation::LibraryPlacement { entry, placement },
+                    epoch,
+                    generation,
+                    ..
+                } => {
+                    assert_eq!(entry, saved_entry);
+                    assert_eq!(placement.origin, (50.0, 300.0));
+                    (epoch, generation)
+                }
+                _ => panic!("saved stamp group requires a prepared preview"),
+            };
+            let image = || sunipdf_core::annot_rich::RichAnnotationPreview {
+                image: rendered.image.clone(),
+                scale: rendered.scale,
+                region: rendered.region,
+                index: rendered.index,
+                prepared: None,
+            };
+            app.on_rich_preview(
+                &controls.ctx,
+                epoch,
+                generation.wrapping_sub(1),
+                Ok(image()),
+            );
+            assert!(!app.annotate.adv.rich.as_ref().unwrap().prepared);
+            app.on_rich_preview(&controls.ctx, epoch, generation, Ok(image()));
+            assert!(app.annotate.adv.rich.as_ref().unwrap().prepared);
+            controls.click(&mut app, "bar.apply");
+            assert!(
+                matches!(requests.recv().unwrap(), Request::Edit(EditOp::CommitRichAnnotationPreview { epoch: sent_epoch, generation: sent_generation }) if (sent_epoch, sent_generation) == (epoch, generation))
+            );
+            assert!(matches!(requests.recv().unwrap(), Request::FinishMutation));
+            assert!(requests.try_recv().is_err());
+        }
+    }
+
+    #[test]
+    fn narrow_bilingual_stamp_capture_keeps_refusals_and_cancel_reachable() {
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            let directory = storage(&mut app);
+            app.settings.language = language.into();
+            app.library.open = true;
+            app.library.loaded = true;
+            let mut controls = Controls::new();
+            controls.size = egui::vec2(560.0, 640.0);
+            controls.click_scrolled(&mut app, tr(language, "library.capture_page"));
+            let (epoch, generation) = match requests.recv().unwrap() {
+                Request::LibraryCaptureCandidates {
+                    epoch, generation, ..
+                } => (epoch, generation),
+                _ => panic!("capture inventory"),
+            };
+            let reason =
+                "saved FreeText capture requires verified font resources and is not supported";
+            app.on_library_capture_candidates(
+                epoch,
+                generation,
+                Ok(vec![
+                    LibraryCaptureCandidate {
+                        index: 0,
+                        subtype: "Stamp".into(),
+                        fingerprint: Some("a".repeat(64)),
+                        refusal: None,
+                    },
+                    LibraryCaptureCandidate {
+                        index: 1,
+                        subtype: "FreeText".into(),
+                        fingerprint: None,
+                        refusal: Some(reason.into()),
+                    },
+                ]),
+            );
+            controls.click_scrolled(&mut app, "1 \u{b7} Stamp");
+            controls.click_scrolled(&mut app, "2 \u{b7} FreeText");
+            assert_eq!(
+                app.library.capture.as_ref().unwrap().selected,
+                BTreeSet::from([0])
+            );
+            controls.seek_text(
+                &mut app,
+                &sunipdf_i18n::tr_args(language, "library.capture_refusal", &[("reason", reason)]),
+            );
+            let draft = app.library.capture.as_mut().unwrap();
+            draft.name = "Owned stamp".into();
+            draft.source = "Owned drawing".into();
+            controls.click_scrolled(&mut app, tr(language, "library.capture_save"));
+            assert!(matches!(
+                requests.recv().unwrap(),
+                Request::CaptureLibraryEntry { .. }
+            ));
+            let output = controls.frame(&mut app, vec![]);
+            for key in ["library.close", "library.create"] {
+                let position = Controls::control_position(&output, tr(language, key)).unwrap();
+                assert!(
+                    Rect::from_min_size(Pos2::ZERO, controls.size).contains(position),
+                    "{language}: {key}"
+                );
+            }
+            controls.click_scrolled(&mut app, tr(language, "library.cancel"));
+            assert!(app.library.capture.is_none());
+            app.on_library_entry_captured(epoch, generation, Ok(entry("late", "Late result")));
+            assert!(app.library.data.entries().is_empty());
+            assert!(!directory.path().join("annotations.json").exists());
+            assert!(!app.dirty);
+            assert!(requests.try_recv().is_err());
         }
     }
 
