@@ -2,9 +2,7 @@
 
 ## Next development
 
-Next increment: [0.78 Glass refinement and return to the source plan](RELEASE_0.78.0.md). Its qualification remains separate from the published release.
-
-Delivered in [0.77.0](RELEASE_0.77.0.md): Saved plan links can show a verified destination preview before opening. The preview displays the drawing and sheet metadata; opening rechecks the saved inputs. Manifest paths can be entered directly or selected with the file browser.
+Delivered in [0.78.0](RELEASE_0.78.0.md): Glass uses a continuous neutral workspace in light and dark modes, with compact task families and Open/Recent priority on the welcome screen. After following a verified plan link, Return to source restores the original open document and reading positions. Unsaved changes remain in memory; the latest successful return is session-only.
 
 Remaining plan-link priorities are native desktop link creation/saving,
 broader batch interaction and external-reader interoperability. AEC-017
@@ -14,9 +12,9 @@ complete acceptance remain separate.
 
 ## Published scope
 
-[0.77.0](RELEASE_0.77.0.md) is the current stable release. Saved plan links can show a verified destination preview before opening. The preview displays the drawing and sheet metadata; opening rechecks the saved inputs. Manifest paths can be entered directly or selected with the file browser.
+[0.78.0](RELEASE_0.78.0.md) is the current stable release. Glass uses a continuous neutral workspace in light and dark modes, with compact task families and Open/Recent priority on the welcome screen. After following a verified plan link, Return to source restores the original open document and reading positions. Unsaved changes remain in memory; the latest successful return is session-only.
 
-[Qualification evidence](qa/RELEASE_0.77.0.json) records the exact source, package identities, native scope and remaining limits.
+[Qualification evidence](qa/RELEASE_0.78.0.json) records the exact source, package identities, native scope and remaining limits.
 
 [0.76.0](RELEASE_0.76.0.md) retains independent synchronized views of one PDF.
 

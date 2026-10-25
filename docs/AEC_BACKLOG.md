@@ -1,6 +1,6 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.77.0 release scope](RELEASE_0.77.0.md) · Published as a stable release.
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.78.0 release scope](RELEASE_0.78.0.md) · Published as a stable release.
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
 
@@ -10,11 +10,21 @@ AEC-017 remains **In progress**. [0.73.0](RELEASE_0.73.0.md) retains reviewed mu
 
 [0.77.0](RELEASE_0.77.0.md) adds destination previews and keyboard manifest entry. Ubuntu 22.04 and 24.04 each passed 5 synthetic native plan-link cases. [Exact qualification](qa/RELEASE_0.77.0.json).
 
+[0.78.0](RELEASE_0.78.0.md) adds explicit return to the source and preserves reading positions. Ubuntu 22.04 and 24.04 each passed 6 synthetic native plan-link cases. [Exact qualification](qa/RELEASE_0.78.0.json).
+
 Native plan-link navigation uses synthetic PDFs prepared by the installed CLI.
 It covers preview/cancel, changed or missing input refusals and the correct
 physical destination page. Desktop link creation, desktop link saving,
 dirty-destination interaction and broader external-reader interoperability
 remain open. These results do not establish complete AEC-017 acceptance.
+
+Native return-to-source qualification covers one return to the observed
+source position. Restoring both split panes, repeated returns and dirty
+document transitions retain separate automated or unqualified scopes.
+Home review covers the visible headings and compact Open action; content
+below the recorded viewport is not visually qualified. Native theme
+checks verify neutral chrome and saved preferences, without establishing
+a visual difference between reduced-effects modes on flat docked bars.
 
 ## Published region fill
 
