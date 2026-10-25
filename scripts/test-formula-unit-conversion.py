@@ -8,6 +8,8 @@ from fractions import Fraction
 import hashlib
 import importlib.util
 import json
+import math
+import struct
 import os
 from pathlib import Path
 import re
@@ -223,6 +225,15 @@ def self_test():
     assert same_issue(left, right)
     assert not same_issue(left, dict(right, provenance=dict(right["provenance"], snapshot_sha256="a" * 64)))
     assert not same_issue(left, dict(right, provenance=dict(right["provenance"], saved_file_sha256="d" * 64)))
+    full = [{"register": {"rect": [0.0, 1.0, 107.80000305175781, 120.0]}, "quantity": "1.25"}]
+    compact = [{"register": {"rect": [0.0, 1.0, 107.8, 120.0]}, "quantity": "1.25"}]
+    assert same_quantity_rows(full, compact)
+    altered = json.loads(json.dumps(compact))
+    altered[0]["register"]["rect"][2] = 107.80001068115234
+    assert not same_quantity_rows(full, altered)
+    altered = json.loads(json.dumps(compact)); altered[0]["quantity"] = "1.26"
+    assert not same_quantity_rows(full, altered)
+    assert not same_quantity_rows(full, [{"register": {"rect": [0, 1, float("nan"), 120]}, "quantity": "1.25"}])
     print(json.dumps({"status": "passed", "scope": "offline decimal oracle, inventory and original fixture checks only",
                       "product_executed": False, "reference_conversions": len(references), "formula_vectors": 106,
                       "same_dimension_pairs": 75, "formula_batches": len(batches), "invalid_configs": 23,
@@ -366,6 +377,23 @@ def expected_group(item):
 
 def valid_snapshot(value):
     return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
+def same_quantity_rows(left, right):
+    # Register rectangles are f32. Direct serde and serde_json::Value emit
+    # different decimal spellings; require identical IEEE-754 bits, not a tolerance.
+    def canonical(rows):
+        result = json.loads(json.dumps(rows))
+        for row in result:
+            rect = row["register"]["rect"]
+            if len(rect) != 4 or any(type(value) not in (int, float) or not math.isfinite(value) for value in rect):
+                raise ValueError("Invalid register rectangle")
+            row["register"]["rect"] = [struct.pack("!f", value).hex() for value in rect]
+        return result
+    try:
+        return canonical(left) == canonical(right)
+    except (KeyError, TypeError, ValueError, OverflowError, struct.error):
+        return False
 
 
 def same_quantities(left, right):
@@ -595,7 +623,7 @@ def run_corpus(run):
         value = json.loads(workbook_manifest.read_bytes())
         run.check("workbook manifest: exact retained settings and calculated values", value["options"] == defaults
                   and value["provenance"] == receipt["provenance"]
-                  and [row["row"] for row in value["rows"]] == baseline["rows"]
+                  and same_quantity_rows([row["row"] for row in value["rows"]], baseline["rows"])
                   and [row["formulas"] for row in value["rows"]] == [row["values"] for row in selected_value["formula_rows"]])
         validate_workbook(run, xlsx, selected)
         run.preserved("reports: all sources and preceding evidence unchanged")
