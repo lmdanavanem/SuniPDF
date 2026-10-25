@@ -10,6 +10,7 @@ pub enum Command {
     BoundaryFill,
     PlanSets,
     PlanLinks,
+    ReturnToPlanSource,
     RevisionOutlines,
     RevisionTransfer,
     CompareFiles,
@@ -429,6 +430,14 @@ pub const REGISTRY: &[CommandInfo] = &[
         "menu.view.history_back",
         Some("shortcut.history_back"),
         true,
+        View
+    ),
+    cmd!(
+        ReturnToPlanSource,
+        "view.return_plan_source",
+        "plan_links.return_source",
+        None,
+        false,
         View
     ),
     cmd!(

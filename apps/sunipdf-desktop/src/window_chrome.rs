@@ -100,7 +100,6 @@ pub(crate) fn show(ui: &mut egui::Ui, language: Language, dark: bool, title: &st
         .frame(egui::Frame::new().fill(palette.bar))
         .show(ui, |ui| {
             let rect = ui.max_rect();
-            crate::theme::paint_material(ui, rect, 14);
             let controls_left = rect.right() - BUTTON_SIZE * 3.0 - 4.0;
             let drag_rect = Rect::from_min_max(rect.min, pos2(controls_left, rect.bottom()));
             let drag = ui.interact(

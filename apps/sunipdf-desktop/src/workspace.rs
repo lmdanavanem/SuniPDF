@@ -512,7 +512,7 @@ pub fn bar_button(ui: &mut egui::Ui, has_icons: bool, b: BarButton<'_>) -> egui:
     let dark = ui.visuals().dark_mode;
     let p = theme::palette_for(ui.ctx());
     let radius = if theme::appearance(ui.ctx()).0 == theme::Style::LiquidGlass {
-        17
+        6
     } else {
         theme::radius::ROW
     };
@@ -550,9 +550,6 @@ pub fn bar_button(ui: &mut egui::Ui, has_icons: bool, b: BarButton<'_>) -> egui:
             None => p.accent_soft,
         };
         painter.rect_filled(rect, radius, if b.selected { selected_fill } else { fade });
-        if b.selected {
-            theme::paint_material(ui, rect, radius);
-        }
         let icon_color = match b.tint {
             Some(t) => theme::glyph_color_for(ui.ctx(), t),
             None => p.text,
@@ -687,6 +684,7 @@ impl SuniApp {
             | Command::CutObjects => self.edit.selection.is_some(),
             Command::RotateObjectLeft | Command::RotateObjectRight => self.edit.selection.is_some(),
             Command::HistoryBack => self.view.reading.history.can_back(),
+            Command::ReturnToPlanSource => self.plan_return_ready(),
             Command::HistoryForward => self.view.reading.history.can_forward(),
             Command::PasteObjects | Command::PasteEditableObjects => self.edit.clip.is_some(),
             Command::RedactClear | Command::RedactApply => {
@@ -962,6 +960,7 @@ mod tests {
         C::FullScreenReading,
         C::HistoryBack,
         C::HistoryForward,
+        C::ReturnToPlanSource,
         C::OpenDocument,
         C::CloseDocument,
         C::Quit,
@@ -1281,7 +1280,7 @@ mod tests {
                 for surface in [p.surface, p.chrome] {
                     let reflected = if style == theme::Style::LiquidGlass {
                         over(
-                            Color32::from_white_alpha(if dark { 12 } else { 90 }),
+                            Color32::from_white_alpha(if dark { 6 } else { 32 }),
                             surface,
                         )
                     } else {

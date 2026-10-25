@@ -6,9 +6,9 @@ or press **Ctrl+K** and search for **Theme settings**. No document needs to be o
 ## Interface style
 
 - **Classic** keeps the familiar SuniPDF appearance.
-- **Liquid Glass** uses frosted surfaces, softer corners, subtle highlights and
-  layered chrome. The material is drawn inside the application; it does not blur
-  the desktop behind the window.
+- **Liquid Glass** uses neutral surfaces, compact controls and subtle highlights
+  on floating panels. Docked bars form a continuous workspace. The material is
+  drawn inside the application; it does not blur the desktop behind the window.
 
 The style applies to the workspace, tool panels, menus, dialogs and tables. PDF
 page colors and saved document contents are unchanged.

@@ -52,6 +52,12 @@ const FAMILIES: &[ToolFamily] = &[
     },
 ];
 
+pub(crate) fn families() -> impl Iterator<Item = (&'static str, &'static [Workspace])> {
+    FAMILIES
+        .iter()
+        .map(|family| (family.title_key, family.tools))
+}
+
 fn query_id() -> egui::Id {
     egui::Id::unique("tools-search-query")
 }

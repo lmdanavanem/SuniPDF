@@ -47,19 +47,54 @@ try {
     if ($reportFile.Length -gt 128KB -or $reportFile.LastWriteTimeUtc -lt $started) { throw 'Reader UI report is oversized or stale.' }
     $report = [IO.File]::ReadAllText($reportPath) | ConvertFrom-Json
     if ($report.status -cne 'passed' -or $report.sourceSha -cne $env:GITHUB_SHA -or
-        -not $report.fixtureUnchanged -or @($report.scenes).Count -ne 13) { throw 'Reader UI report did not qualify the current source.' }
-    $expected = @('reader-en-dark-measurements', 'reader-fr-light-720-zoom149', 'reader-en-light-pages', 'reader-en-dark-docked-register', 'reader-fr-light-720-docked-quantities', 'reader-en-glass-light-pages', 'reader-en-glass-dark-measurements', 'reader-en-glass-dark-docked-register', 'settings-en-glass-light', 'settings-fr-glass-dark-720-reduced', 'reader-en-dark-split-independent', 'reader-fr-light-720-split-independent', 'reader-en-glass-light-split-synchronized')
+        -not $report.fixtureUnchanged -or @($report.scenes).Count -ne 16) { throw 'Reader UI report did not qualify the current source.' }
+    $expected = @('reader-en-dark-measurements', 'reader-fr-light-720-zoom149', 'reader-en-light-pages', 'reader-en-dark-docked-register', 'reader-fr-light-720-docked-quantities', 'reader-en-glass-light-pages', 'reader-en-glass-dark-measurements', 'reader-en-glass-dark-docked-register', 'settings-en-glass-light', 'settings-fr-glass-dark-720-reduced', 'reader-en-dark-split-independent', 'reader-fr-light-720-split-independent', 'reader-en-glass-light-split-synchronized', 'home-en-glass-light-tools', 'home-en-glass-dark', 'home-en-glass-light-560')
     foreach ($scene in $report.scenes) {
         if ($scene.name -cnotin $expected -or $scene.png -cne "$($scene.name).png" -or
-            -not $scene.actualApplicationRenderUi -or $scene.actualPdfiumTiles -lt 1 -or
+            -not $scene.actualApplicationRenderUi -or $scene.unsavedChanges -cne $false -or $null -ne $scene.appError -or
             $scene.pngSha256 -cnotmatch '^[a-f0-9]{64}$') {
             throw 'Reader UI scene metadata is invalid.'
         }
-        if ($scene.name -like 'settings-*') {
+        $expectedSurface = if ($scene.name -like 'home-*') { 'home' } elseif ($scene.name -like 'settings-*') { 'settings' } else { 'reader' }
+        if ($scene.surface -cne $expectedSurface) { throw 'UI scene surface differs from its scenario.' }
+        if ($scene.surface -ceq 'home') {
+            if ($scene.documentOpen -cne $false -or $scene.actualPdfiumTiles -ne 0 -or
+                @($scene.visiblePdfRegions).Count -ne 0 -or $scene.pdfFixtureBlueInkVerified -or
+                $scene.pdfFixtureBlueInkPixels -ne 0 -or $scene.readerLabelsVerified -or
+                $scene.themeSettingsOpen -or $scene.themeSettingsLabelsVerified -or
+                -not $scene.homeLabelsVerified -or $scene.measurementToolsOpen -or
+                $null -ne $scene.dockedTable -or $scene.dockedTableControlsAndRowVerified -or
+                [bool]$scene.toolsSidebarOpen -ne ($scene.name -ceq 'home-en-glass-light-tools') -or
+                [bool]$scene.darkTheme -ne ($scene.name -ceq 'home-en-glass-dark')) {
+                throw 'Home evidence retained document claims, unexpected panels or the wrong appearance.'
+            }
+            $homeEvidence = $scene.homeLabels
+            $labels = @($homeEvidence.verified)
+            if ($labels.Count -lt 4 -or @($labels.key | Select-Object -Unique).Count -ne $labels.Count -or
+                -not $homeEvidence.compactOpenRowVerified -or $homeEvidence.openRowAccentFraction -lt 0 -or
+                $homeEvidence.openRowAccentFraction -ge 0.15 -or @($homeEvidence.openRowBounds).Count -ne 4 -or
+                ($homeEvidence.openRowBounds[3] - $homeEvidence.openRowBounds[1]) -gt 80) {
+                throw 'Home evidence lacks its compact neutral Open file row or distinct readable labels.'
+            }
+            foreach ($required in @('home.welcome', 'home.open_file', 'home.recent', 'tools.group.review')) {
+                if ($required -cnotin $labels.key) { throw 'Home evidence is missing a required visible heading or action.' }
+            }
+            foreach ($label in $labels) {
+                if (-not $label.accessible -or $label.readablePixels -lt 20 -or $label.minimumContrast -ne 4.5 -or
+                    @($label.bounds).Count -ne 4 -or $label.bounds[0] -lt 0 -or $label.bounds[1] -lt 0 -or
+                    $label.bounds[2] -le $label.bounds[0] -or $label.bounds[3] -le $label.bounds[1] -or
+                    $label.bounds[2] -gt $scene.outputPixels[0] -or $label.bounds[3] -gt $scene.outputPixels[1]) {
+                    throw 'Home text is clipped, inaccessible or lacks actual readable pixels.'
+                }
+            }
+        } elseif (-not $scene.documentOpen -or $scene.actualPdfiumTiles -lt 1 -or $scene.homeLabelsVerified) {
+            throw 'Reader/settings evidence must retain actual PDF tiles and cannot claim Home coverage.'
+        }
+        if ($scene.surface -ceq 'settings') {
             if (-not $scene.themeSettingsOpen -or -not $scene.themeSettingsLabelsVerified -or $scene.pdfFixtureBlueInkVerified) {
                 throw 'Settings evidence is missing its visible accessible controls or overstates obscured PDF coverage.'
             }
-        } elseif ($scene.themeSettingsOpen -or -not $scene.pdfFixtureBlueInkVerified -or $scene.pdfFixtureBlueInkPixels -le 20) {
+        } elseif ($scene.surface -ceq 'reader' -and ($scene.themeSettingsOpen -or -not $scene.pdfFixtureBlueInkVerified -or $scene.pdfFixtureBlueInkPixels -le 20)) {
             throw 'Reader evidence must retain visible actual PDF ink.'
         }
         $expectedStyle = if ($scene.name -like '*glass*') { 'liquid_glass' } else { 'classic' }
@@ -102,5 +137,5 @@ try {
             throw 'Non-split scene unexpectedly reports split reader qualification.'
         }
     }
-    if (@($report.scenes.name | Select-Object -Unique).Count -ne 13) { throw 'Reader UI scene names are not unique.' }
+    if (@($report.scenes.name | Select-Object -Unique).Count -ne 16) { throw 'Reader UI scene names are not unique.' }
 } finally { Pop-Location }

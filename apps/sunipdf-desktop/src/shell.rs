@@ -84,6 +84,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::RotateViewCounterClockwise => (glyph::ROTATE_LEFT, "↺"),
         Command::FullScreenReading => (glyph::FIT_PAGE, "⛶"),
         Command::HistoryBack => (glyph::CHEVRON_LEFT, "←"),
+        Command::ReturnToPlanSource => (glyph::UNDO, "↶"),
         Command::HistoryForward => (glyph::CHEVRON_RIGHT, "→"),
         Command::ToolAddRadioField => (glyph::ELLIPSE, "◉"),
         Command::ToolAddComboField => (glyph::CHEVRON_DOWN, "▾"),
@@ -555,6 +556,24 @@ impl SuniApp {
                 all_tools.surrender_focus();
                 run = Some(Command::ToggleTools);
             }
+            if self.plan_return_visible() {
+                let response = bar_button(
+                    ui,
+                    self.has_icons,
+                    BarButton {
+                        icon: command_icon(Command::ReturnToPlanSource),
+                        tint: None,
+                        label: tr(lang, "plan_links.return_source"),
+                        show_label: !compact,
+                        tooltip: tr(lang, "plan_links.return_hint"),
+                        selected: false,
+                        enabled: self.plan_return_ready(),
+                    },
+                );
+                if response.clicked() {
+                    run = Some(Command::ReturnToPlanSource);
+                }
+            }
             if let Some(c) = run {
                 self.execute(ctx, c);
             }
@@ -595,6 +614,10 @@ impl SuniApp {
     // ----- Accueil ---------------------------------------------------------
 
     pub fn home(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if self.settings.theme_style == theme::Style::LiquidGlass {
+            self.glass_home(ctx, ui);
+            return;
+        }
         let lang = self.lang();
         let p = self.pal();
         let wordmark = self.brand_wordmark(ctx, 64.0);
@@ -684,6 +707,328 @@ impl SuniApp {
             // Outil à barre ou outil direct : même chemin (ouverture d'un fichier d'abord si besoin).
             self.execute(ctx, c);
         }
+    }
+
+    fn glass_home(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        let lang = self.lang();
+        let p = self.pal();
+        let narrow = ui.available_width() < 600.0;
+        let margin = if ui.available_width() < 240.0 {
+            8
+        } else if narrow {
+            16
+        } else {
+            24
+        };
+        let wordmark = self.brand_wordmark(ctx, 44.0);
+        let mut run = None;
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                Frame::new()
+                    .inner_margin(Margin::symmetric(margin, 24))
+                    .show(ui, |ui| {
+                        ui.set_max_width(ui.available_width().min(1100.0));
+                        ui.horizontal_wrapped(|ui| {
+                            if ui.available_width() >= 300.0 {
+                                if let Some(image) = wordmark.clone() {
+                                    ui.add(image);
+                                    ui.add_space(8.0);
+                                }
+                            }
+                            ui.label(icons::semibold(
+                                tr(lang, "home.welcome"),
+                                if narrow { 22.0 } else { 26.0 },
+                            ));
+                        });
+                        ui.add_space(6.0);
+                        ui.label(
+                            RichText::new(tr(lang, "home.tagline"))
+                                .size(13.0)
+                                .color(p.text_muted),
+                        );
+                        ui.add_space(20.0);
+                        if matches!(self.engine, EngineState::Failed) {
+                            Frame::new()
+                                .fill(theme::ERROR.gamma_multiply(0.12))
+                                .corner_radius(6)
+                                .inner_margin(12)
+                                .show(ui, |ui| {
+                                    ui.colored_label(p.error, tr(lang, "error.engine_missing"));
+                                });
+                            ui.add_space(12.0);
+                        }
+                        if self.glass_open_row(ui).clicked() {
+                            run = Some(Command::OpenDocument);
+                        }
+                        ui.add_space(24.0);
+                        ui.label(icons::semibold(tr(lang, "home.recent"), 16.0));
+                        ui.add_space(6.0);
+                        let recent: Vec<PathBuf> =
+                            self.settings.recent.iter().map(PathBuf::from).collect();
+                        if recent.is_empty() {
+                            ui.label(
+                                RichText::new(tr(lang, "home.recent.empty"))
+                                    .size(13.0)
+                                    .color(p.text_muted),
+                            );
+                        } else {
+                            let mut to_open = None;
+                            for path in recent {
+                                let response = ui.add(
+                                    Button::new((
+                                        self.icon(glyph::DOCUMENT, "▤", 15.0).color(p.accent),
+                                        RichText::new(format!("  {}", file_name(&path))).size(13.0),
+                                    ))
+                                    .frame(false)
+                                    .truncate()
+                                    .min_size(egui::vec2(ui.available_width().min(700.0), 32.0)),
+                                );
+                                if response.on_hover_text(path.display().to_string()).clicked() {
+                                    to_open = Some(path);
+                                }
+                            }
+                            if let Some(path) = to_open {
+                                self.open_path(path, None);
+                            }
+                        }
+                        ui.add_space(24.0);
+                        if let Some(command) = self.glass_tool_groups(ui) {
+                            run = Some(command);
+                        }
+                        ui.add_space(24.0);
+                        ui.label(
+                            RichText::new(tr(lang, "home.privacy.text"))
+                                .size(12.0)
+                                .color(p.text_muted),
+                        );
+                        ui.add_space(12.0);
+                    });
+            });
+        if let Some(command) = run {
+            self.execute(ctx, command);
+        }
+    }
+
+    fn glass_open_row(&self, ui: &mut egui::Ui) -> egui::Response {
+        let lang = self.lang();
+        let p = self.pal();
+        let width = ui.available_width();
+        let show_shortcut = width >= 420.0;
+        let text_left = if width < 200.0 { 42.0 } else { 60.0 };
+        let text_width = (width - text_left - if show_shortcut { 96.0 } else { 14.0 }).max(1.0);
+        let label = tr(lang, "home.open_file");
+        let title = ui.painter().layout(
+            label.into(),
+            egui::FontId::new(16.0, egui::FontFamily::Name(icons::SEMIBOLD.into())),
+            p.text,
+            text_width,
+        );
+        let description = ui.painter().layout(
+            tr(lang, "home.open_file.desc").into(),
+            egui::FontId::proportional(12.5),
+            p.text_muted,
+            text_width,
+        );
+        let block_height = title.size().y + 3.0 + description.size().y;
+        let (rect, response) = ui.allocate_exact_size(
+            egui::vec2(width, (block_height + 20.0).max(60.0)),
+            egui::Sense::click(),
+        );
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
+        let response = response
+            .on_hover_cursor(egui::CursorIcon::PointingHand)
+            .on_hover_text(tr(lang, "home.open_file.desc"));
+        if response.gained_focus() {
+            response.scroll_to_me(None);
+        }
+        if ui.is_rect_visible(rect) {
+            let painter = ui.painter();
+            painter.rect(
+                rect,
+                10,
+                if response.hovered() {
+                    p.hover
+                } else {
+                    p.surface
+                },
+                Stroke::new(1.0, p.border),
+                egui::StrokeKind::Inside,
+            );
+            let size = if width < 200.0 { 24.0 } else { 32.0 };
+            let badge = egui::Rect::from_min_size(
+                egui::pos2(rect.left() + 14.0, rect.center().y - size / 2.0),
+                egui::vec2(size, size),
+            );
+            painter.rect_filled(badge, 8, p.accent_fill);
+            painter.text(
+                badge.center(),
+                egui::Align2::CENTER_CENTER,
+                if self.has_icons {
+                    glyph::FOLDER_OPEN
+                } else {
+                    "▱"
+                },
+                if self.has_icons {
+                    egui::FontId::new(18.0, egui::FontFamily::Name(icons::ICONS.into()))
+                } else {
+                    egui::FontId::proportional(18.0)
+                },
+                Color32::WHITE,
+            );
+            let origin = egui::pos2(
+                rect.left() + text_left,
+                rect.center().y - block_height / 2.0,
+            );
+            let title_height = title.size().y;
+            painter.galley(origin, title, p.text);
+            painter.galley(
+                origin + egui::vec2(0.0, title_height + 3.0),
+                description,
+                p.text_muted,
+            );
+            if show_shortcut {
+                painter.text(
+                    egui::pos2(rect.right() - 18.0, rect.center().y),
+                    egui::Align2::RIGHT_CENTER,
+                    self.shortcut_text(Command::OpenDocument),
+                    egui::FontId::proportional(12.0),
+                    p.text_muted,
+                );
+            }
+            if response.has_focus() {
+                theme::focus_ring(painter, rect, &p, 10);
+            }
+        }
+        response
+    }
+
+    fn glass_tool_groups(&self, ui: &mut egui::Ui) -> Option<Command> {
+        let lang = self.lang();
+        let p = self.pal();
+        let columns = if ui.available_width() >= 960.0 {
+            3
+        } else if ui.available_width() >= 620.0 {
+            2
+        } else {
+            1
+        };
+        let mut families: Vec<_> = crate::tool_hub::families().collect();
+        // Keep families intact and balance their content instead of laying out equal cards.
+        if columns > 1 {
+            families.sort_by_key(|(_, tools)| std::cmp::Reverse(tools.len()));
+        }
+        let mut heights = vec![0; columns];
+        let destinations: Vec<_> = families
+            .iter()
+            .map(|(_, tools)| {
+                let column = heights
+                    .iter()
+                    .enumerate()
+                    .min_by_key(|(_, height)| **height)
+                    .map_or(0, |(column, _)| column);
+                heights[column] += tools.len() * 2 + 1;
+                column
+            })
+            .collect();
+        let mut run = None;
+        ui.spacing_mut().item_spacing.x = 16.0;
+        ui.columns(columns, |columns| {
+            for (column, ui) in columns.iter_mut().enumerate() {
+                for (family, destination) in families.iter().zip(&destinations) {
+                    if *destination != column {
+                        continue;
+                    }
+                    Frame::new()
+                        .fill(p.surface)
+                        .corner_radius(10)
+                        .stroke(Stroke::new(1.0, p.border))
+                        .inner_margin(12)
+                        .show(ui, |ui| {
+                            ui.set_min_width(ui.available_width());
+                            ui.label(icons::semibold(tr(lang, family.0), 15.0));
+                            ui.add_space(8.0);
+                            for &workspace in family.1 {
+                                if workspace.info().entry.is_some()
+                                    && self.glass_tool_row(ui, workspace).clicked()
+                                {
+                                    run = workspace.activate();
+                                }
+                            }
+                        });
+                    ui.add_space(14.0);
+                }
+            }
+        });
+        run
+    }
+
+    fn glass_tool_row(&self, ui: &mut egui::Ui, workspace: Workspace) -> egui::Response {
+        let info = workspace.info();
+        let lang = self.lang();
+        let p = self.pal();
+        let width = ui.available_width();
+        let name = tr(lang, info.name_key);
+        let icon_size = if width < 200.0 { 24.0 } else { 30.0 };
+        let text_left = 8.0 + icon_size + 10.0;
+        let text_width = (width - text_left - 8.0).max(1.0);
+        let title = ui.painter().layout(
+            name.into(),
+            egui::FontId::new(14.0, egui::FontFamily::Name(icons::SEMIBOLD.into())),
+            p.text,
+            text_width,
+        );
+        let description = ui.painter().layout(
+            tr(lang, info.desc_key).into(),
+            egui::FontId::proportional(12.5),
+            p.text_muted,
+            text_width,
+        );
+        let block_height = title.size().y + 3.0 + description.size().y;
+        let (rect, response) = ui.allocate_exact_size(
+            egui::vec2(width, (block_height + 16.0).max(64.0)),
+            egui::Sense::click(),
+        );
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, name));
+        let response = response
+            .on_hover_cursor(egui::CursorIcon::PointingHand)
+            .on_hover_text(tr(lang, info.desc_key));
+        if response.gained_focus() {
+            response.scroll_to_me(None);
+        }
+        if ui.is_rect_visible(rect) {
+            let painter = ui.painter();
+            if response.hovered() || response.has_focus() {
+                painter.rect_filled(rect, 6, p.hover);
+            }
+            let badge = egui::Rect::from_min_size(
+                egui::pos2(rect.left() + 8.0, rect.center().y - icon_size / 2.0),
+                egui::vec2(icon_size, icon_size),
+            );
+            paint_badge(
+                painter,
+                badge,
+                self.has_icons,
+                info.icon,
+                info.color,
+                self.settings.dark_theme,
+            );
+            let origin = egui::pos2(
+                rect.left() + text_left,
+                rect.center().y - block_height / 2.0,
+            );
+            let title_height = title.size().y;
+            painter.galley(origin, title, p.text);
+            painter.galley(
+                origin + egui::vec2(0.0, title_height + 3.0),
+                description,
+                p.text_muted,
+            );
+            if response.has_focus() {
+                theme::focus_ring(painter, rect, &p, 6);
+            }
+        }
+        response
     }
 
     /// Grande carte « Ouvrir un fichier » (fond accent, entièrement cliquable).
@@ -1491,6 +1836,144 @@ mod tests {
                 },
             ];
             chrome_frame(ctx, app, input, toolbar);
+        }
+    }
+
+    #[test]
+    fn glass_home_keyboard_reaches_and_reveals_the_last_tool_in_short_windows() {
+        for lang in Language::ALL {
+            for height in [360.0, 720.0] {
+                let (mut app, _, _) = crate::app::tests::test_app();
+                app.settings.set_language(lang);
+                app.settings.theme_style = theme::Style::LiquidGlass;
+                app.settings.recent.clear();
+                let original = app.document.as_ref().unwrap().info.path.clone();
+                let ctx = egui::Context::default();
+                ctx.enable_accesskit();
+                app.has_icons = icons::install(&ctx);
+                theme::apply_appearance(&ctx, false, theme::Style::LiquidGlass, false);
+                ctx.global_style_mut(|style| {
+                    style.scroll_animation = egui::style::ScrollAnimation::none();
+                });
+                let input = chrome_input(360.0, height);
+                let frame = |app: &mut SuniApp, input: egui::RawInput| {
+                    let mut output = ctx.run_ui(input, |ui| app.home(&ctx, ui));
+                    output.textures_delta.clear();
+                    output
+                };
+                frame(&mut app, input.clone());
+                frame(&mut app, input.clone());
+                let label = tr(lang, Workspace::Protect.info().name_key);
+                let mut reached = false;
+                for _ in 0..24 {
+                    for pressed in [true, false] {
+                        let mut tab = input.clone();
+                        tab.events = vec![egui::Event::Key {
+                            key: Key::Tab,
+                            physical_key: None,
+                            pressed,
+                            repeat: false,
+                            modifiers: egui::Modifiers::NONE,
+                        }];
+                        frame(&mut app, tab);
+                    }
+                    let output = frame(&mut app, input.clone());
+                    let tree = output.platform_output.accesskit_update.as_ref().unwrap();
+                    let focused = tree.nodes.iter().find(|(id, _)| *id == tree.focus);
+                    if let Some((_, node)) = focused.filter(|(_, node)| node.label() == Some(label))
+                    {
+                        let bounds = node.bounds().unwrap();
+                        assert!(bounds.y0 >= 0.0 && bounds.y1 <= f64::from(height));
+                        assert!(output.shapes.iter().any(|shape| {
+                            matches!(&shape.shape, egui::Shape::Text(text)
+                                if text.galley.text() == label
+                                && shape.clip_rect.contains_rect(egui::Rect::from_min_size(text.pos, text.galley.size())))
+                        }));
+                        reached = true;
+                        break;
+                    }
+                }
+                assert!(
+                    reached,
+                    "Keyboard must reveal the last tool in {} at {height}px",
+                    lang.code()
+                );
+                let mut enter = input.clone();
+                enter.events = vec![egui::Event::Key {
+                    key: Key::Enter,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }];
+                frame(&mut app, enter);
+                assert_eq!(app.annotate.workspace, Some(Workspace::Protect));
+                assert_eq!(app.document.as_ref().unwrap().info.path, original);
+            }
+        }
+    }
+
+    #[test]
+    fn glass_home_controls_remain_reachable_and_activate_the_existing_measurement_tool() {
+        for lang in Language::ALL {
+            for dark in [false, true] {
+                for width in [360.0, 720.0, 1280.0] {
+                    let (mut app, _, _) = crate::app::tests::test_app();
+                    app.settings.set_language(lang);
+                    app.settings.dark_theme = dark;
+                    app.settings.theme_style = theme::Style::LiquidGlass;
+                    app.settings.recent.clear();
+                    let original = app.document.as_ref().unwrap().info.path.clone();
+                    let ctx = egui::Context::default();
+                    ctx.enable_accesskit();
+                    app.has_icons = icons::install(&ctx);
+                    theme::apply_appearance(&ctx, dark, theme::Style::LiquidGlass, false);
+                    let input = chrome_input(width, 1200.0);
+                    let frame = |app: &mut SuniApp, input: egui::RawInput| {
+                        let mut output = ctx.run_ui(input, |ui| app.home(&ctx, ui));
+                        output.textures_delta.clear();
+                        output
+                    };
+                    frame(&mut app, input.clone());
+                    let output = frame(&mut app, input.clone());
+                    for key in ["home.open_file", Workspace::Measure.info().name_key] {
+                        let point = labeled_center(&output, tr(lang, key));
+                        assert!(point.x > 0.0 && point.x < width && point.y < 1200.0);
+                    }
+                    for (_, node) in &output
+                        .platform_output
+                        .accesskit_update
+                        .as_ref()
+                        .unwrap()
+                        .nodes
+                    {
+                        if node.role() == egui::accesskit::Role::Button {
+                            if let Some(bounds) = node.bounds() {
+                                assert!(bounds.x0 >= 0.0 && bounds.x1 <= f64::from(width));
+                            }
+                            assert!(!node.label().is_some_and(private_use));
+                        }
+                    }
+                    let point =
+                        labeled_center(&output, tr(lang, Workspace::Measure.info().name_key));
+                    for pressed in [true, false] {
+                        let mut click = input.clone();
+                        click.events = vec![
+                            egui::Event::PointerMoved(point),
+                            egui::Event::PointerButton {
+                                pos: point,
+                                button: egui::PointerButton::Primary,
+                                pressed,
+                                modifiers: egui::Modifiers::NONE,
+                            },
+                        ];
+                        frame(&mut app, click);
+                    }
+                    assert_eq!(app.annotate.workspace, Some(Workspace::Measure));
+                    assert_eq!(app.annotate.tool, crate::annotate::Tool::Measure);
+                    assert_eq!(app.document.as_ref().unwrap().info.path, original);
+                }
+            }
         }
     }
 

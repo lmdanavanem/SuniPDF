@@ -26,6 +26,7 @@ pub struct Navigation {
     pub password: Password,
     pub page_count: usize,
     pub active_source: Option<(PathBuf, String)>,
+    pub(crate) return_source: Option<Box<crate::plan_links_ui::ReturnOrigin>>,
 }
 
 #[derive(Clone, Copy)]
@@ -257,6 +258,7 @@ pub fn run_job(
                 password,
                 page_count: doc.page_count(),
                 active_source: None,
+                return_source: None,
             }))
         }
     }
@@ -518,6 +520,7 @@ mod tests {
             password: None,
             page_count: 2,
             active_source: None,
+            return_source: None,
         }
     }
 
@@ -631,6 +634,69 @@ mod tests {
         assert!(app.plan_sets.navigation.is_none());
         assert!(app.plan_sets.open && app.plan_sets.dirty);
         assert_eq!(app.plan_sets.set.as_ref(), Some(&set));
+    }
+
+    #[test]
+    fn cancelled_and_failed_verified_links_do_not_publish_a_return() {
+        for cancelled in [false, true] {
+            let (mut app, requests, responses) = test_app();
+            let source_path = app.document.as_ref().unwrap().info.path.clone();
+            app.dirty = cancelled;
+            let mut candidate = verified(
+                if cancelled {
+                    source_path
+                } else {
+                    "test/new.pdf".into()
+                },
+                1,
+            );
+            candidate.return_source = app.capture_plan_return_origin().map(Box::new);
+            app.navigate_plan_sheet(candidate);
+            assert!(!app.plan_return_visible());
+            if cancelled {
+                assert!(app.plan_sets.navigation_confirmation.is_some());
+                app.plan_sets.navigation_confirmation = None;
+                assert!(requests
+                    .try_iter()
+                    .all(|request| !matches!(request, Request::Suspend)));
+            } else {
+                assert!(app.plan_sets.return_origin.is_some());
+                responses
+                    .send(Response::SuspendFailed(EngineError::InvalidFormat))
+                    .unwrap();
+                app.handle_responses(&egui::Context::default());
+                assert!(app.plan_sets.return_origin.is_none());
+            }
+            assert!(!app.plan_return_visible());
+        }
+    }
+
+    #[test]
+    fn queued_source_change_invalidates_departure_without_discarding_the_tab() {
+        let (mut app, _, responses) = test_app();
+        let info = app.document.as_ref().unwrap().info.clone();
+        let source_id = app.tabs.tabs[0].recovery_id;
+        let mut candidate = verified("test/new.pdf".into(), 1);
+        candidate.return_source = app.capture_plan_return_origin().map(Box::new);
+        app.navigate_plan_sheet(candidate);
+        assert!(app.plan_sets.return_origin.is_some());
+        responses
+            .send(Response::DocumentChanged(DocState {
+                info,
+                can_undo: true,
+                can_redo: false,
+                modified: true,
+                pages_unchanged: true,
+                measurement_scales_unchanged: true,
+                has_signatures: false,
+            }))
+            .unwrap();
+        app.handle_responses(&egui::Context::default());
+        assert!(app.plan_sets.return_origin.is_none());
+        assert_eq!(app.tabs.tabs[0].recovery_id, source_id);
+        assert!(app.tabs.tabs[0].dirty);
+        assert!(app.tabs.tabs[0].ui.as_ref().unwrap().can_undo);
+        assert!(!app.plan_return_visible());
     }
 
     fn contains_text(shape: &egui::Shape, text: &str) -> bool {
@@ -877,6 +943,7 @@ pub struct PlanSetState {
     password: Zeroizing<String>,
     page: usize,
     navigation: Option<(PathBuf, usize)>,
+    return_origin: Option<crate::plan_links_ui::ReturnOrigin>,
     navigation_confirmation: Option<PendingNavigation>,
     view: crate::plan_set_view::View,
 }
@@ -905,6 +972,7 @@ impl Default for PlanSetState {
             password: Zeroizing::new(String::new()),
             page: 0,
             navigation: None,
+            return_origin: None,
             navigation_confirmation: None,
             view: Default::default(),
         }
@@ -1036,9 +1104,30 @@ impl PlanSetState {
     }
 
     pub(crate) fn navigation_failed(&mut self) {
+        self.return_origin = None;
         if self.navigation.take().is_some() {
             self.open = true;
             self.message = Some("plan_sets.navigation_failed");
+        }
+    }
+
+    pub(crate) fn invalidate_return_origin(&mut self, tab_id: u64) {
+        if self
+            .return_origin
+            .as_ref()
+            .is_some_and(|origin| origin.tab_id == tab_id)
+        {
+            self.return_origin = None;
+        }
+        if let Some(pending) = &mut self.navigation_confirmation {
+            if pending
+                .candidate
+                .return_source
+                .as_ref()
+                .is_some_and(|origin| origin.tab_id == tab_id)
+            {
+                pending.candidate.return_source = None;
+            }
         }
     }
 }
@@ -1255,7 +1344,7 @@ impl SuniApp {
         self.perform_plan_navigation(navigation, target);
     }
 
-    fn perform_plan_navigation(&mut self, navigation: Navigation, target: NavigationTarget) {
+    fn perform_plan_navigation(&mut self, mut navigation: Navigation, target: NavigationTarget) {
         self.plan_sets.open = false;
         if self.navigation_blocked()
             || self.worker.has_pending_mutations()
@@ -1268,6 +1357,14 @@ impl SuniApp {
             return;
         }
         let sheet = &navigation.sheet;
+        self.plan_sets.return_origin = navigation
+            .return_source
+            .take()
+            .map(|origin| *origin)
+            .filter(|origin| {
+                !matches!(target, NavigationTarget::Active)
+                    && self.plan_return_departure_matches(origin)
+            });
         self.plan_sets.navigation = Some((sheet.path.clone(), sheet.page.saturating_sub(1)));
         match target {
             NavigationTarget::Active => {
@@ -1311,6 +1408,7 @@ impl SuniApp {
         let Some((path, page)) = self.plan_sets.navigation.take() else {
             return;
         };
+        let return_origin = self.plan_sets.return_origin.take();
         if !self
             .document
             .as_ref()
@@ -1321,6 +1419,9 @@ impl SuniApp {
             return;
         }
         self.go_to_page(page);
+        if let Some(origin) = return_origin {
+            self.complete_plan_return_departure(origin);
+        }
         self.plan_sets.message = Some(if self.dirty {
             "plan_sets.opened_dirty"
         } else {

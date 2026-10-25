@@ -2,26 +2,23 @@
 
 ## Next development
 
-In development: [0.77 linked-sheet previews and native navigation checks](RELEASE_0.77.0.md).
-This lot also caches historical Windows packages to reduce repeated download work
-without reducing the upgrade scenarios.
+Next increment: [0.78 Glass refinement and return to the source plan](RELEASE_0.78.0.md). Its qualification remains separate from the published release.
 
-Independent synchronized reader views are delivered in [0.76.0](RELEASE_0.76.0.md):
-two locations in one PDF, one active editing context and pane positions retained
-when switching tabs during the session.
-This increment does not close other plan-workflow cards.
+Delivered in [0.77.0](RELEASE_0.77.0.md): Saved plan links can show a verified destination preview before opening. The preview displays the drawing and sheet metadata; opening rechecks the saved inputs. Manifest paths can be entered directly or selected with the file browser.
 
-Native plan-link interaction and broader drawing/interoperability qualification
-remain priorities. AEC-011 visual search and AEC-012 region fill retain their open
-native and broader-drawing criteria. Implementation and complete acceptance are
-tracked separately.
+Remaining plan-link priorities are native desktop link creation/saving,
+broader batch interaction and external-reader interoperability. AEC-017
+stays In progress. AEC-011 visual search and AEC-012 region fill retain
+their open native and broader-drawing criteria. Implementation and
+complete acceptance remain separate.
 
 ## Published scope
 
-[0.76.0](RELEASE_0.76.0.md) is the current stable release, with independent reader
-views and optional page, zoom, scroll and orientation synchronization. Its
-[qualification evidence](qa/RELEASE_0.76.0.json) records exact-source checks,
-Windows upgrades, native Ubuntu split-reader checks and Apple Silicon packages.
+[0.77.0](RELEASE_0.77.0.md) is the current stable release. Saved plan links can show a verified destination preview before opening. The preview displays the drawing and sheet metadata; opening rechecks the saved inputs. Manifest paths can be entered directly or selected with the file browser.
+
+[Qualification evidence](qa/RELEASE_0.77.0.json) records the exact source, package identities, native scope and remaining limits.
+
+[0.76.0](RELEASE_0.76.0.md) retains independent synchronized views of one PDF.
 
 [0.75](RELEASE_0.75.0.md) introduced Apple Silicon packages.
 [0.74](RELEASE_0.74.0.md) introduced [Theme settings](APPEARANCE.md) and direct

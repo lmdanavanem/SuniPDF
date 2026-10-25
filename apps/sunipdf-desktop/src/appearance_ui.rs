@@ -292,22 +292,21 @@ fn paint_preview(painter: &egui::Painter, rect: Rect, style: Style, dark: bool) 
     painter.rect_filled(rect, 7, p.canvas);
     let top = Rect::from_min_size(rect.min, egui::vec2(rect.width(), 16.0));
     painter.rect_filled(top, 6, p.chrome);
-    if glass {
-        painter.hline(
-            (rect.left() + 7.0)..=(rect.right() - 7.0),
-            rect.top() + 2.0,
-            Stroke::new(1.0, Color32::from_white_alpha(if dark { 70 } else { 220 })),
-        );
-    }
     for x in [8.0, 16.0, 24.0] {
         painter.circle_filled(rect.min + egui::vec2(x, 8.0), 2.0, p.text_muted);
     }
-    let inset = if glass { 7.0 } else { 0.0 };
     let sidebar = Rect::from_min_max(
-        egui::pos2(rect.left() + inset, rect.top() + 19.0),
-        egui::pos2(rect.left() + rect.width() * 0.27, rect.bottom() - inset),
+        egui::pos2(rect.left(), rect.top() + if glass { 16.0 } else { 19.0 }),
+        egui::pos2(rect.left() + rect.width() * 0.27, rect.bottom()),
     );
-    painter.rect_filled(sidebar, if glass { 6 } else { 0 }, p.surface);
+    painter.rect_filled(sidebar, 0, p.surface);
+    if glass {
+        painter.vline(
+            sidebar.right(),
+            sidebar.y_range(),
+            Stroke::new(1.0, p.border),
+        );
+    }
     for y in [8.0, 19.0, 30.0] {
         painter.rect_filled(
             Rect::from_min_size(
@@ -340,7 +339,7 @@ fn paint_preview(painter: &egui::Painter, rect: Rect, style: Style, dark: bool) 
         );
         painter.rect(
             control,
-            6,
+            4,
             p.surface,
             Stroke::new(1.0, p.border),
             egui::StrokeKind::Inside,

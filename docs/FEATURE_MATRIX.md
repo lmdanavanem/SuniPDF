@@ -4,11 +4,21 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
-## In development: 0.77.0
+## In development: 0.78.0
 
-- Explicit preview of a saved plan link's verified destination before navigation.
-- Keyboard manifest entry and fresh input checks before opening a destination.
-- [Scope and pending qualification](RELEASE_0.77.0.md); broader AEC-017 acceptance remains open.
+- Neutral Glass surfaces, continuous docked chrome and compact home tool families.
+- Explicit return to the source of the latest successful verified plan link.
+- Session-only restoration of source views, with retained unsaved document state.
+- [Scope and pending qualification](RELEASE_0.78.0.md).
+
+## Added in 0.77.0
+
+- Preview a saved plan link's destination drawing and sheet metadata before opening it.
+- Load a manifest by typing its path or using the file browser.
+- Recheck saved inputs when opening; changed or missing files are refused.
+- Reuse verified historical Windows downloads while retaining upgrade and rollback coverage.
+
+Published stable with [qualification and limits](RELEASE_0.77.0.md). Broader AEC-017 acceptance remains open.
 
 ## Added in 0.76.0
 

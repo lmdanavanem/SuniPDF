@@ -7,13 +7,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
-## [0.77.0] - Unreleased
+## [0.78.0] - Unreleased
+
+- Refine Glass with neutral light/dark surfaces, continuous docked bars and a compact grouped home screen.
+- Return explicitly to the source after following a verified plan link.
+- Restore source view settings and both pane positions without reopening the PDF from disk.
+- Preserve unsaved documents and refuse stale, closed or conflicting return targets.
+
+Development candidate: [scope and pending qualification](docs/RELEASE_0.78.0.md).
+
+## [0.77.0] - 2026-10-25
 
 - Add an explicit verified destination preview before opening saved plan-sheet links.
 - Allow a manifest path to be entered directly while retaining file browsing.
 - Cache pinned historical Windows packages without reducing upgrade or rollback coverage.
 
-Development candidate: [scope and pending qualification](docs/RELEASE_0.77.0.md).
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.77.0). See [qualification and limits](docs/RELEASE_0.77.0.md).
 
 ## [0.76.0] - 2026-10-24
 

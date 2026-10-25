@@ -213,6 +213,82 @@ impl GeometryCache {
 }
 
 impl ViewState {
+    /// Viewport origin in unrotated PDF coordinates, including pending navigation.
+    pub(crate) fn page_origin(
+        &self,
+        info: &sunipdf_core::DocumentInfo,
+        page: usize,
+        zoom: Zoom,
+    ) -> Pos2 {
+        let Some(size) = info.page_sizes.get(page) else {
+            return Pos2::ZERO;
+        };
+        if let Some(ScrollRequest::Destination {
+            x_pt,
+            y_from_top_pt,
+            ..
+        }) = self.pending
+        {
+            return pos2(x_pt, y_from_top_pt);
+        }
+        if matches!(self.pending, Some(ScrollRequest::Page(_))) {
+            return self
+                .reading
+                .rotation
+                .inverse_point(Pos2::ZERO, vec2(size.width_pt, size.height_pt));
+        }
+        let (offset, k) = match (self.pending, zoom) {
+            (Some(ScrollRequest::Offset(offset)), Zoom::Fixed(zoom)) => {
+                (offset, zoom * SCREEN_PER_PDF_POINT)
+            }
+            _ => {
+                let Some(k) = self.k_prev.filter(|k| *k > 0.0) else {
+                    return Pos2::ZERO;
+                };
+                (self.offset, k)
+            }
+        };
+        let window = if self.mode == ViewMode::Single {
+            page..page + 1
+        } else {
+            0..info.page_count()
+        };
+        let key = LayoutKey {
+            first: window.start,
+            count: window.len(),
+            scale: k,
+            avail: self.avail_prev,
+            mode: self.mode,
+            rotation: self.reading.rotation,
+        };
+        // Split synchronization samples this location every frame. Reuse the layout
+        // already built for painting instead of rescanning a long document on scroll.
+        let fallback;
+        let layout = match &self.geometry.layout {
+            Some((cached_key, layout)) if *cached_key == key => layout.as_ref(),
+            _ => {
+                fallback = Layout::for_rotation(
+                    &info.page_sizes[window.clone()],
+                    window.start,
+                    k,
+                    self.avail_prev,
+                    self.mode,
+                    self.reading.rotation,
+                );
+                &fallback
+            }
+        };
+        let point = ((offset - vec2(layout.page_left(page), layout.page_top(page))) / k).to_pos2();
+        let origin = self
+            .reading
+            .rotation
+            .inverse_point(point, vec2(size.width_pt, size.height_pt));
+        pos2(
+            origin.x.clamp(0.0, size.width_pt),
+            origin.y.clamp(0.0, size.height_pt),
+        )
+    }
+
     /// Move only pane-local state. The document epoch, texture cache and worker queue stay shared.
     pub(crate) fn swap_navigation(&mut self, other: &mut Self) {
         macro_rules! swap {
@@ -1587,79 +1663,9 @@ impl SuniApp {
 
     /// Current viewport origin in the page's unrotated display coordinates.
     pub(crate) fn reading_page_origin(&self) -> Pos2 {
-        let Some(doc) = &self.document else {
-            return Pos2::ZERO;
-        };
-        let Some(size) = doc.info.page_sizes.get(doc.page) else {
-            return Pos2::ZERO;
-        };
-        if let Some(ScrollRequest::Destination {
-            x_pt,
-            y_from_top_pt,
-            ..
-        }) = self.view.pending
-        {
-            return pos2(x_pt, y_from_top_pt);
-        }
-        if matches!(self.view.pending, Some(ScrollRequest::Page(_))) {
-            return self
-                .view
-                .reading
-                .rotation
-                .inverse_point(Pos2::ZERO, vec2(size.width_pt, size.height_pt));
-        }
-        let (offset, k) = match (self.view.pending, self.zoom) {
-            (Some(ScrollRequest::Offset(offset)), Zoom::Fixed(zoom)) => {
-                (offset, zoom * SCREEN_PER_PDF_POINT)
-            }
-            _ => {
-                let Some(k) = self.view.k_prev.filter(|k| *k > 0.0) else {
-                    return Pos2::ZERO;
-                };
-                (self.view.offset, k)
-            }
-        };
-        let window = if self.view.mode == ViewMode::Single {
-            doc.page..doc.page + 1
-        } else {
-            0..doc.info.page_count()
-        };
-        let key = LayoutKey {
-            first: window.start,
-            count: window.len(),
-            scale: k,
-            avail: self.view.avail_prev,
-            mode: self.view.mode,
-            rotation: self.view.reading.rotation,
-        };
-        // Split synchronization samples this location every frame. Reuse the layout
-        // already built for painting instead of rescanning a long document on scroll.
-        let fallback;
-        let layout = match &self.view.geometry.layout {
-            Some((cached_key, layout)) if *cached_key == key => layout.as_ref(),
-            _ => {
-                fallback = Layout::for_rotation(
-                    &doc.info.page_sizes[window.clone()],
-                    window.start,
-                    k,
-                    self.view.avail_prev,
-                    self.view.mode,
-                    self.view.reading.rotation,
-                );
-                &fallback
-            }
-        };
-        let point =
-            ((offset - vec2(layout.page_left(doc.page), layout.page_top(doc.page))) / k).to_pos2();
-        let origin = self
-            .view
-            .reading
-            .rotation
-            .inverse_point(point, vec2(size.width_pt, size.height_pt));
-        pos2(
-            origin.x.clamp(0.0, size.width_pt),
-            origin.y.clamp(0.0, size.height_pt),
-        )
+        self.document.as_ref().map_or(Pos2::ZERO, |doc| {
+            self.view.page_origin(&doc.info, doc.page, self.zoom)
+        })
     }
 
     /// Resolves explicit navigation before the usual anchored zoom adjustment.

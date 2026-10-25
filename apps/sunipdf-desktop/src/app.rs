@@ -742,6 +742,7 @@ impl SuniApp {
                     }
                 }
                 Response::SuspendFailed(error) => {
+                    self.plan_return_transition_failed();
                     self.plan_sets.navigation_failed();
                     self.review.pending_page = None;
                     self.opening = None;
@@ -912,6 +913,14 @@ impl SuniApp {
                             has_signatures,
                         });
                         continue;
+                    }
+                    if let Some(tab_id) = self
+                        .tabs
+                        .active
+                        .and_then(|index| self.tabs.tabs.get(index))
+                        .map(|tab| tab.recovery_id)
+                    {
+                        self.plan_return_source_changed(tab_id);
                     }
                     self.measurement_scale_changed();
                     self.annotate.register.invalidate();
@@ -2155,12 +2164,14 @@ impl SuniApp {
                 | Command::ViewSwitchPane
                 | Command::HistoryBack
                 | Command::HistoryForward
+                | Command::ReturnToPlanSource
         ) {
             self.form_builder.cancel();
         }
         match command {
             Command::PlanSets => self.open_plan_sets(),
             Command::PlanLinks => self.open_plan_links(),
+            Command::ReturnToPlanSource => self.return_to_plan_source(),
             Command::RevisionOutlines => self.open_revision_outlines(),
             Command::PlanZones => self.open_plan_zones(),
             Command::VisualSearch => self.open_visual_search(),
@@ -3438,6 +3449,16 @@ impl SuniApp {
 }
 
 impl eframe::App for SuniApp {
+    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
+        if self.settings.theme_style == theme::Style::LiquidGlass {
+            theme::palette_for_style(visuals.dark_mode, theme::Style::LiquidGlass)
+                .chrome
+                .to_normalized_gamma_f32()
+        } else {
+            egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).to_normalized_gamma_f32()
+        }
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.sync_appearance(ui.ctx());
         #[cfg(target_os = "linux")]
@@ -3476,6 +3497,10 @@ impl SuniApp {
         }
         self.handle_input(&ctx);
         let p = theme::palette_for(&ctx);
+        if theme::appearance(&ctx).0 == theme::Style::LiquidGlass {
+            // Paint the complete workspace before docked panels, including their outer joins.
+            ui.painter().rect_filled(ctx.content_rect(), 0, p.chrome);
+        }
         let chrome = |fill: egui::Color32| {
             theme::panel_frame(&ctx)
                 .fill(fill)

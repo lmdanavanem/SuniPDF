@@ -2,6 +2,7 @@
 """Regression checks for Linux archive and executable package boundaries."""
 import importlib.util
 import gzip
+import hashlib
 import io
 from pathlib import Path
 import re
@@ -26,6 +27,59 @@ plan_fixture = load("native-plan-link-fixture.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_plan_fixture_records_the_binary_separately_from_the_installed_launcher(self):
+        with tempfile.TemporaryDirectory() as directory:
+            launcher = Path(directory) / "sunipdf-cli"
+            binary = Path(directory) / "payload"
+            launcher.write_bytes(b'#!/bin/sh\nexec /usr/lib/sunipdf/sunipdf-cli "$@"\n')
+            elf = b"\x7fELF\x02\x01" + bytes(12) + b"\x3e\x00" + b"fixture payload"
+            binary.write_bytes(elf)
+            with patch.object(plan_fixture, "INSTALLED_CLI", launcher), \
+                    patch.object(plan_fixture, "INSTALLED_CLI_BINARY", binary):
+                receipt = plan_fixture.cli_provenance(launcher)
+                self.assertEqual(receipt["cliSha256"], hashlib.sha256(launcher.read_bytes()).hexdigest())
+                self.assertEqual(receipt["cliBinarySha256"], hashlib.sha256(elf).hexdigest())
+                self.assertNotEqual(receipt["cliSha256"], receipt["cliBinarySha256"])
+                self.assertEqual(receipt["launcherPath"], str(launcher))
+                self.assertEqual(receipt["binaryPath"], str(binary))
+                binary.write_bytes(elf + b"changed")
+                changed = plan_fixture.cli_provenance(launcher)
+                self.assertEqual(changed["cliSha256"], receipt["cliSha256"])
+                self.assertNotEqual(changed["cliBinarySha256"], receipt["cliBinarySha256"])
+            direct = plan_fixture.cli_provenance(binary)
+            self.assertEqual(direct["cliSha256"], direct["cliBinarySha256"])
+            self.assertEqual(direct["launcherPath"], direct["binaryPath"])
+
+    def test_plan_fixture_does_not_infer_installed_binary_for_an_arbitrary_cli(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cli = Path(directory) / "fake-cli"
+            for content in (b"fake CLI", b'#!/bin/sh\nexec /usr/lib/sunipdf/sunipdf-cli "$@"\n'):
+                with self.subTest(content=content):
+                    cli.write_bytes(content)
+                    receipt = plan_fixture.cli_provenance(cli)
+                    self.assertEqual(receipt["cliSha256"], hashlib.sha256(content).hexdigest())
+                    self.assertIsNone(receipt["cliBinarySha256"])
+                    self.assertIsNone(receipt["binaryPath"])
+
+    def test_plan_fixture_rejects_changed_launcher_and_missing_or_non_elf_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            launcher = Path(directory) / "sunipdf-cli"
+            binary = Path(directory) / "payload"
+            with patch.object(plan_fixture, "INSTALLED_CLI", launcher), \
+                    patch.object(plan_fixture, "INSTALLED_CLI_BINARY", binary):
+                launcher.write_bytes(b'#!/bin/sh\nexec /tmp/other-cli "$@"\n')
+                with self.assertRaisesRegex(ValueError, "launcher"):
+                    plan_fixture.cli_provenance(launcher)
+                launcher.write_bytes(b'#!/bin/sh\nexec /usr/lib/sunipdf/sunipdf-cli "$@"\n')
+                with self.assertRaisesRegex(ValueError, "regular ELF"):
+                    plan_fixture.cli_provenance(launcher)
+                for content in (b"#!/bin/sh\nexit 0\n", b"\x7fELF", b"MZ" + bytes(18),
+                                b"\x7fELF\x02\x01" + bytes(12) + b"\xb7\x00"):
+                    with self.subTest(content=content):
+                        binary.write_bytes(content)
+                        with self.assertRaisesRegex(ValueError, "ELF64 amd64"):
+                            plan_fixture.cli_provenance(launcher)
+
     def test_source_refusal_allows_only_the_observed_pdf_ocr_confusion(self):
         for token in ("PDF", "POF", "pdf", "pof"):
             text = f"engine errar: Plan links: source {token} changed since the preview, preview ik again"
@@ -50,6 +104,32 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertFalse(installed.plan_error_is_visible("changed-target", 19, message))
         self.assertFalse(installed.plan_error_is_visible("changed-target", 500, "Destination verified"))
         self.assertFalse(installed.plan_error_is_visible("missing-target", 500, message))
+
+    def test_plan_source_location_uses_both_unique_pdf_anchors_and_actual_image_scale(self):
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        title = "".join(f"5\t1\t1\t1\t1\t{index + 1}\t{30 + 90 * index}\t60\t60\t30\t95\t{word}\n"
+                        for index, word in enumerate("Native source document".split()))
+        reference = "5\t1\t2\t1\t1\t1\t30\t360\t90\t30\t95\tA-101\n"
+        self.assertEqual(installed.plan_source_location(header + title + reference, (900, 1200), 3),
+                         {"Native source document": [50, 25], "A-101": [25, 125]})
+        for incomplete in (title, reference, title + reference.replace("A-101", "A-102")):
+            with self.subTest(text=incomplete), self.assertRaises(installed.ThemeLabelMissing):
+                installed.plan_source_location(header + incomplete, (900, 1200), 3)
+        duplicate = reference.replace("\t1\t2\t1\t1\t1\t", "\t1\t3\t1\t1\t1\t")
+        with self.assertRaises(AssertionError):
+            installed.plan_source_location(header + title + reference + duplicate, (900, 1200), 3)
+
+    def test_plan_source_return_rejects_different_scroll_zoom_or_missing_anchor(self):
+        before = {"Native source document": [300, 250], "A-101": [250, 450]}
+        self.assertTrue(installed.plan_location_restored(before, before))
+        self.assertTrue(installed.plan_location_restored(before, {"Native source document": [303, 247], "A-101": [249, 452]}))
+        for after in ({"Native source document": [300, 260], "A-101": [250, 460]},
+                      {"Native source document": [300, 250], "A-101": [250, 470]},
+                      {"Native source document": [300, 250]},
+                      {"Native source document": [300, 250], "A-101": [250]},
+                      {"Native source document": [300, 250], "A-101": [float("nan"), 450]}):
+            with self.subTest(after=after):
+                self.assertFalse(installed.plan_location_restored(before, after))
 
     def test_plan_navigation_requires_unique_colored_pdf_title(self):
         for kind, title, wrong in (("source", "Native source document", "Native destination two"),

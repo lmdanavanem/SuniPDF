@@ -1,6 +1,6 @@
 # SuniPDF 1.0 acceptance criteria
 
-The current stable release is [0.64.0](RELEASE_0.64.0.md), with [recorded qualification](qa/RELEASE_0.64.0.json).
+See [Project status](PROJECT_STATUS.md) for the current stable release and its recorded qualification.
 The gates below remain open before 1.0. Existing supported operations and conservative refusals
 stay in the [feature matrix](FEATURE_MATRIX.md); a 1.0 number does not expand font, Office-export,
 signature, XFA or PDF-conformance support.

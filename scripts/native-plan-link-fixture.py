@@ -7,9 +7,39 @@ import hashlib
 import json
 from pathlib import Path
 
+INSTALLED_CLI = Path("/usr/bin/sunipdf-cli")
+INSTALLED_CLI_BINARY = Path("/usr/lib/sunipdf/sunipdf-cli")
+INSTALLED_CLI_LAUNCHER = b'#!/bin/sh\nexec /usr/lib/sunipdf/sunipdf-cli "$@"\n'
+
 
 def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def cli_provenance(cli):
+    """Distinguish the packaged launcher from its ELF without guessing for other scripts."""
+    launcher = Path(cli)
+    content = launcher.read_bytes()
+    binary = None
+    if launcher.absolute() == INSTALLED_CLI.absolute():
+        if content != INSTALLED_CLI_LAUNCHER:
+            raise ValueError("Installed CLI launcher differs from the packaged launcher")
+        binary = INSTALLED_CLI_BINARY
+    elif content.startswith(b"\x7fELF"):
+        binary = launcher
+    binary_hash = None
+    if binary is not None:
+        if binary.is_symlink() or not binary.is_file():
+            raise ValueError("CLI binary must be a regular ELF file")
+        with binary.open("rb") as stream:
+            header = stream.read(20)
+        if len(header) != 20 or header[:6] != b"\x7fELF\x02\x01" or header[18:20] != b"\x3e\x00":
+            raise ValueError("CLI binary must be little-endian ELF64 amd64")
+        binary_hash = sha(binary)
+    return {"cliSha256": hashlib.sha256(content).hexdigest(),
+            "launcherPath": str(launcher.absolute()),
+            "cliBinarySha256": binary_hash,
+            "binaryPath": str(binary.absolute()) if binary is not None else None}
 
 
 def pdf(pages):
@@ -94,7 +124,7 @@ def prepare(directory, evidence, command, cli):
     report = {
         "schema": 1, "status": "prepared", "method": "Installed CLI fixture preparation",
         "desktopLinkCreationTested": False, "desktopLinkSavingTested": False,
-        "syntheticOnly": True, "cliSha256": sha(cli), "commands": commands,
+        "syntheticOnly": True, **cli_provenance(cli), "commands": commands,
         "qpdf": {"scope": "Structural validation of the prepared fixture, not external-reader interoperability",
                  "output": qpdf}, "protectedFiles": protected,
         "linkRectPdfPoints": links[0]["rect"], "expectedPhysicalDestinationPage": 2,
