@@ -59,6 +59,22 @@ Passwords are used once and are not retained in the manifest or preview receipt.
 Closing the confirmation keeps the source PDF open. Existing dirty-tab choices are
 preserved when opening a destination that is already being edited.
 
+## Return to the source plan
+
+After **Open verified destination** succeeds, choose **Return to source**
+in the toolbar, View menu or command palette. The original tab remains
+open in memory, including unsaved edits. Returning restores its reading
+position and view settings, including both panes when present.
+
+The action belongs to the latest successful linked-document navigation
+in the current session. Activating the source consumes the return, even
+when selecting its tab manually. Closing or changing the source invalidates
+it. Finish or cancel a pending edit or dialog before returning. Ordinary
+page history remains local to each document.
+
+[Release qualification and limits](RELEASE_0.78.0.md) distinguish the native
+single-pane return from automated split-view and transition regressions.
+
 ## Command line
 
 Use file and sheet IDs from `plan-set inspect`, then select each permitted destination explicitly:
@@ -133,7 +149,7 @@ Passwords are not stored in the manifest, review or PDF link. Global
   the document, remove measurements or regenerate an OCR layer.
 
 Native navigation and independent-reader interoperability have separate qualification scopes.
-See [published navigation evidence](RELEASE_0.77.0.md) for the exact tested paths and remaining gaps.
+See [published navigation evidence](RELEASE_0.78.0.md) for the exact tested paths and remaining gaps.
 
 ## Multiple source PDFs
 

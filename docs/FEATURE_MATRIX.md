@@ -4,12 +4,14 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
-## In development: 0.78.0
+## Added in 0.78.0
 
-- Neutral Glass surfaces, continuous docked chrome and compact home tool families.
-- Explicit return to the source of the latest successful verified plan link.
-- Session-only restoration of source views, with retained unsaved document state.
-- [Scope and pending qualification](RELEASE_0.78.0.md).
+- Use a calmer Glass workspace with neutral light/dark surfaces and continuous docked bars.
+- Find Open file and Recent files above compact, grouped tools on the welcome screen.
+- Return to the source after following a verified plan link, retaining unsaved documents and reading positions.
+- Restore both pane positions during the session; refuse closed, changed or conflicting return targets.
+
+Published stable with [qualification and limits](RELEASE_0.78.0.md). Broader AEC-017 acceptance remains open.
 
 ## Added in 0.77.0
 

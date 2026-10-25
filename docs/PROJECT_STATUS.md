@@ -1,31 +1,39 @@
 # Project status
 
-## Published 0.77.0
+## Published 0.78.0
 
-[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.77.0) | [Release notes](RELEASE_0.77.0.md) | [Qualification evidence](qa/RELEASE_0.77.0.json).
+[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.78.0) | [Release notes](RELEASE_0.78.0.md) | [Qualification evidence](qa/RELEASE_0.78.0.json).
 
-Saved plan links can show a verified destination preview before opening. The preview displays the drawing and sheet metadata; opening rechecks the saved inputs. Manifest paths can be entered directly or selected with the file browser.
+Glass uses a continuous neutral workspace in light and dark modes, with compact task families and Open/Recent priority on the welcome screen. After following a verified plan link, Return to source restores the original open document and reading positions. Unsaved changes remain in memory; the latest successful return is session-only.
 
 The tagged source passed all 11 release jobs. Windows qualification includes
-13 offscreen interface scenes, 54 portable upgrade baselines plus
-4 guards, and 52 MSI upgrade baselines. Ubuntu 22.04 and 24.04
-each passed 21 installed runtime cases, including 5 plan-link cases.
+16 offscreen interface scenes (3 Home and 13 PDF/settings scenes), 55 portable upgrade baselines plus
+4 guards, and 53 MSI upgrade baselines. Ubuntu 22.04 and 24.04
+each passed 22 installed runtime cases, including 6 plan-link cases.
 Apple Silicon passed 7 installed checks on macOS 15.7.9.
 
 Independent PDF validation passed the recorded 12-fixture corpus. The public
 DEB contains the same CLI bytes as that conformance run. All ten public downloads
-were checked anonymously against their SHA256 values, verified 2026-10-25T01:56:30.631866+00:00.
+were checked anonymously against their SHA256 values, verified 2026-10-25T02:42:58.071611+00:00.
 
-Visual review covers 11 recorded images. Windows captures use offscreen software
+Visual review covers 16 recorded images. Windows captures use offscreen software
 rendering; Ubuntu interaction uses the recorded X11/Openbox/Xvfb environment.
 Capture identities, review methods and exact-source limits are retained in
-[qualification evidence](qa/RELEASE_0.77.0.json).
+[qualification evidence](qa/RELEASE_0.78.0.json).
 
 Native plan-link navigation uses synthetic PDFs prepared by the installed CLI.
 It covers preview/cancel, changed or missing input refusals and the correct
 physical destination page. Desktop link creation, desktop link saving,
 dirty-destination interaction and broader external-reader interoperability
 remain open. These results do not establish complete AEC-017 acceptance.
+
+Native return-to-source qualification covers one return to the observed
+source position. Restoring both split panes, repeated returns and dirty
+document transitions retain separate automated or unqualified scopes.
+Home review covers the visible headings and compact Open action; content
+below the recorded viewport is not visually qualified. Native theme
+checks verify neutral chrome and saved preferences, without establishing
+a visual difference between reduced-effects modes on flat docked bars.
 
 Windows packages remain unsigned, and Windows ARM64 is cross-built without
 native hardware execution. The Apple Silicon app is ad hoc signed, not
@@ -54,6 +62,8 @@ conformance or overall performance claim is made.
 Repository documentation does not establish GitHub Projects synchronization. English remains the default UI.
 
 ## History
+
+[0.77.0 qualification](RELEASE_0.77.0.md) retains its original source, counts and limits.
 
 [0.76.0 qualification](RELEASE_0.76.0.md) retains its original source, counts and limits.
 
