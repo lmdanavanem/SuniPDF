@@ -676,6 +676,11 @@ fn home_text_paint(
                                 section.format.color
                             }
                         });
+                        let color = if text.opacity_factor < 1.0 {
+                            color.gamma_multiply(text.opacity_factor)
+                        } else {
+                            color
+                        };
                         found.push((rect, clip, color));
                     }
                 }
@@ -731,6 +736,20 @@ fn home_label_pixels_cannot_come_from_sidebar_or_clipped_scroll_content() {
     assert_eq!(labels.len(), 1);
     assert_eq!(labels[0].0.min, pos2(240.0, 60.0));
     assert!(home_text_paint(&frame, "Missing", main_content).is_empty());
+    fn fade(shape: &mut egui::Shape) {
+        match shape {
+            egui::Shape::Text(text) => text.opacity_factor = 0.5,
+            egui::Shape::Vec(shapes) => shapes.iter_mut().for_each(fade),
+            _ => {}
+        }
+    }
+    frame
+        .shapes
+        .iter_mut()
+        .for_each(|shape| fade(&mut shape.shape));
+    let faded = home_text_paint(&frame, "Review", main_content);
+    assert_eq!(faded.len(), 1);
+    assert_eq!(faded[0].2, egui::Color32::WHITE.gamma_multiply(0.5));
 }
 
 fn verify_home_labels(

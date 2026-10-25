@@ -8,7 +8,7 @@ use crate::{geometry::PageGeometry, Document, EngineError, PointRect};
 use lopdf::{dictionary, Dictionary, Object, Stream};
 
 fn unsupported() -> EngineError {
-    invalid("only unchanged native FreeText with standard Helvetica, Times or Courier fonts can be captured; custom fonts, appearances, actions and review history are not supported")
+    invalid("only reproducible native FreeText with standard Helvetica, Times or Courier fonts can be captured; custom fonts, appearances, actions and review history are not supported")
 }
 
 fn resolve<'a>(

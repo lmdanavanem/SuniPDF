@@ -364,12 +364,12 @@ fn native_refusals(engine: &Engine) {
                 .dict
                 .set("Resources", resources);
         }),
-        ("altered font", |pdf, id| {
+        ("unsupported font", |pdf, id| {
             mutate_font(
                 pdf,
                 id,
                 b"BaseFont",
-                Object::Name(b"Helvetica-Bold".to_vec()),
+                Object::Name(b"UnsupportedFont".to_vec()),
             );
         }),
         ("embedded font", |pdf, id| {
@@ -413,6 +413,49 @@ fn native_refusals(engine: &Engine) {
             "{label}"
         );
     }
+    // A standard-font substitution can still be a fully reproducible current
+    // appearance. Capture verifies that appearance, not an unavailable history.
+    let mut standard = pdf.clone();
+    mutate_font(
+        &mut standard,
+        index,
+        b"BaseFont",
+        Object::Name(b"Helvetica-Bold".to_vec()),
+    );
+    let mut standard_bytes = Vec::new();
+    standard.save_to(&mut standard_bytes).unwrap();
+    let standard_source = engine
+        .open_bytes(standard_bytes, None, Path::new("standard-variant.pdf"))
+        .unwrap();
+    let standard_pixels = standard_source.render_page(0, 1.0).unwrap().rgba;
+    let standard_entry = captured(&standard_source);
+    assert!(
+        matches!(&standard_entry.primitives[0], LibraryPrimitive::FreeText { style, .. }
+        if style.family == LibraryFont::Helvetica && style.bold && !style.italic)
+    );
+    let mut standard_copy = engine
+        .open_bytes(fixture(0), None, Path::new("standard-copy.pdf"))
+        .unwrap();
+    standard_copy
+        .place_library_entry(
+            0,
+            &standard_entry,
+            LibraryPlacement {
+                origin: (20.0, 40.0),
+                scale: 1.0,
+            },
+            None,
+        )
+        .unwrap();
+    assert_eq!(
+        standard_copy.render_page(0, 1.0).unwrap().rgba,
+        standard_pixels
+    );
+    assert_eq!(
+        captured(&standard_copy).primitives,
+        standard_entry.primitives
+    );
+
     let entry = captured(&document);
     let candidate = document.library_capture_candidates(0).unwrap().remove(0);
     let selection = LibraryCaptureSelection {
