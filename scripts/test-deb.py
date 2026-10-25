@@ -1407,7 +1407,12 @@ def lifecycle(package, evidence, identity):
                    "XDG_DATA_HOME=" + str(HOME / ".local/share"), "XDG_RUNTIME_DIR=" + str(runtime_dir),
                    "LIBGL_ALWAYS_SOFTWARE=1", "SUNIPDF_RENDERER=glow", "XDG_SESSION_TYPE=x11",
                    "WINIT_X11_SCALE_FACTOR=1", "GITHUB_SHA=" + source_sha]
-    command(["runuser", "-u", ACCOUNT, "--", *environment, "dbus-run-session", "--", "xvfb-run", "-a", "-s", "-screen 0 1400x1000x24 -dpi 96", "python3", __file__, "--runtime", "--version", version, "--evidence", evidence], timeout=1200)
+    # Start D-Bus inside the display session so activated file-chooser portals
+    # inherit the real DISPLAY and XAUTHORITY created by xvfb-run.
+    command(["runuser", "-u", ACCOUNT, "--", *environment,
+             "xvfb-run", "-a", "-s", "-screen 0 1400x1000x24 -dpi 96",
+             "dbus-run-session", "--", "python3", __file__, "--runtime",
+             "--version", version, "--evidence", evidence], timeout=1200)
     runtime_proof = json.loads((evidence / "runtime.json").read_text())
     plan_path = evidence / "native-plan-links.json"
     plan_proof = json.loads(plan_path.read_text(encoding="utf-8"))

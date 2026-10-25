@@ -225,7 +225,34 @@ jobs:
                   sed -i "s|http://archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://security.ubuntu.com/ubuntu|g" "$source"
                 fi
               done
-              apt-get install -y --no-install-recommends python3 python3-pil xvfb xauth dbus-x11 x11-utils openbox imagemagick xdotool wmctrl qpdf desktop-file-utils fonts-dejavu-core ca-certificates
+              apt-get install -y --no-install-recommends python3 python3-pil xvfb xauth dbus-x11 x11-utils openbox imagemagick xdotool wmctrl qpdf desktop-file-utils fonts-dejavu-core ca-certificates curl unzip
+              # Native PDF graph checks require JSON v2 and inline streams on both Ubuntu versions.
+              # This pinned upstream tool belongs only to the disposable validation environment.
+              qpdf_root=/opt/sunipdf-qa/qpdf-12.4.2
+              mkdir -p "$qpdf_root" /usr/local/bin
+              curl --fail --location --silent --show-error --retry 3 --max-time 120 \
+                --proto "=https" --proto-redir "=https" \
+                --output "$qpdf_root/qpdf.zip" \
+                https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2-bin-linux-x86_64.zip
+              printf "%s  %s\n" \
+                db367d897829f22c4198ce1094143c9d467bd6ee7dfabc44ba6f02056b24f8b1 \
+                "$qpdf_root/qpdf.zip" | sha256sum --check --strict
+              unzip -q "$qpdf_root/qpdf.zip" -d "$qpdf_root"
+              test -x "$qpdf_root/bin/qpdf"
+              test -L "$qpdf_root/lib/libqpdf.so.30"
+              test "$(readlink "$qpdf_root/lib/libqpdf.so.30")" = libqpdf.so.30.4.2
+              ln -s "$qpdf_root/bin/qpdf" /usr/local/bin/qpdf
+              test "$(command -v qpdf)" = /usr/local/bin/qpdf
+              qpdf --version > /evidence/native-qpdf-version.txt
+              grep -Fx "qpdf version 12.4.2" /evidence/native-qpdf-version.txt
+              runuser -u nobody -- qpdf --version > /evidence/native-qpdf-unprivileged-version.txt
+              cmp /evidence/native-qpdf-version.txt /evidence/native-qpdf-unprivileged-version.txt
+              qpdf --help=--json-stream-data > /evidence/native-qpdf-json-stream-help.txt
+              sha256sum "$qpdf_root/qpdf.zip" "$qpdf_root/bin/qpdf" \
+                "$qpdf_root/lib/libqpdf.so.30.4.2" > /evidence/native-qpdf-sha256.txt
+              printf "%s\n" \
+                https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2-bin-linux-x86_64.zip \
+                > /evidence/native-qpdf-source.txt
               cat /etc/dpkg/dpkg.cfg.d/* > /evidence/dpkg-image-policy.txt
               # Minimal container images exclude documentation that desktop installations retain.
               printf "%s\n" \
