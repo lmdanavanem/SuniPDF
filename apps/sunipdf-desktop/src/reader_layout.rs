@@ -141,13 +141,8 @@ impl SuniApp {
             .resizable(true)
             .default_size(240.0_f32.min(max_width))
             .size_range(min_width..=max_width)
-            .frame(if theme::appearance(ctx).0 == theme::Style::LiquidGlass {
-                theme::material_frame(ctx).inner_margin(8)
-            } else {
-                egui::Frame::new().fill(p.surface).inner_margin(8)
-            })
+            .frame(theme::panel_frame(ctx).fill(p.surface).inner_margin(8))
             .show(ui, |ui| {
-                theme::paint_material(ui, ui.max_rect(), 18);
                 let lang = self.lang();
                 let mut run = None;
                 ui.horizontal_wrapped(|ui| {
@@ -203,13 +198,8 @@ impl SuniApp {
             .resizable(true)
             .default_size(300.0_f32.min(max_width))
             .size_range(260.0..=max_width)
-            .frame(if theme::appearance(ctx).0 == theme::Style::LiquidGlass {
-                theme::material_frame(ctx).inner_margin(10)
-            } else {
-                egui::Frame::new().fill(p.surface).inner_margin(10)
-            })
+            .frame(theme::panel_frame(ctx).fill(p.surface).inner_margin(10))
             .show(ui, |ui| {
-                theme::paint_material(ui, ui.max_rect(), 18);
                 let mut leave = false;
                 ui.horizontal(|ui| {
                     ui.label(

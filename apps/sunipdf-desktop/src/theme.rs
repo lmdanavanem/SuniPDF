@@ -113,33 +113,33 @@ pub fn palette_for_style(dark: bool, style: Style) -> Palette {
     }
     if dark {
         Palette {
-            chrome: Color32::from_rgb(0x18, 0x29, 0x3D),
-            surface: Color32::from_rgb(0x21, 0x35, 0x4B),
-            border: Color32::from_rgb(0x4B, 0x62, 0x7C),
-            text: Color32::from_rgb(0xF3, 0xF8, 0xFF),
-            text_muted: Color32::from_rgb(0xB2, 0xC3, 0xD7),
-            canvas: Color32::from_rgb(0x10, 0x1C, 0x2B),
-            accent: Color32::from_rgb(0x85, 0xBA, 0xFF),
-            hover: Color32::from_rgb(0x2E, 0x42, 0x5A),
-            accent_fill: Color32::from_rgb(0x1D, 0x5F, 0xD3),
-            accent_soft: Color32::from_rgb(0x30, 0x48, 0x66),
-            focus: Color32::from_rgb(0x85, 0xBA, 0xFF),
-            error: Color32::from_rgb(0xFF, 0xB4, 0xBB),
+            chrome: Color32::from_rgb(0x20, 0x22, 0x26),
+            surface: Color32::from_rgb(0x2A, 0x2C, 0x31),
+            border: Color32::from_rgb(0x45, 0x49, 0x4F),
+            text: Color32::from_rgb(0xF5, 0xF6, 0xF8),
+            text_muted: Color32::from_rgb(0xB4, 0xB8, 0xC0),
+            canvas: Color32::from_rgb(0x18, 0x1A, 0x1D),
+            accent: Color32::from_rgb(0x78, 0xAE, 0xF7),
+            hover: Color32::from_rgb(0x35, 0x38, 0x3E),
+            accent_fill: Color32::from_rgb(0x0A, 0x64, 0xD8),
+            accent_soft: Color32::from_rgb(0x2A, 0x3D, 0x54),
+            focus: Color32::from_rgb(0x83, 0xB7, 0xFF),
+            error: Color32::from_rgb(0xFF, 0xA7, 0xAE),
         }
     } else {
         Palette {
-            chrome: Color32::from_rgb(0xEC, 0xF3, 0xFA),
-            surface: Color32::from_rgb(0xF7, 0xFA, 0xFD),
-            border: Color32::from_rgb(0xBC, 0xCC, 0xDF),
-            text: Color32::from_rgb(0x12, 0x20, 0x33),
-            text_muted: Color32::from_rgb(0x52, 0x64, 0x7A),
-            canvas: Color32::from_rgb(0xDC, 0xE6, 0xF0),
-            accent: Color32::from_rgb(0x1D, 0x5F, 0xD3),
-            hover: Color32::from_rgb(0xE3, 0xED, 0xF9),
-            accent_fill: Color32::from_rgb(0x1D, 0x5F, 0xD3),
-            accent_soft: Color32::from_rgb(0xD9, 0xE7, 0xFB),
-            focus: Color32::from_rgb(0x1D, 0x5F, 0xD3),
-            error: Color32::from_rgb(0xC5, 0x26, 0x39),
+            chrome: Color32::from_rgb(0xF4, 0xF5, 0xF7),
+            surface: Color32::WHITE,
+            border: Color32::from_rgb(0xD4, 0xD8, 0xDF),
+            text: Color32::from_rgb(0x1B, 0x1E, 0x23),
+            text_muted: Color32::from_rgb(0x5B, 0x61, 0x6B),
+            canvas: Color32::from_rgb(0xE9, 0xEB, 0xEE),
+            accent: Color32::from_rgb(0x0A, 0x64, 0xD8),
+            hover: Color32::from_rgb(0xEB, 0xED, 0xF0),
+            accent_fill: Color32::from_rgb(0x0A, 0x64, 0xD8),
+            accent_soft: Color32::from_rgb(0xE7, 0xEF, 0xFB),
+            focus: Color32::from_rgb(0x0A, 0x64, 0xD8),
+            error: Color32::from_rgb(0xB4, 0x23, 0x32),
         }
     }
 }
@@ -169,7 +169,7 @@ pub fn apply_appearance(ctx: &egui::Context, dark: bool, style: Style, reduce_tr
     } else {
         Visuals::light()
     };
-    let r = CornerRadius::same(if glass { 14 } else { 6 });
+    let r = CornerRadius::same(6);
     v.panel_fill = p.chrome;
     v.window_fill = p.surface;
     v.extreme_bg_color = p.surface;
@@ -183,7 +183,7 @@ pub fn apply_appearance(ctx: &egui::Context, dark: bool, style: Style, reduce_tr
     };
     v.selection.stroke = Stroke::new(1.0, p.accent);
     v.window_stroke = Stroke::new(1.0, p.border);
-    v.window_corner_radius = CornerRadius::same(if glass { 18 } else { 10 });
+    v.window_corner_radius = CornerRadius::same(if glass { 12 } else { 10 });
     v.widgets.noninteractive.bg_stroke = Stroke::new(1.0, p.border);
     v.widgets.noninteractive.fg_stroke = Stroke::new(1.0, p.text);
     v.widgets.inactive.bg_fill = p.surface;
@@ -192,7 +192,7 @@ pub fn apply_appearance(ctx: &egui::Context, dark: bool, style: Style, reduce_tr
     v.widgets.inactive.fg_stroke = Stroke::new(1.0, p.text);
     v.widgets.hovered.bg_fill = p.hover;
     v.widgets.hovered.weak_bg_fill = p.hover;
-    v.widgets.hovered.bg_stroke = Stroke::new(1.0, p.accent);
+    v.widgets.hovered.bg_stroke = Stroke::new(1.0, if glass { p.border } else { p.accent });
     v.widgets.hovered.fg_stroke = Stroke::new(1.0, p.text);
     // egui also uses the active foreground for strong labels, independently of override_text_color.
     // Generic active controls therefore use a soft background; filled actions set white explicitly.
@@ -202,6 +202,10 @@ pub fn apply_appearance(ctx: &egui::Context, dark: bool, style: Style, reduce_tr
     v.widgets.open.bg_fill = p.hover;
     v.widgets.open.fg_stroke = Stroke::new(1.0, p.text);
     v.widgets.open.weak_bg_fill = p.hover;
+    if glass {
+        v.widgets.active.bg_stroke = Stroke::new(1.0, p.focus);
+        v.widgets.open.bg_stroke = Stroke::new(1.0, p.border);
+    }
     for w in [
         &mut v.widgets.noninteractive,
         &mut v.widgets.inactive,
@@ -213,7 +217,7 @@ pub fn apply_appearance(ctx: &egui::Context, dark: bool, style: Style, reduce_tr
         // Pas de « saut » de taille au survol.
         w.expansion = 0.0;
     }
-    v.menu_corner_radius = CornerRadius::same(if glass { 14 } else { 8 });
+    v.menu_corner_radius = CornerRadius::same(if glass { 12 } else { 8 });
     v.interact_cursor = Some(egui::CursorIcon::PointingHand);
     v.popup_shadow = egui::epaint::Shadow {
         offset: [0, 4],
@@ -227,6 +231,24 @@ pub fn apply_appearance(ctx: &egui::Context, dark: bool, style: Style, reduce_tr
         spread: 0,
         color: Color32::from_black_alpha(if dark { 160 } else { 60 }),
     };
+    if glass {
+        v.popup_shadow = egui::epaint::Shadow {
+            offset: [0, 3],
+            blur: 12,
+            spread: 0,
+            color: Color32::from_black_alpha(if dark { 72 } else { 22 }),
+        };
+        v.window_shadow = egui::epaint::Shadow {
+            offset: [0, 4],
+            blur: 18,
+            spread: 0,
+            color: Color32::from_black_alpha(if dark { 80 } else { 24 }),
+        };
+        if reduce_transparency {
+            v.popup_shadow = Default::default();
+            v.window_shadow = Default::default();
+        }
+    }
     ctx.set_visuals(v);
     ctx.all_styles_mut(|s| {
         s.animation_time = 0.10;
@@ -268,13 +290,8 @@ pub fn square_boxes(ui: &mut egui::Ui) {
 /// Chrome geometry remains explicit at the call site so theming cannot hide controls.
 pub fn panel_frame(ctx: &egui::Context) -> egui::Frame {
     let p = palette_for(ctx);
-    if appearance(ctx).0 == Style::Classic {
-        return egui::Frame::new().fill(p.chrome);
-    }
-    egui::Frame::new()
-        .fill(p.chrome)
-        .stroke(Stroke::new(1.0, p.border))
-        .corner_radius(14)
+    // Docked bars share their outer edges; rounding would expose the window clear color.
+    egui::Frame::new().fill(p.chrome)
 }
 
 /// The opaque base keeps underlying document content out of text and controls.
@@ -284,23 +301,23 @@ pub fn material_frame(ctx: &egui::Context) -> egui::Frame {
     let mut frame = egui::Frame::new()
         .fill(p.surface)
         .stroke(Stroke::new(1.0, p.border))
-        .corner_radius(if glass { 18 } else { 12 });
-    if glass {
+        .corner_radius(12);
+    if glass && !appearance(ctx).1 {
         frame = frame.shadow(egui::epaint::Shadow {
-            offset: [0, 5],
-            blur: 14,
+            offset: [0, 3],
+            blur: 12,
             spread: 0,
             color: Color32::from_black_alpha(if ctx.global_style().visuals.dark_mode {
-                70
+                56
             } else {
-                24
+                16
             }),
         });
     }
     frame
 }
 
-/// Paint before a surface's contents. A fixed mesh and inner rim provide a subtle reflection;
+/// Paint before a floating surface's contents. A fixed mesh provides a subtle reflection;
 /// no framebuffer readback, live blur or continuously scheduled repaint is required.
 pub fn paint_material(ui: &egui::Ui, rect: egui::Rect, radius: u8) {
     let shapes = material_shapes(ui, rect, radius);
@@ -311,23 +328,13 @@ pub fn paint_material(ui: &egui::Ui, rect: egui::Rect, radius: u8) {
     painter.add(egui::Shape::Vec(shapes));
 }
 
-/// Reserve the paint order first, then measure actual content without another layout pass.
+/// Docked chrome remains opaque and flat. Its controls provide the interactive hierarchy.
 pub fn material_scope<R>(
     ui: &mut egui::Ui,
-    radius: u8,
+    _radius: u8,
     contents: impl FnOnce(&mut egui::Ui) -> R,
 ) -> R {
-    if appearance(ui.ctx()) != (Style::LiquidGlass, false) {
-        return contents(ui);
-    }
-    let painter = ui.painter().clone();
-    let slot = painter.add(egui::Shape::Noop);
-    let result = contents(ui);
-    painter.set(
-        slot,
-        egui::Shape::Vec(material_shapes(ui, ui.min_rect(), radius)),
-    );
-    result
+    contents(ui)
 }
 
 fn material_shapes(ui: &egui::Ui, rect: egui::Rect, radius: u8) -> Vec<egui::Shape> {
@@ -340,17 +347,17 @@ fn material_shapes(ui: &egui::Ui, rect: egui::Rect, radius: u8) -> Vec<egui::Sha
         return Vec::new();
     }
     let dark = ui.visuals().dark_mode;
-    let mut shapes = Vec::with_capacity(2);
-    let inset = f32::from(radius).min(rect.width() * 0.25).max(1.0);
+    let mut shapes = Vec::with_capacity(1);
+    let inset = f32::from(radius.min(12)).min(rect.width() * 0.25).max(1.0);
     let top = rect.top() + 1.0;
-    let bottom = (top + 48.0).min(rect.bottom() - 1.0);
+    let bottom = (top + 24.0).min(rect.bottom() - 1.0);
     if bottom > top && rect.width() > inset * 2.0 {
         let reflection = egui::Rect::from_min_max(
             egui::pos2(rect.left() + inset, top),
             egui::pos2(rect.right() - inset, bottom),
         );
         let mut mesh = egui::Mesh::default();
-        let bright = Color32::from_white_alpha(if dark { 12 } else { 90 });
+        let bright = Color32::from_white_alpha(if dark { 6 } else { 32 });
         for (pos, color) in [
             (reflection.left_top(), bright),
             (reflection.right_top(), bright),
@@ -363,12 +370,6 @@ fn material_shapes(ui: &egui::Ui, rect: egui::Rect, radius: u8) -> Vec<egui::Sha
         mesh.add_triangle(2, 1, 3);
         shapes.push(egui::Shape::mesh(mesh));
     }
-    shapes.push(egui::Shape::rect_stroke(
-        rect.shrink(1.5),
-        radius.saturating_sub(1),
-        Stroke::new(1.0, Color32::from_white_alpha(if dark { 24 } else { 150 })),
-        egui::StrokeKind::Inside,
-    ));
     shapes
 }
 
@@ -577,7 +578,7 @@ mod tests {
             let p = palette_for_style(dark, Style::LiquidGlass);
             for base in [p.chrome, p.surface, p.hover, p.accent_soft] {
                 // The reflection is brightest at its top; every other point is less intense.
-                let amount = if dark { 12.0 / 255.0 } else { 90.0 / 255.0 };
+                let amount = if dark { 6.0 / 255.0 } else { 32.0 / 255.0 };
                 let highlighted = base.lerp_to_gamma(Color32::WHITE, amount);
                 for background in [base, highlighted] {
                     for foreground in [p.text, p.text_muted, p.error] {
@@ -611,7 +612,7 @@ mod tests {
     }
 
     #[test]
-    fn reduced_material_removes_reflections_without_changing_layout_or_text() {
+    fn reduced_floating_material_removes_reflections_without_changing_layout_or_text() {
         let input = egui::RawInput {
             screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(900.0, 650.0))),
             ..Default::default()
@@ -622,11 +623,12 @@ mod tests {
             apply_appearance(&ctx, true, Style::LiquidGlass, reduced);
             let mut bounds = Rect::NOTHING;
             let mut output = ctx.run_ui(input.clone(), |ui| {
-                let response = egui::Frame::new().show(ui, |ui| {
-                    material_scope(ui, 14, |ui| {
-                        ui.label("Theme preview");
-                        ui.button("Example action").rect
-                    })
+                let response = material_frame(&ctx).show(ui, |ui| {
+                    let size = egui::vec2(220.0, 56.0);
+                    ui.set_min_size(size);
+                    paint_material(ui, Rect::from_min_size(ui.min_rect().min, size), 12);
+                    ui.label("Theme preview");
+                    ui.button("Example action").rect
                 });
                 bounds = response.response.rect;
             });
@@ -652,7 +654,7 @@ mod tests {
             }
             assert!(
                 bounds.height() < 100.0,
-                "material scope must not reserve the whole viewport"
+                "floating material must not reserve the whole viewport"
             );
             assert_painted(
                 &output,
@@ -664,5 +666,44 @@ mod tests {
             output.textures_delta.clear();
         }
         assert_eq!(heights[0], heights[1]);
+    }
+
+    #[test]
+    fn docked_chrome_covers_outer_corners_without_a_material_rim() {
+        for dark in [false, true] {
+            let ctx = egui::Context::default();
+            apply_appearance(&ctx, dark, Style::LiquidGlass, false);
+            let p = palette_for(&ctx);
+            let mut bounds = Rect::NOTHING;
+            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                let response = panel_frame(&ctx).show(ui, |ui| {
+                    ui.set_min_size(egui::vec2(640.0, 40.0));
+                    material_scope(ui, 12, |ui| ui.label("Document tools"));
+                });
+                bounds = response.response.rect;
+            });
+            let outer = output
+                .shapes
+                .iter()
+                .find_map(|shape| match &shape.shape {
+                    Shape::Rect(rect)
+                        if rect.fill == p.chrome && rect.rect.contains_rect(bounds) =>
+                    {
+                        Some(rect)
+                    }
+                    _ => None,
+                })
+                .expect("the dock must paint an opaque surface to all four edges");
+            assert_eq!(outer.fill.a(), 255);
+            assert_eq!(outer.corner_radius, CornerRadius::ZERO);
+            assert!(
+                !output.shapes.iter().any(|shape| matches!(&shape.shape,
+                    Shape::Vec(shapes) if shapes.iter().any(|shape| matches!(shape, Shape::Mesh(_)))
+                )),
+                "docked chrome must not receive a second reflective outline"
+            );
+            assert_painted(&output, "Document tools", p.text, &[p.chrome]);
+            output.textures_delta.clear();
+        }
     }
 }

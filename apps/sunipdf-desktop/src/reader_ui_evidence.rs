@@ -1,4 +1,4 @@
-//! Actual application frames rendered offscreen with PDFium tiles and DX12 WARP.
+//! Actual Home, reader and settings frames rendered offscreen with DX12 WARP.
 
 use crate::app::{OpenDocument, Zoom};
 use crate::worker::{Request, Response};
@@ -140,6 +140,8 @@ struct Scene {
     reduce_transparency: bool,
     settings_open: bool,
     split: Option<SplitScene>,
+    /// Home surface with an explicitly open or closed tools sidebar; no PDF is loaded.
+    home_tools: Option<bool>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -619,6 +621,197 @@ fn readback(
     Ok(pixels)
 }
 
+fn home_text_paint(
+    frame: &egui::FullOutput,
+    label: &str,
+    region: Rect,
+) -> Vec<(Rect, Rect, egui::Color32)> {
+    fn collect(
+        shape: &egui::Shape,
+        clip: Rect,
+        label: &str,
+        region: Rect,
+        found: &mut Vec<(Rect, Rect, egui::Color32)>,
+    ) {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text() == label => {
+                let rect = Rect::from_min_size(text.pos, text.galley.size());
+                if region.contains_rect(rect) && clip.contains_rect(rect) {
+                    if let Some(section) = text.galley.job.sections.first() {
+                        let color = text.override_text_color.unwrap_or_else(|| {
+                            if section.format.color == egui::Color32::PLACEHOLDER {
+                                text.fallback_color
+                            } else {
+                                section.format.color
+                            }
+                        });
+                        found.push((rect, clip, color));
+                    }
+                }
+            }
+            egui::Shape::Vec(shapes) => {
+                for shape in shapes {
+                    collect(shape, clip, label, region, found);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut found = Vec::new();
+    for shape in &frame.shapes {
+        collect(&shape.shape, shape.clip_rect, label, region, &mut found);
+    }
+    found
+}
+
+#[test]
+fn home_label_pixels_cannot_come_from_sidebar_or_clipped_scroll_content() {
+    let context = egui::Context::default();
+    let frame = context.run_ui(
+        egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(500.0, 300.0))),
+            ..Default::default()
+        },
+        |ui| {
+            for position in [pos2(20.0, 60.0), pos2(240.0, 60.0), pos2(490.0, 60.0)] {
+                ui.painter().text(
+                    position,
+                    egui::Align2::LEFT_TOP,
+                    "Review",
+                    egui::FontId::proportional(16.0),
+                    egui::Color32::WHITE,
+                );
+            }
+            ui.painter()
+                .with_clip_rect(Rect::from_min_max(pos2(200.0, 100.0), pos2(500.0, 105.0)))
+                .text(
+                    pos2(240.0, 100.0),
+                    egui::Align2::LEFT_TOP,
+                    "Review",
+                    egui::FontId::proportional(16.0),
+                    egui::Color32::WHITE,
+                );
+        },
+    );
+    let main_content = Rect::from_min_max(pos2(200.0, 0.0), pos2(500.0, 300.0));
+    let labels = home_text_paint(&frame, "Review", main_content);
+    assert_eq!(labels.len(), 1);
+    assert_eq!(labels[0].0.min, pos2(240.0, 60.0));
+    assert!(home_text_paint(&frame, "Missing", main_content).is_empty());
+}
+
+fn verify_home_labels(
+    app: &crate::app::SuniApp,
+    context: &egui::Context,
+    frame: &egui::FullOutput,
+    pixels: &[u8],
+    size: [u32; 2],
+) -> EvidenceResult<Value> {
+    let viewport = Rect::from_min_size(egui::Pos2::ZERO, vec2(size[0] as f32, size[1] as f32));
+    let tree = frame
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .ok_or("Home has no accessibility tree")?;
+    let open_label = tr(app.lang(), "home.open_file");
+    let open_buttons: Vec<_> = tree
+        .nodes
+        .iter()
+        .filter_map(|(_, node)| {
+            if node.role() != egui::accesskit::Role::Button || node.label() != Some(open_label) {
+                return None;
+            }
+            node.bounds().map(|rect| {
+                Rect::from_min_max(
+                    pos2(rect.x0 as f32, rect.y0 as f32),
+                    pos2(rect.x1 as f32, rect.y1 as f32),
+                )
+            })
+        })
+        .collect();
+    require(
+        open_buttons.len() == 1,
+        "Home must expose one explicit Open file action",
+    )?;
+    let open = open_buttons[0];
+    require(
+        viewport.contains_rect(open) && open.width() >= 200.0 && open.height() <= 80.0,
+        "Home Open file row is clipped, too narrow or no longer compact",
+    )?;
+    // The main Open file row identifies Home's left edge, excluding the optional
+    // tools sidebar, whose identical family headings must not qualify Home content.
+    let home_region = Rect::from_min_max(pos2(open.left(), viewport.top()), viewport.max);
+    let palette = crate::theme::palette_for(context);
+    let mut verified = Vec::new();
+    let mut verify = |key: &str, background: egui::Color32| -> EvidenceResult<()> {
+        let label = tr(app.lang(), key);
+        let paints = home_text_paint(frame, label, home_region);
+        require(
+            paints.len() == 1,
+            &format!("Home label must be fully painted once inside its content area: {label}"),
+        )?;
+        let (rect, clip, foreground) = paints[0];
+        require(
+            tree.nodes.iter().any(|(_, node)| {
+                (node.label() == Some(label) || node.value() == Some(label))
+                    && node.bounds().is_some_and(|bounds| {
+                        Rect::from_min_max(
+                            pos2(bounds.x0 as f32, bounds.y0 as f32),
+                            pos2(bounds.x1 as f32, bounds.y1 as f32),
+                        )
+                        .intersects(rect)
+                    })
+            }),
+            &format!("Home label lacks a matching accessible content node: {label}"),
+        )?;
+        let ink = readable_text_pixels(pixels, size, rect, foreground, background);
+        require(
+            ink >= 20,
+            &format!("Home label {label:?} has only {ink} readable text pixels"),
+        )?;
+        verified.push(json!({"key": key, "label": label, "bounds": [rect.min.x, rect.min.y, rect.max.x, rect.max.y],
+            "clip": [clip.min.x, clip.min.y, clip.max.x, clip.max.y], "accessible": true,
+            "readablePixels": ink, "minimumContrast": 4.5}));
+        Ok(())
+    };
+    verify("home.welcome", palette.chrome)?;
+    verify("home.open_file", palette.surface)?;
+    verify("home.recent", palette.chrome)?;
+    let mut not_covered = Vec::new();
+    for (key, _) in crate::tool_hub::families() {
+        if home_text_paint(frame, tr(app.lang(), key), home_region).is_empty() {
+            require(
+                key != "tools.group.review",
+                "The first Home tool family is not visible",
+            )?;
+            not_covered.push(key);
+        } else {
+            verify(key, palette.surface)?;
+        }
+    }
+    let mut accent = 0_u32;
+    let mut sampled = 0_u32;
+    for y in open.top().ceil() as u32..open.bottom().floor() as u32 {
+        for x in open.left().ceil() as u32..open.right().floor() as u32 {
+            let offset = ((y * size[0] + x) * 4) as usize;
+            let [r, g, b] = [pixels[offset], pixels[offset + 1], pixels[offset + 2]];
+            accent += u32::from(b > 100 && b.saturating_sub(r) > 60 && b.saturating_sub(g) > 20);
+            sampled += 1;
+        }
+    }
+    let accent_fraction = f64::from(accent) / f64::from(sampled.max(1));
+    require(
+        accent_fraction < 0.15,
+        "Home Open file action regressed to an oversized accent banner",
+    )?;
+    Ok(
+        json!({"verified": verified, "familyHeadingsOutsideThisViewport": not_covered,
+        "openRowBounds": [open.min.x, open.min.y, open.max.x, open.max.y],
+        "openRowAccentFraction": accent_fraction, "compactOpenRowVerified": true,
+        "scope": "Fully visible Home labels and actual pixel contrast; lower scroll content is not qualified by this frame"}),
+    )
+}
+
 fn capture_scene(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -642,14 +835,39 @@ fn capture_scene(
     app.sync_appearance(&context);
     app.settings.set_language(scene.language);
     app.settings.autosave = false;
-    app.settings.show_thumbnails =
-        !scene.measurements && scene.table.is_none() && scene.split.is_none();
-    app.show_tools = scene.measurements;
-    app.settings.show_tools = scene.measurements;
-    let mut info = document.info().clone();
-    info.path = PathBuf::from("fixtures/two-pages.pdf");
-    app.document = Some(OpenDocument { info, page: 0 });
-    app.tabs.tabs[0].path = PathBuf::from("fixtures/two-pages.pdf");
+    app.settings.show_thumbnails = scene.home_tools.is_none()
+        && !scene.measurements
+        && scene.table.is_none()
+        && scene.split.is_none();
+    app.show_tools = scene.home_tools.unwrap_or(scene.measurements);
+    app.settings.show_tools = app.show_tools;
+    if scene.home_tools.is_some() {
+        require(
+            !scene.settings_open
+                && !scene.measurements
+                && scene.table.is_none()
+                && scene.split.is_none(),
+            "Home scene cannot also qualify document tools or settings",
+        )?;
+        app.document = None;
+        app.tabs = Default::default();
+        app.reader_views = Default::default();
+        app.view = crate::view::ViewState::new(true);
+        app.annotate = Default::default();
+        app.docinfo = Default::default();
+        app.forms = Default::default();
+        app.organize = Default::default();
+        app.edit = Default::default();
+        app.settings.recent.clear();
+        app.thumbnails.clear();
+        app.thumbs_pending.clear();
+        app.thumbs_failed.clear();
+    } else {
+        let mut info = document.info().clone();
+        info.path = PathBuf::from("fixtures/two-pages.pdf");
+        app.document = Some(OpenDocument { info, page: 0 });
+        app.tabs.tabs[0].path = PathBuf::from("fixtures/two-pages.pdf");
+    }
     app.zoom = scene.zoom;
     if scene.split.is_some() {
         app.view.mode = crate::view::ViewMode::Single;
@@ -738,13 +956,20 @@ fn capture_scene(
             }
         }
         pending_texture_frees.extend(frame.textures_delta.free.drain());
-        fulfill_requests(
-            document,
-            &requests,
-            &responses,
-            &mut tiles,
-            &mut wanted_batches,
-        )?;
+        if scene.home_tools.is_some() {
+            require(
+                requests.try_iter().next().is_none(),
+                "Home issued a document worker request without an open PDF",
+            )?;
+        } else {
+            fulfill_requests(
+                document,
+                &requests,
+                &responses,
+                &mut tiles,
+                &mut wanted_batches,
+            )?;
+        }
         frame_states.push(json!({
             "frame": index, "rendering": app.view.is_rendering(), "epoch": app.view.epoch,
             "effectiveZoom": app.effective_zoom, "tableHeight": app.settings.tables.height,
@@ -824,6 +1049,33 @@ fn capture_scene(
         !app.has_unsaved_changes(),
         "Read-only UI evidence unexpectedly changed the document",
     )?;
+    if let Some(tools_open) = scene.home_tools {
+        require(
+            app.document.is_none()
+                && app.tabs.tabs.is_empty()
+                && app.tabs.active.is_none()
+                && !app.reader_views.enabled
+                && tiles.is_empty()
+                && wanted_batches.is_empty()
+                && !app.dialog_open()
+                && app.show_tools == tools_open,
+            "Home evidence retained a document, hidden modal or unexpected sidebar/rendering state",
+        )?;
+        let labels =
+            verify_home_labels(&app, &context, &frame, &pixels, [scene.width, scene.height])?;
+        return Ok(json!({
+            "name": scene.name, "surface": "home", "language": scene.language.code(), "darkTheme": scene.dark,
+            "interfaceStyle": scene.style, "reduceTransparency": scene.reduce_transparency,
+            "documentOpen": false, "unsavedChanges": false, "appError": Value::Null,
+            "toolsSidebarOpen": tools_open, "themeSettingsOpen": false, "themeSettingsLabelsVerified": false,
+            "pdfFixtureBlueInkVerified": false, "pdfFixtureBlueInkPixels": 0, "readerLabelsVerified": false,
+            "outputPixels": [scene.width, scene.height], "actualApplicationRenderUi": true,
+            "actualPdfiumTiles": 0, "visiblePdfRegions": [], "splitReader": Value::Null,
+            "measurementToolsOpen": false, "dockedTable": Value::Null, "dockedTableControlsAndRowVerified": false,
+            "homeLabelsVerified": true, "homeLabels": labels, "zoom149SingleLineVerified": false,
+            "png": png_name, "rgbaSha256": sha256(&pixels), "pngSha256": sha256(&std::fs::read(png)?)
+        }));
+    }
     require(
         !tiles.is_empty(),
         "Actual document view did not request PDF tiles",
@@ -1031,7 +1283,10 @@ fn capture_scene(
         )?;
     }
     Ok(json!({
-        "name": scene.name, "language": scene.language.code(), "darkTheme": scene.dark,
+        "name": scene.name, "surface": if scene.settings_open { "settings" } else { "reader" },
+        "documentOpen": app.document.is_some(), "unsavedChanges": false, "appError": Value::Null,
+        "homeLabelsVerified": false,
+        "language": scene.language.code(), "darkTheme": scene.dark,
         "interfaceStyle": scene.style, "reduceTransparency": scene.reduce_transparency,
         "themeSettingsOpen": scene.settings_open, "themeSettingsLabelsVerified": scene.settings_open,
         "pdfFixtureBlueInkVerified": !scene.settings_open,
@@ -1095,6 +1350,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: None,
+            home_tools: None,
         },
         Scene {
             name: "reader-fr-light-720-zoom149",
@@ -1109,6 +1365,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: None,
+            home_tools: None,
         },
         Scene {
             name: "reader-en-light-pages",
@@ -1123,6 +1380,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: None,
+            home_tools: None,
         },
         Scene {
             name: "reader-en-glass-light-pages",
@@ -1137,6 +1395,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: None,
+            home_tools: None,
         },
         Scene {
             name: "reader-en-glass-dark-measurements",
@@ -1151,6 +1410,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: None,
+            home_tools: None,
         },
         Scene {
             name: "settings-en-glass-light",
@@ -1165,6 +1425,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: true,
             split: None,
+            home_tools: None,
         },
         Scene {
             name: "settings-fr-glass-dark-720-reduced",
@@ -1179,6 +1440,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: true,
             settings_open: true,
             split: None,
+            home_tools: None,
         },
         Scene {
             name: "reader-en-dark-split-independent",
@@ -1193,6 +1455,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: Some(SplitScene::Independent),
+            home_tools: None,
         },
         Scene {
             name: "reader-fr-light-720-split-independent",
@@ -1207,6 +1470,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: Some(SplitScene::Independent),
+            home_tools: None,
         },
         Scene {
             name: "reader-en-glass-light-split-synchronized",
@@ -1221,6 +1485,52 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: Some(SplitScene::Synchronized),
+            home_tools: None,
+        },
+        Scene {
+            name: "home-en-glass-light-tools",
+            language: Language::English,
+            dark: false,
+            width: 1280,
+            height: 900,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: None,
+            style: crate::theme::Style::LiquidGlass,
+            reduce_transparency: false,
+            settings_open: false,
+            split: None,
+            home_tools: Some(true),
+        },
+        Scene {
+            name: "home-en-glass-dark",
+            language: Language::English,
+            dark: true,
+            width: 1280,
+            height: 900,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: None,
+            style: crate::theme::Style::LiquidGlass,
+            reduce_transparency: false,
+            settings_open: false,
+            split: None,
+            home_tools: Some(false),
+        },
+        Scene {
+            name: "home-en-glass-light-560",
+            language: Language::English,
+            dark: false,
+            width: 560,
+            height: 900,
+            measurements: false,
+            zoom: Zoom::FitPage,
+            table: None,
+            style: crate::theme::Style::LiquidGlass,
+            reduce_transparency: false,
+            settings_open: false,
+            split: None,
+            home_tools: Some(false),
         },
     ];
     let mut results = Vec::new();
@@ -1264,6 +1574,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: None,
+            home_tools: None,
         },
         Scene {
             name: "reader-fr-light-720-docked-quantities",
@@ -1278,6 +1589,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: None,
+            home_tools: None,
         },
         Scene {
             name: "reader-en-glass-dark-docked-register",
@@ -1292,6 +1604,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             reduce_transparency: false,
             settings_open: false,
             split: None,
+            home_tools: None,
         },
     ] {
         results.push(capture_scene(
@@ -1309,7 +1622,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
     Ok(json!({
         "schema": 1, "status": "passed", "version": env!("CARGO_PKG_VERSION"),
         "sourceSha": std::env::var("GITHUB_SHA").ok(),
-        "qualification": "Actual application UI and PDFium document tiles, rendered offscreen with DX12 WARP. Native window presentation and physical GPU interaction are not covered.",
+        "qualification": "Actual application Home, reader and settings UI rendered offscreen with DX12 WARP. Reader scenes use real PDFium document tiles; Home scenes have no document or PDF requests. Native window presentation and physical GPU interaction are not covered.",
         "adapter": { "name": info.name, "backend": format!("{:?}", info.backend), "deviceType": format!("{:?}", info.device_type) },
         "fixture": "crates/sunipdf-core/tests/fixtures/two-pages.pdf", "fixtureSha256": fixture_sha,
         "fixtureUnchanged": true, "scenes": results
@@ -1344,5 +1657,5 @@ fn reader_ui_dx12_warp_evidence() {
     if let Err(error) = result {
         panic!("Reader UI evidence failed: {error}");
     }
-    eprintln!("Reader UI offscreen evidence PASS: 13 actual application scenes");
+    eprintln!("Reader UI offscreen evidence PASS: 16 actual application scenes (3 Home, 11 reader, 2 settings)");
 }

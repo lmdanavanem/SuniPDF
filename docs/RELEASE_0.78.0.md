@@ -3,6 +3,18 @@
 Development candidate. Published packages remain on the version identified in
 [Project status](PROJECT_STATUS.md) until qualification and publication finish.
 
+## A quieter Glass workspace
+
+The Glass style uses a continuous neutral workspace in Light and Dark modes.
+Docked bars meet cleanly, controls use smaller corners, and subtle depth is
+reserved for floating surfaces. The welcome screen gives priority to opening a
+file, with compact tool families instead of a large repeated card grid.
+
+The Theme settings still provide Classic, Light, Dark, System and reduced effects.
+The material is drawn within the application and does not blur the desktop behind
+the window. Visual qualification includes the actual home screen as well as PDF
+reading and settings.
+
 ## Return to the source plan
 
 This increment adds an explicit return after following a verified link to another

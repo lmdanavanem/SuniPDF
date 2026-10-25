@@ -3449,6 +3449,16 @@ impl SuniApp {
 }
 
 impl eframe::App for SuniApp {
+    fn clear_color(&self, visuals: &egui::Visuals) -> [f32; 4] {
+        if self.settings.theme_style == theme::Style::LiquidGlass {
+            theme::palette_for_style(visuals.dark_mode, theme::Style::LiquidGlass)
+                .chrome
+                .to_normalized_gamma_f32()
+        } else {
+            egui::Color32::from_rgba_unmultiplied(12, 12, 12, 180).to_normalized_gamma_f32()
+        }
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.sync_appearance(ui.ctx());
         #[cfg(target_os = "linux")]
@@ -3487,6 +3497,10 @@ impl SuniApp {
         }
         self.handle_input(&ctx);
         let p = theme::palette_for(&ctx);
+        if theme::appearance(&ctx).0 == theme::Style::LiquidGlass {
+            // Paint the complete workspace before docked panels, including their outer joins.
+            ui.painter().rect_filled(ctx.content_rect(), 0, p.chrome);
+        }
         let chrome = |fill: egui::Color32| {
             theme::panel_frame(&ctx)
                 .fill(fill)

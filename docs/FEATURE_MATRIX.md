@@ -6,6 +6,7 @@ The historical sections retain the limits and results of their own releases.
 
 ## In development: 0.78.0
 
+- Neutral Glass surfaces, continuous docked chrome and compact home tool families.
 - Explicit return to the source of the latest successful verified plan link.
 - Session-only restoration of source views, with retained unsaved document state.
 - [Scope and pending qualification](RELEASE_0.78.0.md).

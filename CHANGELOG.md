@@ -9,6 +9,7 @@ Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.78.0] - Unreleased
 
+- Refine Glass with neutral light/dark surfaces, continuous docked bars and a compact grouped home screen.
 - Return explicitly to the source after following a verified plan link.
 - Restore source view settings and both pane positions without reopening the PDF from disk.
 - Preserve unsaved documents and refuse stale, closed or conflicting return targets.

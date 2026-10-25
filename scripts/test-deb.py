@@ -406,7 +406,8 @@ def plan_link_navigation(evidence, version):
         click_label("A-101", "blue")
         wait_scene(name + "-confirmation", text_pattern=r"Manifest\s+path", expected_title=fixture["linked"].name)
         if load:
-            click_label("Paste a manifest path")
+            # The dialog focuses its labelled path field; use the actual keyboard route.
+            # Placeholder OCR is unreliable for the deliberately subdued hint text.
             key("ctrl+a")
             command(["xdotool", "type", "--clearmodifiers", "--delay", "1", str(fixture["manifest"])])
             click_label("Load manifest")
@@ -569,7 +570,7 @@ def dark_theme_ocr_input(image):
 
 
 THEME_TITLEBAR_PATCH = (40, 16, 48, 24)
-GLASS_DARK_REDUCED_RGB = (24, 41, 61)
+GLASS_DARK_CHROME_RGB = (32, 34, 38)
 THEME_RGB_TOLERANCE = 3
 
 
@@ -671,7 +672,7 @@ def theme_settings(app, window, evidence):
     record("native-theme-glass-dark", True)
     # OCR can attach the adjacent checkbox glyph to "Reduce". Target the unique
     # complete second word of the same clickable label; persistence and rendered
-    # reduced-Glass checks below still require the real checkbox to change.
+    # persistence checks below still require the real checkbox to change.
     click_label("transparency")
     require_choice("liquid_glass", "dark", True)
     record("native-theme-glass-dark-reduced", True)
@@ -691,11 +692,10 @@ def theme_settings(app, window, evidence):
     baseline = capture("native-theme-before-close")
     with Image.open(baseline) as image:
         baseline_rgb = theme_titlebar_rgb(image)
-    # theme.rs gives reduced Glass dark an opaque (24, 41, 61) chrome fill.
-    # Classic uses (36, 36, 36). Unreduced Glass overlays white alpha 12,
-    # fading across 38 px: even the maximized patch averages alpha 6/255,
-    # lifting red by about 5.4 levels, outside the 3-level rounding tolerance.
-    assert theme_rgb_matches(baseline_rgb, GLASS_DARK_REDUCED_RGB), ("reduced Glass baseline", baseline_rgb)
+    # Docked Glass chrome is neutral and flat in both effects modes. This sample
+    # verifies the rendered Glass palette; the native checkbox and saved state
+    # verify Reduce transparency. Floating-effect rendering is checked separately.
+    assert theme_rgb_matches(baseline_rgb, GLASS_DARK_CHROME_RGB), ("Glass chrome baseline", baseline_rgb)
     (evidence / "native-theme-settings.json").write_text(json.dumps({
         "schema": 1, "status": "passed", "session": "X11 / Openbox / Xvfb",
         "entry": "Ctrl+K, Theme settings", "savedChoicesVerified": True,
@@ -703,7 +703,8 @@ def theme_settings(app, window, evidence):
         "pdfUnchanged": True, "scenes": records,
         "restartBaseline": {"file": baseline.name, "pngSha256": sha(baseline),
                             "titleBarSampleRect": THEME_TITLEBAR_PATCH, "titleBarRgb": baseline_rgb,
-                            "expectedRgb": GLASS_DARK_REDUCED_RGB, "rgbTolerance": THEME_RGB_TOLERANCE},
+                            "expectedRgb": GLASS_DARK_CHROME_RGB, "rgbTolerance": THEME_RGB_TOLERANCE,
+                            "scope": "Rendered Glass chrome; reduced effects are not inferred from flat chrome pixels"},
     }, indent=2) + "\n")
     return ["native-theme-classic-and-glass-live-switch", "native-theme-light-dark-and-system-selection",
             "native-theme-reduced-transparency-and-modal-escape"]
@@ -716,7 +717,7 @@ def restart_theme(app, evidence):
     baseline = evidence / "native-theme-before-close.png"
     with Image.open(baseline) as image:
         baseline_rgb = theme_titlebar_rgb(image)
-    assert theme_rgb_matches(baseline_rgb, GLASS_DARK_REDUCED_RGB), ("reduced Glass baseline", baseline_rgb)
+    assert theme_rgb_matches(baseline_rgb, GLASS_DARK_CHROME_RGB), ("Glass chrome baseline", baseline_rgb)
     last_rgb = None
     while time.monotonic() < deadline:
         assert app.poll() is None, "Desktop exited while checking saved appearance"
@@ -738,7 +739,7 @@ def restart_theme(app, evidence):
             brightness = sum(last_rgb) / 3
             width = image.width
         if (blue <= 20 or brightness >= 100
-                or not theme_rgb_matches(last_rgb, GLASS_DARK_REDUCED_RGB)
+                or not theme_rgb_matches(last_rgb, GLASS_DARK_CHROME_RGB)
                 or not theme_rgb_matches(last_rgb, baseline_rgb)):
             time.sleep(0.3)
             continue
@@ -750,9 +751,11 @@ def restart_theme(app, evidence):
             "status": "passed", "style": "liquid_glass", "mode": "dark", "reduceTransparency": True,
             "privatePdfiumLoaded": True, "blueFixturePixels": blue, "titleBarBrightness": brightness,
             "screenshotSha256": sha(path), "cleanExit": True,
-            "renderedReducedGlassVerified": True, "titleBarSampleRect": THEME_TITLEBAR_PATCH,
+            "renderedGlassChromeVerified": True, "reducedEffectsPersistenceVerified": True,
+            "effectsRenderingScope": "Flat chrome is identical in both effects modes; floating effects are qualified separately",
+            "titleBarSampleRect": THEME_TITLEBAR_PATCH,
             "beforeCloseTitleBarRgb": baseline_rgb, "restartedTitleBarRgb": last_rgb,
-            "expectedTitleBarRgb": GLASS_DARK_REDUCED_RGB, "rgbTolerance": THEME_RGB_TOLERANCE,
+            "expectedTitleBarRgb": GLASS_DARK_CHROME_RGB, "rgbTolerance": THEME_RGB_TOLERANCE,
             "beforeCloseScreenshotSha256": sha(baseline),
         }, indent=2) + "\n")
         return
