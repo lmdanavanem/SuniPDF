@@ -94,7 +94,7 @@ class NativeCommandPaletteTests(unittest.TestCase):
                 with self.subTest(color=color, tag=tag), self.assertRaises(AssertionError):
                     read_capture(path, color, preparation=tag)
 
-    def test_colored_pdf_uses_only_unchanged_mask_and_nearest_three_times(self):
+    def test_colored_pdf_alternatives_use_only_the_same_full_frame_mask(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = root / "pdf.png"
@@ -114,13 +114,21 @@ class NativeCommandPaletteTests(unittest.TestCase):
             creation_helper("read_capture", namespace)
             observations = creation_helper("observations", namespace)
             result = list(observations(path, "blue"))
-            self.assertEqual(len(result), 1)
-            self.assertEqual(result[0]["ocrPreparation"], "color-mask-nearest-3x-psm11")
-            mask.assert_called_once_with([(0, 0, 255)] * 4, "blue")
-            image_api.frombytes.assert_called_once_with("L", (2, 2), b"0000")
-            mask_image.resize.assert_called_once_with((6, 6), resample="nearest")
-            command.assert_called_once()
-            self.assertEqual(command.call_args.args[0][-3:], ["--psm", "11", "tsv"])
+            self.assertEqual([item["ocrPreparation"] for item in result],
+                             ["color-mask-nearest-3x-psm11", "color-mask-nearest-3x-psm6",
+                              "color-mask-lanczos-3x-psm11"])
+            self.assertEqual([call.args for call in mask.call_args_list], [([(0, 0, 255)] * 4, "blue")] * 3)
+            self.assertEqual([call.args for call in image_api.frombytes.call_args_list], [("L", (2, 2), b"0000")] * 3)
+            self.assertEqual([call.args for call in mask_image.resize.call_args_list], [((6, 6),)] * 3)
+            self.assertEqual([call.kwargs for call in mask_image.resize.call_args_list],
+                             [{"resample": "nearest"}, {"resample": "nearest"}, {"resample": "lanczos"}])
+            self.assertEqual([call.args[0][-3:] for call in command.call_args_list],
+                             [["--psm", "11", "tsv"], ["--psm", "6", "tsv"], ["--psm", "11", "tsv"]])
+            self.assertEqual({item["ink"] for item in result}, {4})
+            self.assertEqual(len({item["ocrInput"] for item in result}), 3)
+            self.assertEqual(len({item["ocr"] for item in result}), 3)
+            source.crop.assert_not_called()
+            mask_image.crop.assert_not_called()
 
     def test_interface_alternatives_are_finite_ordered_and_lazy(self):
         reader = MagicMock(side_effect=lambda path, color, preparation: preparation)
@@ -131,6 +139,19 @@ class NativeCommandPaletteTests(unittest.TestCase):
         self.assertEqual(tuple(choices), self.PREPARATIONS[1:])
         self.assertEqual(reader.call_count, 4)
         self.assertEqual([call.args for call in reader.call_args_list], [("same.png", None)] * 4)
+
+    def test_original_color_mask_excludes_neutral_chrome_and_the_other_pdf_color(self):
+        tree = ast.parse(Path(__file__).with_name("test-deb.py").read_text(encoding="utf-8"))
+        helper = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                      and node.name == "colored_fixture_mask")
+        namespace = {}
+        exec(compile(ast.Module(body=[helper], type_ignores=[]), "actual-color-mask", "exec"), namespace)
+        pixels = [(0, 0, 255), (255, 0, 0), (15, 23, 42), (241, 245, 249), (145, 145, 145),
+                  (220, 220, 255), (100, 100, 220), (220, 100, 100)]
+        self.assertEqual(namespace["colored_fixture_mask"](pixels, "blue"),
+                         (bytes((0, 255, 255, 255, 255, 255, 0, 255)), 2))
+        self.assertEqual(namespace["colored_fixture_mask"](pixels, "red"),
+                         (bytes((255, 0, 255, 255, 255, 255, 255, 0)), 2))
 
     def test_locate_fallback_keeps_source_and_target_in_same_preparation(self):
         missing = self.observation([(20, "Beta.pdf"), (50, "Native destination two"), (80, "Target.pdf")])
@@ -151,6 +172,15 @@ class NativeCommandPaletteTests(unittest.TestCase):
             locate("Save", allow_scroll=False)
         capture.assert_called_once()
         reader.assert_called_once()
+
+    def test_colored_control_ambiguity_is_fatal_before_any_alternative(self):
+        ambiguous = self.observation([(20, "A-101"), (50, "A-101")])
+        locate, capture, reader = self.locator([ambiguous, self.observation([(20, "A-101")])])
+        with self.assertRaisesRegex(AssertionError, "Ambiguous"):
+            locate("A-101", color="blue", allow_scroll=False)
+        capture.assert_called_once()
+        reader.assert_called_once_with("unchanged-full-frame.png", "blue",
+                                       preparation="color-mask-nearest-3x-psm11")
 
     def test_missing_labels_cannot_borrow_anchors_or_fuzzy_names(self):
         first = self.observation([(20, "Alpha.pdf 0 Approved links"), (80, "Beta.pdf 0 Approved links")])
@@ -208,6 +238,46 @@ class NativeCommandPaletteTests(unittest.TestCase):
                 self.assertEqual(value[field], "scenes/creation-approved-beta" + suffix if "/" in value[field] else "scenes\\creation-approved-beta" + suffix)
                 self.assertEqual((root / value[field]).read_bytes(), (root / valid[field]).read_bytes())
                 self.assertEqual(native.sha(root / value[field]), value[field + "Sha256"])
+
+    def test_pdf_scene_fallback_requires_exact_masked_title_and_retains_winning_tag(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            retained = root / "scenes"
+            retained.mkdir()
+            methods = ("color-mask-nearest-3x-psm11", "color-mask-nearest-3x-psm6",
+                       "color-mask-lanczos-3x-psm11")
+            wrong = self.observation([(20, "Native source bata")], methods[0], 3)
+            valid = self.observation([(20, "Native source beta")], methods[1], 3)
+            for observed in (wrong, valid):
+                observed["ink"] = 1200
+                for field, suffix in (("png", ".png"), ("ocrInput", "-prepared.png"), ("ocr", ".tsv")):
+                    path = root / (observed["ocrPreparation"] + suffix)
+                    path.write_bytes(("offline masked observation " + field).encode())
+                    observed[field], observed[field + "Sha256"] = path.name, native.sha(path)
+            reader = MagicMock(side_effect=[wrong, valid])
+            namespace = {"time": SimpleNamespace(monotonic=lambda: 0), "read_capture": reader,
+                         "capture": MagicMock(return_value="one-unchanged-frame.png"),
+                         "command": lambda args: "SuniPDF", "window": "offline-window", "re": re,
+                         "scenes": [], "scene_directory": retained, "evidence": root,
+                         "sha": native.sha, "fixtures": native}
+            creation_helper("observations", namespace)
+            creation_helper("evidence_fields", namespace)
+            scene = creation_helper("scene", namespace)
+            result = scene("created-preview-beta", kind="beta")
+            self.assertEqual(result["ocrContent"], "pdf-fixture")
+            self.assertEqual(result["ocrPreparation"], methods[1])
+            self.assertEqual(result["text"], "Native source beta")
+            self.assertEqual(reader.call_count, 2)
+            self.assertEqual([call.args for call in reader.call_args_list],
+                             [("one-unchanged-frame.png", "blue")] * 2)
+            self.assertEqual([call.kwargs["preparation"] for call in reader.call_args_list], list(methods[:2]))
+            for field in ("png", "ocrInput", "ocr"):
+                self.assertEqual((root / result[field]).read_bytes(), (root / valid[field]).read_bytes())
+            for text in ("Native source bata", "Native source alpha", "Native destination two",
+                         "Native source beta Native source beta", "Native source beta Native source alpha",
+                         "Native source beta Native wrong first page"):
+                self.assertFalse(native.fixture_visible("beta", 1200, text))
+            self.assertFalse(native.fixture_visible("beta", 0, "Native source beta"))
 
     def test_command_keeps_native_keyboard_and_requires_observed_result_before_enter(self):
         calls = []
