@@ -38,9 +38,7 @@ fn options(paths: &[PathBuf]) -> OverlayStackOptions {
     }
 }
 
-#[test]
-fn stack_four_layers_crop_rotations_png_and_report_preserve_exact_sources() {
-    let engine = Engine::new().expect("PDFium is required");
+fn stack_four_layers_crop_rotations_png_and_report_preserve_exact_sources(engine: &Engine) {
     let temp = tempfile::tempdir().unwrap();
     let paths: Vec<_> = (0..4)
         .map(|index| temp.path().join(format!("layer-{index}.pdf")))
@@ -51,7 +49,7 @@ fn stack_four_layers_crop_rotations_png_and_report_preserve_exact_sources() {
         for path in &paths {
             std::fs::write(path, &bytes).unwrap();
         }
-        let preview = prepare_overlay_stack(&engine, options(&paths), &[None; 4], &cancel).unwrap();
+        let preview = prepare_overlay_stack(engine, options(&paths), &[None; 4], &cancel).unwrap();
         let report = preview.report();
         assert_eq!(report["schema"], "sunipdf-revision-overlay-stack");
         assert_eq!(report["version"], 1);
@@ -79,7 +77,7 @@ fn stack_four_layers_crop_rotations_png_and_report_preserve_exact_sources() {
         assert_eq!(decoded.as_raw(), &preview.image().rgba);
         assert_eq!(preview.export_json(&cancel).unwrap(), report);
         let legacy = prepare_overlay(
-            &engine,
+            engine,
             &paths[0],
             &paths[1],
             OverlayOptions {
@@ -91,7 +89,7 @@ fn stack_four_layers_crop_rotations_png_and_report_preserve_exact_sources() {
         )
         .unwrap();
         let pair =
-            prepare_overlay_stack(&engine, options(&paths[..2]), &[None; 2], &cancel).unwrap();
+            prepare_overlay_stack(engine, options(&paths[..2]), &[None; 2], &cancel).unwrap();
         assert_eq!(legacy.image().rgba, pair.image().rgba);
         assert_eq!(legacy.report()["version"], 1);
         assert_eq!(legacy.report()["schema"], "sunipdf-revision-overlay");
@@ -102,19 +100,19 @@ fn stack_four_layers_crop_rotations_png_and_report_preserve_exact_sources() {
         revision: [[10.0, 10.0], [30.0, 10.0]],
     };
     let aligned =
-        prepare_overlay_stack(&engine, aligned_options.clone(), &[None; 4], &cancel).unwrap();
+        prepare_overlay_stack(engine, aligned_options.clone(), &[None; 4], &cancel).unwrap();
     assert_eq!(aligned.transform(1).unwrap().scale, 2.0);
     assert_eq!(aligned.transform(1).unwrap().rotation_degrees, 90.0);
     aligned_options.layers[1].alignment = OverlayAlignment::Manual {
         transform: aligned.transform(1).unwrap(),
     };
-    let manual = prepare_overlay_stack(&engine, aligned_options, &[None; 4], &cancel).unwrap();
+    let manual = prepare_overlay_stack(engine, aligned_options, &[None; 4], &cancel).unwrap();
     assert_eq!(aligned.image().rgba, manual.image().rgba);
 }
 
-#[test]
-fn stack_refuses_hidden_stale_missing_oversized_sources_bad_pages_and_cancellation() {
-    let engine = Engine::new().expect("PDFium is required");
+fn stack_refuses_hidden_stale_missing_oversized_sources_bad_pages_and_cancellation(
+    engine: &Engine,
+) {
     let temp = tempfile::tempdir().unwrap();
     let paths: Vec<_> = (0..3)
         .map(|index| temp.path().join(format!("layer-{index}.pdf")))
@@ -126,7 +124,7 @@ fn stack_refuses_hidden_stale_missing_oversized_sources_bad_pages_and_cancellati
     let cancel = AtomicBool::new(false);
     let mut opts = options(&paths);
     opts.layers[2].visible = false;
-    let preview = prepare_overlay_stack(&engine, opts.clone(), &[None; 3], &cancel).unwrap();
+    let preview = prepare_overlay_stack(engine, opts.clone(), &[None; 3], &cancel).unwrap();
     std::fs::write(
         &paths[2],
         fixture(0, [0, 0, 200, 160], "0 g 90 40 30 20 re f"),
@@ -137,22 +135,22 @@ fn stack_refuses_hidden_stale_missing_oversized_sources_bad_pages_and_cancellati
     assert!(preview.export_png(&cancel).is_err());
     std::fs::write(&paths[2], &bytes).unwrap();
     preview.revalidate_sources(&cancel).unwrap();
-    assert!(prepare_overlay_stack(&engine, opts.clone(), &[None; 2], &cancel).is_err());
+    assert!(prepare_overlay_stack(engine, opts.clone(), &[None; 2], &cancel).is_err());
     let mut bad = opts.clone();
     bad.layers[2].page = 2;
-    assert!(prepare_overlay_stack(&engine, bad, &[None; 3], &cancel).is_err());
+    assert!(prepare_overlay_stack(engine, bad, &[None; 3], &cancel).is_err());
     bad = opts.clone();
     bad.layers[2].alignment = OverlayAlignment::TwoPoints {
         base: [[10.0, 10.0], [201.0, 10.0]],
         revision: [[10.0, 10.0], [30.0, 10.0]],
     };
-    assert!(prepare_overlay_stack(&engine, bad, &[None; 3], &cancel).is_err());
+    assert!(prepare_overlay_stack(engine, bad, &[None; 3], &cancel).is_err());
     bad = opts.clone();
     bad.layers[2].alignment = OverlayAlignment::TwoPoints {
         base: [[10.0, 10.0], [30.0, 10.0]],
         revision: [[10.0, 10.0], [30.0, 161.0]],
     };
-    assert!(prepare_overlay_stack(&engine, bad, &[None; 3], &cancel).is_err());
+    assert!(prepare_overlay_stack(engine, bad, &[None; 3], &cancel).is_err());
     let oversized = temp.path().join("oversized.pdf");
     std::fs::File::create(&oversized)
         .unwrap()
@@ -160,10 +158,10 @@ fn stack_refuses_hidden_stale_missing_oversized_sources_bad_pages_and_cancellati
         .unwrap();
     bad = opts.clone();
     bad.layers[2].path = oversized;
-    assert!(prepare_overlay_stack(&engine, bad, &[None; 3], &cancel).is_err());
+    assert!(prepare_overlay_stack(engine, bad, &[None; 3], &cancel).is_err());
     cancel.store(true, Ordering::Relaxed);
     assert!(matches!(
-        prepare_overlay_stack(&engine, opts.clone(), &[None; 3], &cancel),
+        prepare_overlay_stack(engine, opts.clone(), &[None; 3], &cancel),
         Err(EngineError::Cancelled)
     ));
     assert!(matches!(
@@ -177,13 +175,12 @@ fn stack_refuses_hidden_stale_missing_oversized_sources_bad_pages_and_cancellati
     cancel.store(false, Ordering::Relaxed);
     std::fs::remove_file(&paths[2]).unwrap();
     assert!(preview.export_png(&cancel).is_err());
-    assert!(prepare_overlay_stack(&engine, opts, &[None; 3], &cancel).is_err());
+    assert!(prepare_overlay_stack(engine, opts, &[None; 3], &cancel).is_err());
 }
 
-#[test]
-fn stack_checks_copy_permission_and_password_for_every_hidden_layer_without_retaining_credentials()
-{
-    let engine = Engine::new().expect("PDFium is required");
+fn stack_checks_copy_permission_and_password_for_every_hidden_layer_without_retaining_credentials(
+    engine: &Engine,
+) {
     let temp = tempfile::tempdir().unwrap();
     let paths: Vec<_> = (0..4)
         .map(|index| temp.path().join(format!("layer-{index}.pdf")))
@@ -228,7 +225,7 @@ fn stack_checks_copy_permission_and_password_for_every_hidden_layer_without_reta
                 for password in &passwords {
                     let mut borrowed = [None; 4];
                     borrowed[hidden_index] = Some(password.as_str());
-                    let result = prepare_overlay_stack(&engine, opts.clone(), &borrowed, &cancel);
+                    let result = prepare_overlay_stack(engine, opts.clone(), &borrowed, &cancel);
                     if allow_copy {
                         let preview = result.unwrap();
                         let report = preview.export_json(&cancel).unwrap().to_string();
@@ -243,7 +240,7 @@ fn stack_checks_copy_permission_and_password_for_every_hidden_layer_without_reta
                     }
                 }
                 assert!(matches!(
-                    prepare_overlay_stack(&engine, opts, &[None; 4], &cancel),
+                    prepare_overlay_stack(engine, opts, &[None; 4], &cancel),
                     Err(EngineError::PasswordRequired)
                 ));
                 assert_eq!(std::fs::read(&paths[hidden_index]).unwrap(), protected);
@@ -253,9 +250,7 @@ fn stack_checks_copy_permission_and_password_for_every_hidden_layer_without_reta
 }
 
 #[cfg(unix)]
-#[test]
-fn stack_refuses_selected_symlink_retarget_even_when_replacement_bytes_match() {
-    let engine = Engine::new().expect("PDFium is required");
+fn stack_refuses_selected_symlink_retarget_even_when_replacement_bytes_match(engine: &Engine) {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path().canonicalize().unwrap();
     let first = root.join("first.pdf");
@@ -267,7 +262,7 @@ fn stack_refuses_selected_symlink_retarget_even_when_replacement_bytes_match() {
     std::os::unix::fs::symlink(&first, &alias).unwrap();
     let cancel = AtomicBool::new(false);
     let preview = prepare_overlay_stack(
-        &engine,
+        engine,
         options(&[first.clone(), alias.clone()]),
         &[None; 2],
         &cancel,
@@ -279,4 +274,17 @@ fn stack_refuses_selected_symlink_retarget_even_when_replacement_bytes_match() {
     assert!(preview.export_json(&cancel).is_err());
     assert!(preview.export_png(&cancel).is_err());
     assert_eq!(std::fs::read(first).unwrap(), bytes);
+}
+
+#[test]
+fn stack_rendering_permissions_source_guards_and_cancellation() {
+    // PDFium has one process-wide binding; retain it across these native cases.
+    let engine = Engine::new().expect("PDFium is required");
+    stack_four_layers_crop_rotations_png_and_report_preserve_exact_sources(&engine);
+    stack_refuses_hidden_stale_missing_oversized_sources_bad_pages_and_cancellation(&engine);
+    stack_checks_copy_permission_and_password_for_every_hidden_layer_without_retaining_credentials(
+        &engine,
+    );
+    #[cfg(unix)]
+    stack_refuses_selected_symlink_retarget_even_when_replacement_bytes_match(&engine);
 }
