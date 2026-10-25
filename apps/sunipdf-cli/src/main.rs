@@ -12,6 +12,7 @@ mod measurement_cmd;
 mod measurement_workspace_cmd;
 mod output;
 mod overlay_cmd;
+mod overlay_stack_cmd;
 mod password_input;
 mod plan_links_cmd;
 mod plan_set_cmd;
@@ -64,6 +65,8 @@ enum Command {
     QuantityWorkbook(quantity_workbook_cmd::QuantityWorkbookArgs),
     /// Overlay two explicitly aligned PDF pages as a new PNG or source-bound JSON report.
     RevisionOverlay(overlay_cmd::OverlayArgs),
+    /// Combine two to four independently aligned local PDF pages as PNG or source-bound JSON.
+    RevisionOverlayStack(overlay_stack_cmd::OverlayStackArgs),
     /// Inspect, preview and transfer compatible annotations between explicitly paired saved revisions.
     RevisionTransfer(revision_transfer_cmd::RevisionTransferArgs),
     /// Review raster difference regions and create classified revision outlines in a new PDF copy.
@@ -1624,6 +1627,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         }
         Command::Count(args) => register_cmd::count(&engine, args),
         Command::RevisionOverlay(args) => overlay_cmd::run(&engine, args),
+        Command::RevisionOverlayStack(args) => overlay_stack_cmd::run(&engine, args),
         Command::RevisionTransfer(args) => revision_transfer_cmd::run(&engine, args),
         Command::RevisionOutlines(args) => revision_outlines_cmd::run(&engine, args),
         Command::PlanZones(args) => plan_zones_cmd::run(&engine, args),
@@ -3044,6 +3048,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
         Command::RevisionOverlay(args) => Some(&args.out),
+        Command::RevisionOverlayStack(args) => Some(&args.out),
         Command::RevisionTransfer(args) => args.output_path(),
         Command::RevisionOutlines(args) => args.output_path(),
         Command::PlanZones(args) => args.output_path(),
