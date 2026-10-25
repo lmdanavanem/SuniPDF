@@ -80,7 +80,7 @@ class LabelMissing(AssertionError):
     pass
 
 
-def label_box(tsv, label, size, *, line_contains=None, exact_line=False, below=None, within=None):
+def label_box(tsv, label, size, *, line_contains=None, exact_line=False, below=None, above=None, within=None):
     """Resolve a unique actual OCR label, optionally scoped to its visible row.
 
     Punctuation-only glyphs are ignored. Words and numbers are never fuzzy matched,
@@ -125,6 +125,8 @@ def label_box(tsv, label, size, *, line_contains=None, exact_line=False, below=N
             if not (0 <= box[0] < box[2] <= size[0] and 0 <= box[1] < box[3] <= size[1]):
                 raise AssertionError("Native plan control escaped the captured window")
             if below is not None and box[1] <= below:
+                continue
+            if above is not None and box[3] >= above:
                 continue
             if within is not None and not (within[0] <= box[0] < box[2] <= within[2]
                                            and within[1] <= box[1] < box[3] <= within[3]):
