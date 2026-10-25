@@ -1,6 +1,6 @@
 //! Portable register criteria; document scope and explicit row selection remain local.
 
-use crate::annotation_register::{RegisterFilter, RegisterSort};
+use crate::annotation_register::{RegisterFieldFilter, RegisterFilter, RegisterSort};
 use crate::EngineError;
 use serde::ser::SerializeStruct;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -36,10 +36,15 @@ pub struct RegisterPresetCriteria {
     pub count_group: String,
     pub include_replies: bool,
     pub custom_sort: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_field: Option<RegisterFieldFilter>,
 }
 
 impl RegisterPresetCriteria {
     pub fn validate(&self) -> Result<(), EngineError> {
+        if let Some(field) = &self.custom_field {
+            field.validate()?;
+        }
         if [
             &self.query,
             &self.author,
@@ -99,6 +104,7 @@ impl RegisterPreset {
                 count_group: filter.count_group.clone(),
                 include_replies: filter.include_replies,
                 custom_sort: filter.custom_sort.clone(),
+                custom_field: filter.custom_field.clone(),
             },
             sort,
             descending,
@@ -135,6 +141,7 @@ impl RegisterPreset {
             count_group: self.criteria.count_group.clone(),
             include_replies: self.criteria.include_replies,
             custom_sort: self.criteria.custom_sort.clone(),
+            custom_field: self.criteria.custom_field.clone(),
             page: filter.page,
             zone: filter.zone.clone(),
             zone_status: filter.zone_status,
@@ -158,15 +165,71 @@ struct LibraryInput {
     format: String,
     version: u32,
     #[serde(deserialize_with = "bounded_presets")]
-    presets: Vec<RegisterPreset>,
+    presets: Vec<PresetInput>,
+}
+
+// Keep key presence separate from Option so version 1 also refuses an explicit null field.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PresetInput {
+    name: String,
+    criteria: CriteriaInput,
+    sort: RegisterSort,
+    descending: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CriteriaInput {
+    query: String,
+    author: String,
+    modified: String,
+    review_status: String,
+    business_status: String,
+    discipline: String,
+    kind: String,
+    count_group: String,
+    include_replies: bool,
+    custom_sort: Option<String>,
+    #[serde(default, deserialize_with = "present_field")]
+    custom_field: Option<Option<RegisterFieldFilter>>,
+}
+
+fn present_field<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<Option<RegisterFieldFilter>>, D::Error> {
+    Option::<RegisterFieldFilter>::deserialize(deserializer).map(Some)
+}
+
+impl PresetInput {
+    fn into_preset(self) -> RegisterPreset {
+        RegisterPreset {
+            name: self.name,
+            sort: self.sort,
+            descending: self.descending,
+            criteria: RegisterPresetCriteria {
+                query: self.criteria.query,
+                author: self.criteria.author,
+                modified: self.criteria.modified,
+                review_status: self.criteria.review_status,
+                business_status: self.criteria.business_status,
+                discipline: self.criteria.discipline,
+                kind: self.criteria.kind,
+                count_group: self.criteria.count_group,
+                include_replies: self.criteria.include_replies,
+                custom_sort: self.criteria.custom_sort,
+                custom_field: self.criteria.custom_field.flatten(),
+            },
+        }
+    }
 }
 
 fn bounded_presets<'de, D: Deserializer<'de>>(
     deserializer: D,
-) -> Result<Vec<RegisterPreset>, D::Error> {
+) -> Result<Vec<PresetInput>, D::Error> {
     struct Presets;
     impl<'de> de::Visitor<'de> for Presets {
-        type Value = Vec<RegisterPreset>;
+        type Value = Vec<PresetInput>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             formatter.write_str("at most 16 distinct register filter presets")
@@ -178,8 +241,7 @@ fn bounded_presets<'de, D: Deserializer<'de>>(
         ) -> Result<Self::Value, A::Error> {
             let mut presets = Vec::new();
             let mut names = HashSet::new();
-            while let Some(preset) = sequence.next_element::<RegisterPreset>()? {
-                preset.validate().map_err(de::Error::custom)?;
+            while let Some(preset) = sequence.next_element::<PresetInput>()? {
                 if presets.len() == MAX_REGISTER_PRESETS
                     || !names.insert(preset.name.to_lowercase())
                 {
@@ -198,14 +260,28 @@ fn bounded_presets<'de, D: Deserializer<'de>>(
 impl<'de> Deserialize<'de> for RegisterPresetLibrary {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let input = LibraryInput::deserialize(deserializer)?;
-        if input.format != REGISTER_PRESET_FORMAT || input.version != 1 {
+        if input.format != REGISTER_PRESET_FORMAT
+            || !matches!(input.version, 1 | 2)
+            || (input.version == 1
+                && input
+                    .presets
+                    .iter()
+                    .any(|preset| preset.criteria.custom_field.is_some()))
+        {
             return Err(de::Error::custom(
                 "unsupported register filter preset format or version",
             ));
         }
         let library = Self {
-            presets: input.presets,
+            presets: input
+                .presets
+                .into_iter()
+                .map(PresetInput::into_preset)
+                .collect(),
         };
+        for preset in &library.presets {
+            preset.validate().map_err(de::Error::custom)?;
+        }
         library.to_json().map_err(de::Error::custom)?;
         Ok(library)
     }
@@ -215,7 +291,16 @@ impl Serialize for RegisterPresetLibrary {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut object = serializer.serialize_struct("RegisterPresetLibrary", 3)?;
         object.serialize_field("format", REGISTER_PRESET_FORMAT)?;
-        object.serialize_field("version", &1u32)?;
+        let version = if self
+            .presets
+            .iter()
+            .any(|preset| preset.criteria.custom_field.is_some())
+        {
+            2u32
+        } else {
+            1u32
+        };
+        object.serialize_field("version", &version)?;
         object.serialize_field("presets", &self.presets)?;
         object.end()
     }

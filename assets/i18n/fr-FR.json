@@ -2129,5 +2129,12 @@
   "register.presets.loaded": "Filtre chargé. Périmètre de page et de zone conservé ; sélection des annotations effacée.",
   "register.presets.deleted": "Filtre enregistré supprimé. Critères actuels conservés.",
   "register.presets.imported": "Filtres importés. Choisissez un filtre puis chargez-le pour utiliser ses critères.",
-  "register.presets.exported": "Filtres exportés dans un nouveau fichier."
+  "register.presets.exported": "Filtres exportés dans un nouveau fichier.",
+  "register.field_filter.title": "Champ texte personnalisé",
+  "register.field_filter.help": "Rechercher un champ texte du registre par correspondance exacte, avec les autres filtres. La casse et les espaces comptent. Une valeur vide correspond à un champ présent et vide. Un champ absent ne correspond pas.",
+  "register.field_filter.key": "Nom du champ",
+  "register.field_filter.value": "Valeur texte exacte",
+  "register.field_filter.add": "Ajouter un filtre de champ",
+  "register.field_filter.clear": "Effacer le filtre de champ",
+  "register.field_filter.invalid": "Saisissez un nom de champ et une valeur texte valides. Le nom ne peut pas être vide ni contenir =. Le texte doit respecter les limites des champs et ne peut pas contenir de caractères de contrôle."
 }

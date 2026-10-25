@@ -130,6 +130,7 @@ impl QuantityState {
             Ok(evaluated) => {
                 self.computed = evaluated.formulas;
                 self.summary = Some(evaluated.summary);
+                self.error = None;
             }
             Err(error) => {
                 self.computed.clear();
@@ -564,6 +565,11 @@ impl SuniApp {
                         };
                         ui.menu_button(filter_label, |ui| {
                             ui.add_enabled_ui(idle, |ui| {
+                                changed |= crate::annotation_register::field_filter::menu(
+                                    ui,
+                                    lang,
+                                    &mut state.options.filter,
+                                );
                                 changed |= crate::plan_zones_ui::zone_filter_ui(
                                     ui,
                                     lang,
@@ -2109,6 +2115,31 @@ pub(crate) mod tests {
 
     pub(crate) fn verify_controls(table: &QuantityTable) {
         assert!(table.rows().len() >= 2);
+        // This table comes from the existing real-PDF worker fixture. A missing
+        // register text key cannot match an empty value or a typed quantity field.
+        let before = serde_json::to_vec(table.rows()).unwrap();
+        let mut filtered = QuantityState {
+            report: Some(Arc::new(table.clone())),
+            ..Default::default()
+        };
+        filtered.refresh_selection();
+        assert_eq!(filtered.selected.len(), table.rows().len());
+        filtered.options.filter.custom_field =
+            Some(sunipdf_core::annotation_register::RegisterFieldFilter {
+                key: String::new(),
+                value: String::new(),
+            });
+        filtered.refresh_selection();
+        assert!(filtered.selected.is_empty() && filtered.error.is_some());
+        filtered.options.filter.custom_field.as_mut().unwrap().key =
+            "Missing register field".into();
+        filtered.refresh_selection();
+        assert!(filtered.selected.is_empty() && filtered.error.is_none());
+        filtered.options.filter.custom_field = None;
+        filtered.refresh_selection();
+        assert_eq!(filtered.selected.len(), table.rows().len());
+        assert!(filtered.error.is_none());
+        assert_eq!(serde_json::to_vec(table.rows()).unwrap(), before);
         verify_compact_table(table);
         for language in ["en-US", "fr-FR"] {
             let (mut app, requests, responses) = crate::app::tests::test_app();

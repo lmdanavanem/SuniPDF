@@ -249,7 +249,7 @@ fn imports_are_all_or_nothing_for_late_collisions_and_invalid_entries() {
 fn strict_json_rejects_unknown_duplicate_keys_versions_and_document_fields() {
     let original = library_value();
     for (key, value) in [
-        ("version", json!(2)),
+        ("version", json!(3)),
         ("version", json!(1.0)),
         ("format", json!("other")),
         ("source_sha256", json!("a".repeat(64))),
@@ -400,4 +400,215 @@ fn caller_new_copy_export_does_not_replace_existing_files() {
     sunipdf_core::write_new_copy(&path, &bytes).unwrap();
     assert!(sunipdf_core::write_new_copy(&path, b"replacement").is_err());
     assert_eq!(std::fs::read(path).unwrap(), bytes);
+}
+
+#[test]
+fn exact_custom_field_is_case_sensitive_preserves_empty_and_combines_with_scope() {
+    use sunipdf_core::annotation_register::RegisterFieldFilter;
+    let mut report = AnnotationRegister::default();
+    report.page_count = 3;
+    report.rows = vec![
+        row(1, 0, "Alice", Some("A-101")),
+        row(1, 1, "Alice", Some("a-101")),
+        row(2, 0, "Alice", Some("A-101")),
+        row(2, 1, "Alice", Some("")),
+        row(3, 0, "Alice", None),
+        row(3, 1, "Bob", Some(" A-101 ")),
+    ];
+    report.rows[2].is_reply = true;
+    let original = report.rows.clone();
+    let mut filter = RegisterFilter {
+        custom_field: Some(RegisterFieldFilter {
+            key: "Room".into(),
+            value: "A-101".into(),
+        }),
+        ..Default::default()
+    };
+    assert_eq!(
+        report.select_indices(&filter, RegisterSort::Page, false),
+        vec![0]
+    );
+    filter.include_replies = true;
+    assert_eq!(
+        report.select_indices(&filter, RegisterSort::Page, false),
+        vec![0, 2]
+    );
+    filter.page = Some(2);
+    assert_eq!(
+        report.select_indices(&filter, RegisterSort::Page, true),
+        vec![2]
+    );
+    filter.query = "unknown".into();
+    assert!(report
+        .select_indices(&filter, RegisterSort::Page, false)
+        .is_empty());
+    filter.query.clear();
+    filter.page = None;
+    filter.custom_field.as_mut().unwrap().value.clear();
+    assert_eq!(
+        report.select_indices(&filter, RegisterSort::Page, false),
+        vec![3]
+    );
+    filter.custom_field.as_mut().unwrap().key = "room".into();
+    assert!(report
+        .select_indices(&filter, RegisterSort::Page, false)
+        .is_empty());
+    filter.custom_field = Some(RegisterFieldFilter {
+        key: "Room".into(),
+        value: " A-101 ".into(),
+    });
+    assert_eq!(
+        report.select_indices(&filter, RegisterSort::Page, false),
+        vec![5]
+    );
+    filter.author = "Alice".into();
+    assert!(report
+        .select_indices(&filter, RegisterSort::Page, false)
+        .is_empty());
+    filter.author.clear();
+    filter.custom_field.as_mut().unwrap().key.clear();
+    assert!(report
+        .select_indices(&filter, RegisterSort::Page, false)
+        .is_empty());
+    assert!(report.csv(&filter, RegisterSort::Page, false).is_err());
+    assert_eq!(
+        report.json(&filter, RegisterSort::Page, false)["complete"],
+        false
+    );
+    assert_eq!(report.rows, original);
+}
+
+#[test]
+fn field_filter_bounds_match_saved_fields_and_reject_invalid_json_without_normalizing_values() {
+    use sunipdf_core::annotation_register::RegisterFieldFilter;
+    for (key, value, valid) in [
+        ("Room".into(), "".into(), true),
+        ("Étage".into(), " A=101 ".into(), true),
+        ("é".repeat(32), "é".repeat(512), true),
+        ("é".repeat(33), "value".into(), false),
+        ("Room".into(), "é".repeat(513), false),
+        (" Room".into(), "A".into(), false),
+        ("Room=".into(), "A".into(), false),
+        ("Room".into(), "A\nB".into(), false),
+        ("".into(), "A".into(), false),
+    ] {
+        let filter = RegisterFieldFilter { key, value };
+        let fields = RegisterFields {
+            custom: BTreeMap::from([(filter.key.clone(), filter.value.clone())]),
+            ..Default::default()
+        };
+        assert_eq!(filter.validate().is_ok(), valid);
+        assert_eq!(fields.validate().is_ok(), valid);
+        assert_eq!(
+            serde_json::from_value::<RegisterFieldFilter>(serde_json::to_value(&filter).unwrap())
+                .is_ok(),
+            valid
+        );
+    }
+    for invalid in [
+        r#"{"key":"Room","value":"A","source":"private.pdf"}"#,
+        r#"{"key":"Room","key":"Other","value":"A"}"#,
+        r#"{"key":"Room","value":"A","value":"B"}"#,
+        r#"{"key":"Room"}"#,
+        r#"{"key":"Room","value":null}"#,
+    ] {
+        assert!(serde_json::from_str::<RegisterFieldFilter>(invalid).is_err());
+    }
+    let historic = r#"{"query":"","page":null,"author":"","modified":"","review_status":"","business_status":"","discipline":"","kind":"","count_group":"","include_replies":false,"custom_sort":null,"zone":null,"zone_status":null}"#;
+    let filter: RegisterFilter = serde_json::from_str(historic).unwrap();
+    assert!(filter.custom_field.is_none());
+    assert_eq!(
+        serde_json::to_string(&filter).unwrap(),
+        historic,
+        "historical filter bytes and their enclosing configuration hashes stay stable"
+    );
+}
+
+#[test]
+fn exact_field_presets_version_only_when_needed_and_keep_scope_and_import_atomicity() {
+    use sunipdf_core::annotation_register::RegisterFieldFilter;
+    let mut legacy = RegisterPresetLibrary::default();
+    legacy.insert(preset("Legacy")).unwrap();
+    let legacy_bytes = legacy.to_json().unwrap();
+    let filter = RegisterFilter {
+        custom_field: Some(RegisterFieldFilter {
+            key: "Room".into(),
+            value: "".into(),
+        }),
+        custom_sort: Some("Room".into()),
+        ..Default::default()
+    };
+    let saved =
+        RegisterPreset::capture("Empty rooms", &filter, RegisterSort::Author, true).unwrap();
+    let mut library = legacy.clone();
+    library.insert(saved).unwrap();
+    let bytes = library.to_json().unwrap();
+    let value: Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(value["version"], 2);
+    assert!(value["presets"][0]["criteria"]
+        .get("custom_field")
+        .is_none());
+    assert_eq!(
+        value["presets"][1]["criteria"]["custom_field"],
+        json!({"key":"Room","value":""})
+    );
+    let loaded = RegisterPresetLibrary::from_json(&bytes).unwrap();
+    let mut active = RegisterFilter {
+        page: Some(2),
+        zone: Some(ZoneFilter {
+            page: 2,
+            id: "room-a".into(),
+            descendants: true,
+        }),
+        zone_status: Some(ZoneAssignmentStatus::Assigned),
+        ..Default::default()
+    };
+    let scope = (active.page, active.zone.clone(), active.zone_status);
+    let (mut sort, mut descending) = (RegisterSort::Page, false);
+    loaded
+        .get("Empty rooms")
+        .unwrap()
+        .apply_to(&mut active, &mut sort, &mut descending)
+        .unwrap();
+    assert_eq!(
+        (active.page, active.zone.clone(), active.zone_status),
+        scope
+    );
+    assert_eq!(active.custom_field, filter.custom_field);
+    assert_eq!((sort, descending), (RegisterSort::Author, true));
+    let mut report = AnnotationRegister::default();
+    report.rows = vec![
+        row(2, 0, "Alice", Some("")),
+        row(2, 1, "Alice", None),
+        row(1, 0, "Alice", Some("")),
+    ];
+    assert_eq!(report.select_indices(&active, sort, descending), vec![0]);
+    let mut wrong_version = value.clone();
+    wrong_version["version"] = json!(1);
+    assert!(
+        RegisterPresetLibrary::from_json(&serde_json::to_vec(&wrong_version).unwrap()).is_err()
+    );
+    wrong_version["presets"][1]["criteria"]["custom_field"] = Value::Null;
+    assert!(
+        RegisterPresetLibrary::from_json(&serde_json::to_vec(&wrong_version).unwrap()).is_err()
+    );
+    let before = legacy.clone();
+    assert!(legacy.import_json(&bytes).is_err());
+    assert_eq!(legacy, before);
+    let mut invalid = value.clone();
+    invalid["presets"][0]["name"] = json!("New legacy");
+    invalid["presets"][1]["criteria"]["custom_field"]["key"] = json!("");
+    assert!(legacy
+        .import_json(&serde_json::to_vec(&invalid).unwrap())
+        .is_err());
+    assert_eq!(legacy, before);
+    let mut duplicate = value.clone();
+    duplicate["presets"][0]["name"] = json!("New legacy");
+    let encoded = serde_json::to_string(&duplicate)
+        .unwrap()
+        .replace("\"key\":\"Room\"", "\"key\":\"Room\",\"key\":\"Other\"");
+    assert!(legacy.import_json(encoded.as_bytes()).is_err());
+    assert_eq!(legacy, before);
+    assert!(library.remove("Empty rooms"));
+    assert_eq!(library.to_json().unwrap(), legacy_bytes);
 }

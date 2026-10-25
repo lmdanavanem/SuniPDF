@@ -2,7 +2,7 @@ use crate::password_input;
 use clap::Args;
 use std::path::PathBuf;
 use sunipdf_core::{
-    annotation_register::{RegisterFields, RegisterFilter, RegisterSort},
+    annotation_register::{RegisterFieldFilter, RegisterFields, RegisterFilter, RegisterSort},
     Engine, EngineError,
 };
 
@@ -54,6 +54,9 @@ pub struct RegisterArgs {
     pub kind: String,
     #[arg(long, default_value = "")]
     pub count_group: String,
+    /// Match one register text field exactly (case-sensitive); KEY= matches a present empty value.
+    #[arg(long, value_parser = field_equals)]
+    pub field_equals: Option<RegisterFieldFilter>,
     /// Match an assigned zone on one physical page: PAGE:ID.
     #[arg(long, value_parser = zone_selection)]
     pub zone: Option<sunipdf_core::plan_zones::ZoneFilter>,
@@ -121,6 +124,18 @@ pub fn selected_zone(
         selected.descendants = args.zone_descendants;
     }
     Ok(zone)
+}
+
+pub(crate) fn field_equals(value: &str) -> Result<RegisterFieldFilter, String> {
+    let (key, value) = value
+        .split_once('=')
+        .ok_or("field-equals requires KEY=VALUE")?;
+    let field = RegisterFieldFilter {
+        key: key.into(),
+        value: value.into(),
+    };
+    field.validate().map_err(|error| error.to_string())?;
+    Ok(field)
 }
 
 fn custom_sort_name(value: &str) -> Result<String, String> {
@@ -205,6 +220,7 @@ pub fn register(engine: &Engine, args: RegisterArgs) -> Result<serde_json::Value
         count_group: args.count_group,
         include_replies: args.include_replies,
         custom_sort: args.sort_custom,
+        custom_field: args.field_equals,
         zone,
         zone_status: args.zone_status,
     };
@@ -258,4 +274,58 @@ pub fn fields(engine: &Engine, args: FieldsArgs) -> Result<serde_json::Value, En
     Ok(
         serde_json::json!({"out":args.out,"page":args.page,"index":args.index,"original_unchanged":true,"encrypted":doc.properties().encrypted}),
     )
+}
+
+#[cfg(test)]
+mod field_filter_tests {
+    use super::*;
+    use crate::tests::parse_cli;
+
+    #[test]
+    fn register_and_quantity_cli_preserve_exact_empty_and_equals_values() {
+        for command in ["annotation-register", "quantity-table"] {
+            for (argument, expected) in [
+                ("Room=A-101", "A-101"),
+                ("Room=", ""),
+                ("Room= A=B ", " A=B "),
+            ] {
+                let parsed = parse_cli([
+                    "sunipdf-cli",
+                    command,
+                    "source.pdf",
+                    "--field-equals",
+                    argument,
+                ])
+                .unwrap();
+                let filter = match parsed.command {
+                    crate::Command::AnnotationRegister(args) => args.field_equals,
+                    crate::Command::QuantityTable(args) => args.report.field_equals,
+                    _ => panic!("register filter command"),
+                }
+                .unwrap();
+                assert_eq!(filter.key, "Room");
+                assert_eq!(filter.value, expected);
+            }
+            for value in ["Room", "=A", " Room=A", "Room=A\nB"] {
+                assert!(parse_cli([
+                    "sunipdf-cli",
+                    command,
+                    "source.pdf",
+                    "--field-equals",
+                    value
+                ])
+                .is_err());
+            }
+            assert!(parse_cli([
+                "sunipdf-cli",
+                command,
+                "source.pdf",
+                "--field-equals",
+                "Room=A",
+                "--field-equals",
+                "Room=B"
+            ])
+            .is_err());
+        }
+    }
 }

@@ -79,6 +79,9 @@ pub struct ReportInput {
     kind: String,
     #[arg(long, default_value = "")]
     count_group: String,
+    /// Exact register text-field match; KEY= selects a present empty value, not a missing field.
+    #[arg(long, value_parser = crate::register_cmd::field_equals)]
+    field_equals: Option<sunipdf_core::annotation_register::RegisterFieldFilter>,
     /// Match an assigned named zone on one physical page: PAGE:ID.
     #[arg(long,value_parser=zone)]
     zone: Option<sunipdf_core::plan_zones::ZoneFilter>,
@@ -223,6 +226,7 @@ fn options(input: &ReportInput, pages: usize) -> Result<IssueReportOptions, Engi
                 count_group: input.count_group.clone(),
                 include_replies: input.include_replies,
                 custom_sort: input.sort_custom.clone(),
+                custom_field: input.field_equals.clone(),
                 zone,
                 zone_status: input.zone_status,
             },
@@ -298,6 +302,49 @@ pub fn run(engine: &Engine, args: IssueReportArgs) -> Result<Value, EngineError>
             Ok(document
                 .publish_issue_report(&prepared, format, out, &cancel)?
                 .json())
+        }
+    }
+}
+
+#[cfg(test)]
+mod field_filter_tests {
+    use super::*;
+    use crate::tests::parse_cli;
+
+    #[test]
+    fn issue_report_cli_records_the_same_exact_register_field_selection() {
+        for (literal, expected) in [
+            ("Room=A-101", "A-101"),
+            ("Room=", ""),
+            ("Room= A=B ", " A=B "),
+        ] {
+            let parsed = parse_cli([
+                "sunipdf-cli",
+                "issue-report",
+                "inspect",
+                "source.pdf",
+                "--field-equals",
+                literal,
+            ])
+            .unwrap();
+            let crate::Command::IssueReport(args) = parsed.command else {
+                panic!("issue report")
+            };
+            let options = options(args.input(), 2).unwrap();
+            let filter = options.quantities.filter.custom_field.unwrap();
+            assert_eq!(filter.key, "Room");
+            assert_eq!(filter.value, expected);
+        }
+        for literal in ["Room", "=A", " Room=A", "Room=A\nB"] {
+            assert!(parse_cli([
+                "sunipdf-cli",
+                "issue-report",
+                "inspect",
+                "source.pdf",
+                "--field-equals",
+                literal
+            ])
+            .is_err());
         }
     }
 }

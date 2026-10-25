@@ -107,6 +107,7 @@ pub fn table(engine: &Engine, args: TableArgs) -> Result<Value, EngineError> {
             count_group: args_report.count_group,
             include_replies: args_report.include_replies,
             custom_sort: args_report.sort_custom,
+            custom_field: args_report.field_equals,
         },
         sort: RegisterSort::ALL
             .into_iter()

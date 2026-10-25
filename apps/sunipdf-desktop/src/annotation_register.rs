@@ -1,6 +1,7 @@
 //! Per-tab markup table and explicit, on-plan manual counting.
 
 pub(crate) mod bulk;
+pub(crate) mod field_filter;
 mod presets;
 
 use crate::{
@@ -291,6 +292,14 @@ pub(crate) fn filter_summary(
     }
     if filter.include_replies {
         summary.push(tr(lang, "register.include_replies").into());
+    }
+    if let Some(field) = &filter.custom_field {
+        summary.push(format!(
+            "{}: {:?} = {:?}",
+            tr(lang, "register.field_filter.title"),
+            field.key,
+            field.value
+        ));
     }
     if let Some(zone) = &filter.zone {
         let name = plan_zones
@@ -599,6 +608,9 @@ impl SuniApp {
                         };
                         ui.menu_button(filter_label, |ui| {
                             state.presets.menu(ui, lang, row_actions_enabled);
+                            if field_filter::menu(ui, lang, &mut state.filter) {
+                                state.offset = 0;
+                            }
                             ui.separator();
                             egui::Grid::new("register-filters")
                                 .num_columns(4)
