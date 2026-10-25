@@ -466,12 +466,22 @@ fn stamp_history_and_copy_restrictions(
         }
     }
     for aes256 in [false, true] {
+        let password = || {
+            let mut bytes = [0u8; 24];
+            getrandom::fill(&mut bytes).unwrap();
+            bytes
+                .iter()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>()
+        };
+        let user = password();
+        let owner = password();
         let protected = security::protect(
             saved,
             None,
             &Protection {
-                user_password: "capture-reader".into(),
-                owner_password: "capture-owner".into(),
+                user_password: user.clone(),
+                owner_password: owner,
                 allow_copy: false,
                 allow_modify: true,
                 allow_print: true,
@@ -481,11 +491,7 @@ fn stamp_history_and_copy_restrictions(
         )
         .unwrap();
         let doc = engine
-            .open_bytes(
-                protected,
-                Some("capture-reader"),
-                Path::new("restricted.pdf"),
-            )
+            .open_bytes(protected, Some(user.as_str()), Path::new("restricted.pdf"))
             .unwrap();
         assert!(matches!(
             doc.library_capture_candidates(0),

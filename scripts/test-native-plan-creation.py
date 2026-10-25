@@ -83,14 +83,19 @@ class NativeCommandPaletteTests(unittest.TestCase):
                 read_capture(path, "blue", psm=6, smooth=True)
             self.assertEqual(len(calls), before)
 
-    def test_scene_smoothing_is_routed_only_to_typed_manifest_path_scene(self):
+    def test_scene_smoothing_is_routed_only_to_manifest_path_and_approval_scenes(self):
         tree = ast.parse(Path(__file__).with_name("test-deb.py").read_text(encoding="utf-8"))
         calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
                  and isinstance(node.func, ast.Name) and node.func.id == "scene"
                  and any(keyword.arg == "smooth" for keyword in node.keywords)]
-        self.assertEqual(len(calls), 1)
-        self.assertEqual(ast.literal_eval(calls[0].args[0]), "creation-manifest-path-entered")
-        self.assertEqual({keyword.arg: ast.literal_eval(keyword.value) for keyword in calls[0].keywords},
+        self.assertEqual(len(calls), 2)
+        manifest = next(call for call in calls if isinstance(call.args[0], ast.Constant))
+        approval = next(call for call in calls if isinstance(call.args[0], ast.BinOp))
+        self.assertEqual(ast.literal_eval(manifest.args[0]), "creation-manifest-path-entered")
+        self.assertEqual(ast.literal_eval(approval.args[0].left), "creation-approved-")
+        self.assertEqual({keyword.arg: ast.literal_eval(keyword.value) for keyword in approval.keywords
+                          if keyword.arg in ("psm", "smooth")}, {"psm": 11, "smooth": True})
+        self.assertEqual({keyword.arg: ast.literal_eval(keyword.value) for keyword in manifest.keywords},
                          {"pattern": r"plan-set\.json", "psm": 6, "smooth": True})
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -105,11 +110,12 @@ class NativeCommandPaletteTests(unittest.TestCase):
             namespace = {"time": SimpleNamespace(monotonic=lambda: 0), "read_capture": read_capture,
                          "capture": lambda: root / observed["png"], "command": lambda args: "SuniPDF",
                          "window": "offline-window", "re": re, "scenes": [], "scene_directory": retained,
-                         "evidence": root, "sha": native.sha}
+                         "evidence": root, "sha": native.sha, "fixtures": native}
             creation_helper("evidence_fields", namespace)
             scene = creation_helper("scene", namespace)
             for name, options in (("creation-command-open", {"psm": 6}),
                                   ("creation-manifest-path-entered", {"psm": 11}),
+                                  ("creation-approved-beta", {"psm": 6}),
                                   ("creation-manifest-path-entered", {"psm": 6, "kind": "alpha"})):
                 with self.subTest(name=name, options=options), self.assertRaisesRegex(AssertionError, "restricted"):
                     scene(name, pattern=r"plan-set\.json", smooth=True, **options)
@@ -120,6 +126,10 @@ class NativeCommandPaletteTests(unittest.TestCase):
             for field in ("png", "ocrInput", "ocr"):
                 self.assertEqual((root / value[field]).read_bytes(), (root / observed[field]).read_bytes())
                 self.assertEqual(native.sha(root / value[field]), value[field + "Sha256"])
+            observed.update(text="Beta.pdf 1 Approved links", tsv=tsv([(20, "Beta.pdf 1 Approved links")]))
+            value = scene("creation-approved-beta", pattern=r"Beta\.pdf.*1 Approved links", psm=11, smooth=True)
+            self.assertEqual(value["name"], "creation-approved-beta")
+            read_capture.assert_called_with(root / observed["png"], None, psm=11, smooth=True)
 
     def test_command_keeps_native_keyboard_and_requires_observed_result_before_enter(self):
         calls = []
@@ -178,6 +188,24 @@ class NativeCommandPaletteTests(unittest.TestCase):
                  and isinstance(node.func, ast.Name) and isinstance(node.args[0], ast.Constant)
                  and node.args[0].value == "Destination sheets 1"]
         self.assertEqual([node.func.id for node in calls], ["verify_control"])
+
+    def test_smooth_approval_selection_requires_the_matching_source_header(self):
+        transcript = tsv([(20, "Alpha.pdf 0 Approved links"), (50, "A-101 Page 1"),
+                          (80, "Beta.pdf 0 Approved links"), (110, "A-101 Page 1")])
+        observed = {"tsv": transcript, "text": "offline fixture", "scale": 4, "size": (320, 180)}
+        read_capture = MagicMock(return_value=observed)
+        locate = creation_helper("locate", {"fixtures": native, "read_capture": read_capture,
+                                            "capture": lambda target: "full-capture.png"})
+        _, box = locate("A-101", line_contains="Page 1", below_label=("Beta.pdf", "0 Approved links"),
+                        smooth=True, psm=11)
+        self.assertEqual(box[1], 110)
+        read_capture.assert_called_once_with("full-capture.png", None, psm=11, smooth=True)
+        for options in ({"line_contains": "Page 1"},
+                        {"line_contains": "Page 1", "below_label": ("Other.pdf", "0 Approved links")},
+                        {"line_contains": "Page 1", "below_label": ("Beta.pdf", "1 Approved links")},
+                        {"line_contains": "Page 1", "below_label": ("Beta.pdf", "0 Approved links"), "psm": 6}):
+            with self.subTest(options=options), self.assertRaisesRegex(AssertionError, "restricted"):
+                locate("A-101", smooth=True, **options)
 
 
 def qpdf_document(link=None):
@@ -303,6 +331,19 @@ class NativeCreationTests(unittest.TestCase):
         with self.assertRaises(native.LabelMissing):
             native.label_box(text, "Beta.pdf", (900, 200), line_contains="Preview source")
 
+    def test_approval_is_bound_to_its_source_and_its_own_count(self):
+        text = tsv([(20, "Alpha.pdf 1 Approved links"), (50, "A-101 Page 1"),
+                    (80, "Beta.pdf 0 Approved links"), (110, "A-101 Page 1")])
+        beta = native.label_box(text, "Beta.pdf", (900, 200), line_contains="0 Approved links")
+        self.assertEqual(native.label_box(text, "A-101", (900, 200),
+                                         line_contains="Page 1", below=beta[3])[1], 110)
+        with self.assertRaises(native.LabelMissing):
+            native.label_box(text, "Beta.pdf", (900, 200), line_contains="1 Approved links")
+        wrong_only = tsv([(20, "Alpha.pdf 1 Approved links"), (50, "A-101 Page 1"),
+                          (80, "Beta.pdf 0 Approved links")])
+        with self.assertRaises(native.LabelMissing):
+            native.label_box(wrong_only, "A-101", (900, 200), line_contains="Page 1", below=beta[3])
+
     def test_ocr_expanded_destination_group_is_below_its_source(self):
         text = tsv([(20, "Destination sheets (1)"), (50, "Beta.pdf"), (80, "Destination sheets (1)")])
         with self.assertRaisesRegex(AssertionError, "Ambiguous"):
@@ -327,6 +368,10 @@ class NativeCreationTests(unittest.TestCase):
             native.label_box(text, "Beta.pdf", (900, 200), exact_line=True)
         self.assertEqual(native.label_box(text, "Beta.pdf", (900, 200), exact_line=True,
                                          within=(0, 60, 200, 120))[1], 80)
+        self.assertEqual(native.label_box(text, "Beta.pdf", (900, 200), exact_line=True,
+                                         within=(0, 0, 200, 60))[1], 20)
+        with self.assertRaisesRegex(AssertionError, "Ambiguous"):
+            native.label_box(text, "Beta.pdf", (900, 200), exact_line=True, within=(0, 0, 200, 120))
 
     def test_pdf_ink_requires_unique_correct_title_and_enough_coloured_pixels(self):
         for kind, title in (("alpha", "Native source alpha"), ("beta", "Native source beta"),
