@@ -1,5 +1,5 @@
 # Revision overlays
-[Original two-page qualification](RELEASE_0.47.0.md) · [Multi-layer scope](RELEASE_0.81.0.md) · [Saved setups](RELEASE_0.83.0.md).
+[Original two-page qualification](RELEASE_0.47.0.md) · [Multi-layer scope and saved setups](RELEASE_0.85.0.md).
 
 ## Desktop
 

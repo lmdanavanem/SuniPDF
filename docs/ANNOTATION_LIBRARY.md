@@ -22,7 +22,7 @@ Scale is a uniform size multiplier: `1` keeps the template size. It is independe
 ## Capture a group from an existing page
 
 1. Open the source PDF at the desired page, then open the library and choose **Capture from current page**.
-2. Select 1–16 supported saved annotations. Native SuniPDF rectangles, ellipses, lines/arrows, polygons, polylines and clouds are eligible when their geometry, style and appearance can be reproduced. The [0.82 candidate](RELEASE_0.82.0.md) also accepts supported native standard stamps and image stamps with verified appearances. Unsupported rows stay visible but disabled; hover for the refusal reason. Nothing is selected automatically.
+2. Select 1–16 supported saved annotations. Native SuniPDF rectangles, ellipses, lines/arrows, polygons, polylines and clouds are eligible when their geometry, style and appearance can be reproduced. The [0.85 candidate](RELEASE_0.85.0.md) also accepts supported native standard stamps and image stamps with verified appearances. Unsupported rows stay visible but disabled; hover for the refusal reason. Nothing is selected automatically.
 3. Enter a unique name and declare **Source or provenance**. Credit and licence remain optional declarations. Choose **Save selected annotations as a group**. This saves a local library entry without modifying the PDF.
 4. Reuse it through **Place on page**, preview and apply. Relative displayed-page geometry, stroke/fill colors, width, dashes and opacity are retained. Each placed member gets a fresh identity, and the complete placement has one Undo step.
 

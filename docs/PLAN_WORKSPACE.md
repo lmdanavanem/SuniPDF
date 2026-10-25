@@ -23,7 +23,7 @@ Region selection validates the whole rectangle, including boundary crossings and
 
 The angle can be changed before placement or in the preview. Changing it invalidates the prepared result until it is previewed again. Finite input is normalized from zero inclusive to 360 exclusive; negative angles turn in the opposite direction. Every rotated vertex and its stored-coordinate precision must pass the same page and scale checks.
 
-The original axis-aligned increment is published in [0.62.0](RELEASE_0.62.0.md); [0.80 rotation qualification](RELEASE_0.80.0.md) remains in progress. Rotation persists through the four saved vertices, not permanent rectangle constraints. Subsequent polygon editing is unconstrained; exact circles remain a separate backlog item. [Deducted areas and constant-depth volumes](MEASUREMENT_VOLUMES.md) retain their own qualification scope.
+The original axis-aligned increment is published in [0.62.0](RELEASE_0.62.0.md); [0.85 rotation qualification](RELEASE_0.85.0.md) remains in progress. Rotation persists through the four saved vertices, not permanent rectangle constraints. Subsequent polygon editing is unconstrained; exact circles remain a separate backlog item. [Deducted areas and constant-depth volumes](MEASUREMENT_VOLUMES.md) retain their own qualification scope.
 
 ## Recalibrate a selected batch
 

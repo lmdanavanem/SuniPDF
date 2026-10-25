@@ -51,7 +51,7 @@ The first example creates 6 m² using a reference of 1 m per 100 page points. Se
 
 Use `--password-env` or `--password-stdin` for encrypted inputs. Annotation permission is required, and permitted encryption is retained. With copying forbidden, an allowed annotation can be written, but the response contains `measurement: null` and `export_unavailable: true`; stored values and references are not exported. Successful readable results use the existing version-2 measurement JSON with `validity: current`. Reopen with `measurements` or `quantity-table` to inspect the saved area.
 
-The implementation includes dedicated rotation/crop, scale-selection, no-clobber, encryption and quantity regression cases. Earlier native development-build results are recorded in the [0.62.0 release qualification](RELEASE_0.62.0.md). Qualification of arbitrary-angle creation and independently inspected saved geometry is tracked in the [0.80 candidate](RELEASE_0.80.0.md).
+The implementation includes dedicated rotation/crop, scale-selection, no-clobber, encryption and quantity regression cases. Earlier native development-build results are recorded in the [0.62.0 release qualification](RELEASE_0.62.0.md). Qualification of arbitrary-angle creation and independently inspected saved geometry is tracked in the [0.85 candidate](RELEASE_0.85.0.md).
 
 ## Session scale and saved page default
 
