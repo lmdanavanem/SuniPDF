@@ -18,18 +18,18 @@ The interface defaults to English; French is also available.
 
 Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
 
-## Download 0.78.0
+## Download 0.79.0
 
-SuniPDF 0.78.0 is the latest stable release, verified 2026-10-25T02:42:58.071611+00:00.
+SuniPDF 0.79.0 is the latest stable release, verified 2026-10-25T05:43:29.006968+00:00.
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.78.0/SuniPDF-0.78.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.78.0/SuniPDF-0.78.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.78.0/SuniPDF-0.78.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.78.0/SuniPDF-0.78.0-linux-amd64.deb) |
-| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.78.0/SuniPDF-0.78.0-macos-arm64.dmg) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.79.0/SuniPDF-0.79.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.79.0/SuniPDF-0.79.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.79.0/SuniPDF-0.79.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.79.0/SuniPDF-0.79.0-linux-amd64.deb) |
+| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.79.0/SuniPDF-0.79.0-macos-arm64.dmg) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.78.0) · [qualification evidence](docs/qa/RELEASE_0.78.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.79.0) · [qualification evidence](docs/qa/RELEASE_0.79.0.json)
 
 Windows packages are unsigned; the macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
 See [Ubuntu platform limits](docs/UBUNTU.md), [macOS platform limits](docs/MACOS.md) and [known issues](docs/KNOWN_ISSUES.md).
@@ -39,7 +39,7 @@ Open **Menu > Settings > Theme** for Classic or Liquid Glass, System/Light/Dark 
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.78.0-linux-amd64.deb`.
+- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.79.0-linux-amd64.deb`.
 - **macOS:** open the DMG and drag **SuniPDF** to **Applications**. On first launch, allow it in **System Settings > Privacy & Security > Open Anyway**.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
 - Use **Ctrl+K** (**⌘K** on macOS) to find a command. Save your document to keep applied changes.
@@ -62,14 +62,14 @@ offering installation. Ubuntu 0.74 adds verified downloads, administrator author
 
 [Feature matrix and limits](docs/FEATURE_MATRIX.md) · [User guide](docs/USER_GUIDE.en.md)
 
-## New in 0.78.0
+## New in 0.79.0
 
-- Use a calmer Glass workspace with neutral light/dark surfaces and continuous docked bars.
-- Find Open file and Recent files above compact, grouped tools on the welcome screen.
-- Return to the source after following a verified plan link, retaining unsaved documents and reading positions.
-- Restore both pane positions during the session; refuse closed, changed or conflicting return targets.
+- Queue up to 16 reviewed old/new PDF pairs and save separate new copies.
+- Preflight the whole queue and retain completed copies and receipts after cancellation or a later failure.
+- Use source-bound CLI batch preview/apply with explicit page mappings.
+- Select plan-link pages by ranges or indexed entries, filter destinations and reopen verified completed copies.
 
-[Plan-link workflow](docs/PLAN_LINKS.md) | [Appearance](docs/APPEARANCE.md) | [Release qualification](docs/RELEASE_0.78.0.md) | [Project status](docs/PROJECT_STATUS.md).
+[Plan-link workflow](docs/PLAN_LINKS.md) | [Appearance](docs/APPEARANCE.md) | [Release qualification](docs/RELEASE_0.79.0.md) | [Project status](docs/PROJECT_STATUS.md).
 
 Earlier additions include [independent reader views](docs/RELEASE_0.76.0.md),
 [Apple Silicon support](docs/RELEASE_0.75.0.md), [themes and Ubuntu updates](docs/RELEASE_0.74.0.md),

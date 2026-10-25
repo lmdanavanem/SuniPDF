@@ -1,8 +1,17 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.78.0 release scope](RELEASE_0.78.0.md) · Published as a stable release.
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.79.0 release scope](RELEASE_0.79.0.md) · Published as a stable release.
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
+
+## Delivered in 0.79.0
+
+- Queue up to 16 reviewed old/new PDF pairs and save separate new copies.
+- Preflight the whole queue and retain completed copies and receipts after cancellation or a later failure.
+- Use source-bound CLI batch preview/apply with explicit page mappings.
+- Select plan-link pages by ranges or indexed entries, filter destinations and reopen verified completed copies.
+
+AEC-016, AEC-017 retain their remaining acceptance criteria. [Exact qualification](RELEASE_0.79.0.md).
 
 ## Published multi-source plan links
 
