@@ -869,7 +869,7 @@ fn disabled_button_proof_color_matches_actual_tessellator_vertices() {
                     color,
                     palette
                         .text
-                        .gamma_multiply(context.style().visuals.disabled_alpha())
+                        .gamma_multiply(context.global_style().visuals.disabled_alpha())
                 );
             }
             for opacity in [1.0, 0.5] {
