@@ -441,6 +441,7 @@ impl BatchState {
 
 enum BatchAction {
     Open,
+    LoadManifest,
     Single,
     Inspect,
     Reset,
@@ -559,16 +560,13 @@ impl SuniApp {
                     {
                         action = Some(BatchAction::Single);
                     }
-                    if ui
-                        .add_enabled(
-                            ready,
-                            egui::Button::new(tr(lang, "plan_links.open_manifest")),
-                        )
-                        .clicked()
-                    {
-                        action = Some(BatchAction::Open);
-                    }
                 });
+                if let Some(selected) = manifest_selector(ui, state, lang, ready) {
+                    action = Some(match selected {
+                        Action::LoadManifest => BatchAction::LoadManifest,
+                        _ => BatchAction::Open,
+                    });
+                }
                 ui.label(tr(lang, "plan_links.batch.help"));
                 ui.small(tr(lang, "plan_links.batch.limits"));
                 if let Some(context) = &state.context {
@@ -761,6 +759,7 @@ impl SuniApp {
     fn plan_links_batch_action(&mut self, action: BatchAction) {
         match action {
             BatchAction::Open => self.plan_links_action(Action::Open),
+            BatchAction::LoadManifest => self.plan_links_action(Action::LoadManifest),
             BatchAction::Single => {
                 self.plan_links.batch_mode = false;
                 self.plan_links.reset_scan();

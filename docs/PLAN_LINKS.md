@@ -40,6 +40,25 @@ ability to navigate a link does not establish that they verified SuniPDF's store
 Moving the complete plan folder can preserve relative links; moving only the linked PDF can break
 them. Reinspect before creating replacement links.
 
+## Preview a saved link's destination
+
+The [0.77 development candidate](RELEASE_0.77.0.md) adds a preview to the reader's
+saved-link confirmation. Click a plan link, enter the absolute path of its JSON
+manifest in **Manifest path**, and choose **Load manifest**. The file browser remains
+available. Editing the path clears the previous manifest selection and preview;
+typing a path alone does not load it.
+
+Choose **Preview destination** to render the verified destination page and inspect
+its sheet number, title, revision and physical page. Previewing does not open a tab,
+modify a PDF or approve navigation. **Open verified destination** performs fresh
+checks before opening the sheet. If a source or destination changes after a preview,
+review the error and preview again; a cached image does not authorize changed files.
+
+Protected sources and destinations can require the password again for each operation.
+Passwords are used once and are not retained in the manifest or preview receipt.
+Closing the confirmation keeps the source PDF open. Existing dirty-tab choices are
+preserved when opening a destination that is already being edited.
+
 ## Command line
 
 Use file and sheet IDs from `plan-set inspect`, then select each permitted destination explicitly:

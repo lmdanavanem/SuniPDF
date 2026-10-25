@@ -4,8 +4,10 @@ use crate::{
     dialog::{self, Spec},
     worker::Request,
 };
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, HashSet},
+    io::Read,
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -29,7 +31,7 @@ use batch::{BatchCached, BatchState};
 
 pub type Credentials = Vec<(String, Zeroizing<String>)>;
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Context {
     pub path: PathBuf,
     pub set: PlanSet,
@@ -37,6 +39,17 @@ pub struct Context {
 pub struct Preview {
     pub image: RenderedPage,
     pub points: (f32, f32),
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemotePreviewBinding {
+    context: Context,
+    source: PathBuf,
+    target: RemotePageTarget,
+    source_epoch: u64,
+}
+struct RemotePreviewReceipt {
+    binding: RemotePreviewBinding,
+    source_sha256: String,
 }
 pub enum Job {
     Load {
@@ -76,6 +89,17 @@ pub enum Job {
         context: Context,
         source: PathBuf,
         target: RemotePageTarget,
+        credentials: Credentials,
+        cancel: Arc<AtomicBool>,
+    },
+    RemotePreview {
+        binding: RemotePreviewBinding,
+        credentials: Credentials,
+        cancel: Arc<AtomicBool>,
+    },
+    NavigatePreviewed {
+        binding: RemotePreviewBinding,
+        source_sha256: String,
         credentials: Credentials,
         cancel: Arc<AtomicBool>,
     },
@@ -122,6 +146,11 @@ pub enum Outcome {
     },
     Saved(PlanLinkReceipt),
     Navigate(crate::plan_sets::Navigation),
+    RemotePreview {
+        binding: RemotePreviewBinding,
+        source_sha256: String,
+        preview: Preview,
+    },
     BatchInspected(core::PlanLinkBatchInspection),
     BatchPrepared {
         token: u64,
@@ -170,6 +199,119 @@ fn password<'a>(credentials: &'a Credentials, id: &str) -> Option<&'a str> {
     credentials
         .iter()
         .find_map(|(key, value)| (key == id).then_some(value.as_str()))
+}
+fn source_fingerprint(path: &std::path::Path, cancel: &AtomicBool) -> Result<String, EngineError> {
+    let mut file = std::fs::File::open(path)?;
+    if !file.metadata()?.is_file() || file.metadata()?.len() > core::MAX_CANDIDATE_BYTES as u64 {
+        return Err(error("source PDF exceeds the preview limit"));
+    }
+    let mut hash = Sha256::new();
+    let mut buffer = [0_u8; 64 * 1024];
+    let mut total = 0_usize;
+    loop {
+        cancelled(cancel)?;
+        let read = file.read(&mut buffer)?;
+        if read == 0 {
+            break;
+        }
+        total += read;
+        if total > core::MAX_CANDIDATE_BYTES {
+            return Err(error("source PDF exceeds the preview limit"));
+        }
+        hash.update(&buffer[..read]);
+    }
+    Ok(hash
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect())
+}
+fn unchanged_source(
+    path: &std::path::Path,
+    expected: &str,
+    cancel: &AtomicBool,
+) -> Result<(), EngineError> {
+    if source_fingerprint(path, cancel)? != expected {
+        return Err(error(
+            "source PDF changed since the preview; preview it again",
+        ));
+    }
+    Ok(())
+}
+fn remote_preview(
+    engine: &Engine,
+    binding: RemotePreviewBinding,
+    credentials: Credentials,
+    cancel: &AtomicBool,
+) -> Result<Outcome, EngineError> {
+    let values = borrowed(&credentials);
+    let access = PlanLinkCredentials { passwords: &values };
+    let verified = core::resolve_verified_remote_link(
+        engine,
+        &binding.context.path,
+        &binding.context.set,
+        &binding.source,
+        &binding.target,
+        &access,
+        cancel,
+    )?;
+    let source_sha256 = source_fingerprint(&binding.source, cancel)?;
+    let sheet = binding
+        .context
+        .set
+        .sheets
+        .iter()
+        .find(|s| s.id == binding.target.sheet_id)
+        .ok_or_else(|| error("destination disappeared"))?;
+    let doc = engine.open_bytes(
+        verified.bytes,
+        password(&credentials, &sheet.file_id),
+        &verified.path,
+    )?;
+    let page = verified.page - 1;
+    let size = doc.page_size(page)?;
+    if !size.width_pt.is_finite()
+        || !size.height_pt.is_finite()
+        || size.width_pt <= 0.0
+        || size.height_pt <= 0.0
+    {
+        return Err(EngineError::RenderTooLarge);
+    }
+    cancelled(cancel)?;
+    let image = doc.render_page(page, 1200.0 / size.width_pt.max(size.height_pt))?;
+    if image.width > core::MAX_PREVIEW_SIDE
+        || image.height > core::MAX_PREVIEW_SIDE
+        || image.rgba.len() > core::MAX_PREVIEW_SIDE as usize * core::MAX_PREVIEW_SIDE as usize * 4
+    {
+        return Err(EngineError::RenderTooLarge);
+    }
+    // Recheck after rendering: the image must still describe the selected saved destination.
+    let current = core::resolve_verified_remote_link(
+        engine,
+        &binding.context.path,
+        &binding.context.set,
+        &binding.source,
+        &binding.target,
+        &access,
+        cancel,
+    )?;
+    if current.path != verified.path
+        || current.page != verified.page
+        || current.sha256 != verified.sha256
+    {
+        return Err(error(
+            "destination changed during preview; preview it again",
+        ));
+    }
+    unchanged_source(&binding.source, &source_sha256, cancel)?;
+    Ok(Outcome::RemotePreview {
+        binding,
+        source_sha256,
+        preview: Preview {
+            image,
+            points: (size.width_pt, size.height_pt),
+        },
+    })
 }
 fn source_path(context: &Context, file_id: &str) -> Result<PathBuf, EngineError> {
     let file = context
@@ -410,6 +552,35 @@ impl WorkerCache {
                     active_source: None,
                 }))
             }
+            Job::RemotePreview {
+                binding,
+                credentials,
+                cancel,
+            } => {
+                self.candidate = None;
+                remote_preview(engine, binding, credentials, &cancel)
+            }
+            Job::NavigatePreviewed {
+                binding,
+                source_sha256,
+                credentials,
+                cancel,
+            } => {
+                unchanged_source(&binding.source, &source_sha256, &cancel)?;
+                let outcome = self.run(
+                    engine,
+                    Job::Navigate {
+                        context: binding.context,
+                        source: binding.source.clone(),
+                        target: binding.target,
+                        credentials,
+                        cancel: cancel.clone(),
+                    },
+                    on_progress,
+                )?;
+                unchanged_source(&binding.source, &source_sha256, &cancel)?;
+                Ok(outcome)
+            }
             Job::BatchInspect { .. }
             | Job::BatchPrepare { .. }
             | Job::BatchPreview { .. }
@@ -430,6 +601,8 @@ pub struct PlanLinksState {
     batch_mode: bool,
     batch: BatchState,
     context: Option<Context>,
+    manifest_input: String,
+    focus_manifest: bool,
     source_id: String,
     pages: String,
     targets: HashSet<String>,
@@ -447,6 +620,9 @@ pub struct PlanLinksState {
     pending: Option<(u64, bool)>,
     cancel: Arc<AtomicBool>,
     remote: Option<(PathBuf, RemotePageTarget)>,
+    remote_epoch: Option<u64>,
+    remote_preview: Option<RemotePreviewReceipt>,
+    remote_request: Option<RemotePreviewBinding>,
 }
 impl PlanLinksState {
     pub fn busy(&self) -> bool {
@@ -456,12 +632,14 @@ impl PlanLinksState {
         self.batch.clear_preview();
         self.candidate = None;
         self.picture = None;
+        self.remote_preview = None;
     }
     fn reset_scan(&mut self) {
         self.batch.reset_scan();
         self.inspection = None;
         self.selections.clear();
         self.clear_preview();
+        self.remote_request = None;
     }
     fn review(&self) -> Option<PlanLinkReview> {
         let inspection = self.inspection.as_ref()?;
@@ -519,6 +697,7 @@ impl PlanLinksState {
 
 enum Action {
     Open,
+    LoadManifest,
     Inspect,
     Reset,
     Prepare,
@@ -526,6 +705,63 @@ enum Action {
     TargetPreview,
     Save,
     Navigate,
+    RemotePreview,
+}
+fn manifest_input_path(input: &str) -> Result<PathBuf, EngineError> {
+    let path = PathBuf::from(input.trim());
+    if input.len() > 4096
+        || input.chars().any(char::is_control)
+        || !path.is_absolute()
+        || !path
+            .extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("json"))
+    {
+        return Err(error("enter an absolute local JSON manifest path"));
+    }
+    Ok(path)
+}
+fn manifest_selector(
+    ui: &mut egui::Ui,
+    state: &mut PlanLinksState,
+    lang: Language,
+    ready: bool,
+) -> Option<Action> {
+    let mut action = None;
+    let label = ui.label(tr(lang, "plan_links.manifest_path"));
+    ui.add_enabled_ui(ready, |ui| {
+        ui.horizontal_wrapped(|ui| {
+            let response = ui
+                .add(
+                    egui::TextEdit::singleline(&mut state.manifest_input)
+                        .id_salt("plan-links-manifest-path")
+                        .hint_text(tr(lang, "plan_links.manifest_placeholder"))
+                        .char_limit(4096)
+                        .desired_width((ui.available_width() - 120.0).clamp(160.0, 520.0)),
+                )
+                .labelled_by(label.id);
+            if state.focus_manifest {
+                response.request_focus();
+                state.focus_manifest = false;
+            }
+            if response.changed() {
+                state.reset_scan();
+                state.context = None;
+                state.passwords.clear();
+                state.error = None;
+                state.message = None;
+            }
+            if ui.button(tr(lang, "plan_links.load_manifest")).clicked()
+                || ((response.has_focus() || response.lost_focus())
+                    && ui.input(|i| i.key_pressed(egui::Key::Enter)))
+            {
+                action = Some(Action::LoadManifest);
+            }
+            if ui.button(tr(lang, "plan_links.open_manifest")).clicked() {
+                action = Some(Action::Open);
+            }
+        });
+    });
+    action
 }
 impl SuniApp {
     pub(crate) fn open_plan_links(&mut self) {
@@ -533,6 +769,7 @@ impl SuniApp {
             return;
         }
         self.plan_links.open = true;
+        self.plan_links.focus_manifest = self.plan_links.context.is_none();
         if self.plan_links.pages.is_empty() {
             self.plan_links.pages = "1".into();
         }
@@ -546,7 +783,87 @@ impl SuniApp {
         };
         self.close_plan_links();
         self.plan_links.remote = Some((source, target));
+        self.plan_links.remote_epoch = Some(self.view.epoch);
         self.plan_links.open = true;
+        self.plan_links.focus_manifest = self.plan_links.context.is_none();
+    }
+    fn remote_plan_link_binding(&self) -> Option<RemotePreviewBinding> {
+        let (source, target) = self.plan_links.remote.as_ref()?;
+        if !self.plan_links.open
+            || self.document.as_ref()?.info.path != *source
+            || self.plan_links.remote_epoch != Some(self.view.epoch)
+        {
+            return None;
+        }
+        Some(RemotePreviewBinding {
+            context: self.plan_links.context.clone()?,
+            source: source.clone(),
+            target: target.clone(),
+            source_epoch: self.view.epoch,
+        })
+    }
+    fn matches_remote_plan_link(&self, binding: &RemotePreviewBinding) -> bool {
+        self.plan_links.open
+            && self.view.epoch == binding.source_epoch
+            && self.plan_links.remote_epoch == Some(binding.source_epoch)
+            && self
+                .document
+                .as_ref()
+                .is_some_and(|document| document.info.path == binding.source)
+            && self.plan_links.context.as_ref() == Some(&binding.context)
+            && self
+                .plan_links
+                .remote
+                .as_ref()
+                .is_some_and(|(source, target)| {
+                    source == &binding.source && target == &binding.target
+                })
+    }
+    fn start_remote_plan_link(&mut self, preview: bool) {
+        if self.plan_links.busy() || !matches!(self.engine, EngineState::Ready) {
+            return;
+        }
+        let Some(binding) = self.remote_plan_link_binding() else {
+            self.plan_links.clear_preview();
+            self.plan_links.error = Some(tr(self.lang(), "plan_links.remote_changed").into());
+            return;
+        };
+        let expected_source = self
+            .plan_links
+            .remote_preview
+            .as_ref()
+            .filter(|receipt| receipt.binding == binding)
+            .map(|receipt| receipt.source_sha256.clone());
+        self.plan_links.clear_preview();
+        let request_binding = binding.clone();
+        self.start_plan_links(false, |cancel, credentials| {
+            if preview {
+                Job::RemotePreview {
+                    binding,
+                    credentials,
+                    cancel,
+                }
+            } else if let Some(source_sha256) = expected_source {
+                Job::NavigatePreviewed {
+                    binding,
+                    source_sha256,
+                    credentials,
+                    cancel,
+                }
+            } else {
+                Job::Navigate {
+                    context: binding.context,
+                    source: binding.source,
+                    target: binding.target,
+                    credentials,
+                    cancel,
+                }
+            }
+        });
+        self.plan_links.remote_request = Some(request_binding);
+        for (_, secret) in &mut self.plan_links.passwords {
+            *secret = Zeroizing::new(String::new());
+        }
     }
     fn close_plan_links(&mut self) {
         self.plan_links.cancel.store(true, Ordering::Relaxed);
@@ -560,6 +877,7 @@ impl SuniApp {
         self.plan_links.pending = None;
         self.plan_links.open = false;
         self.plan_links.remote = None;
+        self.plan_links.remote_epoch = None;
         self.plan_links.reset_scan();
         self.worker.send(Request::PlanLinks {
             generation: self.plan_links.generation,
@@ -584,6 +902,7 @@ impl SuniApp {
         self.plan_links.generation = self.plan_links.generation.wrapping_add(1);
         self.plan_links.cancel = Arc::new(AtomicBool::new(false));
         self.plan_links.pending = Some((self.plan_links.generation, saving));
+        self.plan_links.remote_request = None;
         self.plan_links.error = None;
         self.plan_links.message = None;
         let credentials = self
@@ -610,6 +929,25 @@ impl SuniApp {
         }
         self.plan_links.pending = None;
         let lang = self.lang();
+        if let Some(binding) = self.plan_links.remote_request.take() {
+            if self.plan_links.cancel.load(Ordering::Relaxed)
+                || !self.matches_remote_plan_link(&binding)
+            {
+                self.plan_links.clear_preview();
+                self.plan_links.message = Some(
+                    tr(
+                        lang,
+                        if self.plan_links.cancel.load(Ordering::Relaxed) {
+                            "status.cancelled"
+                        } else {
+                            "plan_links.remote_changed"
+                        },
+                    )
+                    .into(),
+                );
+                return;
+            }
+        }
         match result {
             Ok(Outcome::Loaded(context)) => {
                 self.plan_links.reset_scan();
@@ -627,6 +965,7 @@ impl SuniApp {
                     .map(|f| (f.id.clone(), Zeroizing::new(String::new())))
                     .collect();
                 self.plan_links.batch.load(&context);
+                self.plan_links.manifest_input = context.path.display().to_string();
                 self.plan_links.context = Some(context);
                 self.plan_links.pages = "1".into();
             }
@@ -673,6 +1012,19 @@ impl SuniApp {
                 self.close_plan_links();
                 self.navigate_plan_sheet(navigation);
             }
+            Ok(Outcome::RemotePreview {
+                binding,
+                source_sha256,
+                preview,
+            }) => {
+                if self.matches_remote_plan_link(&binding) {
+                    self.set_plan_link_picture(ctx, binding.target.page + 1, true, preview);
+                    self.plan_links.remote_preview = Some(RemotePreviewReceipt {
+                        binding,
+                        source_sha256,
+                    });
+                }
+            }
             Ok(
                 outcome @ (Outcome::BatchInspected(_)
                 | Outcome::BatchPrepared { .. }
@@ -718,6 +1070,15 @@ impl SuniApp {
         if !self.plan_links.open {
             return;
         }
+        if self
+            .plan_links
+            .remote_preview
+            .as_ref()
+            .is_some_and(|receipt| !self.matches_remote_plan_link(&receipt.binding))
+        {
+            self.plan_links.clear_preview();
+            self.plan_links.error = Some(tr(self.lang(), "plan_links.remote_changed").into());
+        }
         if self.plan_links.batch_mode && self.plan_links.remote.is_none() {
             self.plan_links_batch_dialog(ctx);
             return;
@@ -758,21 +1119,38 @@ impl SuniApp {
                 {
                     batch_mode = true;
                 }
-                ui.label(tr(lang, "plan_links.help"));
-                if ui
-                    .add_enabled(
-                        ready,
-                        egui::Button::new(tr(lang, "plan_links.open_manifest")),
-                    )
-                    .clicked()
-                {
-                    action = Some(Action::Open);
+                ui.label(tr(
+                    lang,
+                    if state.remote.is_some() {
+                        "plan_links.remote_help"
+                    } else {
+                        "plan_links.help"
+                    },
+                ));
+                if let Some(selected) = manifest_selector(ui, state, lang, ready) {
+                    action = Some(selected);
+                }
+                if let Some((_, target)) = &state.remote {
+                    ui.label(format!(
+                        "{} · {} {}",
+                        target.relative_path,
+                        tr(lang, "plan_links.page"),
+                        target.page.saturating_add(1)
+                    ));
+                    ui.small(format!("{} · {}", target.sheet_id, target.sha256));
                 }
                 if let Some(context) = &state.context {
                     ui.label(context.set.name.as_str());
                     ui.small(context.path.display().to_string());
                     ui.collapsing(tr(lang, "plan_links.passwords"), |ui| {
-                        ui.small(tr(lang, "plan_links.password_help"));
+                        ui.small(tr(
+                            lang,
+                            if state.remote.is_some() {
+                                "plan_links.remote_password_help"
+                            } else {
+                                "plan_links.password_help"
+                            },
+                        ));
                         ui.add_enabled_ui(ready, |ui| {
                             for (id, secret) in &mut state.passwords {
                                 let name = context
@@ -794,14 +1172,32 @@ impl SuniApp {
                         });
                     });
                     if let Some((_, target)) = &state.remote {
-                        ui.label(tr(lang, "plan_links.remote_help"));
-                        ui.label(format!(
-                            "{} · {} {}",
-                            target.relative_path,
-                            tr(lang, "plan_links.page"),
-                            target.page + 1
+                        if let Some(sheet) = context
+                            .set
+                            .sheets
+                            .iter()
+                            .find(|sheet| sheet.id == target.sheet_id)
+                        {
+                            for (key, value) in [
+                                ("plan_sets.number", &sheet.number),
+                                ("plan_sets.sheet_title", &sheet.title),
+                                ("plan_sets.revision", &sheet.revision),
+                            ] {
+                                ui.label(format!(
+                                    "{}: {}",
+                                    tr(lang, key),
+                                    if value.is_empty() { "—" } else { value }
+                                ));
+                            }
+                        }
+                        ui.label(tr(
+                            lang,
+                            if state.remote_preview.is_some() {
+                                "plan_links.remote_verified"
+                            } else {
+                                "plan_links.remote_preview_hint"
+                            },
                         ));
-                        ui.small(format!("{} · {}", target.sheet_id, target.sha256));
                     } else {
                         let scan_editable = ready && state.inspection.is_none();
                         ui.add_enabled_ui(scan_editable, |ui| {
@@ -1186,6 +1582,15 @@ impl SuniApp {
                     {
                         footer_action = Some(Action::Navigate);
                     }
+                    if ui
+                        .add_enabled(
+                            ready && can_navigate,
+                            egui::Button::new(tr(lang, "plan_links.target_preview")),
+                        )
+                        .clicked()
+                    {
+                        footer_action = Some(Action::RemotePreview);
+                    }
                 } else {
                     if ui
                         .add_enabled(
@@ -1249,9 +1654,19 @@ impl SuniApp {
                     .add_filter(tr(lang, "plan_sets.manifest"), &["json"])
                     .pick_file()
                 {
-                    self.start_plan_links(false, |cancel, _| Job::Load { path, cancel });
+                    self.load_plan_link_manifest(path);
                 }
             }
+            Action::LoadManifest => match manifest_input_path(&self.plan_links.manifest_input) {
+                Ok(path) => self.load_plan_link_manifest(path),
+                Err(_) => {
+                    self.plan_links.reset_scan();
+                    self.plan_links.context = None;
+                    self.plan_links.passwords.clear();
+                    self.plan_links.error =
+                        Some(tr(lang, "plan_links.manifest_path_invalid").into());
+                }
+            },
             Action::Reset => {
                 self.plan_links.reset_scan();
                 self.worker.send(Request::PlanLinks {
@@ -1334,21 +1749,16 @@ impl SuniApp {
                     }
                 }
             }
-            Action::Navigate => {
-                if let (Some(context), Some((source, target))) = (
-                    self.plan_links.context.clone(),
-                    self.plan_links.remote.clone(),
-                ) {
-                    self.start_plan_links(false, |cancel, credentials| Job::Navigate {
-                        context,
-                        source,
-                        target,
-                        credentials,
-                        cancel,
-                    });
-                }
-            }
+            Action::Navigate => self.start_remote_plan_link(false),
+            Action::RemotePreview => self.start_remote_plan_link(true),
         }
+    }
+    fn load_plan_link_manifest(&mut self, path: PathBuf) {
+        self.plan_links.reset_scan();
+        self.plan_links.context = None;
+        self.plan_links.passwords.clear();
+        self.plan_links.manifest_input = path.display().to_string();
+        self.start_plan_links(false, |cancel, _| Job::Load { path, cancel });
     }
 }
 
@@ -1453,6 +1863,245 @@ mod tests {
             inspection: Some(inspection()),
             ..Default::default()
         }
+    }
+    fn remote_state(app: &mut SuniApp) {
+        app.plan_links = populated();
+        app.plan_links.open = true;
+        app.plan_links.remote_epoch = Some(app.view.epoch);
+        app.plan_links.remote = Some((
+            app.document.as_ref().unwrap().info.path.clone(),
+            RemotePageTarget {
+                relative_path: "floor.pdf".into(),
+                page: 0,
+                sheet_id: "target-sheet".into(),
+                sha256: "a".repeat(64),
+                byte_len: 100,
+            },
+        ));
+    }
+    fn remote_result(binding: RemotePreviewBinding) -> Outcome {
+        Outcome::RemotePreview {
+            binding,
+            source_sha256: "d".repeat(64),
+            preview: Preview {
+                image: RenderedPage {
+                    page_index: 0,
+                    width: 1,
+                    height: 1,
+                    rgba: vec![255; 4],
+                },
+                points: (100.0, 100.0),
+            },
+        }
+    }
+    #[test]
+    fn remote_preview_is_explicit_and_opening_carries_its_source_binding() {
+        let (mut app, requests, _) = test_app();
+        remote_state(&mut app);
+        app.plan_links.passwords.push((
+            "target".into(),
+            Zeroizing::new(format!("fixture-{}", std::process::id())),
+        ));
+        app.plan_links_action(Action::RemotePreview);
+        let Request::PlanLinks {
+            generation,
+            job:
+                Job::RemotePreview {
+                    binding,
+                    credentials,
+                    ..
+                },
+        } = requests.try_recv().unwrap()
+        else {
+            panic!("preview must request rendering, not navigation");
+        };
+        assert_eq!(credentials.len(), 1);
+        assert!(app
+            .plan_links
+            .passwords
+            .iter()
+            .all(|(_, value)| value.is_empty()));
+        app.on_plan_links(
+            &egui::Context::default(),
+            generation,
+            Ok(remote_result(binding.clone())),
+        );
+        assert!(app.plan_links.picture.is_some() && app.plan_links.remote_preview.is_some());
+        assert!(
+            requests.try_iter().next().is_none(),
+            "preview cannot open a document"
+        );
+        app.plan_links_action(Action::Navigate);
+        let Request::PlanLinks {
+            job:
+                Job::NavigatePreviewed {
+                    binding: opening,
+                    source_sha256,
+                    ..
+                },
+            ..
+        } = requests.try_recv().unwrap()
+        else {
+            panic!("opening must retain the reviewed source fingerprint");
+        };
+        assert_eq!(opening, binding);
+        assert_eq!(source_sha256, "d".repeat(64));
+        assert!(app.plan_links.picture.is_none());
+    }
+    #[test]
+    fn changed_or_cancelled_remote_requests_never_publish_a_preview() {
+        for changed in ["source", "epoch", "manifest", "target", "cancel", "closed"] {
+            let (mut app, requests, _) = test_app();
+            remote_state(&mut app);
+            app.plan_links_action(Action::RemotePreview);
+            let Request::PlanLinks {
+                generation,
+                job: Job::RemotePreview { binding, .. },
+            } = requests.try_recv().unwrap()
+            else {
+                panic!("missing preview");
+            };
+            match changed {
+                "source" => app.document.as_mut().unwrap().info.path = "other.pdf".into(),
+                "epoch" => app.view.epoch += 1,
+                "manifest" => {
+                    app.plan_links.context.as_mut().unwrap().set.name = "Different set".into()
+                }
+                "target" => {
+                    app.plan_links.remote.as_mut().unwrap().1.sheet_id = "other-sheet".into()
+                }
+                "cancel" => app.plan_links.cancel.store(true, Ordering::Relaxed),
+                "closed" => app.close_plan_links(),
+                _ => unreachable!(),
+            }
+            requests.try_iter().for_each(drop);
+            app.on_plan_links(
+                &egui::Context::default(),
+                generation,
+                Ok(remote_result(binding)),
+            );
+            assert!(
+                app.plan_links.picture.is_none() && app.plan_links.remote_preview.is_none(),
+                "{changed}"
+            );
+            assert!(
+                requests.try_iter().next().is_none(),
+                "{changed} caused navigation"
+            );
+        }
+    }
+    #[test]
+    fn source_changes_invalidate_a_displayed_remote_preview_before_opening() {
+        let (mut app, requests, _) = test_app();
+        remote_state(&mut app);
+        app.plan_links_action(Action::RemotePreview);
+        let Request::PlanLinks {
+            generation,
+            job: Job::RemotePreview { binding, .. },
+        } = requests.try_recv().unwrap()
+        else {
+            panic!("missing preview");
+        };
+        app.on_plan_links(
+            &egui::Context::default(),
+            generation,
+            Ok(remote_result(binding)),
+        );
+        app.view.epoch += 1;
+        app.plan_links_action(Action::Navigate);
+        assert!(app.plan_links.picture.is_none() && app.plan_links.remote_preview.is_none());
+        assert!(app.plan_links.error.is_some());
+        assert!(requests.try_iter().next().is_none());
+    }
+    #[test]
+    fn remote_source_fingerprint_refuses_changed_missing_and_cancelled_sources() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("source.pdf");
+        std::fs::write(&path, b"saved source fixture").unwrap();
+        let cancel = AtomicBool::new(false);
+        let expected = source_fingerprint(&path, &cancel).unwrap();
+        unchanged_source(&path, &expected, &cancel).unwrap();
+        std::fs::write(&path, b"changed saved fixture").unwrap();
+        assert!(unchanged_source(&path, &expected, &cancel).is_err());
+        std::fs::remove_file(&path).unwrap();
+        assert!(unchanged_source(&path, &expected, &cancel).is_err());
+        std::fs::write(&path, b"saved source fixture").unwrap();
+        cancel.store(true, Ordering::Relaxed);
+        assert!(matches!(
+            source_fingerprint(&path, &cancel),
+            Err(EngineError::Cancelled)
+        ));
+    }
+    #[test]
+    fn manifest_paths_are_bounded_and_only_load_after_explicit_input() {
+        let (mut app, requests, _) = test_app();
+        let path = std::env::temp_dir().join("reviewed-plans.json");
+        app.plan_links = populated();
+        app.plan_links.manifest_input = path.display().to_string();
+        assert!(requests.try_iter().next().is_none());
+        app.plan_links_action(Action::LoadManifest);
+        assert!(app.plan_links.context.is_none());
+        let Request::PlanLinks {
+            job: Job::Load { path: loaded, .. },
+            ..
+        } = requests.try_recv().unwrap()
+        else {
+            panic!("missing explicit manifest load");
+        };
+        assert_eq!(loaded, path);
+        for invalid in [
+            "relative.json".to_owned(),
+            "https://example.invalid/set.json".into(),
+            "\0manifest.json".into(),
+            "a".repeat(4097),
+        ] {
+            assert!(manifest_input_path(&invalid).is_err(), "{invalid:?}");
+        }
+    }
+    #[test]
+    fn enter_from_the_focused_manifest_field_loads_the_selected_path() {
+        let (mut app, requests, _) = test_app();
+        app.plan_links.open = true;
+        app.plan_links.focus_manifest = true;
+        let ctx = egui::Context::default();
+        let path = std::env::temp_dir()
+            .join("keyboard-plans.json")
+            .display()
+            .to_string();
+        for frame in 0..5 {
+            let events = match frame {
+                3 => vec![egui::Event::Text(path.clone())],
+                4 => vec![egui::Event::Key {
+                    key: egui::Key::Enter,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                _ => vec![],
+            };
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(720.0, 480.0),
+                    )),
+                    events,
+                    time: Some(frame as f64 * 0.03),
+                    ..Default::default()
+                },
+                |ui| app.plan_links_dialog(ui.ctx()),
+            );
+            output.textures_delta.clear();
+        }
+        let Request::PlanLinks {
+            job: Job::Load { path: loaded, .. },
+            ..
+        } = requests.try_recv().unwrap()
+        else {
+            panic!("Enter did not load the manifest");
+        };
+        assert_eq!(loaded, PathBuf::from(path));
     }
     #[test]
     fn review_requires_explicit_selection_and_valid_page_list() {
@@ -1674,11 +2323,24 @@ mod tests {
                 );
                 output.textures_delta.clear();
                 if frame == 2 {
-                    assert!(output.shapes.iter().any(|s| text_bounds(
-                        &s.shape,
-                        tr(lang, "plan_links.open_verified")
-                    )
-                    .is_some()));
+                    for key in [
+                        "plan_links.open_verified",
+                        "plan_links.target_preview",
+                        "dialog.close",
+                    ] {
+                        let rect = output
+                            .shapes
+                            .iter()
+                            .find_map(|shape| text_bounds(&shape.shape, tr(lang, key)))
+                            .unwrap_or_else(|| panic!("missing {key} in {}", lang.code()));
+                        assert!(
+                            rect.left() >= 0.0
+                                && rect.right() <= 720.0
+                                && rect.top() >= 0.0
+                                && rect.bottom() <= 480.0,
+                            "{key} is unreachable: {rect:?}"
+                        );
+                    }
                 }
             }
             assert!(

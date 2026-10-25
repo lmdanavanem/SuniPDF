@@ -105,12 +105,14 @@ def runtime(evidence, version):
     assert sha(source) == original
     cases.extend(gui(evidence, source))
     cases.append("native-ui-open-pdf-visible-text-blue-fixture-and-private-library")
+    cases.extend(plan_link_navigation(evidence, version))
     assert sha(source) == original
     settings = HOME / ".config/sunipdf/settings.json"
     assert settings.is_file(), "Native application did not save user settings on close"
     proof = {"schema": 1, "version": version, "cases": cases, "sourceSha256": original,
              "settingsSha256": sha(settings), "source": str(source), "settings": str(settings),
              "tesseract": command(["tesseract", "--version"]), "qpdf": command(["qpdf", "--version"])}
+    proof["nativePlanLinks"] = {"file": "native-plan-links.json", "sha256": sha(evidence / "native-plan-links.json")}
     (evidence / "runtime.json").write_text(json.dumps(proof, indent=2) + "\n")
 
 
@@ -170,6 +172,12 @@ def colored_fixture_mask(pixels, color):
         # interface text. Saturated-core-only thresholds remove most small glyphs.
         return (b > 180 and b - r > 70 and b - g > 70) if color == "blue" else (r > 180 and r - g > 70 and r - b > 70)
     mask = bytes(0 if matches(pixel) else 255 for pixel in pixels)
+    return mask, mask.count(0)
+
+
+def native_error_mask(pixels):
+    """Keep red UI error ink, including the darker accessible palette colour."""
+    mask = bytes(0 if r >= 128 and r - g > 45 and r - b > 35 else 255 for r, g, b in pixels)
     return mask, mask.count(0)
 
 
@@ -247,6 +255,225 @@ def reader_views(app, window, evidence):
         "limits": "Same two-page fixture; no physical GPU, Wayland, pointer editing or human accessibility qualification"
     }, indent=2) + "\n", encoding="utf-8")
     return ["native-reader-independent-pages", "native-reader-synchronize-pages", "native-reader-close-split-keeps-document"]
+
+
+def plan_fixture_visible(kind, pixels, text):
+    """Both PDF colour and a unique full title must agree; UI labels cannot qualify a page."""
+    titles = {"source": r"Native\s+source\s+document", "destination": r"Native\s+destination\s+two"}
+    return pixels > 500 and len(re.findall(r"\b" + titles[kind] + r"\b", text, re.I)) == 1
+
+
+def plan_error_visible(kind, text):
+    patterns = {
+        "changed-target": r"\b(?:fingerprint\s+changed|destination\s+has\s+changed|source\s+has\s+changed)\b",
+        "missing-target": r"\b(?:no\s+such\s+file|not\s+found|file\s+missing|file\s+is\s+missing)\b",
+        # The captured native error font can make OCR confuse PDF with POF.
+        "changed-source": r"\bsource\s+P[DO]F\s+changed\s+since\s+the\s+preview\b",
+    }
+    return re.search(patterns[kind], text, re.I) is not None
+
+
+def plan_error_is_visible(kind, pixels, text):
+    return pixels >= 20 and plan_error_visible(kind, text)
+
+
+def plan_link_navigation(evidence, version):
+    """Qualify native navigation only; the linked PDF is prepared by the installed CLI."""
+    from PIL import Image
+    spec = importlib.util.spec_from_file_location("native_plan_link_fixture", ROOT / "scripts/native-plan-link-fixture.py")
+    fixtures = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixtures)
+    fixture = fixtures.prepare(HOME / "Documents/Native plan navigation", evidence, command, CLI)
+    profile = HOME / "native-plan-navigation-profile"
+    settings = profile / ".config/sunipdf/settings.json"
+    settings.parent.mkdir(parents=True, exist_ok=False)
+    settings.write_text(json.dumps({"language": "en-US", "dark_theme": False, "theme_mode": "light",
+                                    "show_tools": False, "show_thumbnails": False, "continuous_view": False,
+                                    "view_mode": "single", "autosave": False, "check_updates": False}), encoding="utf-8")
+    environment = dict(os.environ, HOME=str(profile), XDG_CONFIG_HOME=str(profile / ".config"),
+                       XDG_DATA_HOME=str(profile / ".local/share"))
+    controls = evidence / "plan-navigation-controls"
+    controls.mkdir(exist_ok=True)
+    cases, scenes, actions = [], [], []
+    app, manager, window = None, None, None
+    report = {"schema": 1, "status": "failed", "version": version,
+              "sourceSha": os.environ.get("GITHUB_SHA"), "fixtureReport": fixture["fixtureReport"],
+              "fixtureReportSha256": sha(evidence / fixture["fixtureReport"]),
+              "syntheticOnly": True, "isolatedProfile": True, "cases": cases, "scenes": scenes,
+              "actions": actions, "protectedFiles": fixture["protected"],
+              "desktopLinkCreationTested": False, "desktopLinkSavingTested": False,
+              "method": "Installed application, actual X11 pointer/keyboard input, native captures and colour-isolated PDF text OCR",
+              "limits": "Synthetic fixture, X11/Openbox/Xvfb and software rendering. No batch link creation, physical GPU, Wayland, dirty destination tab or human accessibility qualification."}
+
+    def alive():
+        assert app is not None and app.poll() is None, "Native plan-link application exited unexpectedly"
+
+    def key(*keys):
+        alive()
+        command(["xdotool", "windowactivate", "--sync", window, "key", "--clearmodifiers", *keys])
+
+    def title():
+        return command(["xdotool", "getwindowname", window])
+
+    def capture(path):
+        alive()
+        command(["import", "-window", window, path], timeout=15)
+        return path
+
+    def ocr(path, color=None):
+        with Image.open(path) as image:
+            if color is None:
+                ocr_path, ink, scale = path, 0, 1
+            else:
+                rgb = image.convert("RGB").getdata()
+                mask, ink = native_error_mask(rgb) if color == "error-red" else colored_fixture_mask(rgb, color)
+                ocr_path, scale = path.with_name(path.stem + "-" + color + "-mask.png"), 3
+                Image.frombytes("L", image.size, mask).resize((image.width * scale, image.height * scale),
+                                                            resample=Image.NEAREST).save(ocr_path)
+            size = (image.width * scale, image.height * scale)
+        text = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", 11], timeout=20)
+        return text, ink, ocr_path, scale, size
+
+    def click_label(label, color=None):
+        path = capture(controls / f"control-{len(actions) + 1:02d}.png")
+        deadline = time.monotonic() + 15
+        while True:
+            _, _, ocr_path, scale, size = ocr(path, color)
+            tsv = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", 11, "tsv"], timeout=20)
+            try:
+                x, y = theme_label_center(tsv, label, size)
+                break
+            except ThemeLabelMissing:
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(0.25)
+                capture(path)
+        tsv_path = path.with_suffix(".tsv")
+        tsv_path.write_text(tsv, encoding="utf-8")
+        x, y = x // scale, y // scale
+        actions.append({"label": label, "point": [x, y], "color": color,
+                        "capture": str(path.relative_to(evidence)), "captureSha256": sha(path),
+                        "ocr": str(tsv_path.relative_to(evidence)), "ocrSha256": sha(tsv_path)})
+        command(["xdotool", "mousemove", "--window", window, x, y, "click", "1"])
+
+    def wait_scene(name, *, kind=None, text_pattern=None, error_kind=None, expected_title=None):
+        path = evidence / (name + ".png")
+        deadline = time.monotonic() + 30
+        last = ""
+        while time.monotonic() < deadline:
+            capture(path)
+            last, ink, mask, _, _ = ocr(path, "blue" if kind == "source" else "red" if kind else "error-red" if error_kind else None)
+            matched = (plan_fixture_visible(kind, ink, last) if kind else
+                       plan_error_is_visible(error_kind, ink, last) if error_kind else
+                       re.search(text_pattern, last, re.I) is not None)
+            caption = title()
+            if matched and (expected_title is None or expected_title in caption):
+                text_path = path.with_suffix(".txt")
+                text_path.write_text(last + "\n", encoding="utf-8")
+                scenes.append({"name": name, "png": path.name, "pngSha256": sha(path),
+                               "windowTitle": caption, "text": last, "textSha256": sha(text_path),
+                               "pdfKind": kind, "pdfInkPixels": ink if kind else 0, "errorKind": error_kind,
+                               "errorInkPixels": ink if error_kind else 0,
+                               "ocrContent": "pdf-fixture" if kind else "native-error-text" if error_kind else "interface",
+                               "ocrMask": mask.name if kind or error_kind else None,
+                               "ocrMaskSha256": sha(mask) if kind or error_kind else None})
+                return
+            time.sleep(0.25)
+        raise AssertionError(f"Native plan-link scene {name} did not qualify: {last}")
+
+    def open_preview(name, load=False):
+        click_label("A-101", "blue")
+        wait_scene(name + "-confirmation", text_pattern=r"Manifest\s+path", expected_title=fixture["linked"].name)
+        if load:
+            # The dialog focuses its labelled path field; use the actual keyboard route.
+            # Placeholder OCR is unreliable for the deliberately subdued hint text.
+            key("ctrl+a")
+            command(["xdotool", "type", "--clearmodifiers", "--delay", "1", str(fixture["manifest"])])
+            click_label("Load manifest")
+            wait_scene(name + "-manifest", text_pattern=r"Native\s+navigation\s+fixture",
+                       expected_title=fixture["linked"].name)
+        click_label("Preview destination")
+        wait_scene(name + "-preview", kind="destination", expected_title=fixture["linked"].name)
+
+    try:
+        manager = subprocess.Popen(["openbox"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        with (evidence / "native-plan-links-desktop.log").open("w") as log:
+            app = subprocess.Popen(["/usr/bin/sunipdf", str(fixture["linked"])], env=environment,
+                                   stdout=log, stderr=subprocess.STDOUT)
+            deadline = time.monotonic() + 75
+            while time.monotonic() < deadline:
+                alive()
+                found = subprocess.run(["xdotool", "search", "--onlyvisible", "--pid", str(app.pid)],
+                                       text=True, capture_output=True, timeout=10)
+                if found.returncode == 0 and found.stdout.strip():
+                    window = found.stdout.splitlines()[-1]
+                    break
+                time.sleep(0.25)
+            assert window is not None, "Native plan-link window was not created"
+            command(["xdotool", "windowsize", window, "1200", "900", "windowmove", window, "40", "40"])
+            wait_scene("native-plan-source-initial", kind="source", expected_title=fixture["linked"].name)
+            key("ctrl+k")
+            time.sleep(0.25)
+            command(["xdotool", "type", "--clearmodifiers", "--delay", "35", "Fit Page"])
+            key("Return")
+            wait_scene("native-plan-source-fit-page", kind="source", expected_title=fixture["linked"].name)
+            stored = json.loads(settings.read_text(encoding="utf-8"))
+            assert not stored["show_thumbnails"] and not stored["show_tools"], "Navigation ink could contaminate plan-link evidence"
+            open_preview("native-plan-cancel", load=True)
+            key("Escape")
+            wait_scene("native-plan-cancelled-source", kind="source", expected_title=fixture["linked"].name)
+            assert "*" not in title(), "Cancelling a preview dirtied the source"
+            assert all(sha(Path(path)) == expected for path, expected in fixture["protected"].items())
+            cases.append("native-plan-link-preview-cancel-preserves-source")
+
+            for failure in ("changed-target", "missing-target", "changed-source"):
+                open_preview("native-plan-" + failure)
+                changed = fixture["linked"] if failure == "changed-source" else fixture["target"]
+                saved = changed.read_bytes()
+                held = changed.with_name(changed.name + ".held-for-native-test")
+                try:
+                    if failure == "missing-target":
+                        assert not held.exists()
+                        changed.rename(held)
+                    else:
+                        changed.write_bytes(saved + b"\n% deliberate synthetic native navigation change\n")
+                    click_label("Open verified destination")
+                    wait_scene("native-plan-" + failure + "-refused", error_kind=failure,
+                               expected_title=fixture["linked"].name)
+                    key("Escape")
+                    wait_scene("native-plan-" + failure + "-source", kind="source", expected_title=fixture["linked"].name)
+                    assert "*" not in title(), "Refusing a changed destination dirtied the source"
+                finally:
+                    if failure == "missing-target":
+                        if held.exists():
+                            assert not changed.exists(), "Missing fixture unexpectedly reappeared"
+                            held.rename(changed)
+                    else:
+                        changed.write_bytes(saved)
+                assert all(sha(Path(path)) == expected for path, expected in fixture["protected"].items())
+                cases.append("native-plan-link-" + failure + "-after-preview-refused")
+
+            open_preview("native-plan-open")
+            click_label("Open verified destination")
+            wait_scene("native-plan-opened-physical-page-two", kind="destination", expected_title=fixture["target"].name)
+            assert "*" not in title(), "Native navigation dirtied the destination"
+            cases.append("native-plan-link-open-verified-physical-page-two")
+            assert all(sha(Path(path)) == expected for path, expected in fixture["protected"].items())
+            report["status"] = "passed"
+            report["fixturesUnchanged"] = True
+    finally:
+        try:
+            for process in (app, manager):
+                if process is not None and process.poll() is None:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait(timeout=10)
+        finally:
+            (evidence / "native-plan-links.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    return cases
 
 
 class ThemeLabelMissing(AssertionError):
@@ -652,10 +879,21 @@ def lifecycle(package, evidence, identity):
     environment = ["env", "HOME=" + str(HOME), "XDG_CONFIG_HOME=" + str(HOME / ".config"),
                    "XDG_DATA_HOME=" + str(HOME / ".local/share"), "XDG_RUNTIME_DIR=" + str(runtime_dir),
                    "LIBGL_ALWAYS_SOFTWARE=1", "SUNIPDF_RENDERER=glow", "XDG_SESSION_TYPE=x11",
-                   "WINIT_X11_SCALE_FACTOR=1"]
+                   "WINIT_X11_SCALE_FACTOR=1", "GITHUB_SHA=" + source_sha]
     command(["runuser", "-u", ACCOUNT, "--", *environment, "dbus-run-session", "--", "xvfb-run", "-a", "-s", "-screen 0 1400x1000x24 -dpi 96", "python3", __file__, "--runtime", "--version", version, "--evidence", evidence], timeout=600)
     runtime_proof = json.loads((evidence / "runtime.json").read_text())
+    plan_path = evidence / "native-plan-links.json"
+    plan_proof = json.loads(plan_path.read_text(encoding="utf-8"))
+    assert runtime_proof["nativePlanLinks"] == {"file": plan_path.name, "sha256": sha(plan_path)}
+    assert plan_proof["status"] == "passed" and plan_proof["fixturesUnchanged"]
+    assert plan_proof["version"] == version and plan_proof["sourceSha"] == source_sha
+    assert plan_proof["syntheticOnly"] and plan_proof["isolatedProfile"]
+    assert not plan_proof["desktopLinkCreationTested"] and not plan_proof["desktopLinkSavingTested"]
+    assert len(plan_proof["cases"]) == 5 and len(set(plan_proof["cases"])) == 5
+    assert all(case in runtime_proof["cases"] for case in plan_proof["cases"])
     protected = {Path(runtime_proof["source"]): runtime_proof["sourceSha256"], Path(runtime_proof["settings"]): runtime_proof["settingsSha256"]}
+    protected.update({Path(path): expected for path, expected in plan_proof["protectedFiles"].items()})
+    assert all(path.is_file() and sha(path) == expected for path, expected in protected.items())
     update_spec = importlib.util.spec_from_file_location("installed_update_qualification", ROOT / "scripts/test-linux-update-installed.py")
     update_qualification = importlib.util.module_from_spec(update_spec)
     update_spec.loader.exec_module(update_qualification)
@@ -678,11 +916,17 @@ def lifecycle(package, evidence, identity):
                          "native_theme_settings": True, "native_theme_restart_persistence": True,
                          "native_reader_independent_and_synchronized_pages": True,
                          "native_reader_close_split_preserves_document": True,
+                         "native_plan_link_destination_preview_and_cancel": True,
+                         "native_plan_link_verified_physical_page_navigation": True,
+                         "native_plan_link_changed_or_missing_destination_refused": True,
+                         "native_plan_link_changed_source_refused": True,
                          "verified_public_deb_upgrade": True, "update_refusal_guards": True,
                          "reinstall": True, "uninstall": True, "user_data_preserved": True},
               "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged",
               "installedPayloadFiles": payload_count, "elfDependencies": elf,
               "normalUserExecution": True, "runtimeCases": runtime_proof["cases"]}
+    report["nativePlanLinkEvidence"] = {**runtime_proof["nativePlanLinks"], "cases": plan_proof["cases"],
+                                       "desktopLinkCreationTested": False, "desktopLinkSavingTested": False}
     report["installedUpdateEvidence"] = {"file": "linux-update-installed.json",
                                         "sha256": sha(evidence / "linux-update-installed.json"),
                                         "polkitAuthenticationTested": False,
