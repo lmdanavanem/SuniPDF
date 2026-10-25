@@ -267,7 +267,8 @@ def plan_error_visible(kind, text):
     patterns = {
         "changed-target": r"\b(?:fingerprint\s+changed|destination\s+has\s+changed|source\s+has\s+changed)\b",
         "missing-target": r"\b(?:no\s+such\s+file|not\s+found|file\s+missing|file\s+is\s+missing)\b",
-        "changed-source": r"\bsource\s+PDF\s+changed\s+since\s+the\s+preview\b",
+        # The captured native error font can make OCR confuse PDF with POF.
+        "changed-source": r"\bsource\s+P[DO]F\s+changed\s+since\s+the\s+preview\b",
     }
     return re.search(patterns[kind], text, re.I) is not None
 

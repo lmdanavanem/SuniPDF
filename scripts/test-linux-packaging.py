@@ -26,6 +26,20 @@ plan_fixture = load("native-plan-link-fixture.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_source_refusal_allows_only_the_observed_pdf_ocr_confusion(self):
+        for token in ("PDF", "POF", "pdf", "pof"):
+            text = f"engine errar: Plan links: source {token} changed since the preview, preview ik again"
+            self.assertTrue(installed.plan_error_is_visible("changed-source", 500, text))
+            self.assertFalse(installed.plan_error_is_visible("changed-target", 500, text))
+            self.assertFalse(installed.plan_error_is_visible("missing-target", 500, text))
+            self.assertFalse(installed.plan_error_is_visible("changed-source", 0, text))
+        for text in ("source PXF changed since the preview", "source P0F changed since the preview",
+                     "destination POF changed since the preview", "source POF unchanged since the preview",
+                     "source POF changed before the preview", "source fingerprint changed",
+                     "source POF not found", "source POF changed since the previewing"):
+            with self.subTest(text=text):
+                self.assertFalse(installed.plan_error_is_visible("changed-source", 500, text))
+
     def test_native_error_mask_accepts_accessible_red_but_rejects_pdf_blue_and_neutral_text(self):
         pixels = [(255, 0, 0), (180, 35, 50), (185, 28, 28), (255, 167, 174),
                   (0, 0, 255), (0, 0, 0), (40, 40, 40), (255, 255, 255),
