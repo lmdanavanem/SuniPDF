@@ -175,6 +175,12 @@ def colored_fixture_mask(pixels, color):
     return mask, mask.count(0)
 
 
+def native_error_mask(pixels):
+    """Keep red UI error ink, including the darker accessible palette colour."""
+    mask = bytes(0 if r >= 128 and r - g > 45 and r - b > 35 else 255 for r, g, b in pixels)
+    return mask, mask.count(0)
+
+
 def reader_fixture_visible(color, count, text):
     page = r"[1Il]" if color == "blue" else "2"
     # A closed split must contain exactly one fixture title, not two synchronized
@@ -266,6 +272,10 @@ def plan_error_visible(kind, text):
     return re.search(patterns[kind], text, re.I) is not None
 
 
+def plan_error_is_visible(kind, pixels, text):
+    return pixels >= 20 and plan_error_visible(kind, text)
+
+
 def plan_link_navigation(evidence, version):
     """Qualify native navigation only; the linked PDF is prepared by the installed CLI."""
     from PIL import Image
@@ -314,7 +324,8 @@ def plan_link_navigation(evidence, version):
             if color is None:
                 ocr_path, ink, scale = path, 0, 1
             else:
-                mask, ink = colored_fixture_mask(image.convert("RGB").getdata(), color)
+                rgb = image.convert("RGB").getdata()
+                mask, ink = native_error_mask(rgb) if color == "error-red" else colored_fixture_mask(rgb, color)
                 ocr_path, scale = path.with_name(path.stem + "-" + color + "-mask.png"), 3
                 Image.frombytes("L", image.size, mask).resize((image.width * scale, image.height * scale),
                                                             resample=Image.NEAREST).save(ocr_path)
@@ -350,9 +361,9 @@ def plan_link_navigation(evidence, version):
         last = ""
         while time.monotonic() < deadline:
             capture(path)
-            last, ink, mask, _, _ = ocr(path, "blue" if kind == "source" else "red" if kind else None)
+            last, ink, mask, _, _ = ocr(path, "blue" if kind == "source" else "red" if kind else "error-red" if error_kind else None)
             matched = (plan_fixture_visible(kind, ink, last) if kind else
-                       plan_error_visible(error_kind, last) if error_kind else
+                       plan_error_is_visible(error_kind, ink, last) if error_kind else
                        re.search(text_pattern, last, re.I) is not None)
             caption = title()
             if matched and (expected_title is None or expected_title in caption):
@@ -360,9 +371,11 @@ def plan_link_navigation(evidence, version):
                 text_path.write_text(last + "\n", encoding="utf-8")
                 scenes.append({"name": name, "png": path.name, "pngSha256": sha(path),
                                "windowTitle": caption, "text": last, "textSha256": sha(text_path),
-                               "pdfKind": kind, "pdfInkPixels": ink, "errorKind": error_kind,
-                               "ocrMask": mask.name if kind else None,
-                               "ocrMaskSha256": sha(mask) if kind else None})
+                               "pdfKind": kind, "pdfInkPixels": ink if kind else 0, "errorKind": error_kind,
+                               "errorInkPixels": ink if error_kind else 0,
+                               "ocrContent": "pdf-fixture" if kind else "native-error-text" if error_kind else "interface",
+                               "ocrMask": mask.name if kind or error_kind else None,
+                               "ocrMaskSha256": sha(mask) if kind or error_kind else None})
                 return
             time.sleep(0.25)
         raise AssertionError(f"Native plan-link scene {name} did not qualify: {last}")

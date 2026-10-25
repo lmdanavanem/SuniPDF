@@ -176,6 +176,7 @@ pub fn apply_appearance(ctx: &egui::Context, dark: bool, style: Style, reduce_tr
     v.faint_bg_color = p.hover;
     v.override_text_color = Some(p.text);
     v.hyperlink_color = p.accent;
+    v.error_fg_color = p.error;
     v.selection.bg_fill = if glass {
         p.accent_soft
     } else {
@@ -571,6 +572,28 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn standard_error_labels_are_legible_in_light_and_dark_styles() {
+        for dark in [false, true] {
+            for style in [Style::Classic, Style::LiquidGlass] {
+                let ctx = egui::Context::default();
+                apply_appearance(&ctx, dark, style, false);
+                let palette = palette_for(&ctx);
+                let label = "The destination changed; review it again";
+                let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                    ui.colored_label(ui.visuals().error_fg_color, label);
+                });
+                assert_painted(
+                    &output,
+                    label,
+                    palette.error,
+                    &[palette.chrome, palette.surface],
+                );
+                output.textures_delta.clear();
+            }
+        }
+    }
+
     #[test]
     fn glass_text_retains_contrast_on_material_states_and_reflections() {
         for dark in [false, true] {
