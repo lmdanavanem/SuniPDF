@@ -26,6 +26,17 @@ plan_fixture = load("native-plan-link-fixture.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_native_error_mask_accepts_accessible_red_but_rejects_pdf_blue_and_neutral_text(self):
+        pixels = [(255, 0, 0), (180, 35, 50), (185, 28, 28), (255, 167, 174),
+                  (0, 0, 255), (0, 0, 0), (40, 40, 40), (255, 255, 255),
+                  (220, 210, 215), (127, 0, 0), (180, 135, 80), (180, 70, 145)]
+        self.assertEqual(installed.native_error_mask(pixels), (bytes([0] * 4 + [255] * 8), 4))
+        message = "engine error: Plan set: source fingerprint changed; explicitly refresh this file"
+        self.assertTrue(installed.plan_error_is_visible("changed-target", 20, message))
+        self.assertFalse(installed.plan_error_is_visible("changed-target", 19, message))
+        self.assertFalse(installed.plan_error_is_visible("changed-target", 500, "Destination verified"))
+        self.assertFalse(installed.plan_error_is_visible("missing-target", 500, message))
+
     def test_plan_source_location_uses_both_unique_pdf_anchors_and_actual_image_scale(self):
         header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
         title = "".join(f"5\t1\t1\t1\t1\t{index + 1}\t{30 + 90 * index}\t60\t60\t30\t95\t{word}\n"

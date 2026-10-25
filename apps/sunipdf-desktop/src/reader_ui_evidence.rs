@@ -667,7 +667,7 @@ fn home_text_paint(
 #[test]
 fn home_label_pixels_cannot_come_from_sidebar_or_clipped_scroll_content() {
     let context = egui::Context::default();
-    let frame = context.run_ui(
+    let mut frame = context.run_ui(
         egui::RawInput {
             screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(500.0, 300.0))),
             ..Default::default()
@@ -693,6 +693,8 @@ fn home_label_pixels_cannot_come_from_sidebar_or_clipped_scroll_content() {
                 );
         },
     );
+    // This structural test has no renderer to consume the generated font atlas.
+    frame.textures_delta.clear();
     let main_content = Rect::from_min_max(pos2(200.0, 0.0), pos2(500.0, 300.0));
     let labels = home_text_paint(&frame, "Review", main_content);
     assert_eq!(labels.len(), 1);

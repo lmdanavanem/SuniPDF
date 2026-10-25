@@ -68,12 +68,12 @@ try {
                 [bool]$scene.darkTheme -ne ($scene.name -ceq 'home-en-glass-dark')) {
                 throw 'Home evidence retained document claims, unexpected panels or the wrong appearance.'
             }
-            $home = $scene.homeLabels
-            $labels = @($home.verified)
+            $homeEvidence = $scene.homeLabels
+            $labels = @($homeEvidence.verified)
             if ($labels.Count -lt 4 -or @($labels.key | Select-Object -Unique).Count -ne $labels.Count -or
-                -not $home.compactOpenRowVerified -or $home.openRowAccentFraction -lt 0 -or
-                $home.openRowAccentFraction -ge 0.15 -or @($home.openRowBounds).Count -ne 4 -or
-                ($home.openRowBounds[3] - $home.openRowBounds[1]) -gt 80) {
+                -not $homeEvidence.compactOpenRowVerified -or $homeEvidence.openRowAccentFraction -lt 0 -or
+                $homeEvidence.openRowAccentFraction -ge 0.15 -or @($homeEvidence.openRowBounds).Count -ne 4 -or
+                ($homeEvidence.openRowBounds[3] - $homeEvidence.openRowBounds[1]) -gt 80) {
                 throw 'Home evidence lacks its compact neutral Open file row or distinct readable labels.'
             }
             foreach ($required in @('home.welcome', 'home.open_file', 'home.recent', 'tools.group.review')) {
