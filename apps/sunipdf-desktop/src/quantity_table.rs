@@ -20,6 +20,9 @@ use sunipdf_core::{
 };
 use sunipdf_i18n::{tr, tr_args, Language};
 
+#[cfg(test)]
+mod formula_tests;
+
 #[derive(Default)]
 pub struct QuantityState {
     pub open: bool,
@@ -1103,6 +1106,9 @@ fn draw_formulas(
     let mut changed = false;
     ui.set_max_width(540.0);
     ui.label(tr(lang, "quantity.formula_help"));
+    ui.collapsing(tr(lang, "quantity.formula_rules_title"), |ui| {
+        ui.label(tr(lang, "quantity.formula_rules"));
+    });
     let mut remove = None;
     for (index, column) in options.formulas.iter().enumerate() {
         ui.horizontal_wrapped(|ui| {

@@ -58,13 +58,13 @@ Open **Custom columns → Formula columns**, enter a unique column name and expr
 
 Expressions accept decimal constants, unary signs, `+ - * /`, parentheses, `quantity` and exact case-sensitive numeric field references such as `[Waste %]`. Only typed **Number** fields participate; register text fields and other formula results are not inputs. For example, `quantity * (1 + [Waste %] / 100)` applies a dimensionless allowance to each row's actual quantity.
 
-- `quantity_unit` constrains the input token `quantity`, not the computed result unit. `quantity` requires the exact declared unit; metres and feet are not converted by formulas. The existing price-basis conversion is separate.
+- `quantity_unit` constrains the input token `quantity`, not the computed result unit. `quantity` requires the exact declared unit. The 0.85 candidate adds explicit `convert(expression, unit)` after this source check; the existing price-basis conversion is separate.
 - Numeric fields use their explicitly declared unit; fields with **No unit** and constants are dimensionless. Addition/subtraction require identical units. A scalar can multiply a unit-bearing value, and division by a scalar retains the unit. Equal-unit division produces a dimensionless result.
 - Products and quotients within one exact geometric family support length, area and volume: `m * m` gives `m2`, `m2 * m` gives `m3`, and `m3 / m` gives `m2`. The same rules apply separately to `mm`, `cm`, `in` and `ft`. Mixed families such as `m * cm`, inverse units and powers above three are refused. Counts and angles do not implicitly become dimensionless; mass and density units are unsupported.
 - Arithmetic uses checked decimal values with six fractional places. Multiplication/division round half away from zero at each operation; the final result uses the selected `0`–`6` decimal places with the same rule. Intermediate values must remain within the supported one-trillion absolute limit.
 - Missing fields/quantities, nonnumeric fields, incompatible units, division by zero and overflow produce explicit cell errors. They never become zero. Formula subtotals are separate from the existing quantity/cost totals.
 
-Each expression is limited to 512 UTF-8 bytes, 128 tokens and 32 parser nesting levels. Names are unique and at most 64 bytes. Calls, assignments, scripts, external references and arbitrary spreadsheet formulas are refused. Invalid configuration preserves the currently active formulas.
+Each expression is limited to 512 UTF-8 bytes, 128 tokens and 32 parser nesting levels. Names are unique and at most 64 bytes. The only supported function is the explicit unit conversion described below. Arbitrary calls, assignments, scripts, external references and spreadsheet formulas are refused. Invalid configuration preserves the currently active formulas.
 
 Save this configuration as UTF-8 `formulas.json`; the source rows must have a numeric `Waste %` field and quantities in metres:
 
@@ -89,8 +89,36 @@ For a scalar-only expression such as `[Allowance] * 2`, `quantity_unit` can be `
 With a current `8 m2` area and `Depth = 0.25 m`, `quantity * [Depth]` produces `2 m3`;
 set `quantity_unit` to `m2`. A formula using only custom fields can leave it `null`.
 For example, `[Length] * [Width]` with `2 m` and `3 m` produces `6 m2`, without
-creating a measured annotation quantity. A field in centimetres would require a separate,
-explicitly consistent configuration; formulas do not silently convert it to metres.
+creating a measured annotation quantity. A field in centimetres needs an explicit
+conversion before it is combined with metres; formulas never convert it implicitly.
+
+### Explicit unit conversion
+
+The 0.85 candidate adds `convert(expression, unit)`. The second argument is a
+literal unit: `mm`, `cm`, `m`, `in`, `ft`, or its square/cubic form such as `m2`
+or `ft3`. The expression must already carry a length, area or volume unit with
+the same dimension. Counts, angles and dimensionless values cannot be converted.
+
+For an area quantity in `m2` and a numeric `Depth` field declared in `cm`, use
+`quantity * convert([Depth], m)`. An area of `8 m2` and a depth of `25 cm`
+produce `2 m3`. Keep the required source quantity unit set to `m2`. Changing
+the declaration of the stored field would change its meaning; conversion leaves
+the field and PDF unchanged.
+
+Unit ratios use checked integer arithmetic. Inches and feet use the international
+definitions, with one inch equal to `0.0254 m` and one foot equal to `0.3048 m`.
+These are exact ratios, as listed in the [NIST conversion guide](https://www.nist.gov/pml/special-publication-811/nist-guide-si-appendix-b-conversion-factors).
+Each conversion rounds half away from zero to six decimal places, just like
+other formula operations. For example, converting `1 mm3` to `m3` rounds to
+zero at this precision; choose a smaller result unit when those values matter.
+Repeated conversions can accumulate rounding and need not reproduce the
+original value exactly.
+
+Missing values, incompatible dimensions and overflow remain explicit errors.
+The source `quantity` still must be current and match `quantity_unit` before
+conversion. No measurement calibration, automatic unit mixing or exchange-rate
+conversion is performed. Formula totals group converted results by their actual
+result unit and retain the ordinary row-error coverage.
 
 ## Formula subtotals and coverage
 

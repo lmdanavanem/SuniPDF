@@ -372,6 +372,22 @@ jobs:
           name: overlay-setup-evidence
           path: target/overlay-setup-evidence/
           if-no-files-found: ignore
+      - name: Formula unit conversion independent decimal and export checks
+        if: steps.changes.outputs.docs_only != 'true'
+        timeout-minutes: 6
+        run: |
+          python .\scripts\test-formula-unit-conversion.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Formula conversion oracle and fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          python .\scripts\test-formula-unit-conversion.py --cli "$env:SUNIPDF_QA_CLI" --directory target\formula-unit-conversion-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Formula unit conversion regression failed.' }
+      - name: Formula unit conversion evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: formula-unit-conversion-evidence
+          path: target/formula-unit-conversion-evidence/
+          if-no-files-found: ignore
       - name: Page decorations regression
         if: steps.changes.outputs.docs_only != 'true'
         run: |
