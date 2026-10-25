@@ -1,17 +1,20 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.73 release scope](RELEASE_0.73.0.md) · Published as a stable release.
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.77.0 release scope](RELEASE_0.77.0.md) · Published as a stable release.
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
 
 ## Published multi-source plan links
 
-AEC-017 remains **In progress**. [0.73.0](RELEASE_0.73.0.md) adds explicit reviews across several
-source PDFs, source/destination previews, all-output preflight and sequential new-copy saves.
-Per-file receipts remain after partial completion; original indexed PDFs remain the destinations.
-Published stable; verified 2026-10-24T17:32:54.306206Z. See [qualification evidence](qa/RELEASE_0.73.0.json) and [workflow limits](PLAN_LINKS.md).
-Native plan-link interaction and broader interoperability remain open. The qualified native Ubuntu
-window-control tests do not close these separate plan-workflow criteria.
+AEC-017 remains **In progress**. [0.73.0](RELEASE_0.73.0.md) retains reviewed multi-source batches, source/destination previews, output preflight and sequential new-copy saves. Receipts remain after partial completion; original indexed PDFs remain the destinations.
+
+[0.77.0](RELEASE_0.77.0.md) adds destination previews and keyboard manifest entry. Ubuntu 22.04 and 24.04 each passed 5 synthetic native plan-link cases. [Exact qualification](qa/RELEASE_0.77.0.json).
+
+Native plan-link navigation uses synthetic PDFs prepared by the installed CLI.
+It covers preview/cancel, changed or missing input refusals and the correct
+physical destination page. Desktop link creation, desktop link saving,
+dirty-destination interaction and broader external-reader interoperability
+remain open. These results do not establish complete AEC-017 acceptance.
 
 ## Published region fill
 

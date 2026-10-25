@@ -42,7 +42,7 @@ them. Reinspect before creating replacement links.
 
 ## Preview a saved link's destination
 
-The [0.77 development candidate](RELEASE_0.77.0.md) adds a preview to the reader's
+The [0.77 release](RELEASE_0.77.0.md) adds a preview to the reader's
 saved-link confirmation. Click a plan link, enter the absolute path of its JSON
 manifest in **Manifest path**, and choose **Load manifest**. The file browser remains
 available. Editing the path clears the previous manifest selection and preview;
@@ -132,8 +132,8 @@ Passwords are not stored in the manifest, review or PDF link. Global
 - Existing annotations, page content and links remain preserved. The operation does not flatten
   the document, remove measurements or regenerate an OCR layer.
 
-Native navigation, independent-reader interoperability and released-package evidence must be
-recorded separately from structural tests. This guide does not claim those pending checks passed.
+Native navigation and independent-reader interoperability have separate qualification scopes.
+See [published navigation evidence](RELEASE_0.77.0.md) for the exact tested paths and remaining gaps.
 
 ## Multiple source PDFs
 

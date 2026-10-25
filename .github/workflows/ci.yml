@@ -395,6 +395,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.74.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.75.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.76.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.77.0
       - name: MSI upgrade regression evidence
         if: steps.changes.outputs.docs_only != 'true' && always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

@@ -16,13 +16,13 @@ Further work remains in the [roadmap](docs/ROADMAP.md).
 
 Development candidate: [scope and pending qualification](docs/RELEASE_0.78.0.md).
 
-## [0.77.0] - Unreleased
+## [0.77.0] - 2026-10-25
 
 - Add an explicit verified destination preview before opening saved plan-sheet links.
 - Allow a manifest path to be entered directly while retaining file browsing.
 - Cache pinned historical Windows packages without reducing upgrade or rollback coverage.
 
-Development candidate: [scope and pending qualification](docs/RELEASE_0.77.0.md).
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.77.0). See [qualification and limits](docs/RELEASE_0.77.0.md).
 
 ## [0.76.0] - 2026-10-24
 

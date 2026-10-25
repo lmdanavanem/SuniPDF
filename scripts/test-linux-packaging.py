@@ -2,6 +2,7 @@
 """Regression checks for Linux archive and executable package boundaries."""
 import importlib.util
 import gzip
+import hashlib
 import io
 from pathlib import Path
 import re
@@ -26,6 +27,59 @@ plan_fixture = load("native-plan-link-fixture.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_plan_fixture_records_the_binary_separately_from_the_installed_launcher(self):
+        with tempfile.TemporaryDirectory() as directory:
+            launcher = Path(directory) / "sunipdf-cli"
+            binary = Path(directory) / "payload"
+            launcher.write_bytes(b'#!/bin/sh\nexec /usr/lib/sunipdf/sunipdf-cli "$@"\n')
+            elf = b"\x7fELF\x02\x01" + bytes(12) + b"\x3e\x00" + b"fixture payload"
+            binary.write_bytes(elf)
+            with patch.object(plan_fixture, "INSTALLED_CLI", launcher), \
+                    patch.object(plan_fixture, "INSTALLED_CLI_BINARY", binary):
+                receipt = plan_fixture.cli_provenance(launcher)
+                self.assertEqual(receipt["cliSha256"], hashlib.sha256(launcher.read_bytes()).hexdigest())
+                self.assertEqual(receipt["cliBinarySha256"], hashlib.sha256(elf).hexdigest())
+                self.assertNotEqual(receipt["cliSha256"], receipt["cliBinarySha256"])
+                self.assertEqual(receipt["launcherPath"], str(launcher))
+                self.assertEqual(receipt["binaryPath"], str(binary))
+                binary.write_bytes(elf + b"changed")
+                changed = plan_fixture.cli_provenance(launcher)
+                self.assertEqual(changed["cliSha256"], receipt["cliSha256"])
+                self.assertNotEqual(changed["cliBinarySha256"], receipt["cliBinarySha256"])
+            direct = plan_fixture.cli_provenance(binary)
+            self.assertEqual(direct["cliSha256"], direct["cliBinarySha256"])
+            self.assertEqual(direct["launcherPath"], direct["binaryPath"])
+
+    def test_plan_fixture_does_not_infer_installed_binary_for_an_arbitrary_cli(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cli = Path(directory) / "fake-cli"
+            for content in (b"fake CLI", b'#!/bin/sh\nexec /usr/lib/sunipdf/sunipdf-cli "$@"\n'):
+                with self.subTest(content=content):
+                    cli.write_bytes(content)
+                    receipt = plan_fixture.cli_provenance(cli)
+                    self.assertEqual(receipt["cliSha256"], hashlib.sha256(content).hexdigest())
+                    self.assertIsNone(receipt["cliBinarySha256"])
+                    self.assertIsNone(receipt["binaryPath"])
+
+    def test_plan_fixture_rejects_changed_launcher_and_missing_or_non_elf_payload(self):
+        with tempfile.TemporaryDirectory() as directory:
+            launcher = Path(directory) / "sunipdf-cli"
+            binary = Path(directory) / "payload"
+            with patch.object(plan_fixture, "INSTALLED_CLI", launcher), \
+                    patch.object(plan_fixture, "INSTALLED_CLI_BINARY", binary):
+                launcher.write_bytes(b'#!/bin/sh\nexec /tmp/other-cli "$@"\n')
+                with self.assertRaisesRegex(ValueError, "launcher"):
+                    plan_fixture.cli_provenance(launcher)
+                launcher.write_bytes(b'#!/bin/sh\nexec /usr/lib/sunipdf/sunipdf-cli "$@"\n')
+                with self.assertRaisesRegex(ValueError, "regular ELF"):
+                    plan_fixture.cli_provenance(launcher)
+                for content in (b"#!/bin/sh\nexit 0\n", b"\x7fELF", b"MZ" + bytes(18),
+                                b"\x7fELF\x02\x01" + bytes(12) + b"\xb7\x00"):
+                    with self.subTest(content=content):
+                        binary.write_bytes(content)
+                        with self.assertRaisesRegex(ValueError, "ELF64 amd64"):
+                            plan_fixture.cli_provenance(launcher)
+
     def test_source_refusal_allows_only_the_observed_pdf_ocr_confusion(self):
         for token in ("PDF", "POF", "pdf", "pof"):
             text = f"engine errar: Plan links: source {token} changed since the preview, preview ik again"

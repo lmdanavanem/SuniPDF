@@ -18,18 +18,18 @@ The interface defaults to English; French is also available.
 
 Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
 
-## Download 0.76.0
+## Download 0.77.0
 
-SuniPDF 0.76.0 is the latest stable release, verified 2026-10-24T23:38:01.275235+00:00.
+SuniPDF 0.77.0 is the latest stable release, verified 2026-10-25T01:56:30.631866+00:00.
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-linux-amd64.deb) |
-| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.76.0/SuniPDF-0.76.0-macos-arm64.dmg) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.77.0/SuniPDF-0.77.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.77.0/SuniPDF-0.77.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.77.0/SuniPDF-0.77.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.77.0/SuniPDF-0.77.0-linux-amd64.deb) |
+| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.77.0/SuniPDF-0.77.0-macos-arm64.dmg) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.76.0) · [qualification evidence](docs/qa/RELEASE_0.76.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.77.0) · [qualification evidence](docs/qa/RELEASE_0.77.0.json)
 
 Windows packages are unsigned; the macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
 See [Ubuntu platform limits](docs/UBUNTU.md), [macOS platform limits](docs/MACOS.md) and [known issues](docs/KNOWN_ISSUES.md).
@@ -39,7 +39,7 @@ Open **Menu > Settings > Theme** for Classic or Liquid Glass, System/Light/Dark 
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.76.0-linux-amd64.deb`.
+- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.77.0-linux-amd64.deb`.
 - **macOS:** open the DMG and drag **SuniPDF** to **Applications**. On first launch, allow it in **System Settings > Privacy & Security > Open Anyway**.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
 - Use **Ctrl+K** (**⌘K** on macOS) to find a command. Save your document to keep applied changes.
@@ -55,26 +55,26 @@ offering installation. Ubuntu 0.74 adds verified downloads, administrator author
 | Annotate and edit | Notes, highlights, ink, shapes, text, images, object transforms, reply threads and reusable annotation templates |
 | Measure plans | Lengths, perimeters, areas with deductions, constant-depth volumes, dimensioned rectangles, angles, counts, reviewed visual-symbol matches, reviewed region-fill areas, saved page scales, named scale regions, eligible vector snapping and saved-vertex editing |
 | Review quantities | Docked or floating registers, typed fields, explicit unit prices, grouped formulas, PDF/CSV/JSON reports and XLSX snapshots with reviewed refresh |
-| Organize and compare | Reorder, rotate, crop, merge, split and extract pages; grouped local plan sets, reviewed annotation transfer, comparison and aligned revision overlays |
+| Organize and compare | Reorder, rotate, crop, merge, split and extract pages; grouped local plan sets, verified plan-link previews, reviewed annotation transfer, comparison and aligned revision overlays |
 | Fill and sign | AcroForm filling and creation, JSON/XFDF/FDF value exchange, visual signatures; certificate signatures on Windows within documented limits |
 | Convert and protect | Local English/French OCR, image compression, PDF/image/Office conversion, encryption, redaction and sanitized copies |
 | Recover and automate | Automatic recovery snapshots, Undo/Redo and a JSON command-line interface |
 
 [Feature matrix and limits](docs/FEATURE_MATRIX.md) · [User guide](docs/USER_GUIDE.en.md)
 
-## New in 0.76.0
+## New in 0.77.0
 
-- Keep two locations in one PDF visible with independent page, zoom and scroll controls.
-- Synchronize page, zoom, scroll position and view rotation when needed.
-- Use reading and editing tools in the active pane, with one shared document and Undo/Redo history.
-- Keep pane locations when switching tabs during the session; closing the split leaves the active document open.
+- Preview a saved plan link's destination drawing and sheet metadata before opening it.
+- Load a manifest by typing its path or using the file browser.
+- Recheck saved inputs when opening; changed or missing files are refused.
+- Reuse verified historical Windows downloads while retaining upgrade and rollback coverage.
 
-[Reader workflow](docs/READER_WORKSPACE.md#two-independent-views) | [Release scope and qualification](docs/RELEASE_0.76.0.md) | [Project status](docs/PROJECT_STATUS.md).
+[Plan-link workflow](docs/PLAN_LINKS.md) | [Appearance](docs/APPEARANCE.md) | [Release qualification](docs/RELEASE_0.77.0.md) | [Project status](docs/PROJECT_STATUS.md).
 
-Earlier additions include [Apple Silicon support](docs/RELEASE_0.75.0.md),
-[themes and Ubuntu updates](docs/RELEASE_0.74.0.md), [region fill](docs/REGION_FILL.md),
-[Find symbols](docs/VISUAL_SEARCH.md), [quantity units](docs/RELEASE_0.70.0.md) and
-[reports and workbook refresh](docs/RELEASE_0.69.0.md).
+Earlier additions include [independent reader views](docs/RELEASE_0.76.0.md),
+[Apple Silicon support](docs/RELEASE_0.75.0.md), [themes and Ubuntu updates](docs/RELEASE_0.74.0.md),
+[region fill](docs/REGION_FILL.md), [Find symbols](docs/VISUAL_SEARCH.md),
+[quantity units](docs/RELEASE_0.70.0.md) and [reports and workbook refresh](docs/RELEASE_0.69.0.md).
 
 ## Documentation and development
 
