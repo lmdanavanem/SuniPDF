@@ -920,6 +920,7 @@ mod tests {
     struct Controls {
         ctx: egui::Context,
         time: f64,
+        panel_rect: Rect,
     }
 
     impl Controls {
@@ -927,6 +928,7 @@ mod tests {
             Self {
                 ctx: egui::Context::default(),
                 time: 1.0,
+                panel_rect: Rect::NOTHING,
             }
         }
 
@@ -940,7 +942,14 @@ mod tests {
                     ..Default::default()
                 },
                 |ui| {
-                    app.measurement_bar(&self.ctx, ui);
+                    egui::Panel::left("saved-measurement-test-controls")
+                        .exact_size(280.0)
+                        .show(ui, |ui| {
+                            let scroll = egui::ScrollArea::vertical()
+                                .id_salt("saved-measurement-test-scroll")
+                                .show(ui, |ui| app.measurement_bar(&self.ctx, ui));
+                            self.panel_rect = scroll.inner_rect;
+                        });
                     app.saved_measurements_dialog(&self.ctx);
                     app.rich_annotation_dialog(&self.ctx);
                 },
@@ -965,13 +974,42 @@ mod tests {
                 }
             }
             self.frame(app, vec![]);
-            let output = self.frame(app, vec![]);
-            let pos = output
-                .shapes
-                .iter()
-                .rev()
-                .find_map(|s| find(&s.shape, label))
-                .unwrap_or_else(|| panic!("visible control: {label}"));
+            let locate = |output: &FullOutput| {
+                output.shapes.iter().rev().find_map(|shape| {
+                    find(&shape.shape, label).filter(|point| shape.clip_rect.contains(*point))
+                })
+            };
+            let mut pos = locate(&self.frame(app, vec![]));
+            for step in 0..16 {
+                if pos.is_some() {
+                    break;
+                }
+                let pointer = if app.annotate.measure.saved.dialog_open()
+                    || app.annotate.adv.rich.is_some()
+                {
+                    egui::pos2(800.0, 550.0)
+                } else {
+                    self.panel_rect.center()
+                };
+                self.frame(
+                    app,
+                    vec![
+                        Event::PointerMoved(pointer),
+                        Event::MouseWheel {
+                            unit: egui::MouseWheelUnit::Point,
+                            delta: egui::vec2(0.0, if step == 0 { 10_000.0 } else { -140.0 }),
+                            phase: egui::TouchPhase::Move,
+                            source: egui::MouseWheelSource::Wheel,
+                            modifiers: Modifiers::NONE,
+                        },
+                    ],
+                );
+                for _ in 0..4 {
+                    pos = locate(&self.frame(app, vec![]));
+                }
+            }
+            let pos = pos.unwrap_or_else(|| panic!("visible control after scrolling: {label}"));
+            assert!(Rect::from_min_size(Pos2::ZERO, egui::vec2(1600.0, 1100.0)).contains(pos));
             self.time += 0.6;
             for pressed in [true, false] {
                 self.frame(
