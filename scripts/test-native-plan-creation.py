@@ -31,181 +31,227 @@ def creation_helper(name, namespace):
 
 
 class NativeCommandPaletteTests(unittest.TestCase):
-    def test_palette_changes_only_segmentation_and_keeps_full_capture_derivation(self):
+    PREPARATIONS = ("full-rgb-nearest-2x-psm11", "full-rgb-lanczos-3x-psm11",
+                    "full-rgb-lanczos-4x-psm11", "full-rgb-lanczos-4x-psm6")
+
+    def observation(self, rows, preparation=None, scale=2):
+        return {"tsv": tsv(rows), "text": " ".join(words for _, words in rows),
+                "scale": scale, "size": (900, 600), "ink": 0,
+                "ocrPreparation": preparation or self.PREPARATIONS[0]}
+
+    def locator(self, observed):
+        capture = MagicMock(return_value="unchanged-full-frame.png")
+        read_capture = MagicMock(side_effect=observed)
+        namespace = {"fixtures": native, "read_capture": read_capture, "capture": capture,
+                     "time": SimpleNamespace(sleep=lambda seconds: None),
+                     "scroll": MagicMock(side_effect=AssertionError("Unexpected scroll"))}
+        creation_helper("observations", namespace)
+        return creation_helper("locate", namespace), capture, read_capture
+
+    def test_preparations_keep_full_capture_and_distinct_immutable_evidence(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             path = root / "observed.png"
-            path.write_bytes(b"offline capture stand-in; no image recognition is claimed")
+            original = b"offline capture stand-in; no recognition is claimed"
+            path.write_bytes(original)
             source = MagicMock()
             source.__enter__.return_value = source
             source.size = (320, 180)
             source.convert.return_value = source
             prepared = MagicMock()
             source.resize.return_value = prepared
-            prepared.save.side_effect = lambda path: path.write_bytes(b"offline full-frame resize stand-in")
+            prepared.save.side_effect = lambda stream, format: stream.write(b"offline resized image stand-in")
             image_api = SimpleNamespace(open=MagicMock(return_value=source), NEAREST="nearest", LANCZOS="lanczos")
-            calls = []
-            transcript = tsv([(90, "Plan links")])
-
-            def command(arguments, timeout):
-                calls.append((arguments, timeout))
-                return transcript
-
+            command = MagicMock(return_value=tsv([(90, "Plan links")]))
             read_capture = creation_helper("read_capture", {
                 "Image": image_api, "evidence": root, "command": command,
                 "csv": csv, "io": io, "sha": native.sha,
             })
-            observed = read_capture(path, psm=6)
-            self.assertEqual(calls[-1][0], ["tesseract", root / "observed-controls.png", "stdout", "-l", "eng", "--psm", "6", "tsv"])
-            self.assertEqual(calls[-1][1], 25)
-            self.assertEqual(observed["text"], "Plan links")
-            self.assertEqual(observed["pngSha256"], native.sha(path))
-            image_api.open.assert_called_once_with(path)
-            source.convert.assert_called_once_with("RGB")
-            source.resize.assert_called_once_with((640, 360), resample=image_api.NEAREST)
-            source.crop.assert_not_called()
-            prepared.save.assert_called_once_with(root / observed["ocrInput"])
-            self.assertEqual(observed["ocrInputSha256"], native.sha(root / observed["ocrInput"]))
-            self.assertEqual((root / observed["ocr"]).read_text(encoding="utf-8"), transcript)
-            read_capture(path)
-            self.assertEqual(calls[-1][0][-2:], ["11", "tsv"], "other native controls retain sparse-text OCR")
-            source.reset_mock()
-            prepared.reset_mock()
-            observed = read_capture(path, psm=6, smooth=True)
-            self.assertEqual(observed["scale"], 4)
-            source.resize.assert_called_once_with((1280, 720), resample=image_api.LANCZOS)
-            source.crop.assert_not_called()
-            self.assertEqual(observed["pngSha256"], native.sha(path))
-            self.assertEqual(observed["ocrInputSha256"], native.sha(root / observed["ocrInput"]))
-            self.assertEqual(calls[-1][0][-2:], ["6", "tsv"])
-            before = len(calls)
-            with self.assertRaisesRegex(AssertionError, "original OCR mask"):
-                read_capture(path, "blue", psm=6, smooth=True)
-            self.assertEqual(len(calls), before)
+            files = set()
+            for tag, scale, resample, psm in zip(self.PREPARATIONS, (2, 3, 4, 4),
+                                                ("nearest", "lanczos", "lanczos", "lanczos"), (11, 11, 11, 6)):
+                source.reset_mock()
+                observed = read_capture(path, preparation=tag)
+                self.assertEqual(observed["ocrPreparation"], tag)
+                self.assertEqual(observed["scale"], scale)
+                self.assertEqual(observed["text"], "Plan links")
+                source.resize.assert_called_once_with((320 * scale, 180 * scale), resample=resample)
+                source.crop.assert_not_called()
+                self.assertEqual(command.call_args.args[0][-3:], ["--psm", str(psm), "tsv"])
+                self.assertEqual(command.call_args.kwargs, {"timeout": 25})
+                for field in ("png", "ocrInput", "ocr"):
+                    self.assertEqual(observed[field + "Sha256"], native.sha(root / observed[field]))
+                self.assertNotIn(observed["ocrInput"], files)
+                files.add(observed["ocrInput"])
+                self.assertEqual(path.read_bytes(), original)
+            before = command.call_count
+            retained = {name: (root / name).read_bytes() for name in files}
+            with self.assertRaises(FileExistsError):
+                read_capture(path)
+            self.assertEqual(command.call_count, before)
+            self.assertEqual(retained, {name: (root / name).read_bytes() for name in files})
+            for color, tag in (("blue", self.PREPARATIONS[0]), (None, "color-mask-nearest-3x-psm11"), (None, "unlisted")):
+                with self.subTest(color=color, tag=tag), self.assertRaises(AssertionError):
+                    read_capture(path, color, preparation=tag)
 
-    def test_scene_smoothing_is_routed_only_to_manifest_path_and_approval_scenes(self):
-        tree = ast.parse(Path(__file__).with_name("test-deb.py").read_text(encoding="utf-8"))
-        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
-                 and isinstance(node.func, ast.Name) and node.func.id == "scene"
-                 and any(keyword.arg == "smooth" for keyword in node.keywords)]
-        self.assertEqual(len(calls), 2)
-        manifest = next(call for call in calls if isinstance(call.args[0], ast.Constant))
-        approval = next(call for call in calls if isinstance(call.args[0], ast.BinOp))
-        self.assertEqual(ast.literal_eval(manifest.args[0]), "creation-manifest-path-entered")
-        self.assertEqual(ast.literal_eval(approval.args[0].left), "creation-approved-")
-        self.assertEqual({keyword.arg: ast.literal_eval(keyword.value) for keyword in approval.keywords
-                          if keyword.arg in ("psm", "smooth")}, {"psm": 11, "smooth": True})
-        self.assertEqual({keyword.arg: ast.literal_eval(keyword.value) for keyword in manifest.keywords},
-                         {"pattern": r"plan-set\.json", "psm": 6, "smooth": True})
+    def test_colored_pdf_uses_only_unchanged_mask_and_nearest_three_times(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            path = root / "pdf.png"
+            path.write_bytes(b"offline PDF capture stand-in")
+            source = MagicMock()
+            source.__enter__.return_value = source
+            source.size = (2, 2)
+            source.convert.return_value.getdata.return_value = [(0, 0, 255)] * 4
+            mask_image, prepared = MagicMock(), MagicMock()
+            mask_image.resize.return_value = prepared
+            prepared.save.side_effect = lambda stream, format: stream.write(b"offline mask image")
+            image_api = SimpleNamespace(open=MagicMock(return_value=source), frombytes=MagicMock(return_value=mask_image),
+                                        NEAREST="nearest", LANCZOS="lanczos")
+            command, mask = MagicMock(return_value=tsv([(20, "A-101")])), MagicMock(return_value=(b"0000", 4))
+            namespace = {"Image": image_api, "evidence": root, "command": command, "csv": csv,
+                         "io": io, "sha": native.sha, "colored_fixture_mask": mask}
+            creation_helper("read_capture", namespace)
+            observations = creation_helper("observations", namespace)
+            result = list(observations(path, "blue"))
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]["ocrPreparation"], "color-mask-nearest-3x-psm11")
+            mask.assert_called_once_with([(0, 0, 255)] * 4, "blue")
+            image_api.frombytes.assert_called_once_with("L", (2, 2), b"0000")
+            mask_image.resize.assert_called_once_with((6, 6), resample="nearest")
+            command.assert_called_once()
+            self.assertEqual(command.call_args.args[0][-3:], ["--psm", "11", "tsv"])
+
+    def test_interface_alternatives_are_finite_ordered_and_lazy(self):
+        reader = MagicMock(side_effect=lambda path, color, preparation: preparation)
+        observations = creation_helper("observations", {"read_capture": reader})
+        choices = observations("same.png")
+        self.assertEqual(next(choices), self.PREPARATIONS[0])
+        self.assertEqual(reader.call_count, 1)
+        self.assertEqual(tuple(choices), self.PREPARATIONS[1:])
+        self.assertEqual(reader.call_count, 4)
+        self.assertEqual([call.args for call in reader.call_args_list], [("same.png", None)] * 4)
+
+    def test_locate_fallback_keeps_source_and_target_in_same_preparation(self):
+        missing = self.observation([(20, "Beta.pdf"), (50, "Native destination two"), (80, "Target.pdf")])
+        valid = self.observation([(20, "Alpha.pdf"), (50, "Native destination two"), (80, "Beta.pdf")], self.PREPARATIONS[1], 3)
+        locate, capture, reader = self.locator([missing, valid])
+        observed, box = locate("Native destination two", below_label="Alpha.pdf", above_label="Beta.pdf", allow_scroll=False)
+        self.assertIs(observed, valid)
+        self.assertEqual(box[1], 50)
+        capture.assert_called_once_with(None)
+        self.assertEqual(reader.call_count, 2)
+        self.assertEqual(reader.call_args_list[0].args[0], reader.call_args_list[1].args[0])
+
+    def test_ambiguity_is_fatal_without_trying_a_more_convenient_preparation(self):
+        ambiguous = self.observation([(20, "Save"), (50, "Save")])
+        valid = self.observation([(20, "Save")])
+        locate, capture, reader = self.locator([ambiguous, valid])
+        with self.assertRaisesRegex(AssertionError, "Ambiguous"):
+            locate("Save", allow_scroll=False)
+        capture.assert_called_once()
+        reader.assert_called_once()
+
+    def test_missing_labels_cannot_borrow_anchors_or_fuzzy_names(self):
+        first = self.observation([(20, "Alpha.pdf 0 Approved links"), (80, "Beta.pdf 0 Approved links")])
+        second = self.observation([(20, "Alpha.pdff 0 Approved links"), (50, "A-101 Page 1"),
+                                   (80, "Beta.pdf 0 Approved links")])
+        locate, capture, reader = self.locator([first, second, first, second] * 6)
+        with self.assertRaises(native.LabelMissing):
+            locate("A-101", line_contains="Page 1", below_label=("Alpha.pdf", "0 Approved links"),
+                   above_label=("Beta.pdf", "0 Approved links"), allow_scroll=False)
+        self.assertEqual(capture.call_count, 6)
+        self.assertEqual(reader.call_count, 24)
+
+    def test_approval_both_bounds_exclude_the_next_source(self):
+        wrong = self.observation([(20, "Alpha.pdf 0 Approved links"), (80, "Beta.pdf 0 Approved links"),
+                                 (110, "A-101 Page 1")])
+        valid = self.observation([(20, "Alpha.pdf 0 Approved links"), (50, "A-101 Page 1"),
+                                 (80, "Beta.pdf 0 Approved links"), (110, "A-101 Page 1")])
+        locate, _, reader = self.locator([wrong, valid])
+        _, box = locate("A-101", line_contains="Page 1", below_label=("Alpha.pdf", "0 Approved links"),
+                        above_label=("Beta.pdf", "0 Approved links"), allow_scroll=False)
+        self.assertEqual(box[1], 50)
+        self.assertEqual(reader.call_count, 2)
+
+    def test_popup_scope_is_applied_to_every_preparation(self):
+        wrong = self.observation([(20, "Native destination two")])
+        valid = self.observation([(20, "Native destination two"), (250, "Native destination two")])
+        locate, _, reader = self.locator([wrong, valid])
+        _, box = locate("Native destination two", within=(0, 100, 300, 200), allow_scroll=False)
+        self.assertEqual(box[1], 250)
+        self.assertEqual(reader.call_count, 2)
+
+    def test_scene_retains_winning_preparation_with_stable_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, rows = Path(directory), [(20, "Beta.pdf 1 Approved links")]
             retained = root / "scenes"
             retained.mkdir()
-            observed = {"text": "plan-set.json", "ink": 0, "tsv": "offline fixture", "scale": 4, "size": (320, 180)}
-            for field, suffix in (("png", ".png"), ("ocrInput", "-ocr.png"), ("ocr", ".tsv")):
+            valid = self.observation(rows, self.PREPARATIONS[2], 4)
+            for field, suffix in (("png", ".png"), ("ocrInput", "-prepared.png"), ("ocr", ".tsv")):
                 path = root / ("source" + suffix)
-                path.write_bytes(("offline full-frame fixture: " + field).encode())
-                observed[field], observed[field + "Sha256"] = path.name, native.sha(path)
-            read_capture = MagicMock(return_value=observed)
-            namespace = {"time": SimpleNamespace(monotonic=lambda: 0), "read_capture": read_capture,
-                         "capture": lambda: root / observed["png"], "command": lambda args: "SuniPDF",
+                path.write_bytes(("offline retained " + field).encode())
+                valid[field], valid[field + "Sha256"] = path.name, native.sha(path)
+            wrong = {**valid, "text": "Beta.pdf 1 Approved links", "tsv": tsv([(20, "Beta.pdff 1 Approved links")])}
+            observed = MagicMock(return_value=iter([wrong, valid]))
+            namespace = {"time": SimpleNamespace(monotonic=lambda: 0), "observations": observed,
+                         "capture": MagicMock(return_value="one-frame.png"), "command": lambda args: "SuniPDF",
                          "window": "offline-window", "re": re, "scenes": [], "scene_directory": retained,
                          "evidence": root, "sha": native.sha, "fixtures": native}
             creation_helper("evidence_fields", namespace)
             scene = creation_helper("scene", namespace)
-            for name, options in (("creation-command-open", {"psm": 6}),
-                                  ("creation-manifest-path-entered", {"psm": 11}),
-                                  ("creation-approved-beta", {"psm": 6}),
-                                  ("creation-manifest-path-entered", {"psm": 6, "kind": "alpha"})):
-                with self.subTest(name=name, options=options), self.assertRaisesRegex(AssertionError, "restricted"):
-                    scene(name, pattern=r"plan-set\.json", smooth=True, **options)
-            read_capture.assert_not_called()
-            value = scene("creation-manifest-path-entered", pattern=r"plan-set\.json", psm=6, smooth=True)
-            read_capture.assert_called_once_with(root / observed["png"], None, psm=6, smooth=True)
+            value = scene("creation-approved-beta", pattern=r"Beta\.pdf.*1 Approved links")
+            self.assertEqual(value["ocrPreparation"], self.PREPARATIONS[2])
             self.assertEqual(namespace["scenes"], [value])
-            for field in ("png", "ocrInput", "ocr"):
-                self.assertEqual((root / value[field]).read_bytes(), (root / observed[field]).read_bytes())
+            namespace["capture"].assert_called_once()
+            for field, suffix in (("png", ".png"), ("ocrInput", "-ocr.png"), ("ocr", ".tsv")):
+                self.assertEqual(value[field], "scenes/creation-approved-beta" + suffix if "/" in value[field] else "scenes\\creation-approved-beta" + suffix)
+                self.assertEqual((root / value[field]).read_bytes(), (root / valid[field]).read_bytes())
                 self.assertEqual(native.sha(root / value[field]), value[field + "Sha256"])
-            observed.update(text="Beta.pdf 1 Approved links", tsv=tsv([(20, "Beta.pdf 1 Approved links")]))
-            value = scene("creation-approved-beta", pattern=r"Beta\.pdf.*1 Approved links", psm=11, smooth=True)
-            self.assertEqual(value["name"], "creation-approved-beta")
-            read_capture.assert_called_with(root / observed["png"], None, psm=11, smooth=True)
 
     def test_command_keeps_native_keyboard_and_requires_observed_result_before_enter(self):
         calls = []
         helper = creation_helper("open_command", {
-            "key": lambda *keys: calls.append(("key", keys)),
-            "time": SimpleNamespace(sleep=lambda seconds: None),
+            "key": lambda *keys: calls.append(("key", keys)), "time": SimpleNamespace(sleep=lambda seconds: None),
             "command": lambda arguments: calls.append(("command", arguments)),
             "scene": lambda name, **options: calls.append(("scene", name, options)), "re": re,
         })
         helper("Plan links", "creation-command-open")
-        self.assertEqual(calls, [
-            ("key", ("ctrl+k",)),
-            ("command", ["xdotool", "type", "--clearmodifiers", "--delay", "35", "Plan links"]),
-            ("scene", "creation-command-open", {"pattern": re.escape("Plan links"), "psm": 6}),
-            ("key", ("Return",)),
-        ])
+        self.assertEqual(calls, [("key", ("ctrl+k",)),
+                                ("command", ["xdotool", "type", "--clearmodifiers", "--delay", "35", "Plan links"]),
+                                ("scene", "creation-command-open", {"pattern": re.escape("Plan links")}),
+                                ("key", ("Return",))])
         calls.clear()
-
-        def refused_scene(*args, **kwargs):
-            raise AssertionError("The real palette result was not observed")
-
-        helper.__globals__["scene"] = refused_scene
-        with self.assertRaisesRegex(AssertionError, "not observed"):
+        helper.__globals__["scene"] = MagicMock(side_effect=AssertionError("Not observed"))
+        with self.assertRaisesRegex(AssertionError, "Not observed"):
             helper("Plan links", "creation-command-reopen")
         self.assertNotIn(("key", ("Return",)), calls)
 
-    def test_destination_controls_are_scoped_and_counter_verification_never_clicks(self):
-        transcript = tsv([(20, "Alpha.pdf"), (50, "Native destination two"), (80, "Beta.pdf"),
-                          (110, "Native destination two"), (140, "Destination sheets 1"), (170, "Target.pdf")])
-        observed = {"tsv": transcript, "text": "offline fixture", "scale": 2, "size": (320, 180)}
-        read_capture = MagicMock(return_value=observed)
-        commands = MagicMock(side_effect=AssertionError("Observation must never generate native input"))
-        namespace = {"fixtures": native, "read_capture": read_capture, "capture": lambda target: "full-capture.png",
-                     "actions": [], "command": commands}
+    def test_verified_counter_keeps_qualifiers_and_never_generates_input(self):
+        observed = self.observation([(110, "Destination sheets 1")])
+        locate = MagicMock(return_value=(observed, (10, 110, 140, 124)))
+        namespace = {"locate": locate, "actions": []}
         creation_helper("evidence_fields", namespace)
-        locate = creation_helper("locate", namespace)
-        _, box = locate("Native destination two", below_label="Beta.pdf", above_label="Target.pdf", psm=6)
-        self.assertEqual(box[1], 110)
-        read_capture.assert_called_once_with("full-capture.png", None, psm=6, smooth=False)
-        read_capture.reset_mock()
-        _, box = locate("Native destination two", below_label="Beta.pdf", above_label="Target.pdf", psm=6, smooth=True)
-        read_capture.assert_called_once_with("full-capture.png", None, psm=6, smooth=True)
-        with self.assertRaisesRegex(AssertionError, "restricted"):
-            locate("Native destination two", psm=6, smooth=True)
-        with self.assertRaisesRegex(AssertionError, "restricted"):
-            locate("Save", below_label="Beta.pdf", above_label="Target.pdf", psm=6, smooth=True)
         verify = creation_helper("verify_control", namespace)
         verify("Destination sheets 1", below_label="Beta.pdf", above_label="Target.pdf")
-        self.assertEqual(namespace["actions"][0]["observedControl"], "Destination sheets 1")
-        self.assertEqual(namespace["actions"][0]["belowLabel"], "Beta.pdf")
-        self.assertEqual(namespace["actions"][0]["aboveLabel"], "Target.pdf")
-        self.assertNotIn("click", namespace["actions"][0])
-        commands.assert_not_called()
-        tree = ast.parse(Path(__file__).with_name("test-deb.py").read_text(encoding="utf-8"))
-        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and node.args
-                 and isinstance(node.func, ast.Name) and isinstance(node.args[0], ast.Constant)
-                 and node.args[0].value == "Destination sheets 1"]
-        self.assertEqual([node.func.id for node in calls], ["verify_control"])
+        action = namespace["actions"][0]
+        self.assertEqual(action["observedControl"], "Destination sheets 1")
+        self.assertEqual((action["belowLabel"], action["aboveLabel"]), ("Beta.pdf", "Target.pdf"))
+        self.assertIsNone(action["lineContains"])
+        self.assertEqual(action["ocrPreparation"], self.PREPARATIONS[0])
+        self.assertNotIn("click", action)
 
-    def test_smooth_approval_selection_requires_the_matching_source_header(self):
-        transcript = tsv([(20, "Alpha.pdf 0 Approved links"), (50, "A-101 Page 1"),
-                          (80, "Beta.pdf 0 Approved links"), (110, "A-101 Page 1")])
-        observed = {"tsv": transcript, "text": "offline fixture", "scale": 4, "size": (320, 180)}
-        read_capture = MagicMock(return_value=observed)
-        locate = creation_helper("locate", {"fixtures": native, "read_capture": read_capture,
-                                            "capture": lambda target: "full-capture.png"})
-        _, box = locate("A-101", line_contains="Page 1", below_label=("Beta.pdf", "0 Approved links"),
-                        smooth=True, psm=11)
-        self.assertEqual(box[1], 110)
-        read_capture.assert_called_once_with("full-capture.png", None, psm=11, smooth=True)
-        for options in ({"line_contains": "Page 1"},
-                        {"line_contains": "Page 1", "below_label": ("Other.pdf", "0 Approved links")},
-                        {"line_contains": "Page 1", "below_label": ("Beta.pdf", "1 Approved links")},
-                        {"line_contains": "Page 1", "below_label": ("Beta.pdf", "0 Approved links"), "psm": 6}):
-            with self.subTest(options=options), self.assertRaisesRegex(AssertionError, "restricted"):
-                locate("A-101", smooth=True, **options)
+    def test_preview_destination_popup_is_bound_to_observed_combo_in_both_directions(self):
+        calls = []
+        def click(label, **options):
+            calls.append((label, options))
+            return (552, 581) if label == "Choose a destination" else (180, 581)
+        helper = creation_helper("preview_sources", {"click": click, "scene": MagicMock()})
+        helper()
+        choices = [options for label, options in calls if label == "Native destination two"]
+        self.assertEqual(choices, [{"allow_scroll": False, "within": (372, 461, 912, 701)}] * 2)
+        self.assertEqual([options["line_contains"] for label, options in calls if label == "Choose a destination"],
+                         ["Alpha.pdf", "Beta.pdf"])
 
 
 def qpdf_document(link=None):
@@ -313,7 +359,7 @@ class NativeCreationTests(unittest.TestCase):
         self.assertEqual(report["target"]["physicalPage"], 2)
 
     def test_ocr_scope_ignores_punctuation_but_not_ambiguous_rows(self):
-        text = tsv([(20, "Alpha.pdf · 0 Approved links"), (50, "Beta.pdf · 0 Approved links"),
+        text = tsv([(20, "Alpha.pdf Â· 0 Approved links"), (50, "Beta.pdf Â· 0 Approved links"),
                     (80, "Alpha.pdf 1 Preview source Choose a destination Preview destination")])
         box = native.label_box(text, "Alpha.pdf", (900, 200), line_contains="Preview source")
         self.assertEqual(box[1], 80)
