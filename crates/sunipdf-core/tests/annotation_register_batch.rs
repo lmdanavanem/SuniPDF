@@ -1,5 +1,7 @@
 use lopdf::{dictionary, Document as Pdf, Object, ObjectId};
-use std::{collections::BTreeMap, path::Path};
+use std::{collections::BTreeMap, path::Path, sync::Mutex};
+
+static PDFIUM_LOCK: Mutex<()> = Mutex::new(());
 use sunipdf_core::annotation_register::{RegisterFields, RegisterRow};
 use sunipdf_core::annotation_register_batch::{
     register_row_fingerprint, FieldPatch, RegisterFieldsPatch, MAX_REGISTER_BATCH_ROWS,
@@ -130,6 +132,9 @@ fn write_pdf(mut pdf: Pdf) -> Vec<u8> {
 
 #[test]
 fn reviewed_batch_preserves_all_other_pdf_data_saved_sources_and_single_snapshot_history() {
+    let _guard = PDFIUM_LOCK
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
     let engine = Engine::new().expect("PDFium is required");
     let bytes = source(&engine);
     let directory = tempfile::tempdir().unwrap();
@@ -218,6 +223,9 @@ fn reviewed_batch_preserves_all_other_pdf_data_saved_sources_and_single_snapshot
 
 #[test]
 fn no_op_selection_forged_rows_and_stale_source_never_modify_any_record() {
+    let _guard = PDFIUM_LOCK
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
     let engine = Engine::new().unwrap();
     let bytes = source(&engine);
     let mut doc = engine
@@ -308,6 +316,9 @@ fn no_op_selection_forged_rows_and_stale_source_never_modify_any_record() {
 
 #[test]
 fn last_invalid_fields_and_locked_or_shared_targets_refuse_the_entire_batch() {
+    let _guard = PDFIUM_LOCK
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
     let engine = Engine::new().unwrap();
     let bytes = source(&engine);
     let mut doc = engine
@@ -400,6 +411,9 @@ fn last_invalid_fields_and_locked_or_shared_targets_refuse_the_entire_batch() {
 
 #[test]
 fn permission_and_exact_selection_cap_are_enforced() {
+    let _guard = PDFIUM_LOCK
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
     let engine = Engine::new().unwrap();
     let bytes = source(&engine);
     let mut pdf = Pdf::load_mem(&bytes).unwrap();
@@ -493,6 +507,9 @@ fn permission_and_exact_selection_cap_are_enforced() {
 
 #[test]
 fn strict_patch_json_and_complete_row_fingerprints_preserve_explicit_intent() {
+    let _guard = PDFIUM_LOCK
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
     let parsed: RegisterFieldsPatch = serde_json::from_str(r#"{"business_status":{"operation":"set","value":"Ready"},"custom":{"Room":{"operation":"clear"}}}"#).unwrap();
     parsed.validate().unwrap();
     assert_eq!(parsed.discipline, FieldPatch::Keep);
