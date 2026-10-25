@@ -587,8 +587,16 @@ def plan_link_creation(evidence, version):
         command(["import", "-window", target or window, path], timeout=15)
         return path
 
-    def read_capture(path, color=None, *, psm=11, smooth=False):
-        assert not (smooth and color), "Coloured PDF fixtures retain their original OCR mask"
+    def read_capture(path, color=None, *, preparation="full-rgb-nearest-2x-psm11"):
+        methods = {"full-rgb-nearest-2x-psm11": (2, Image.NEAREST, 11),
+                   "full-rgb-lanczos-3x-psm11": (3, Image.LANCZOS, 11),
+                   "full-rgb-lanczos-4x-psm11": (4, Image.LANCZOS, 11),
+                   "full-rgb-lanczos-4x-psm6": (4, Image.LANCZOS, 6),
+                   "color-mask-nearest-3x-psm11": (3, Image.NEAREST, 11)}
+        assert preparation in methods, "Unknown native OCR preparation"
+        assert bool(color) == (preparation == "color-mask-nearest-3x-psm11"), \
+            "Coloured PDF fixtures retain their original OCR mask"
+        scale, resample, psm = methods[preparation]
         with Image.open(path) as image:
             size = image.size
             if color:
@@ -596,20 +604,31 @@ def plan_link_creation(evidence, version):
                 prepared = Image.frombytes("L", size, mask)
             else:
                 prepared, ink = image.convert("RGB"), 0
-            scale = 3 if color else 4 if smooth else 2
             prepared = prepared.resize((size[0] * scale, size[1] * scale),
-                                       resample=Image.LANCZOS if smooth else Image.NEAREST)
-            ocr_path = path.with_name(path.stem + ("-" + color if color else "-controls") + ".png")
-            prepared.save(ocr_path)
+                                       resample=resample)
+            ocr_path = path.with_name(path.stem + "-" + preparation + ("-" + color if color else "") + ".png")
+            with ocr_path.open("xb") as stream:
+                prepared.save(stream, format="PNG")
         tsv = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", str(psm), "tsv"], timeout=25)
         tsv_path = ocr_path.with_suffix(".tsv")
-        tsv_path.write_text(tsv, encoding="utf-8")
+        with tsv_path.open("x", encoding="utf-8") as stream:
+            stream.write(tsv)
         words = [row["text"] for row in csv.DictReader(io.StringIO(tsv), delimiter="\t", quoting=csv.QUOTE_NONE)
                  if row.get("level") == "5" and row.get("text", "").strip()]
         return {"text": " ".join(words), "tsv": tsv, "scale": scale, "size": size, "ink": ink,
+                "ocrPreparation": preparation,
                 "png": str(path.relative_to(evidence)), "pngSha256": sha(path),
                 "ocrInput": str(ocr_path.relative_to(evidence)), "ocrInputSha256": sha(ocr_path),
                 "ocr": str(tsv_path.relative_to(evidence)), "ocrSha256": sha(tsv_path)}
+
+    def observations(path, color=None):
+        # All alternatives read one unchanged full frame. Only a missing literal
+        # label permits another preparation; ambiguous labels remain fatal.
+        preparations = (("color-mask-nearest-3x-psm11",) if color else
+                        ("full-rgb-nearest-2x-psm11", "full-rgb-lanczos-3x-psm11",
+                         "full-rgb-lanczos-4x-psm11", "full-rgb-lanczos-4x-psm6"))
+        for preparation in preparations:
+            yield read_capture(path, color, preparation=preparation)
 
     def evidence_fields(observation):
         return {key: value for key, value in observation.items() if key not in ("tsv", "size", "scale")}
@@ -617,10 +636,8 @@ def plan_link_creation(evidence, version):
     def scroll(direction, count=3):
         # Scroll the actual dialog body, to the right of its nested destination list.
         # Derive the point from the observed title and window bounds on this frame.
-        observed = read_capture(capture())
+        observed, box = locate("Link multiple plan PDFs", allow_scroll=False)
         scale = observed["scale"]
-        box = fixtures.label_box(observed["tsv"], "Link multiple plan PDFs",
-                                 tuple(value * scale for value in observed["size"]))
         x = min(observed["size"][0] - 140, box[0] // scale + 780)
         y = min(observed["size"][1] - 180, box[3] // scale + 110)
         command(["xdotool", "mousemove", "--window", window, x, y, "click", "--repeat", str(count),
@@ -629,35 +646,31 @@ def plan_link_creation(evidence, version):
         time.sleep(0.15)
 
     def locate(label, *, line_contains=None, exact_line=False, color=None, target=None, allow_scroll=True,
-               below_label=None, above_label=None, within=None, psm=11, smooth=False):
-        destination = (label == "Native destination two" and psm == 6
-                       and (below_label, above_label) in (("Alpha.pdf", "Beta.pdf"), ("Beta.pdf", "Target.pdf")))
-        approval = (psm == 11 and above_label is None and
-                    ((label in ("Alpha.pdf", "Beta.pdf") and line_contains == "0 Approved links" and below_label is None)
-                     or (label == "A-101" and line_contains == "Page 1"
-                         and below_label in (("Alpha.pdf", "0 Approved links"), ("Beta.pdf", "0 Approved links")))))
-        assert not smooth or (color is None and target is None and (destination or approval)), \
-            "Smooth control OCR is restricted to an explicit destination or approval context"
+               below_label=None, above_label=None, within=None):
         for attempt in range(12 if allow_scroll and target is None else 6):
-            observed = read_capture(capture(target), color, psm=psm, smooth=smooth)
-            try:
+            for observed in observations(capture(target), color):
                 size = tuple(value * observed["scale"] for value in observed["size"])
-                if isinstance(below_label, tuple):
-                    below = fixtures.label_box(observed["tsv"], below_label[0], size, line_contains=below_label[1])[3]
-                else:
-                    below = fixtures.label_box(observed["tsv"], below_label, size)[3] if below_label else None
-                above = fixtures.label_box(observed["tsv"], above_label, size)[1] if above_label else None
-                box = fixtures.label_box(observed["tsv"], label, size,
-                                         line_contains=line_contains, exact_line=exact_line, below=below, above=above,
-                                         within=tuple(value * observed["scale"] for value in within) if within else None)
-                return observed, box
-            except fixtures.LabelMissing:
-                if allow_scroll and target is None:
-                    if attempt == 2:
-                        scroll("up", 18)
-                    elif attempt > 2:
-                        scroll("down", 3)
-                time.sleep(0.2)
+                try:
+                    def anchor(value, edge):
+                        if value is None:
+                            return None
+                        if isinstance(value, tuple):
+                            return fixtures.label_box(observed["tsv"], value[0], size, line_contains=value[1])[edge]
+                        return fixtures.label_box(observed["tsv"], value, size)[edge]
+
+                    box = fixtures.label_box(observed["tsv"], label, size,
+                                             line_contains=line_contains, exact_line=exact_line,
+                                             below=anchor(below_label, 3), above=anchor(above_label, 1),
+                                             within=tuple(value * observed["scale"] for value in within) if within else None)
+                    return observed, box
+                except fixtures.LabelMissing:
+                    pass
+            if allow_scroll and target is None:
+                if attempt == 2:
+                    scroll("up", 18)
+                elif attempt > 2:
+                    scroll("down", 3)
+            time.sleep(0.2)
         raise fixtures.LabelMissing(f"Native control never became visible: {label!r}; last OCR: {observed['text']}")
 
     def click(label, **options):
@@ -667,7 +680,7 @@ def plan_link_creation(evidence, version):
         target = options.get("target") or window
         actions.append({"click": label, "lineContains": options.get("line_contains"), "point": point,
                         "belowLabel": options.get("below_label"), "aboveLabel": options.get("above_label"),
-                        **({"ocrPreparation": f"full-rgb-lanczos-4x-psm{options.get('psm', 11)}"} if options.get("smooth") else {}),
+                        "within": options.get("within"), "exactLine": options.get("exact_line", False),
                         "window": target, **evidence_fields(observed)})
         command(["xdotool", "mousemove", "--window", target, *map(str, point), "click", "1"])
         time.sleep(0.2)
@@ -678,43 +691,40 @@ def plan_link_creation(evidence, version):
         scale = observed["scale"]
         point = [(box[0] + box[2]) // (2 * scale), (box[1] + box[3]) // (2 * scale)]
         actions.append({"observedControl": label, "belowLabel": options.get("below_label"),
-                        "aboveLabel": options.get("above_label"), "point": point,
+                        "aboveLabel": options.get("above_label"), "lineContains": options.get("line_contains"),
+                        "within": options.get("within"), "exactLine": options.get("exact_line", False), "point": point,
                         **evidence_fields(observed)})
 
-    def scene(name, *, pattern=None, kind=None, caption=None, allow_scroll=False, psm=11, smooth=False):
-        assert not smooth or (kind is None and
-                              ((name == "creation-manifest-path-entered" and psm == 6)
-                               or (name in ("creation-approved-alpha", "creation-approved-beta") and psm == 11))), \
-            "Smooth scene OCR is restricted to the typed manifest path or an approval scene"
+    def scene(name, *, pattern=None, kind=None, caption=None, allow_scroll=False):
         deadline = time.monotonic() + 35
         attempts = 0
         while time.monotonic() < deadline:
             color = "red" if kind == "destination" else "blue" if kind else None
-            observed = read_capture(capture(), color, psm=psm, smooth=smooth)
             title = command(["xdotool", "getwindowname", window])
-            matched = (fixtures.fixture_visible(kind, observed["ink"], observed["text"]) if kind
-                       else re.search(pattern, observed["text"], re.I) is not None)
-            if matched and name in ("creation-approved-alpha", "creation-approved-beta"):
-                source_name = "Alpha.pdf" if name.endswith("alpha") else "Beta.pdf"
-                try:
-                    fixtures.label_box(observed["tsv"], source_name,
-                                       tuple(value * observed["scale"] for value in observed["size"]),
-                                       line_contains="1 Approved links")
-                except fixtures.LabelMissing:
-                    matched = False
-            if matched and (caption is None or caption in title):
-                assert not any(item["name"] == name for item in scenes), "Native creation scene name is not unique"
-                stable = evidence_fields(observed)
-                for field, suffix in (("png", ".png"), ("ocrInput", "-ocr.png"), ("ocr", ".tsv")):
-                    retained = scene_directory / (name + suffix)
-                    with retained.open("xb") as stream:
-                        stream.write((evidence / observed[field]).read_bytes())
-                    assert sha(retained) == observed[field + "Sha256"]
-                    stable[field] = str(retained.relative_to(evidence))
-                value = {"name": name, "windowTitle": title, "pdfKind": kind,
-                         "ocrContent": "pdf-fixture" if kind else "interface", **stable}
-                scenes.append(value)
-                return value
+            for observed in observations(capture(), color):
+                matched = (fixtures.fixture_visible(kind, observed["ink"], observed["text"]) if kind
+                           else re.search(pattern, observed["text"], re.I) is not None)
+                if matched and name in ("creation-approved-alpha", "creation-approved-beta"):
+                    source_name = "Alpha.pdf" if name.endswith("alpha") else "Beta.pdf"
+                    try:
+                        fixtures.label_box(observed["tsv"], source_name,
+                                           tuple(value * observed["scale"] for value in observed["size"]),
+                                           line_contains="1 Approved links")
+                    except fixtures.LabelMissing:
+                        matched = False
+                if matched and (caption is None or caption in title):
+                    assert not any(item["name"] == name for item in scenes), "Native creation scene name is not unique"
+                    stable = evidence_fields(observed)
+                    for field, suffix in (("png", ".png"), ("ocrInput", "-ocr.png"), ("ocr", ".tsv")):
+                        retained = scene_directory / (name + suffix)
+                        with retained.open("xb") as stream:
+                            stream.write((evidence / observed[field]).read_bytes())
+                        assert sha(retained) == observed[field + "Sha256"]
+                        stable[field] = str(retained.relative_to(evidence))
+                    value = {"name": name, "windowTitle": title, "pdfKind": kind,
+                             "ocrContent": "pdf-fixture" if kind else "interface", **stable}
+                    scenes.append(value)
+                    return value
             attempts += 1
             if allow_scroll and attempts > 1:
                 scroll("down", 2)
@@ -725,11 +735,7 @@ def plan_link_creation(evidence, version):
         key("ctrl+k")
         time.sleep(0.2)
         command(["xdotool", "type", "--clearmodifiers", "--delay", "35", label])
-        # Sparse-page segmentation ignores the bright palette over its dimmed
-        # home/document backdrop. Read this compact command result as one text
-        # block, while retaining the same full capture and exact 2x OCR pixels.
-        # Both Ubuntu failure captures reproduce this omission with psm 11.
-        scene(name, pattern=re.escape(label), psm=6)
+        scene(name, pattern=re.escape(label))
         key("Return")
 
     def preview_sources():
@@ -744,8 +750,12 @@ def plan_link_creation(evidence, version):
                       within=(max(0, x - 80), max(0, y - 120), x + 220, y + 120))
             click("Preview source", line_contains=name)
             scene("created-preview-" + name[:-4].lower(), kind=("alpha", "beta")[index], allow_scroll=True)
-            click("Choose a destination", line_contains=name)
-            click("Native destination two", allow_scroll=False)
+            x, y = click("Choose a destination", line_contains=name)
+            # The native popup may open above or below its observed combo. Keep
+            # its unique literal option near that row, away from other sources
+            # and from the rendered PDF title further down the dialog.
+            click("Native destination two", allow_scroll=False,
+                  within=(max(0, x - 180), max(0, y - 120), x + 360, y + 120))
             click("Preview destination", line_contains=name)
             scene("created-destination-for-" + name[:-4].lower(), kind="destination", allow_scroll=True)
 
@@ -763,9 +773,10 @@ def plan_link_creation(evidence, version):
                 values = dict(line.split("=", 1) for line in geometry.splitlines() if "=" in line)
                 if int(values.get("WIDTH", "0")) < 300 or int(values.get("HEIGHT", "0")) < 150:
                     continue
-                observed = read_capture(capture(candidate))
-                if re.search(r"\bSave\b", observed["text"], re.I) and re.search(r"\b(?:Name|Location)\b", observed["text"], re.I):
-                    matches.append((candidate, observed))
+                for observed in observations(capture(candidate)):
+                    if re.search(r"\bSave\b", observed["text"], re.I) and re.search(r"\b(?:Name|Location)\b", observed["text"], re.I):
+                        matches.append((candidate, observed))
+                        break
             assert len(matches) <= 1, "More than one native save chooser was visible"
             if matches:
                 chooser, observed = matches[0]
@@ -810,9 +821,7 @@ def plan_link_creation(evidence, version):
             open_command("Plan links", "creation-command-open")
             scene("creation-manifest-field", pattern=r"Manifest\s+path")
             type_text(fixture["manifest"])
-            # Keep the full capture: smooth enlargement separates the small
-            # filename suffix from its adjacent caret without hiding any pixels.
-            scene("creation-manifest-path-entered", pattern=r"plan-set\.json", psm=6, smooth=True)
+            scene("creation-manifest-path-entered", pattern=r"plan-set\.json")
             click("Load manifest", allow_scroll=False)
             scene("creation-loaded-manifest", pattern=r"Native\s+creation\s+fixture")
             click("Link multiple PDFs", allow_scroll=False)
@@ -822,18 +831,20 @@ def plan_link_creation(evidence, version):
                              else fixture["target"]).name
                 click(source.name)
                 click("Destination sheets 0", below_label=source.name, above_label=following)
-                click("Native destination two", below_label=source.name, above_label=following, psm=6, smooth=True)
+                click("Native destination two", below_label=source.name, above_label=following)
                 # Selecting a destination changes the header identity and collapses
                 # the list. Observe the new count without reopening the prior source.
                 verify_control("Destination sheets 1", below_label=source.name, above_label=following)
             click("Use saved files only")
             click("Find references")
             scene("creation-two-scanned-sources", pattern=r"Pages\s+checked\s*:?\s*2.*References\s+found\s*:?\s*2", allow_scroll=True)
-            for source in fixture["sources"]:
-                click(source.name, line_contains="0 Approved links", psm=11, smooth=True)
-                click("A-101", line_contains="Page 1", below_label=(source.name, "0 Approved links"), psm=11, smooth=True)
-                scene("creation-approved-" + source.stem.lower(), pattern=re.escape(source.name) + r".*1\s+Approved\s+links",
-                      psm=11, smooth=True)
+            for index, source in enumerate(fixture["sources"]):
+                click(source.name, line_contains="0 Approved links")
+                following = ((fixture["sources"][index + 1].name, "0 Approved links")
+                             if index + 1 < len(fixture["sources"]) else None)
+                click("A-101", line_contains="Page 1", below_label=(source.name, "0 Approved links"),
+                      above_label=following)
+                scene("creation-approved-" + source.stem.lower(), pattern=re.escape(source.name) + r".*1\s+Approved\s+links")
                 # Approval changes the result header identity and collapses it.
                 # Do not reopen it before approving the next source's reference.
             click("Validate batch preview")
