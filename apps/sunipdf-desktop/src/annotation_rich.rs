@@ -1946,14 +1946,27 @@ mod tests {
                     })
                     .or(position);
                 if let Some(tree) = output.platform_output.accesskit_update {
-                    for (_, node) in tree.nodes {
+                    for (_, node) in &tree.nodes {
                         for key in [
                             "measure.rectangle.rotation",
                             "bar.apply",
                             "rich.preview",
                             "dialog.password.cancel",
                         ] {
-                            if node.label() == Some(tr(app.lang(), key)) {
+                            let expected = tr(app.lang(), key);
+                            // Numeric controls inherit their accessible name from a visible
+                            // label; that label stores its text as a value in AccessKit.
+                            let named = if key == "measure.rectangle.rotation" {
+                                node.numeric_value() == Some(0.0)
+                                    && node.labelled_by().iter().any(|label_id| {
+                                        tree.nodes.iter().any(|(id, label)| {
+                                            id == label_id && label.value() == Some(expected)
+                                        })
+                                    })
+                            } else {
+                                node.label() == Some(expected)
+                            };
+                            if named {
                                 if let Some(bounds) = node.bounds() {
                                     assert!(
                                         bounds.x0 >= 0.0
@@ -1962,6 +1975,17 @@ mod tests {
                                             && bounds.y1 <= f64::from(height),
                                         "{language}: {key} outside 560 x {height}: {bounds:?}"
                                     );
+                                    if key == "measure.rectangle.rotation" {
+                                        assert!(
+                                            position.is_some_and(|point| {
+                                                (bounds.x0..=bounds.x1)
+                                                    .contains(&f64::from(point.x))
+                                                    && (bounds.y0..=bounds.y1)
+                                                        .contains(&f64::from(point.y))
+                                            }),
+                                            "{language}: visible angle text must belong to the named numeric control"
+                                        );
+                                    }
                                     visible.insert(key);
                                 }
                             }
@@ -1972,7 +1996,7 @@ mod tests {
             assert_eq!(
                 visible.len(),
                 4,
-                "angle and footer controls must remain visible: {language}"
+                "angle and footer controls must remain visible: {language}, found {visible:?}"
             );
             let position = position.expect("visible angle editor");
             let button = |pos, pressed| egui::Event::PointerButton {
