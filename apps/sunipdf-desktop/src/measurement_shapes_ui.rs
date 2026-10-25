@@ -247,7 +247,7 @@ impl SuniApp {
             ui.add_enabled(
                 can_start,
                 egui::TextEdit::singleline(&mut tools.rotation)
-                    .id(egui::Id::new("dimensioned-rectangle-rotation"))
+                    .id(egui::Id::unique("dimensioned-rectangle-rotation"))
                     .char_limit(64)
                     .desired_width(f32::INFINITY),
             )
