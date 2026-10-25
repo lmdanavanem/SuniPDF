@@ -371,7 +371,8 @@ def plan_link_navigation(evidence, version):
         click_label("A-101", "blue")
         wait_scene(name + "-confirmation", text_pattern=r"Manifest\s+path", expected_title=fixture["linked"].name)
         if load:
-            click_label("Paste a manifest path")
+            # The dialog focuses its labelled path field; use the actual keyboard route.
+            # Placeholder OCR is unreliable for the deliberately subdued hint text.
             key("ctrl+a")
             command(["xdotool", "type", "--clearmodifiers", "--delay", "1", str(fixture["manifest"])])
             click_label("Load manifest")
