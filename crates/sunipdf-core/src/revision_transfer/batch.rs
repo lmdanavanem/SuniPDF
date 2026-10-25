@@ -667,8 +667,19 @@ mod tests {
                 root.join("missing/new.pdf")
             )
             .is_err());
+        // PathBuf::join normalizes parent components on Windows verbatim roots.
+        // Preserve the literal traversal so the refusal exercises the same input on all OSes.
+        let mut traversal = root.as_os_str().to_os_string();
+        traversal.push(std::path::MAIN_SEPARATOR_STR);
+        traversal.push("..");
+        traversal.push(std::path::MAIN_SEPARATOR_STR);
+        traversal.push("new.pdf");
+        let traversal = PathBuf::from(traversal);
+        assert!(traversal
+            .components()
+            .any(|component| matches!(component, Component::ParentDir)));
         assert!(batch
-            .push("a".into(), candidate(&root, "a"), root.join("../new.pdf"))
+            .push("a".into(), candidate(&root, "a"), traversal)
             .is_err());
         assert!(!root.join("missing").exists());
         for index in 0..MAX_BATCH_TRANSFERS {
