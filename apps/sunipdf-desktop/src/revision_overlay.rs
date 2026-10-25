@@ -1374,7 +1374,10 @@ pub(crate) mod tests {
                 }
                 if let Some(tree) = output.platform_output.accesskit_update {
                     for (_, node) in &tree.nodes {
-                        if let Some(label) = node.label() {
+                        if let Some(label) = node
+                            .label()
+                            .filter(|label| *label != tr(lang, "overlay.stack.color"))
+                        {
                             accessible.insert(label.to_owned());
                         }
                         // Color wells expose their swatch value separately from the
