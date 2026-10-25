@@ -164,7 +164,8 @@ impl RichPreview {
                 self.pixels_per_point = density;
             }
         }
-        ui.add(egui::Image::new(&self.texture).fit_to_exact_size(self.logical_size));
+        let fit = (ui.available_width() / self.logical_size.x).clamp(0.0, 1.0);
+        ui.add(egui::Image::new(&self.texture).fit_to_exact_size(self.logical_size * fit));
     }
 }
 
@@ -1001,7 +1002,7 @@ impl SuniApp {
                     "rich.note"
                 },
             ))
-            .width(680.0),
+            .width(680.0_f32.min((ctx.content_rect().width() - 32.0).max(300.0))),
             |ui| {
                 let mut changed = false;
                 ui.add_enabled_ui(!draft.busy && !draft.applying, |ui| {
@@ -1885,11 +1886,15 @@ mod tests {
                 _ => None,
             }
         }
-        for language in ["en-US", "fr-FR"] {
+        for (language, height) in ["en-US", "fr-FR"]
+            .into_iter()
+            .flat_map(|language| [480.0_f32, 680.0].map(move |height| (language, height)))
+        {
             let (mut app, requests, _) = crate::app::tests::test_app();
             app.settings.language = language.into();
             let ctx = egui::Context::default();
             ctx.enable_accesskit();
+            ctx.all_styles_mut(|style| style.animation_time = 0.0);
             assert!(app.open_dimensioned_rectangle_preview(
                 0,
                 crate::measurement_shapes_ui::RectanglePlacement {
@@ -1910,7 +1915,7 @@ mod tests {
             };
             app.on_rich_preview(&ctx, epoch, first, Ok(preview()));
             assert!(app.annotate.adv.rich.as_ref().unwrap().prepared);
-            let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(560.0, 680.0));
+            let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(560.0, height));
             let mut time = 0.0;
             let mut frame = |app: &mut SuniApp, events| {
                 time += 0.05;
@@ -1928,8 +1933,11 @@ mod tests {
             };
             let mut position = None;
             let mut visible = std::collections::HashSet::new();
-            for _ in 0..3 {
+            for frame_index in 0..3 {
                 let output = frame(&mut app, Vec::new());
+                if frame_index < 2 {
+                    continue;
+                }
                 position = output
                     .shapes
                     .iter()
@@ -1951,8 +1959,8 @@ mod tests {
                                         bounds.x0 >= 0.0
                                             && bounds.y0 >= 0.0
                                             && bounds.x1 <= 560.0
-                                            && bounds.y1 <= 680.0,
-                                        "{language}: {key}"
+                                            && bounds.y1 <= f64::from(height),
+                                        "{language}: {key} outside 560 x {height}: {bounds:?}"
                                     );
                                     visible.insert(key);
                                 }
