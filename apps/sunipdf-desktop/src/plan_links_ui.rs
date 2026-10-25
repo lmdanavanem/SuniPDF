@@ -1127,7 +1127,9 @@ impl SuniApp {
                         "plan_links.help"
                     },
                 ));
-                action = manifest_selector(ui, state, lang, ready).or(action);
+                if let Some(selected) = manifest_selector(ui, state, lang, ready) {
+                    action = Some(selected);
+                }
                 if let Some((_, target)) = &state.remote {
                     ui.label(format!(
                         "{} · {} {}",
