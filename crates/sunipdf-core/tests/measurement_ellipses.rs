@@ -214,7 +214,9 @@ fn lifecycle(engine: &Engine) {
             assert!(preview
                 .image
                 .rgba
-                .chunks_exact(4)
+                .as_chunks::<4>()
+                .0
+                .iter()
                 .any(|pixel| pixel[2] > pixel[0].saturating_add(40)));
             assert_unchanged(&before, &doc.snapshot().unwrap());
             let index = doc
