@@ -335,10 +335,7 @@ mod tests {
                 "transfers.json",
             ])
             .unwrap();
-            assert!(unexpected
-                .passwords
-                .apply(&mut unexpected.command)
-                .is_err());
+            assert!(unexpected.passwords.apply(&mut unexpected.command).is_err());
         }
     }
 

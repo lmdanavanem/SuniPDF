@@ -35,6 +35,7 @@ fn rectangle(scale: RectangleScale) -> DimensionedRectangle {
         anchor: (40.0, 80.0),
         width: 2.0,
         height: 3.0,
+        rotation_degrees: 0.0,
         unit: MeasurementUnit::Metres,
         precision: 4,
         scale,
@@ -503,4 +504,167 @@ fn rectangle_preserves_encryption_respects_annotation_permission_and_binds_prote
             }
         }
     }
+}
+
+#[test]
+fn rotated_dimensions_preserve_units_crop_all_page_rotations_preview_save_and_quantity() {
+    let engine = engine();
+    let temporary = tempfile::tempdir().unwrap();
+    for page_rotation in [Rotation::R0, Rotation::R90, Rotation::R180, Rotation::R270] {
+        let mut doc = engine
+            .open_bytes(SOURCE.to_vec(), None, Path::new("rotated.pdf"))
+            .unwrap();
+        doc.set_page_rotation(0, page_rotation).unwrap();
+        doc.crop_page(
+            0,
+            PageMargins {
+                left: 13.0,
+                bottom: 17.0,
+                right: 19.0,
+                top: 11.0,
+            },
+        )
+        .unwrap();
+        let reference = doc.local_calibration_reference(0, &calibration()).unwrap();
+        let before = doc.snapshot().unwrap();
+        let mut base = rectangle(RectangleScale::Local(reference));
+        base.anchor = (220.0, 260.0);
+        base.width = 0.8;
+        base.height = 1.1;
+        base.rotation_degrees = 37.0;
+        for unit in MeasurementUnit::ALL {
+            let mut request = base.clone();
+            request.unit = unit;
+            request.width /= unit.metres();
+            request.height /= unit.metres();
+            let measurement = doc.dimensioned_rectangle(0, &request).unwrap();
+            dimensions(&measurement, request.width, request.height);
+            assert_eq!(measurement.points[0], base.anchor);
+            assert!(measurement.points[1].1 < base.anchor.1);
+            let mut negative = request.clone();
+            negative.rotation_degrees = -323.0;
+            assert_eq!(
+                doc.dimensioned_rectangle(0, &negative).unwrap(),
+                measurement
+            );
+        }
+        assert_same(&before, &doc.snapshot().unwrap());
+        let preview = doc
+            .preview_rich_annotation(
+                0,
+                &RichAnnotation::DimensionedRectangle(base),
+                Some("Rotated plan reviewer"),
+            )
+            .unwrap();
+        assert!(preview.image.rgba.iter().any(|byte| *byte != 0));
+        assert_same(&before, &doc.snapshot().unwrap());
+        let index = doc
+            .commit_rich_annotation_preview(preview.prepared.unwrap())
+            .unwrap();
+        let records = doc.measurement_records(0).unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].index, index);
+        assert_eq!(records[0].validity, MeasurementValidity::Current);
+        dimensions(&records[0].measurement, 0.8, 1.1);
+        let table = doc.quantity_table().unwrap();
+        assert_eq!(table.rows().len(), 1);
+        close(table.rows()[0].quantity.as_ref().unwrap().value, 0.88);
+        let after = doc.snapshot().unwrap();
+        doc.restore(before).unwrap();
+        assert!(doc.measurement_records(0).unwrap().is_empty());
+        doc.restore(after).unwrap();
+        assert_eq!(doc.measurement_records(0).unwrap(), records);
+        let output = temporary
+            .path()
+            .join(format!("rotated-{page_rotation:?}.pdf"));
+        doc.save_as(&output).unwrap();
+        let reopened = engine.open(&output, None).unwrap();
+        assert_eq!(reopened.measurement_records(0).unwrap(), records);
+        close(
+            reopened.quantity_table().unwrap().rows()[0]
+                .quantity
+                .as_ref()
+                .unwrap()
+                .value,
+            0.88,
+        );
+    }
+}
+
+#[test]
+fn rotated_rectangle_checks_the_full_region_and_rejects_stale_scale_or_unrepresentable_crop() {
+    let engine = engine();
+    let mut doc = engine
+        .open_bytes(SOURCE.to_vec(), None, Path::new("regions.pdf"))
+        .unwrap();
+    doc.set_page_calibration(0, Some(&calibration())).unwrap();
+    let region = MeasurementViewport {
+        id: "detail".into(),
+        name: "Detail".into(),
+        bounds: PointRect {
+            left: 20.0,
+            bottom: 20.0,
+            right: 300.0,
+            top: 400.0,
+        },
+        calibration: calibration(),
+    };
+    doc.set_measurement_viewports(0, &[], std::slice::from_ref(&region))
+        .unwrap();
+    let before = doc.snapshot().unwrap();
+    let mut request = rectangle(RectangleScale::Region("detail".into()));
+    request.anchor = (100.0, 80.0);
+    request.width = 0.8;
+    request.height = 1.2;
+    request.rotation_degrees = 30.0;
+    dimensions(&doc.dimensioned_rectangle(0, &request).unwrap(), 0.8, 1.2);
+    request.rotation_degrees = 60.0;
+    for scale in [
+        RectangleScale::Region("detail".into()),
+        RectangleScale::Automatic,
+    ] {
+        request.scale = scale;
+        assert!(
+            doc.add_dimensioned_rectangle(0, &request, None).is_err(),
+            "the anchor fits but a rotated corner crosses the region"
+        );
+        assert_same(&before, &doc.snapshot().unwrap());
+    }
+    request.scale = RectangleScale::Page;
+    dimensions(&doc.dimensioned_rectangle(0, &request).unwrap(), 0.8, 1.2);
+    doc.add_text(0, 20.0, 500.0, "Changed drawing", &TextStyle::default())
+        .unwrap();
+    let changed_source = doc.snapshot().unwrap();
+    assert!(doc.add_dimensioned_rectangle(0, &request, None).is_err());
+    assert_same(&changed_source, &doc.snapshot().unwrap());
+    for angle in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        doc.restore(before.clone()).unwrap();
+        request.rotation_degrees = angle;
+        assert!(doc.add_dimensioned_rectangle(0, &request, None).is_err());
+        assert_same(&before, &doc.snapshot().unwrap());
+    }
+    let shifted = changed(SOURCE, |pdf| {
+        let page = pdf.get_pages()[&1];
+        let page = pdf.get_dictionary_mut(page).unwrap();
+        let bounds: Vec<Object> = [1_000_000, 1_000_000, 1_000_600, 1_000_800]
+            .into_iter()
+            .map(Object::Integer)
+            .collect();
+        page.set("MediaBox", bounds.clone());
+        page.set("CropBox", bounds);
+    });
+    let shifted = engine
+        .open_bytes(shifted, None, Path::new("large-origin.pdf"))
+        .unwrap();
+    request.scale = RectangleScale::Local(
+        shifted
+            .local_calibration_reference(0, &calibration())
+            .unwrap(),
+    );
+    request.rotation_degrees = 37.0;
+    request.anchor = (220.0, 260.0);
+    assert!(
+        shifted.dimensioned_rectangle(0, &request).is_err(),
+        "large user-space origin cannot retain rotated dimensions accurately"
+    );
 }

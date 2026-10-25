@@ -2,7 +2,10 @@
 
 use crate::{app::SuniApp, measure_tools::measurement_panel_button};
 use egui::{Color32, Painter, Pos2, Rect, Stroke};
-use sunipdf_core::measurement::{MeasurementUnit, PageCalibration};
+use sunipdf_core::measurement::{
+    dimensioned_rectangle_corners, dimensioned_rectangle_point_dimensions,
+    normalize_rectangle_rotation, MeasurementUnit, PageCalibration,
+};
 use sunipdf_i18n::{tr, tr_args, Language};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -18,6 +21,7 @@ pub(crate) struct RectanglePlacement {
     pub anchor: (f32, f32),
     pub width: f64,
     pub height: f64,
+    pub rotation_degrees: f64,
     pub unit: MeasurementUnit,
     pub precision: usize,
     pub scale: RectangleScaleSelection,
@@ -27,6 +31,7 @@ impl RectanglePlacement {
     pub(crate) fn valid(&self) -> bool {
         self.width.is_finite()
             && self.height.is_finite()
+            && self.rotation_degrees.is_finite()
             && self.width > 0.0
             && self.height > 0.0
             && (self.width * self.height).is_finite()
@@ -35,7 +40,7 @@ impl RectanglePlacement {
             && self.precision <= 4
     }
 
-    pub(crate) fn summary(&self, ui: &mut egui::Ui, lang: Language) {
+    pub(crate) fn summary(&mut self, ui: &mut egui::Ui, lang: Language) -> bool {
         ui.strong(tr(lang, "measure.rectangle.title"));
         ui.label(tr_args(
             lang,
@@ -79,7 +84,23 @@ impl RectanglePlacement {
         if let RectangleScaleSelection::Region(id) = &self.scale {
             ui.monospace(id);
         }
+        let label = ui.label(tr(lang, "measure.rectangle.rotation"));
+        let changed = ui
+            .add(
+                egui::DragValue::new(&mut self.rotation_degrees)
+                    .speed(1.0)
+                    .suffix("\u{b0}"),
+            )
+            .labelled_by(label.id)
+            .changed();
+        if changed {
+            if let Ok(angle) = normalize_rectangle_rotation(self.rotation_degrees) {
+                self.rotation_degrees = angle;
+            }
+        }
+        ui.small(tr(lang, "measure.rectangle.rotation_help"));
         ui.small(tr(lang, "measure.rectangle.preview_note"));
+        changed
     }
 }
 
@@ -95,6 +116,7 @@ enum ScaleChoice {
 pub(crate) struct RectangleToolsState {
     width: String,
     height: String,
+    rotation: String,
     unit: MeasurementUnit,
     precision: usize,
     scale: ScaleChoice,
@@ -113,6 +135,7 @@ impl Default for RectangleToolsState {
         Self {
             width: "2".into(),
             height: "3".into(),
+            rotation: "0".into(),
             unit: MeasurementUnit::Metres,
             precision: 2,
             scale: ScaleChoice::Automatic,
@@ -122,6 +145,11 @@ impl Default for RectangleToolsState {
 }
 
 impl RectangleToolsState {
+    fn rotation(&self) -> Option<f64> {
+        let angle = self.rotation.trim().replace(',', ".").parse::<f64>().ok()?;
+        normalize_rectangle_rotation(angle).ok()
+    }
+
     fn dimensions(&self) -> Option<(f64, f64)> {
         let parse = |value: &str| {
             sunipdf_core::measurement::parse_measurement_distance(value, self.unit).ok()
@@ -215,6 +243,16 @@ impl SuniApp {
                     )
                     .labelled_by(label.id);
             });
+            let label = ui.label(tr(lang, "measure.rectangle.rotation"));
+            ui.add_enabled(
+                can_start,
+                egui::TextEdit::singleline(&mut tools.rotation)
+                    .id(egui::Id::new("dimensioned-rectangle-rotation"))
+                    .char_limit(64)
+                    .desired_width(f32::INFINITY),
+            )
+            .labelled_by(label.id);
+            ui.small(tr(lang, "measure.rectangle.rotation_help"));
             let selected = match &tools.scale {
                 ScaleChoice::Local => tr(lang, "measure.rectangle.local").to_string(),
                 ScaleChoice::Page => tr(lang, "measure.rectangle.page").to_string(),
@@ -266,10 +304,11 @@ impl SuniApp {
             });
         });
         let dimensions = tools.dimensions();
+        let rotation = tools.rotation();
         let source_available = tools.scale != ScaleChoice::Local || local.is_some();
         if measurement_panel_button(
             ui,
-            can_start && dimensions.is_some() && source_available,
+            can_start && dimensions.is_some() && rotation.is_some() && source_available,
             tr(lang, "measure.rectangle.place"),
         )
         .clicked()
@@ -288,6 +327,7 @@ impl SuniApp {
                     anchor: (0.0, 0.0),
                     width,
                     height,
+                    rotation_degrees: rotation.unwrap(),
                     unit: tools.unit,
                     precision: tools.precision,
                     scale,
@@ -301,6 +341,12 @@ impl SuniApp {
             ui.colored_label(
                 crate::theme::palette_for(ui.ctx()).error,
                 tr(lang, "measure.rectangle.invalid_dimensions"),
+            );
+        }
+        if rotation.is_none() {
+            ui.colored_label(
+                crate::theme::palette_for(ui.ctx()).error,
+                tr(lang, "measure.rectangle.invalid_rotation"),
             );
         }
         if tools.draft.is_some() {
@@ -376,9 +422,6 @@ impl SuniApp {
         let Some(calibration) = calibration else {
             return;
         };
-        let Some(points) = indicative_outline(&draft.placement, anchor, calibration) else {
-            return;
-        };
         let Some(size) = self
             .document
             .as_ref()
@@ -386,12 +429,27 @@ impl SuniApp {
         else {
             return;
         };
-        let within_page = points.iter().all(|point| {
-            point.0 >= 0.0
-                && point.1 >= 0.0
-                && point.0 <= size.width_pt
-                && point.1 <= size.height_pt
-        });
+        let k = self.effective_zoom * crate::app::SCREEN_PER_PDF_POINT;
+        let screen = |point: (f32, f32)| {
+            Pos2::new(
+                rect.left() + point.0 * k,
+                rect.top() + (page_h_pt - point.1) * k,
+            )
+        };
+        let Some(points) = indicative_outline(
+            &draft.placement,
+            anchor,
+            calibration,
+            (size.width_pt, size.height_pt),
+        ) else {
+            let center = screen(anchor);
+            painter.circle_stroke(
+                center,
+                6.0,
+                Stroke::new(2.0, Color32::from_rgb(200, 45, 55)),
+            );
+            return;
+        };
         let within_region = match &draft.placement.scale {
             RectangleScaleSelection::Region(id) => regions.is_some_and(|regions| {
                 sunipdf_core::measurement::select_viewport(regions, &points, Some(id)).is_ok()
@@ -401,17 +459,10 @@ impl SuniApp {
             }),
             _ => true,
         };
-        let color = if within_page && within_region {
+        let color = if within_region {
             Color32::from_rgb(20, 115, 225)
         } else {
             Color32::from_rgb(200, 45, 55)
-        };
-        let k = self.effective_zoom * crate::app::SCREEN_PER_PDF_POINT;
-        let screen = |point: (f32, f32)| {
-            Pos2::new(
-                rect.left() + point.0 * k,
-                rect.top() + (page_h_pt - point.1) * k,
-            )
         };
         for index in 0..4 {
             painter.line_segment(
@@ -423,40 +474,81 @@ impl SuniApp {
     }
 }
 
-fn indicative_outline(
+pub(crate) fn indicative_outline(
     placement: &RectanglePlacement,
     anchor: (f32, f32),
     calibration: &PageCalibration,
+    page_size: (f32, f32),
 ) -> Option<[(f32, f32); 4]> {
-    let span = f64::from(calibration.points[1].0 - calibration.points[0].0)
-        .hypot(f64::from(calibration.points[1].1 - calibration.points[0].1));
-    let units_per_point =
-        calibration.known_distance / span * calibration.unit.metres() / placement.unit.metres();
-    let width = placement.width / units_per_point;
-    let height = placement.height / units_per_point;
-    if !placement.valid()
-        || !width.is_finite()
-        || !height.is_finite()
-        || width <= 0.0
-        || height <= 0.0
-        || width > f64::from(f32::MAX)
-        || height > f64::from(f32::MAX)
-    {
+    if !placement.valid() {
         return None;
     }
-    let right = anchor.0 + width as f32;
-    let top = anchor.1 + height as f32;
-    (right.is_finite() && top.is_finite() && right > anchor.0 && top > anchor.1).then_some([
-        anchor,
-        (right, anchor.1),
-        (right, top),
-        (anchor.0, top),
-    ])
+    let (width, height) = dimensioned_rectangle_point_dimensions(
+        placement.width,
+        placement.height,
+        placement.unit,
+        calibration,
+        page_size,
+    )
+    .ok()?;
+    dimensioned_rectangle_corners(anchor, width, height, placement.rotation_degrees, page_size).ok()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rotation_input_normalizes_full_turns_and_rejects_nonfinite_angles() {
+        let mut tools = RectangleToolsState::default();
+        assert_eq!(tools.rotation(), Some(0.0));
+        for (text, expected) in [("-45", 315.0), ("450", 90.0), ("22,5", 22.5)] {
+            tools.rotation = text.into();
+            assert_eq!(tools.rotation(), Some(expected));
+        }
+        for text in ["", "NaN", "inf", "-inf", "1e999", "ten"] {
+            tools.rotation = text.into();
+            assert!(tools.rotation().is_none(), "{text}");
+        }
+    }
+
+    #[test]
+    fn rotated_hover_uses_shared_calibration_and_corner_math_with_page_bounds() {
+        let calibration = PageCalibration {
+            points: [(40.25, 40.5), (140.75, 62.25)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Feet,
+        };
+        for rotation in [0.0, 33.5, 90.0, 180.0, 270.0, -405.0] {
+            let placement = RectanglePlacement {
+                anchor: (200.0, 200.0),
+                width: 0.2,
+                height: 0.3,
+                rotation_degrees: rotation,
+                unit: MeasurementUnit::Metres,
+                precision: 3,
+                scale: RectangleScaleSelection::Local(calibration.clone()),
+            };
+            let size = (600.0, 800.0);
+            let (width, height) = dimensioned_rectangle_point_dimensions(
+                placement.width,
+                placement.height,
+                placement.unit,
+                &calibration,
+                size,
+            )
+            .unwrap();
+            let expected =
+                dimensioned_rectangle_corners(placement.anchor, width, height, rotation, size)
+                    .unwrap();
+            assert_eq!(
+                indicative_outline(&placement, placement.anchor, &calibration, size),
+                Some(expected)
+            );
+            let outside = (-10.0, -10.0);
+            assert!(indicative_outline(&placement, outside, &calibration, size).is_none());
+        }
+    }
 
     #[test]
     fn explicit_local_and_page_outlines_do_not_depend_on_readable_regions() {
@@ -498,6 +590,7 @@ mod tests {
                     anchor: (0.0, 0.0),
                     width: 2.0,
                     height: 3.0,
+                    rotation_degrees: 0.0,
                     unit: MeasurementUnit::Metres,
                     precision: 2,
                     scale,
@@ -559,6 +652,7 @@ mod tests {
                     anchor: (50.0, 100.0),
                     width: 2.0,
                     height: 3.0,
+                    rotation_degrees: 0.0,
                     unit: MeasurementUnit::Metres,
                     precision: 2,
                     scale: RectangleScaleSelection::Page,

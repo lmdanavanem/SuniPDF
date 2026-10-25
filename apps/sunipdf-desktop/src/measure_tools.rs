@@ -1169,6 +1169,7 @@ mod tests {
                         anchor: (20.0, 30.0),
                         width: 2.0,
                         height: 3.0,
+                        rotation_degrees: 0.0,
                         unit: MeasurementUnit::Metres,
                         precision: 2,
                         scale: crate::measurement_shapes_ui::RectangleScaleSelection::Automatic,

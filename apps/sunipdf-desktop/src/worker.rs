@@ -3438,6 +3438,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                                     anchor: rectangle.anchor,
                                     width: rectangle.width,
                                     height: rectangle.height,
+                                    rotation_degrees: rectangle.rotation_degrees,
                                     unit: rectangle.unit,
                                     precision: rectangle.precision,
                                     scale,
@@ -6505,7 +6506,10 @@ mod tests {
             path: source.clone(),
             password: None,
         });
-        assert!(matches!(next_response(worker), Response::Opened(_)));
+        let size = match next_response(worker) {
+            Response::Opened(state) => state.info.page_sizes[0],
+            _ => panic!("opened rectangle fixture"),
+        };
         let calibration = PageCalibration {
             points: [(40.0, 40.0), (140.0, 40.0)],
             known_distance: 10.0,
@@ -6515,6 +6519,7 @@ mod tests {
             anchor: (50.0, 100.0),
             width: 2.0,
             height: 3.0,
+            rotation_degrees: 33.5,
             unit: MeasurementUnit::Metres,
             precision: 2,
             scale: RectangleScaleSelection::Local(calibration.clone()),
@@ -6553,6 +6558,39 @@ mod tests {
         });
         assert!(preview(2).is_ok());
         assert!(read().is_empty(), "preview leaves the document unchanged");
+        for (generation, anchor, angle) in [
+            (30, (0.0, 0.0), 45.0),
+            (31, (0.0, 0.0), 180.0),
+            (32, (50.0, 100.0), f64::NAN),
+        ] {
+            let mut invalid = rectangle.clone();
+            invalid.anchor = anchor;
+            invalid.rotation_degrees = angle;
+            worker.send(Request::PreviewDimensionedRectangle {
+                page: 0,
+                rectangle: invalid,
+                author: None,
+                epoch: 92,
+                generation,
+            });
+            assert!(matches!(
+                next_response(worker),
+                Response::RichAnnotationPreview { result: Err(_), .. }
+            ));
+            worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                epoch: 92,
+                generation,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::OperationFailed(_)
+            ));
+            assert!(
+                read().is_empty(),
+                "rejected rotated preview never changes the document"
+            );
+        }
+
         let mut invalid = calibration.clone();
         invalid.known_distance = 0.0;
         worker.send(Request::CaptureRectangleCalibration {
@@ -6620,11 +6658,15 @@ mod tests {
         assert_eq!(records.len(), 1);
         assert!(records[0].validity.is_current());
         assert_eq!(records[0].measurement.kind, MeasurementKind::Area);
-        assert_eq!(
-            records[0].measurement.points,
-            vec![(50.0, 100.0), (70.0, 100.0), (70.0, 130.0), (50.0, 130.0)]
-        );
-        assert!((records[0].measurement.value().unwrap() - 6.0).abs() < 1e-8);
+        let hover = crate::measurement_shapes_ui::indicative_outline(
+            &rectangle,
+            rectangle.anchor,
+            &calibration,
+            (size.width_pt, size.height_pt),
+        )
+        .unwrap();
+        assert_eq!(records[0].measurement.points, hover.to_vec());
+        assert!((records[0].measurement.value().unwrap() - 6.0).abs() < 1e-4);
         assert!(
             preview(3).is_ok(),
             "annotation-only changes retain a verified local scale"
@@ -6698,6 +6740,58 @@ mod tests {
             "page content changes invalidate the earlier reference"
         );
         assert_eq!(read().len(), 1);
+        worker.send(Request::Edit(EditOp::SetMeasurementViewports {
+            page: 0,
+            expected: Vec::new(),
+            replacement: vec![sunipdf_core::measurement::MeasurementViewport {
+                id: "detail".into(),
+                name: "Detail".into(),
+                bounds: PointRect {
+                    left: 30.0,
+                    bottom: 30.0,
+                    right: 150.0,
+                    top: 150.0,
+                },
+                calibration: calibration.clone(),
+            }],
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        for (generation, anchor, accepted) in
+            [(40, (80.0, 100.0), true), (41, (140.0, 100.0), false)]
+        {
+            let mut region_rectangle = rectangle.clone();
+            region_rectangle.anchor = anchor;
+            region_rectangle.scale = RectangleScaleSelection::Region("detail".into());
+            worker.send(Request::PreviewDimensionedRectangle {
+                page: 0,
+                rectangle: region_rectangle,
+                author: None,
+                epoch: 92,
+                generation,
+            });
+            match next_response(worker) {
+                Response::RichAnnotationPreview { result, .. } => {
+                    assert_eq!(result.is_ok(), accepted)
+                }
+                _ => panic!("bounded rotated region preview"),
+            }
+            worker.send(Request::DiscardRichAnnotationPreview {
+                epoch: 92,
+                generation,
+            });
+            worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                epoch: 92,
+                generation,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::OperationFailed(_)
+            ));
+            assert_eq!(read().len(), 1);
+        }
         assert_eq!(std::fs::read(source).unwrap(), original_bytes);
     }
 
