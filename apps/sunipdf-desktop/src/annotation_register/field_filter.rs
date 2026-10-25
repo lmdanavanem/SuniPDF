@@ -341,8 +341,10 @@ mod tests {
         let mut register = (*super::super::tests::large_register()).clone();
         register.rows.truncate(2);
         let register = Arc::new(register);
-        let mut state = RegisterState::default();
-        state.bulk_selected = BTreeSet::from([(1, 0), (1, 1)]);
+        let mut state = RegisterState {
+            bulk_selected: BTreeSet::from([(1, 0), (1, 1)]),
+            ..Default::default()
+        };
         state
             .bulk
             .bind(register.clone(), register.rows.clone(), app.view.epoch);

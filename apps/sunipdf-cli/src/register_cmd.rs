@@ -278,7 +278,6 @@ pub fn fields(engine: &Engine, args: FieldsArgs) -> Result<serde_json::Value, En
 
 #[cfg(test)]
 mod field_filter_tests {
-    use super::*;
     use crate::tests::parse_cli;
 
     #[test]
