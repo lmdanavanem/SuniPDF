@@ -709,7 +709,7 @@ impl SuniApp {
                                     let checkbox_enabled = row_actions_enabled && eligible && within_limit;
                                     let checkbox_label = tr(lang,"register.bulk.select_row").replace("{page}",&row.page.to_string()).replace("{index}",&row.index.to_string());
                                     let response = ui.add_enabled(checkbox_enabled,egui::Checkbox::without_text(&mut checked)).on_hover_text(&checkbox_label);
-                                    response.widget_info(||egui::WidgetInfo::selected(egui::Role::CheckBox,checkbox_enabled,checked,checkbox_label));
+                                    response.widget_info(||egui::WidgetInfo::selected(egui::Role::CheckBox,checkbox_enabled,checked,checkbox_label.as_str()));
                                     if response.changed() {
                                         if checked { state.bulk_selected.insert(identity); } else { state.bulk_selected.remove(&identity); }
                                         state.bulk.invalidate();
