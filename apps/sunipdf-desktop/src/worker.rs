@@ -6831,7 +6831,7 @@ mod tests {
         let library_path = directory.path().join("saved-stamps.json");
         std::fs::write(&library_path, library.to_json().unwrap()).unwrap();
         let library = AnnotationLibrary::from_json(&std::fs::read(&library_path).unwrap()).unwrap();
-        assert_eq!(library.entries(), [captured.clone()]);
+        assert_eq!(library.entries(), std::slice::from_ref(&captured));
         assert_eq!(
             details(),
             after,
