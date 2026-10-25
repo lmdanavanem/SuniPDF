@@ -19,6 +19,7 @@ mod plan_set_cmd;
 mod plan_zones_cmd;
 mod quantity_cmd;
 mod quantity_workbook_cmd;
+mod register_batch_cmd;
 mod register_cmd;
 mod revision_outlines_cmd;
 mod revision_transfer_cmd;
@@ -91,6 +92,8 @@ enum Command {
     AnnotationRegister(register_cmd::RegisterArgs),
     /// Replace business/custom fields or regroup a count marker in a new PDF copy.
     AnnotationFields(register_cmd::FieldsArgs),
+    /// Preview and atomically patch business/custom text fields on explicitly selected annotations.
+    AnnotationFieldsBatch(register_batch_cmd::RegisterBatchArgs),
     /// Read persisted page calibration as JSON. Existing measurements keep their own scale.
     PageCalibration(calibration_cmd::ReadArgs),
     /// Persist a page scale for new measurements in a new PDF copy; never recalculate annotations.
@@ -1640,6 +1643,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         Command::ClearQuantityFields(args) => quantity_cmd::clear(&engine, args),
         Command::AnnotationRegister(args) => register_cmd::register(&engine, args),
         Command::AnnotationFields(args) => register_cmd::fields(&engine, args),
+        Command::AnnotationFieldsBatch(args) => register_batch_cmd::run(&engine, args),
         Command::ImageStamp {
             file,
             image,
@@ -3064,6 +3068,7 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::PlanLinks(args) => args.output_path(),
         Command::Count(args) => Some(&args.out),
         Command::AnnotationFields(args) => Some(&args.out),
+        Command::AnnotationFieldsBatch(args) => args.output_path(),
         Command::AnnotationRegister(args) => args.out.as_deref(),
         Command::SetPageCalibration(args) => Some(&args.out),
         Command::RemovePageCalibration(args) => Some(&args.out),

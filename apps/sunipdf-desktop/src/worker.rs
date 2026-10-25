@@ -485,6 +485,11 @@ pub enum EditOp {
         fields: sunipdf_core::annotation_register::RegisterFields,
         count_group: Option<String>,
     },
+    CommitRegisterBatch {
+        epoch: u64,
+        generation: u64,
+    },
+    PreparedRegisterBatch(sunipdf_core::annotation_register_batch::RegisterBatchPlan),
     UpdateFreeText {
         page: usize,
         index: usize,
@@ -549,6 +554,8 @@ impl EditOp {
                 | Self::SetAnnotationText { .. }
                 | Self::AddCountMarker { .. }
                 | Self::SetAnnotationRegisterFields { .. }
+                | Self::CommitRegisterBatch { .. }
+                | Self::PreparedRegisterBatch(_)
                 | Self::SetQuantityFields { .. }
                 | Self::UpdateFreeText { .. }
                 | Self::DeleteAnnotationThread { .. }
@@ -816,6 +823,11 @@ pub enum Request {
     CancelAnnotationRegister {
         epoch: u64,
         generation: u64,
+    },
+    PreviewRegisterBatch {
+        epoch: u64,
+        generation: u64,
+        job: crate::annotation_register::bulk::PreviewJob,
     },
     MeasurementPage {
         page: usize,
@@ -1388,6 +1400,12 @@ struct State<'a> {
     search: Option<SearchJob>,
     register: Option<RegisterJob>,
     register_turn: bool,
+    register_batch: Option<(
+        u64,
+        u64,
+        sunipdf_core::annotation_register_batch::RegisterBatchPlan,
+        Arc<std::sync::atomic::AtomicBool>,
+    )>,
 }
 
 struct RectangleCalibrationCapture {
@@ -1496,6 +1514,7 @@ impl State<'_> {
         self.redaction_preview = None;
         self.search = None;
         self.register = None;
+        self.register_batch = None;
     }
 
     /// One bounded unit of background work; called only after requests and visible tiles.
@@ -1670,6 +1689,20 @@ impl State<'_> {
     /// (les opérations échouent avant de modifier, ou l'instantané est restauré).
     fn edit(&mut self, op: EditOp) -> Response {
         let op = match op {
+            EditOp::CommitRegisterBatch { epoch, generation } => match self.register_batch.take() {
+                Some((saved_epoch, saved_generation, plan, cancel))
+                    if saved_epoch == epoch
+                        && saved_generation == generation
+                        && !cancel.load(std::sync::atomic::Ordering::Acquire) =>
+                {
+                    EditOp::PreparedRegisterBatch(plan)
+                }
+                _ => {
+                    return Response::OperationFailed(EngineError::Other(
+                        "field preview is no longer current; preview again".into(),
+                    ))
+                }
+            },
             EditOp::CommitBoundaryFill { epoch, generation } => {
                 match self.boundary_fill.take(epoch, generation) {
                     Ok(prepared) => EditOp::PreparedBoundaryFill(Box::new(prepared)),
@@ -1954,6 +1987,7 @@ mod save_point_tests {
             search: None,
             register: None,
             register_turn: false,
+            register_batch: None,
         }
     }
 
@@ -2223,6 +2257,12 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             fields,
             count_group,
         } => doc.set_annotation_register_fields(&target, &fields, count_group.as_deref()),
+        EditOp::PreparedRegisterBatch(plan) => {
+            doc.apply_annotation_register_batch(&plan).map(|_| ())
+        }
+        EditOp::CommitRegisterBatch { .. } => Err(EngineError::Other(
+            "field preview must be committed by the document worker".into(),
+        )),
         EditOp::UpdateFreeText {
             page,
             index,
@@ -2553,6 +2593,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         search: None,
         register: None,
         register_turn: false,
+        register_batch: None,
     };
     let mut plan_links = crate::plan_links_ui::WorkerCache::default();
     let mut queue: VecDeque<Request> = VecDeque::new();
@@ -2607,6 +2648,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 | Request::Close
         ) {
             state.rectangle_calibration = None;
+            state.register_batch = None;
         }
         let response = match request {
             Request::PlanLinks { generation, job } => {
@@ -3936,6 +3978,39 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 });
                 continue;
             }
+            Request::PreviewRegisterBatch {
+                epoch,
+                generation,
+                job,
+            } => {
+                state.register_batch = None;
+                let result = if job.cancel.load(std::sync::atomic::Ordering::Acquire) {
+                    Err(EngineError::Other("field preview cancelled".into()))
+                } else {
+                    state
+                        .document
+                        .as_ref()
+                        .ok_or_else(|| EngineError::Other("no document".into()))
+                        .and_then(|doc| {
+                            doc.preview_annotation_register_batch(
+                                &job.register,
+                                &job.rows,
+                                &job.patch,
+                            )
+                        })
+                }
+                .and_then(|plan| {
+                    if job.cancel.load(std::sync::atomic::Ordering::Acquire) {
+                        return Err(EngineError::Other("field preview cancelled".into()));
+                    }
+                    let report = plan.report().clone();
+                    state.register_batch = Some((epoch, generation, plan, job.cancel.clone()));
+                    Ok(report)
+                });
+                let _ = job.reply.send(result);
+                ctx.request_repaint();
+                continue;
+            }
             Request::CancelAnnotationRegister { epoch, generation } => {
                 if state
                     .register
@@ -4105,6 +4180,7 @@ mod tests {
         reprotection_requires_the_current_owner_without_removing_existing_restrictions(&worker);
         inspection_uses_saved_bytes_and_refuses_unsaved_changes(&worker);
         count_register_edits_have_one_undo_and_stale_edits_add_no_history(&worker);
+        register_batches_are_reviewed_atomic_and_have_one_history_step(&worker);
         page_calibration_edits_have_history_and_survive_reopening(&worker);
         saved_measurement_edits_replace_in_place_and_keep_history(&worker);
         deducted_measurements_round_trip_through_guarded_worker_history(&worker);
@@ -7866,6 +7942,225 @@ mod tests {
             Response::DocumentChanged(_)
         ));
         assert_eq!(read().rows[0].annotation_id, id);
+    }
+
+    fn register_batches_are_reviewed_atomic_and_have_one_history_step(worker: &Worker) {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use sunipdf_core::annotation_register_batch::{FieldPatch, RegisterFieldsPatch};
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        let original = std::fs::read(&source).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        for (page, group) in [(0, "Lights"), (1, "Sockets")] {
+            worker.send(Request::Edit(EditOp::AddCountMarker {
+                page,
+                point: (80.0, 90.0),
+                size: 18.0,
+                group: group.into(),
+                author: None,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+        }
+        let read = || {
+            worker.send(Request::AnnotationRegister {
+                epoch: 860,
+                generation: 1,
+            });
+            match next_response(worker) {
+                Response::AnnotationRegister {
+                    result: Ok(report), ..
+                } => Arc::new(report),
+                _ => panic!("register"),
+            }
+        };
+        let baseline = read();
+        assert_eq!(baseline.rows.len(), 2);
+        let preview = |register: Arc<sunipdf_core::annotation_register::AnnotationRegister>,
+                       patch: RegisterFieldsPatch,
+                       generation,
+                       cancel: Arc<AtomicBool>| {
+            let (reply, receiver) = mpsc::channel();
+            worker.send(Request::PreviewRegisterBatch {
+                epoch: 860,
+                generation,
+                job: crate::annotation_register::bulk::PreviewJob {
+                    rows: register.rows.clone(),
+                    register,
+                    patch,
+                    cancel,
+                    reply,
+                },
+            });
+            receiver
+                .recv_timeout(std::time::Duration::from_secs(10))
+                .unwrap()
+        };
+        let patch = RegisterFieldsPatch {
+            business_status: FieldPatch::Set("Installed".into()),
+            discipline: FieldPatch::Set("Electrical".into()),
+            custom: std::collections::BTreeMap::from([(
+                "Room".into(),
+                FieldPatch::Set("A101".into()),
+            )]),
+        };
+        let cancelled = Arc::new(AtomicBool::new(true));
+        assert!(preview(baseline.clone(), patch.clone(), 1, cancelled).is_err());
+        assert_eq!(read().rows, baseline.rows);
+        let after_preview_cancel = Arc::new(AtomicBool::new(false));
+        let report = preview(
+            baseline.clone(),
+            patch.clone(),
+            2,
+            after_preview_cancel.clone(),
+        )
+        .unwrap();
+        assert_eq!((report.selected_count, report.changed_count), (2, 2));
+        after_preview_cancel.store(true, Ordering::Release);
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 2,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(read().rows, baseline.rows);
+        preview(
+            baseline.clone(),
+            patch.clone(),
+            3,
+            Arc::new(AtomicBool::new(false)),
+        )
+        .unwrap();
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 3,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                pages_unchanged: true,
+                measurement_scales_unchanged: true,
+                ..
+            })
+        ));
+        let changed = read();
+        for (before, after) in baseline.rows.iter().zip(&changed.rows) {
+            assert_eq!(after.fields.business_status.as_deref(), Some("Installed"));
+            assert_eq!(after.fields.discipline.as_deref(), Some("Electrical"));
+            assert_eq!(after.fields.custom["Room"], "A101");
+            assert_eq!(before.annotation_id, after.annotation_id);
+            assert_eq!(before.count_group, after.count_group);
+            assert_eq!(before.review_status, after.review_status);
+        }
+        // A consumed preview, no-op and stale source cannot add history entries.
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 3,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        let noop = preview(
+            changed.clone(),
+            patch.clone(),
+            4,
+            Arc::new(AtomicBool::new(false)),
+        )
+        .unwrap();
+        assert_eq!(noop.changed_count, 0);
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 4,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert!(preview(
+            baseline.clone(),
+            patch.clone(),
+            5,
+            Arc::new(AtomicBool::new(false))
+        )
+        .is_err());
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(
+            read().rows,
+            baseline.rows,
+            "one Undo restores the complete batch despite refused follow-ups"
+        );
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read().rows, changed.rows);
+        let invalid = RegisterFieldsPatch {
+            custom: std::collections::BTreeMap::from([("=bad".into(), FieldPatch::Clear)]),
+            ..Default::default()
+        };
+        assert!(preview(read(), invalid, 6, Arc::new(AtomicBool::new(false))).is_err());
+        assert_eq!(read().rows, changed.rows);
+        let clear = RegisterFieldsPatch {
+            business_status: FieldPatch::Clear,
+            ..Default::default()
+        };
+        preview(read(), clear, 7, Arc::new(AtomicBool::new(false))).unwrap();
+        // A dirty in-memory document remains editable, but any intervening mutation invalidates the review.
+        worker.send(Request::Edit(EditOp::AddCountMarker {
+            page: 0,
+            point: (120.0, 90.0),
+            size: 18.0,
+            group: "Other".into(),
+            author: None,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 7,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read().rows, changed.rows);
+        preview(read(), patch, 8, Arc::new(AtomicBool::new(false))).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 8,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert!(read().rows.is_empty());
+        assert_eq!(std::fs::read(source).unwrap(), original);
     }
 
     fn visual_search_reviewed_counts_have_one_undo_and_reject_stale_tokens(worker: &Worker) {

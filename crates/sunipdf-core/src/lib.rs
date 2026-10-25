@@ -12,6 +12,7 @@ pub mod annot_rich;
 pub mod annot_write;
 pub mod annotation_library;
 pub mod annotation_register;
+pub mod annotation_register_batch;
 mod appearance;
 pub mod bookmarks;
 pub mod boundary_fill;

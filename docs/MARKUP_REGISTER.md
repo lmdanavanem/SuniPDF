@@ -28,6 +28,8 @@ Only supported manual SuniPDF markers are counted. Generic imported stamps and p
 
 The table displays 50 rows at a time; exports include **every matching row**. Refresh reloads the current snapshot. An edit checks snapshot revision and annotation identity to prevent shifted-index or stale-target mistakes. Failed edits preserve the draft and add no successful Undo step.
 
+For explicit selection, before/after review and atomic changes across up to 256 annotations, see [Edit annotation fields in a batch](REGISTER_BATCH.md). Batch custom-field changes merge by key; the existing single-row editor replaces its submitted field map.
+
 ## Export
 
 JSON schema `sunipdf-annotation-register`, version 1, records the current in-memory snapshot SHA256, page count, filters/sort, rows and group totals. Every total references actual markers by physical page, zero-based annotation index and `/NM`. Optional unknowns remain `null`; rectangles use displayed-page points with bottom-left origin.
