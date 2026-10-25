@@ -21,7 +21,7 @@ CLI = "/usr/bin/sunipdf-cli"
 
 
 def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def command(arguments, timeout=120, **kwargs):

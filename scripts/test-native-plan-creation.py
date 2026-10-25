@@ -4,6 +4,7 @@ import base64
 import ast
 import copy
 import csv
+import hashlib
 import importlib.util
 import io
 import json
@@ -33,6 +34,26 @@ def creation_helper(name, namespace):
 class NativeCommandPaletteTests(unittest.TestCase):
     PREPARATIONS = ("full-rgb-nearest-2x-psm11", "full-rgb-lanczos-3x-psm11",
                     "full-rgb-lanczos-4x-psm11", "full-rgb-lanczos-4x-psm6")
+
+    def test_protected_json_paths_are_hashed_and_changed_or_missing_inputs_are_detected(self):
+        script = Path(__file__).with_name("test-deb.py")
+        helper = next(node for node in ast.parse(script.read_text(encoding="utf-8")).body
+                      if isinstance(node, ast.FunctionDef) and node.name == "sha")
+        namespace = {"Path": Path, "hashlib": hashlib}
+        exec(compile(ast.Module(body=[helper], type_ignores=[]), str(script), "exec"), namespace)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "source.pdf"
+            original = b"original synthetic input"
+            path.write_bytes(original)
+            expected = hashlib.sha256(original).hexdigest()
+            protected = json.loads(json.dumps({str(path): expected}))
+            self.assertEqual(namespace["sha"](path), expected)
+            self.assertTrue(all(namespace["sha"](name) == value for name, value in protected.items()))
+            path.write_bytes(b"changed synthetic input")
+            self.assertFalse(all(namespace["sha"](name) == value for name, value in protected.items()))
+            path.unlink()
+            with self.assertRaises(FileNotFoundError):
+                namespace["sha"](str(path))
 
     def observation(self, rows, preparation=None, scale=2):
         return {"tsv": tsv(rows), "text": " ".join(words for _, words in rows),
