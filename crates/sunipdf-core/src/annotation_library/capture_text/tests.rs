@@ -432,7 +432,7 @@ fn native_refusals(engine: &Engine) {
     assert!(document
         .capture_library_entry(
             0,
-            &[selection.clone()],
+            std::slice::from_ref(&selection),
             "stale".into(),
             "Stale".into(),
             provenance()
