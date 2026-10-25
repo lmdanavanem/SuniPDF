@@ -587,7 +587,7 @@ def plan_link_creation(evidence, version):
         command(["import", "-window", target or window, path], timeout=15)
         return path
 
-    def read_capture(path, color=None):
+    def read_capture(path, color=None, *, psm=11):
         with Image.open(path) as image:
             size = image.size
             if color:
@@ -599,7 +599,7 @@ def plan_link_creation(evidence, version):
             prepared = prepared.resize((size[0] * scale, size[1] * scale), resample=Image.NEAREST)
             ocr_path = path.with_name(path.stem + ("-" + color if color else "-controls") + ".png")
             prepared.save(ocr_path)
-        tsv = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", "11", "tsv"], timeout=25)
+        tsv = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", str(psm), "tsv"], timeout=25)
         tsv_path = ocr_path.with_suffix(".tsv")
         tsv_path.write_text(tsv, encoding="utf-8")
         words = [row["text"] for row in csv.DictReader(io.StringIO(tsv), delimiter="\t", quoting=csv.QUOTE_NONE)
@@ -660,12 +660,12 @@ def plan_link_creation(evidence, version):
         time.sleep(0.2)
         return point
 
-    def scene(name, *, pattern=None, kind=None, caption=None, allow_scroll=False):
+    def scene(name, *, pattern=None, kind=None, caption=None, allow_scroll=False, psm=11):
         deadline = time.monotonic() + 35
         attempts = 0
         while time.monotonic() < deadline:
             color = "red" if kind == "destination" else "blue" if kind else None
-            observed = read_capture(capture(), color)
+            observed = read_capture(capture(), color, psm=psm)
             title = command(["xdotool", "getwindowname", window])
             matched = (fixtures.fixture_visible(kind, observed["ink"], observed["text"]) if kind
                        else re.search(pattern, observed["text"], re.I) is not None)
@@ -692,7 +692,11 @@ def plan_link_creation(evidence, version):
         key("ctrl+k")
         time.sleep(0.2)
         command(["xdotool", "type", "--clearmodifiers", "--delay", "35", label])
-        scene(name, pattern=re.escape(label))
+        # Sparse-page segmentation ignores the bright palette over its dimmed
+        # home/document backdrop. Read this compact command result as one text
+        # block, while retaining the same full capture and exact 2x OCR pixels.
+        # Both Ubuntu failure captures reproduce this omission with psm 11.
+        scene(name, pattern=re.escape(label), psm=6)
         key("Return")
 
     def preview_sources():

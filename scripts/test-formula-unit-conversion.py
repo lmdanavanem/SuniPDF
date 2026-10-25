@@ -213,6 +213,16 @@ def self_test():
     assert len(batches) == 15 and sum(len(values) for _, values, _ in batches) == 106
     assert sum(len(values) for name, values, _ in batches if name.startswith("pairs")) == 75
     assert len(invalid_configs()) == 23
+    first = {"source_sha256": "a" * 64, "rows": [{"quantity": "1.25"}]}
+    second = {"source_sha256": "b" * 64, "rows": [{"quantity": "1.25"}]}
+    assert same_quantities(first, second)
+    assert not same_quantities(first, dict(second, rows=[{"quantity": "1.26"}]))
+    assert not same_quantities(first, dict(second, source_sha256="invalid"))
+    left = {"quantities": first, "provenance": {"snapshot_sha256": "a" * 64, "saved_file_sha256": "c" * 64}}
+    right = {"quantities": second, "provenance": {"snapshot_sha256": "b" * 64, "saved_file_sha256": "c" * 64}}
+    assert same_issue(left, right)
+    assert not same_issue(left, dict(right, provenance=dict(right["provenance"], snapshot_sha256="a" * 64)))
+    assert not same_issue(left, dict(right, provenance=dict(right["provenance"], saved_file_sha256="d" * 64)))
     print(json.dumps({"status": "passed", "scope": "offline decimal oracle, inventory and original fixture checks only",
                       "product_executed": False, "reference_conversions": len(references), "formula_vectors": 106,
                       "same_dimension_pairs": 75, "formula_batches": len(batches), "invalid_configs": 23,
@@ -354,6 +364,33 @@ def expected_group(item):
             "errors": dict(errors), "complete": not errors, "totals": totals}
 
 
+def valid_snapshot(value):
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
+
+
+def same_quantities(left, right):
+    # PDFium may assign a fresh snapshot identifier to separate saves of the same source.
+    # Compare every report value while retaining each invocation's own receipt binding.
+    return (valid_snapshot(left.get("source_sha256")) and valid_snapshot(right.get("source_sha256"))
+            and {key: value for key, value in left.items() if key != "source_sha256"}
+            == {key: value for key, value in right.items() if key != "source_sha256"})
+
+
+def same_provenance(left, right):
+    return (valid_snapshot(left.get("snapshot_sha256")) and valid_snapshot(right.get("snapshot_sha256"))
+            and {key: value for key, value in left.items() if key != "snapshot_sha256"}
+            == {key: value for key, value in right.items() if key != "snapshot_sha256"})
+
+
+def same_issue(left, right):
+    return (same_quantities(left["quantities"], right["quantities"])
+            and same_provenance(left["provenance"], right["provenance"])
+            and all(model["quantities"]["source_sha256"] == model["provenance"]["snapshot_sha256"]
+                    for model in (left, right))
+            and {key: value for key, value in left.items() if key not in ("quantities", "provenance")}
+            == {key: value for key, value in right.items() if key not in ("quantities", "provenance")})
+
+
 def validate_table(run, name, value, batch, explicit, baseline):
     definitions = [item["column"] for item in batch]
     run.check(name + ": exact formula definitions and policy", value["schema"] == "sunipdf-quantity-table"
@@ -361,7 +398,7 @@ def validate_table(run, name, value, batch, explicit, baseline):
               and value["unit_conversion"] == ("price_basis_and_explicit_formulas" if explicit else "price_basis_only")
               and value["formula_arithmetic"] == "decimal_6_places_half_away_from_zero_each_operation"
               and value["formula_subtotal_policy"] == "sum_rounded_row_results_by_formula_group_unit_and_precision")
-    run.check(name + ": source snapshot and original rows retained", value["source_sha256"] == baseline["source_sha256"]
+    run.check(name + ": source snapshot and original rows retained", valid_snapshot(value["source_sha256"])
               and value["rows"] == baseline["rows"])
     expected_keys = {(1, index) for index in range(3)}
     actual_rows = {(row["page"], row["index"]): row["values"] for row in value["formula_rows"]}
@@ -379,13 +416,13 @@ def validate_table(run, name, value, batch, explicit, baseline):
         cell["error"] is None for item in batch for cell in item["expected_rows"]))
 
 
-def validate_csv(run, name, path, batch, explicit, baseline):
+def validate_csv(run, name, path, batch, explicit, snapshot):
     with path.open(encoding="utf-8", newline="") as stream:
         rows = list(csv.DictReader(stream))
     actual_rows = [row for row in rows if row["record_type"] == "row"]
     run.check(name + ": three source-bound CSV rows", len(actual_rows) == 3
               and {(row["page"], row["index"]) for row in actual_rows} == {("1", str(index)) for index in range(3)}
-              and all(row["source_sha256"] == baseline["source_sha256"] for row in actual_rows))
+              and valid_snapshot(snapshot) and all(row["source_sha256"] == snapshot for row in actual_rows))
     by_index = {int(row["index"]): row for row in actual_rows}
     for item in batch:
         key = item["column"]["name"]
@@ -497,13 +534,15 @@ def run_corpus(run):
             run.record(output, "quantity_json")
             value = json.loads(output.read_bytes())
             run.check(name + ": JSON output receipt", receipt["original_unchanged"] is True and receipt["format"] == "json"
-                      and receipt["source_sha256"] == baseline["source_sha256"])
+                      and receipt["source_sha256"] == value["source_sha256"] and valid_snapshot(receipt["source_sha256"])
+                      and Path(receipt["out"]).resolve(strict=True) == output.resolve(strict=True))
             validate_table(run, name, value, batch, explicit, baseline)
             receipt = run.execute(name + "-csv", ["quantity-table", source, "--formulas", configuration, "--format", "csv", "--out", csv_path])
             run.record(csv_path, "quantity_csv")
             run.check(name + ": CSV output receipt", receipt["original_unchanged"] is True and receipt["format"] == "csv"
-                      and receipt["source_sha256"] == baseline["source_sha256"])
-            validate_csv(run, name, csv_path, batch, explicit, baseline)
+                      and valid_snapshot(receipt["source_sha256"])
+                      and Path(receipt["out"]).resolve(strict=True) == csv_path.resolve(strict=True))
+            validate_csv(run, name, csv_path, batch, explicit, receipt["source_sha256"])
             run.preserved(name + ": sources and preceding evidence unchanged")
             retained[name] = (configuration, output, csv_path, value)
         run.case(name, "formula_json_csv", exercise, formulas=len(batch), explicit_conversion=explicit)
@@ -516,17 +555,23 @@ def run_corpus(run):
         options = ["--formulas", configuration, "--expected-source-sha256", sha(source), "--no-legend"]
         issue = run.execute("issue-inspect", ["issue-report", "inspect", source, *options], code=2)
         run.check("issue report: current saved source and exact shared quantities", issue["provenance"]["saved_file_sha256"] == sha(source)
-                  and issue["provenance"]["source_unchanged"] is True and issue["quantities"] == selected_value)
+                  and issue["provenance"]["source_unchanged"] is True and same_quantities(issue["quantities"], selected_value)
+                  and issue["provenance"]["snapshot_sha256"] == issue["quantities"]["source_sha256"])
         issue_json = run.directory / "issue-report.json"
         json_receipt = run.execute("issue-json", ["issue-report", "export", source, *options, "--format", "json", "--out", issue_json], code=2)
         run.record(issue_json, "issue_json")
-        run.check("issue report: JSON model and byte receipt", json.loads(issue_json.read_bytes()) == issue
+        saved_issue = json.loads(issue_json.read_bytes())
+        run.check("issue report: JSON model and byte receipt", same_issue(saved_issue, issue)
+                  and json_receipt["provenance"] == saved_issue["provenance"]
+                  and Path(json_receipt["out"]).resolve(strict=True) == issue_json.resolve(strict=True)
                   and json_receipt["output_sha256"] == sha(issue_json) and json_receipt["bytes"] == issue_json.stat().st_size)
         pdf_receipt = run.execute("issue-pdf", ["issue-report", "export", source, *options, "--out", report_pdf], code=2)
         run.record(report_pdf, "issue_pdf")
         run.check("issue report: actual PDF and source-bound receipt", report_pdf.read_bytes().startswith(b"%PDF-")
                   and pdf_receipt["output_sha256"] == sha(report_pdf) and pdf_receipt["bytes"] == report_pdf.stat().st_size
-                  and pdf_receipt["matched_annotations"] == 3 and pdf_receipt["page_count"] == issue["page_count"])
+                  and pdf_receipt["matched_annotations"] == 3 and pdf_receipt["page_count"] == issue["page_count"]
+                  and same_provenance(pdf_receipt["provenance"], issue["provenance"])
+                  and Path(pdf_receipt["out"]).resolve(strict=True) == report_pdf.resolve(strict=True))
         text = run.execute("issue-text", ["text", report_pdf], parse=False).decode("utf-8")
         normalized = re.sub(r"\s+", " ", text)
         for item in selected:
@@ -538,14 +583,18 @@ def run_corpus(run):
         arguments = [source, "--settings", settings, "--expected-source-sha256", sha(source)]
         model = run.execute("workbook-inspect", ["quantity-workbook", "inspect", *arguments], code=2)
         run.check("workbook: current saved source and exact shared quantities", model["provenance"]["saved_file_sha256"] == sha(source)
-                  and model["quantities"] == selected_value)
+                  and same_quantities(model["quantities"], selected_value)
+                  and model["provenance"]["snapshot_sha256"] == model["quantities"]["source_sha256"])
         for format, output, role in (("xlsx", xlsx, "quantity_xlsx"), ("manifest", workbook_manifest, "workbook_manifest")):
             receipt = run.execute("workbook-" + format, ["quantity-workbook", "export", *arguments, "--format", format, "--out", output], code=2)
             run.record(output, role)
             run.check("workbook: " + format + " output receipt", receipt["source_unchanged"] is True and receipt["output_encrypted"] is False
-                      and receipt["output_sha256"] == sha(output) and receipt["bytes"] == output.stat().st_size and receipt["matched_rows"] == 3)
+                      and receipt["output_sha256"] == sha(output) and receipt["bytes"] == output.stat().st_size and receipt["matched_rows"] == 3
+                      and same_provenance(receipt["provenance"], model["provenance"])
+                      and Path(receipt["out"]).resolve(strict=True) == output.resolve(strict=True))
         value = json.loads(workbook_manifest.read_bytes())
         run.check("workbook manifest: exact retained settings and calculated values", value["options"] == defaults
+                  and value["provenance"] == receipt["provenance"]
                   and [row["row"] for row in value["rows"]] == baseline["rows"]
                   and [row["formulas"] for row in value["rows"]] == [row["values"] for row in selected_value["formula_rows"]])
         validate_workbook(run, xlsx, selected)

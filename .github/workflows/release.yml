@@ -454,6 +454,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.76.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.77.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.78.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.79.0
       - name: MSI upgrade regression evidence (x64)
         if: always() && matrix.arch == 'x64'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

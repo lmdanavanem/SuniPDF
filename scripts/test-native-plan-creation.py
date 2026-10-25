@@ -1,17 +1,99 @@
 #!/usr/bin/env python3
 """Offline tests for native creation evidence helpers; no desktop qualification."""
 import base64
+import ast
 import copy
+import csv
 import importlib.util
+import io
 import json
 from pathlib import Path
+import re
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import MagicMock
 
 
 spec = importlib.util.spec_from_file_location("native_creation", Path(__file__).with_name("native-plan-creation-fixture.py"))
 native = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(native)
+
+
+def creation_helper(name, namespace):
+    """Execute one actual helper without starting the native app or a process."""
+    path = Path(__file__).with_name("test-deb.py")
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    creation = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "plan_link_creation")
+    helper = next(node for node in creation.body if isinstance(node, ast.FunctionDef) and node.name == name)
+    exec(compile(ast.Module(body=[helper], type_ignores=[]), str(path), "exec"), namespace)
+    return namespace[name]
+
+
+class NativeCommandPaletteTests(unittest.TestCase):
+    def test_palette_changes_only_segmentation_and_keeps_full_capture_derivation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / "observed.png"
+            path.write_bytes(b"offline capture stand-in; no image recognition is claimed")
+            source = MagicMock()
+            source.__enter__.return_value = source
+            source.size = (320, 180)
+            source.convert.return_value = source
+            prepared = MagicMock()
+            source.resize.return_value = prepared
+            prepared.save.side_effect = lambda path: path.write_bytes(b"offline full-frame resize stand-in")
+            image_api = SimpleNamespace(open=MagicMock(return_value=source), NEAREST="nearest")
+            calls = []
+            transcript = tsv([(90, "Plan links")])
+
+            def command(arguments, timeout):
+                calls.append((arguments, timeout))
+                return transcript
+
+            read_capture = creation_helper("read_capture", {
+                "Image": image_api, "evidence": root, "command": command,
+                "csv": csv, "io": io, "sha": native.sha,
+            })
+            observed = read_capture(path, psm=6)
+            self.assertEqual(calls[-1][0], ["tesseract", root / "observed-controls.png", "stdout", "-l", "eng", "--psm", "6", "tsv"])
+            self.assertEqual(calls[-1][1], 25)
+            self.assertEqual(observed["text"], "Plan links")
+            self.assertEqual(observed["pngSha256"], native.sha(path))
+            image_api.open.assert_called_once_with(path)
+            source.convert.assert_called_once_with("RGB")
+            source.resize.assert_called_once_with((640, 360), resample=image_api.NEAREST)
+            source.crop.assert_not_called()
+            prepared.save.assert_called_once_with(root / observed["ocrInput"])
+            self.assertEqual(observed["ocrInputSha256"], native.sha(root / observed["ocrInput"]))
+            self.assertEqual((root / observed["ocr"]).read_text(encoding="utf-8"), transcript)
+            read_capture(path)
+            self.assertEqual(calls[-1][0][-2:], ["11", "tsv"], "other native controls retain sparse-text OCR")
+
+    def test_command_keeps_native_keyboard_and_requires_observed_result_before_enter(self):
+        calls = []
+        helper = creation_helper("open_command", {
+            "key": lambda *keys: calls.append(("key", keys)),
+            "time": SimpleNamespace(sleep=lambda seconds: None),
+            "command": lambda arguments: calls.append(("command", arguments)),
+            "scene": lambda name, **options: calls.append(("scene", name, options)), "re": re,
+        })
+        helper("Plan links", "creation-command-open")
+        self.assertEqual(calls, [
+            ("key", ("ctrl+k",)),
+            ("command", ["xdotool", "type", "--clearmodifiers", "--delay", "35", "Plan links"]),
+            ("scene", "creation-command-open", {"pattern": re.escape("Plan links"), "psm": 6}),
+            ("key", ("Return",)),
+        ])
+        calls.clear()
+
+        def refused_scene(*args, **kwargs):
+            raise AssertionError("The real palette result was not observed")
+
+        helper.__globals__["scene"] = refused_scene
+        with self.assertRaisesRegex(AssertionError, "not observed"):
+            helper("Plan links", "creation-command-reopen")
+        self.assertNotIn(("key", ("Return",)), calls)
 
 
 def qpdf_document(link=None):
