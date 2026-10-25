@@ -14,6 +14,7 @@ use std::{
 };
 use sunipdf_core::{
     revision_overlay::{
+        recipe,
         stack::{self as core, OverlayStackLayer, OverlayStackOptions, OverlayStackPreview},
         OverlayAlignment, OverlayTransform,
     },
@@ -25,7 +26,17 @@ use zeroize::Zeroizing;
 pub enum Job {
     Preview {
         options: OverlayStackOptions,
+        expected_hashes: Vec<Option<String>>,
         passwords: Vec<Zeroizing<String>>,
+        cancel: Arc<AtomicBool>,
+    },
+    LoadSetup {
+        path: PathBuf,
+        cancel: Arc<AtomicBool>,
+    },
+    SaveSetup {
+        preview: Arc<OverlayStackPreview>,
+        path: PathBuf,
         cancel: Arc<AtomicBool>,
     },
     Export {
@@ -40,7 +51,8 @@ impl Job {
     pub(crate) fn touches_source(&self, path: &Path) -> bool {
         let options = match self {
             Self::Preview { options, .. } => options,
-            Self::Export { preview, .. } => preview.options(),
+            Self::Export { preview, .. } | Self::SaveSetup { preview, .. } => preview.options(),
+            Self::LoadSetup { .. } => return false,
         };
         options
             .layers
@@ -51,13 +63,25 @@ impl Job {
 
 pub enum Outcome {
     Preview(Arc<OverlayStackPreview>),
+    SetupLoaded {
+        path: PathBuf,
+        options: OverlayStackOptions,
+        expected_hashes: Vec<Option<String>>,
+    },
     Exported(PathBuf),
+}
+
+impl Outcome {
+    pub(crate) fn loaded_source_matches(&self, path: &Path) -> bool {
+        matches!(self, Self::SetupLoaded { options, .. } if options.layers.iter().any(|layer| same_path(&layer.path, path)))
+    }
 }
 
 pub fn run_job(engine: &sunipdf_core::Engine, job: Job) -> Result<Outcome, EngineError> {
     match job {
         Job::Preview {
             options,
+            expected_hashes,
             passwords,
             cancel,
         } => {
@@ -65,8 +89,41 @@ pub fn run_job(engine: &sunipdf_core::Engine, job: Job) -> Result<Outcome, Engin
                 .iter()
                 .map(|password| (!password.is_empty()).then_some(password.as_str()))
                 .collect();
-            core::prepare_overlay_stack(engine, options, &passwords, &cancel)
-                .map(|preview| Outcome::Preview(Arc::new(preview)))
+            let preview = core::prepare_overlay_stack(engine, options, &passwords, &cancel)?;
+            recipe::verify_expected_hashes(&preview, &expected_hashes, &cancel)?;
+            Ok(Outcome::Preview(Arc::new(preview)))
+        }
+        Job::LoadSetup { path, cancel } => {
+            if cancel.load(Ordering::Relaxed) {
+                return Err(EngineError::Cancelled);
+            }
+            let loaded = recipe::read_regular(&path)?;
+            recipe::require_desktop(&loaded.manifest)?;
+            let parent = loaded.path.parent().ok_or_else(|| {
+                EngineError::Other("The overlay setup directory is missing".into())
+            })?;
+            let options = recipe::options(&loaded.manifest, parent)?;
+            if cancel.load(Ordering::Relaxed) {
+                return Err(EngineError::Cancelled);
+            }
+            Ok(Outcome::SetupLoaded {
+                path: loaded.path,
+                options,
+                expected_hashes: loaded
+                    .manifest
+                    .layers
+                    .into_iter()
+                    .map(|layer| layer.expected_sha256)
+                    .collect(),
+            })
+        }
+        Job::SaveSetup {
+            preview,
+            path,
+            cancel,
+        } => {
+            recipe::save_new(&preview, &path, &cancel)?;
+            Ok(Outcome::Exported(path))
         }
         Job::Export {
             preview,
@@ -102,6 +159,7 @@ struct Images {
 
 struct LayerState {
     path: Option<PathBuf>,
+    expected_sha256: Option<String>,
     page: usize,
     password: Zeroizing<String>,
     two_points: bool,
@@ -116,6 +174,7 @@ impl LayerState {
         let layer = OverlayStackLayer::new(PathBuf::new(), 1, index);
         Self {
             path: None,
+            expected_sha256: None,
             page: 1,
             password: Default::default(),
             two_points: false,
@@ -129,6 +188,31 @@ impl LayerState {
     fn reset_alignment(&mut self) {
         self.anchors = Default::default();
         self.transform = OverlayTransform::default();
+    }
+    fn from_options(
+        layer: OverlayStackLayer,
+        expected_sha256: Option<String>,
+    ) -> Result<Self, EngineError> {
+        let (two_points, anchors, transform) = match layer.alignment {
+            OverlayAlignment::Manual { transform } => (false, Default::default(), transform),
+            OverlayAlignment::TwoPoints { base, revision } => (
+                true,
+                [base.to_vec(), revision.to_vec()],
+                OverlayTransform::from_anchors(base, revision)?,
+            ),
+        };
+        Ok(Self {
+            path: Some(layer.path),
+            expected_sha256,
+            page: layer.page,
+            password: Default::default(),
+            two_points,
+            anchors,
+            transform,
+            color: layer.color,
+            opacity: layer.opacity,
+            visible: layer.visible,
+        })
     }
     fn options(
         &self,
@@ -210,6 +294,50 @@ impl Default for OverlayState {
     }
 }
 impl OverlayState {
+    fn expected_hashes(&self) -> Vec<Option<String>> {
+        self.layers
+            .iter()
+            .map(|layer| layer.expected_sha256.clone())
+            .collect()
+    }
+
+    fn replace_source(&mut self, index: usize, path: PathBuf) {
+        if self.busy {
+            return;
+        }
+        let Some(layer) = self.layers.get_mut(index) else {
+            return;
+        };
+        layer.path = Some(path);
+        layer.password = Default::default();
+        layer.expected_sha256 = None;
+        self.source_changed(index);
+    }
+
+    fn load_setup(
+        &mut self,
+        options: OverlayStackOptions,
+        hashes: Vec<Option<String>>,
+    ) -> Result<(), EngineError> {
+        options.validate()?;
+        if hashes.len() != options.layers.len() || hashes.iter().any(Option::is_none) {
+            return Err(EngineError::Other(
+                "Saved overlay setups require every source fingerprint".into(),
+            ));
+        }
+        let layers = options
+            .layers
+            .into_iter()
+            .zip(hashes)
+            .map(|(layer, hash)| LayerState::from_options(layer, hash))
+            .collect::<Result<Vec<_>, _>>()?;
+        self.layers = layers;
+        self.long_side = options.long_side;
+        self.selected = 1;
+        self.clear_images();
+        Ok(())
+    }
+
     fn changed(&mut self) {
         self.dirty = true;
         self.error = None;
@@ -447,22 +575,61 @@ impl SuniApp {
             self.overlay.clear_images();
         }
     }
+    fn overlay_paths_have_dirty_source<'a>(
+        &self,
+        paths: impl IntoIterator<Item = &'a Path>,
+    ) -> bool {
+        paths.into_iter().any(|path| {
+            (self.dirty
+                && self
+                    .document
+                    .as_ref()
+                    .is_some_and(|doc| same_path(&doc.info.path, path)))
+                || self.tabs.tabs.iter().any(|tab| {
+                    (tab.dirty || tab.ui.as_ref().is_some_and(|ui| ui.dirty))
+                        && same_path(&tab.path, path)
+                })
+        })
+    }
     fn overlay_has_dirty_source(&self) -> bool {
-        self.overlay
-            .layers
-            .iter()
-            .filter_map(|layer| layer.path.as_ref())
-            .any(|path| {
-                (self.dirty
-                    && self
-                        .document
-                        .as_ref()
-                        .is_some_and(|doc| same_path(&doc.info.path, path)))
-                    || self.tabs.tabs.iter().any(|tab| {
-                        (tab.dirty || tab.ui.as_ref().is_some_and(|ui| ui.dirty))
-                            && same_path(&tab.path, path)
-                    })
-            })
+        self.overlay_paths_have_dirty_source(
+            self.overlay
+                .layers
+                .iter()
+                .filter_map(|layer| layer.path.as_deref()),
+        )
+    }
+    fn load_overlay_setup_from(&mut self, path: PathBuf) {
+        if self.overlay.busy || !self.overlay.open {
+            return;
+        }
+        let generation = self.overlay.begin();
+        self.worker.send(Request::RevisionOverlay {
+            generation,
+            job: Job::LoadSetup {
+                path,
+                cancel: self.overlay.cancel.clone(),
+            },
+        });
+    }
+    fn save_overlay_setup_to(&mut self, path: PathBuf) {
+        if !self.overlay.export_ready() {
+            return;
+        }
+        if self.overlay_has_dirty_source() {
+            self.overlay.error = Some(tr(self.lang(), "overlay.stack.dirty_source").into());
+            return;
+        }
+        let preview = self.overlay.preview.as_ref().unwrap().clone();
+        let generation = self.overlay.begin();
+        self.worker.send(Request::RevisionOverlay {
+            generation,
+            job: Job::SaveSetup {
+                preview,
+                path,
+                cancel: self.overlay.cancel.clone(),
+            },
+        });
     }
     fn start_overlay_preview(&mut self) {
         if self.overlay.busy || !self.overlay.open || !matches!(self.engine, EngineState::Ready) {
@@ -485,6 +652,7 @@ impl SuniApp {
             generation,
             job: Job::Preview {
                 options,
+                expected_hashes: self.overlay.expected_hashes(),
                 passwords: self
                     .overlay
                     .layers
@@ -543,6 +711,28 @@ impl SuniApp {
             return;
         }
         match result {
+            Ok(Outcome::SetupLoaded {
+                path,
+                options,
+                expected_hashes,
+            }) => {
+                if self.overlay_paths_have_dirty_source(
+                    options.layers.iter().map(|layer| layer.path.as_path()),
+                ) {
+                    self.overlay.error = Some(tr(self.lang(), "overlay.stack.dirty_source").into());
+                    return;
+                }
+                match self.overlay.load_setup(options, expected_hashes) {
+                    Ok(()) => {
+                        self.overlay.message = Some(tr_args(
+                            self.lang(),
+                            "overlay.setup.loaded",
+                            &[("name", &crate::app::file_name(&path))],
+                        ))
+                    }
+                    Err(error) => self.overlay.error = Some(error.to_string()),
+                }
+            }
             Ok(Outcome::Preview(preview)) => {
                 let report = preview.report();
                 let fingerprints: Vec<_> = report["layers"]
@@ -625,6 +815,7 @@ impl SuniApp {
         let mut clicked_anchor = None;
         let mut changed = false;
         let mut source_changed = None;
+        let (mut open_setup, mut save_setup) = (false, false);
         dialog::show(
             ctx,
             Spec::new(
@@ -637,6 +828,18 @@ impl SuniApp {
             |ui| {
                 ui.label(tr(lang, "overlay.saved_files"));
                 ui.small(tr(lang, "overlay.stack.limits"));
+                ui.horizontal_wrapped(|ui| {
+                    open_setup = ui
+                        .add_enabled(!busy, egui::Button::new(tr(lang, "overlay.setup.open")))
+                        .clicked();
+                    save_setup = ui
+                        .add_enabled(
+                            can_export,
+                            egui::Button::new(tr(lang, "overlay.setup.save")),
+                        )
+                        .clicked();
+                });
+                ui.small(tr(lang, "overlay.setup.help"));
                 ui.add_enabled_ui(!busy, |ui| {
                     let layer_count = self.overlay.layers.len();
                     let selected_layer = self.overlay.selected;
@@ -686,6 +889,10 @@ impl SuniApp {
                                         egui::Label::new(crate::app::file_name(path)).truncate(),
                                     )
                                     .on_hover_text(path.display().to_string());
+                                }
+                                if let Some(hash) = &layer.expected_sha256 {
+                                    ui.small(tr(lang, "overlay.setup.bound"))
+                                        .on_hover_text(hash);
                                 }
                                 ui.horizontal_wrapped(|ui| {
                                     let label = ui.label(tr(lang, "overlay.page"));
@@ -966,9 +1173,7 @@ impl SuniApp {
                 .add_filter(tr(lang, "dialog.open.filter_pdf"), &["pdf"])
                 .pick_file()
             {
-                self.overlay.layers[index].path = Some(path);
-                self.overlay.layers[index].password = Default::default();
-                self.overlay.source_changed(index);
+                self.overlay.replace_source(index, path);
             }
         }
         if let Some((index, point)) = clicked_anchor {
@@ -976,6 +1181,25 @@ impl SuniApp {
         }
         if preview {
             self.start_overlay_preview();
+        }
+        if open_setup {
+            if let Some(path) = rfd::FileDialog::new()
+                .set_title(tr(lang, "overlay.setup.open"))
+                .add_filter("SuniPDF overlay setup", &["json"])
+                .pick_file()
+            {
+                self.load_overlay_setup_from(path);
+            }
+        }
+        if save_setup {
+            if let Some(path) = rfd::FileDialog::new()
+                .set_title(tr(lang, "overlay.setup.save"))
+                .add_filter("SuniPDF overlay setup", &["json"])
+                .set_file_name("revision-overlay-setup.json")
+                .save_file()
+            {
+                self.save_overlay_setup_to(path);
+            }
         }
         if let Some(json) = export {
             let extension = if json { "json" } else { "png" };
@@ -1118,14 +1342,23 @@ pub(crate) mod tests {
                 }
             }
             self.frame(app, vec![]);
-            let output = self.frame(app, vec![]);
-            let pos = output
-                .shapes
-                .iter()
-                .rev()
-                .find_map(|shape| find(&shape.shape, text))
-                .unwrap_or_else(|| panic!("visible overlay control: {text}"));
-            self.click_at(app, pos);
+            for direction in [1.0, -1.0] {
+                for _ in 0..32 {
+                    let output = self.frame(app, vec![]);
+                    let position = output.shapes.iter().rev().find_map(|shape| {
+                        find(&shape.shape, text).filter(|point| {
+                            shape.clip_rect.contains(*point)
+                                && Rect::from_min_size(Pos2::ZERO, self.size).contains(*point)
+                        })
+                    });
+                    if let Some(position) = position {
+                        self.click_at(app, position);
+                        return;
+                    }
+                    self.scroll(app, direction);
+                }
+            }
+            panic!("visible overlay control: {text}");
         }
         fn source_point(&mut self, app: &mut SuniApp, index: usize, fraction: [f32; 2]) {
             fn find(shape: &egui::Shape, texture: egui::TextureId) -> Option<Rect> {
@@ -1159,15 +1392,41 @@ pub(crate) mod tests {
                 .texture
                 .id();
             self.frame(app, vec![]);
-            let output = self.frame(app, vec![]);
-            let rect = output
-                .shapes
-                .iter()
-                .find_map(|shape| find(&shape.shape, texture))
-                .expect("visible source image");
-            self.click_at(
+            for direction in [1.0, -1.0] {
+                for _ in 0..32 {
+                    let output = self.frame(app, vec![]);
+                    let position = output.shapes.iter().find_map(|shape| {
+                        find(&shape.shape, texture)
+                            .map(|rect| {
+                                rect.min + rect.size() * egui::vec2(fraction[0], fraction[1])
+                            })
+                            .filter(|point| {
+                                shape.clip_rect.contains(*point)
+                                    && Rect::from_min_size(Pos2::ZERO, self.size).contains(*point)
+                            })
+                    });
+                    if let Some(position) = position {
+                        self.click_at(app, position);
+                        return;
+                    }
+                    self.scroll(app, direction);
+                }
+            }
+            panic!("visible source image point");
+        }
+        fn scroll(&mut self, app: &mut SuniApp, direction: f32) {
+            self.frame(
                 app,
-                rect.min + rect.size() * egui::vec2(fraction[0], fraction[1]),
+                vec![
+                    Event::PointerMoved(egui::pos2(self.size.x / 2.0, self.size.y / 2.0)),
+                    Event::MouseWheel {
+                        unit: egui::MouseWheelUnit::Point,
+                        delta: egui::vec2(0.0, direction * 120.0),
+                        phase: egui::TouchPhase::Move,
+                        source: egui::MouseWheelSource::Wheel,
+                        modifiers: Modifiers::NONE,
+                    },
+                ],
             );
         }
         fn escape(&mut self, app: &mut SuniApp) {
@@ -1323,6 +1582,8 @@ pub(crate) mod tests {
                 tr(lang, "overlay.stack.base").to_owned(),
                 tr_args(lang, "overlay.stack.layer", &[("number", "4")]),
                 tr(lang, "overlay.stack.add").to_owned(),
+                tr(lang, "overlay.setup.open").to_owned(),
+                tr(lang, "overlay.setup.save").to_owned(),
             ];
             let mut seen = std::collections::HashSet::new();
             let mut accessible = std::collections::HashSet::new();
@@ -1414,6 +1675,8 @@ pub(crate) mod tests {
                 "overlay.stack.visible",
                 "overlay.stack.color",
                 "overlay.stack.remove",
+                "overlay.setup.open",
+                "overlay.setup.save",
             ] {
                 assert!(
                     accessible.contains(tr(lang, key)),
@@ -1533,6 +1796,7 @@ pub(crate) mod tests {
         );
         let job = Job::Preview {
             options: app.overlay.options(true).unwrap(),
+            expected_hashes: vec![None; 4],
             passwords: (0..4).map(|_| Default::default()).collect(),
             cancel: Arc::new(AtomicBool::new(false)),
         };
@@ -1561,6 +1825,246 @@ pub(crate) mod tests {
             .as_ref()
             .unwrap()
             .contains("committed-overlay.png"));
+    }
+
+    fn setup_fixture() -> (OverlayStackOptions, Vec<Option<String>>) {
+        let mut options = OverlayStackOptions {
+            layers: (0..4)
+                .map(|index| {
+                    OverlayStackLayer::new(
+                        std::path::absolute(format!("layer-{index}.pdf")).unwrap(),
+                        1,
+                        index,
+                    )
+                })
+                .collect(),
+            long_side: 512,
+        };
+        options.layers[1].alignment = OverlayAlignment::TwoPoints {
+            base: [[10.0, 10.0], [30.0, 10.0]],
+            revision: [[15.0, 15.0], [35.0, 15.0]],
+        };
+        options.layers[3].visible = false;
+        (
+            options,
+            (0..4)
+                .map(|index| Some(format!("{index:x}").repeat(64)))
+                .collect(),
+        )
+    }
+
+    #[test]
+    fn imported_setup_bindings_survive_edits_until_explicit_source_replacement() {
+        let (options, hashes) = setup_fixture();
+        let mut state = OverlayState::default();
+        state.load_setup(options.clone(), hashes.clone()).unwrap();
+        assert_eq!(state.options(false).unwrap(), options);
+        assert_eq!(state.expected_hashes(), hashes);
+        assert!(state.layers.iter().all(|layer| layer.password.is_empty()));
+        assert!(state.dirty && state.preview.is_none() && state.images.is_none());
+        state.layers[1].color = [10, 20, 30];
+        state.layers[1].opacity = 0.3;
+        state.changed();
+        state.layers[1].page = 2;
+        state.source_changed(1);
+        state.layers[1].transform.translation = [15.0, 25.0];
+        state.changed();
+        assert_eq!(
+            state.expected_hashes(),
+            hashes,
+            "style, page and alignment edits retain every binding"
+        );
+        state.replace_source(1, "explicit-replacement.pdf".into());
+        assert_eq!(
+            state.expected_hashes(),
+            vec![
+                hashes[0].clone(),
+                None,
+                hashes[2].clone(),
+                hashes[3].clone()
+            ]
+        );
+        state.layers[2].transform.translation = [12.0, 20.0];
+        state.replace_source(0, "explicit-base.pdf".into());
+        assert!(state
+            .layers
+            .iter()
+            .all(|layer| layer.transform == OverlayTransform::default()
+                && layer.anchors.iter().all(Vec::is_empty)));
+        assert_eq!(
+            state.expected_hashes(),
+            vec![None, None, hashes[2].clone(), hashes[3].clone()]
+        );
+        state.remove_layer(2);
+        assert_eq!(state.expected_hashes(), vec![None, None, hashes[3].clone()]);
+        let previous = state.options(true).unwrap();
+        assert!(state.load_setup(options, vec![None; 4]).is_err());
+        assert_eq!(
+            state.options(true).unwrap(),
+            previous,
+            "an invalid load preserves the current draft"
+        );
+    }
+
+    #[test]
+    fn setup_load_discards_stale_cancelled_and_dirty_hidden_source_results() {
+        for inactive in [false, true] {
+            let (mut app, requests, _) = test_app();
+            app.open_revision_overlay();
+            let original = PathBuf::from("current-base.pdf");
+            app.overlay.layers[0].path = Some(original.clone());
+            let (mut options, hashes) = setup_fixture();
+            let dirty_path = app.document.as_ref().unwrap().info.path.clone();
+            options.layers[3].path = dirty_path.clone();
+            if inactive {
+                app.tabs.tabs.push(crate::tabs::Tab {
+                    path: dirty_path,
+                    dirty: true,
+                    recovery_id: 73,
+                    ui: None,
+                    doc: None,
+                });
+            } else {
+                app.dirty = true;
+            }
+            let result = || Outcome::SetupLoaded {
+                path: "saved-setup.json".into(),
+                options: options.clone(),
+                expected_hashes: hashes.clone(),
+            };
+            app.load_overlay_setup_from("saved-setup.json".into());
+            let generation = match requests.recv().unwrap() {
+                Request::RevisionOverlay {
+                    generation,
+                    job: Job::LoadSetup { .. },
+                } => generation,
+                _ => panic!("setup loading only reads the configuration"),
+            };
+            app.on_revision_overlay(&egui::Context::default(), generation + 1, Ok(result()));
+            assert!(app.overlay.busy);
+            app.on_revision_overlay(&egui::Context::default(), generation, Ok(result()));
+            assert!(app.overlay.error.is_some());
+            assert_eq!(app.overlay.layers[0].path.as_ref(), Some(&original));
+            assert_eq!(app.dirty, !inactive);
+            app.dirty = false;
+            app.tabs.tabs.clear();
+            app.load_overlay_setup_from("saved-setup.json".into());
+            let generation = match requests.recv().unwrap() {
+                Request::RevisionOverlay {
+                    generation,
+                    job: Job::LoadSetup { .. },
+                } => generation,
+                _ => panic!("setup reload"),
+            };
+            app.overlay.cancel_job();
+            app.on_revision_overlay(&egui::Context::default(), generation, Ok(result()));
+            assert_eq!(app.overlay.layers[0].path.as_ref(), Some(&original));
+            assert!(requests.try_recv().is_err());
+        }
+    }
+
+    pub(crate) fn verify_setup_controls(
+        preview: &Arc<OverlayStackPreview>,
+        options: &OverlayStackOptions,
+        expected_hashes: &[Option<String>],
+    ) {
+        for lang in Language::ALL {
+            let (mut app, requests, _) = test_app();
+            app.settings.set_language(lang);
+            app.open_revision_overlay();
+            app.overlay.layers[0].password = Zeroizing::new("discarded previous password".into());
+            let mut controls = Controls::new();
+            app.load_overlay_setup_from("saved-setup.json".into());
+            let generation = match requests.recv().unwrap() {
+                Request::RevisionOverlay {
+                    generation,
+                    job: Job::LoadSetup { .. },
+                } => generation,
+                _ => panic!("load setup request"),
+            };
+            app.on_revision_overlay(
+                &controls.ctx,
+                generation,
+                Ok(Outcome::SetupLoaded {
+                    path: "saved-setup.json".into(),
+                    options: options.clone(),
+                    expected_hashes: expected_hashes.to_vec(),
+                }),
+            );
+            assert_eq!(app.overlay.options(false).unwrap(), *options);
+            assert_eq!(app.overlay.expected_hashes(), expected_hashes);
+            assert!(app
+                .overlay
+                .layers
+                .iter()
+                .all(|layer| layer.password.is_empty()));
+            assert!(!app.overlay.export_ready() && app.overlay.preview.is_none());
+            let saved = PathBuf::from("new-setup-copy.json");
+            app.save_overlay_setup_to(saved.clone());
+            app.export_overlay_to("must-preview-first.png".into(), false);
+            assert!(
+                requests.try_recv().is_err(),
+                "a loaded setup is never an accepted preview"
+            );
+            controls.click(&mut app, "overlay.preview");
+            let generation = match requests.recv().unwrap() {
+                Request::RevisionOverlay {
+                    generation,
+                    job:
+                        Job::Preview {
+                            options: actual,
+                            expected_hashes: hashes,
+                            passwords,
+                            ..
+                        },
+                } => {
+                    assert_eq!(actual, *options);
+                    assert_eq!(hashes, expected_hashes);
+                    assert!(passwords.iter().all(|password| password.is_empty()));
+                    generation
+                }
+                _ => panic!("bound setup preview"),
+            };
+            app.on_revision_overlay(
+                &controls.ctx,
+                generation.wrapping_sub(1),
+                Ok(Outcome::Preview(preview.clone())),
+            );
+            assert!(!app.overlay.export_ready());
+            app.on_revision_overlay(
+                &controls.ctx,
+                generation,
+                Ok(Outcome::Preview(preview.clone())),
+            );
+            assert!(app.overlay.export_ready());
+            app.save_overlay_setup_to(saved.clone());
+            let generation = match requests.recv().unwrap() {
+                Request::RevisionOverlay {
+                    generation,
+                    job:
+                        Job::SaveSetup {
+                            preview: actual,
+                            path,
+                            ..
+                        },
+                } => {
+                    assert!(Arc::ptr_eq(&actual, preview));
+                    assert_eq!(path, saved);
+                    generation
+                }
+                _ => panic!("only a prepared preview can save a setup copy"),
+            };
+            app.overlay.cancel_job();
+            app.overlay.open = false;
+            app.on_revision_overlay(
+                &controls.ctx,
+                generation,
+                Ok(Outcome::Exported(saved.clone())),
+            );
+            assert_eq!(app.overlay.last_export.as_ref(), Some(&saved));
+            assert!(!app.dirty && !app.can_undo);
+            assert!(requests.try_recv().is_err());
+        }
     }
 
     fn set_preview_sources(state: &mut OverlayState, preview: &OverlayStackPreview) {

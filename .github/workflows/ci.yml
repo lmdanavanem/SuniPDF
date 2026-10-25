@@ -358,6 +358,19 @@ jobs:
           name: saved-stamp-evidence
           path: target/saved-stamp-evidence/
           if-no-files-found: ignore
+      - name: Saved overlay setup round trips and source bindings
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          python .\scripts\test-overlay-setups.py --cli "$env:SUNIPDF_QA_CLI" --directory target\overlay-setup-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Saved overlay setup regression failed.' }
+      - name: Saved overlay setup evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: overlay-setup-evidence
+          path: target/overlay-setup-evidence/
+          if-no-files-found: ignore
       - name: Page decorations regression
         if: steps.changes.outputs.docs_only != 'true'
         run: |

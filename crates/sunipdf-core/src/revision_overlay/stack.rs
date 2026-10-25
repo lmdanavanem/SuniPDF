@@ -171,6 +171,19 @@ impl OverlayStackPreview {
         &self.options
     }
 
+    /// Identity of a source retained by this preview, including hidden layers.
+    pub fn source_sha256(&self, index: usize) -> Option<&str> {
+        self.sources
+            .get(index)
+            .map(|pinned| pinned.source.source_sha256.as_str())
+    }
+
+    pub(crate) fn canonical_source_path(&self, index: usize) -> Option<&Path> {
+        self.sources
+            .get(index)
+            .map(|pinned| pinned.source.path.as_path())
+    }
+
     pub fn transform(&self, index: usize) -> Option<OverlayTransform> {
         self.transforms.get(index).copied()
     }
