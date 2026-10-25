@@ -2,6 +2,12 @@
 
 ## Next development
 
+The 0.79 increment adds a reviewed multi-file annotation-transfer queue, CLI batch
+preview/apply and clearer plan-link creation controls. Each new copy is committed
+separately after shared preflight; completed copies and per-file results remain
+available after cancellation or later refusal. Qualification is in progress; the
+current published release remains 0.78.0.
+
 Delivered in [0.78.0](RELEASE_0.78.0.md): Glass uses a continuous neutral workspace in light and dark modes, with compact task families and Open/Recent priority on the welcome screen. After following a verified plan link, Return to source restores the original open document and reading positions. Unsaved changes remain in memory; the latest successful return is session-only.
 
 Remaining plan-link priorities are native desktop link creation/saving,

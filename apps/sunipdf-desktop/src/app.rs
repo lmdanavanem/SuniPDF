@@ -614,6 +614,12 @@ impl SuniApp {
                 Response::RevisionTransferDone { generation, result } => {
                     self.on_revision_transfer(ctx, generation, result);
                 }
+                Response::RevisionTransferProgress {
+                    generation,
+                    progress,
+                } => {
+                    self.on_revision_transfer_progress(generation, progress);
+                }
                 Response::PlanSetDone { generation, result } => {
                     self.on_plan_set_result(ctx, generation, result);
                 }
@@ -2071,6 +2077,11 @@ impl SuniApp {
             return;
         }
         if command == Command::Quit && self.guard_plan_set_quit() {
+            return;
+        }
+        if matches!(command, Command::Quit | Command::CloseDocument)
+            && self.guard_revision_transfer_quit()
+        {
             return;
         }
         if command == Command::CloseDocument && (self.install_on_quit || self.restart_on_quit) {
@@ -3739,6 +3750,7 @@ impl SuniApp {
             && (self.has_unsaved_changes()
                 || self.any_background_dirty().is_some()
                 || self.plan_sets.needs_close_guard()
+                || self.revision_transfer.needs_close_guard()
                 || self.close_must_wait())
             && !self.allow_close
         {

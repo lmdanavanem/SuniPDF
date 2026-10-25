@@ -35,7 +35,7 @@ fn invalid(message: &str) -> EngineError {
     EngineError::Other(message.into())
 }
 
-fn read_secret(variable: Option<&str>, stdin: bool) -> Result<String, EngineError> {
+pub(crate) fn read_secret(variable: Option<&str>, stdin: bool) -> Result<String, EngineError> {
     let value = if let Some(name) = variable {
         let value = Zeroizing::new(std::env::var(name).map_err(|_| {
             invalid("PDF password environment variable is missing or is not Unicode")
@@ -74,7 +74,7 @@ fn read_secret(variable: Option<&str>, stdin: bool) -> Result<String, EngineErro
 fn document_password(command: &mut Command) -> Option<&mut Option<String>> {
     match command {
         Command::RevisionOverlay(args) => Some(&mut args.password),
-        Command::RevisionTransfer(args) => Some(&mut args.sources_mut().password),
+        Command::RevisionTransfer(args) => args.sources_mut().map(|sources| &mut sources.password),
         Command::RevisionOutlines(args) => Some(&mut args.sources_mut().password),
         Command::PlanZones(args) => Some(args.password_mut()),
         Command::VisualSearch(args) => Some(args.password_mut()),
@@ -219,7 +219,7 @@ impl PasswordSources {
             }
         }
         let revision_sources = match command {
-            Command::RevisionTransfer(args) => Some(args.sources_mut()),
+            Command::RevisionTransfer(args) => args.sources_mut(),
             Command::RevisionOutlines(args) => Some(args.sources_mut()),
             _ => None,
         };

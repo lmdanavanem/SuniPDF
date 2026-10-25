@@ -1016,6 +1016,10 @@ pub enum Response {
         generation: u64,
         result: Result<crate::revision_transfer_ui::Outcome, EngineError>,
     },
+    RevisionTransferProgress {
+        generation: u64,
+        progress: sunipdf_core::revision_transfer::batch::TransferBatchProgress,
+    },
     PlanSetProgress {
         generation: u64,
         done: usize,
@@ -2666,7 +2670,13 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         "A selected revision has unsaved changes; save it and inspect again".into(),
                     ))
                 } else {
-                    revision_transfers.run(&engine, generation, job)
+                    revision_transfers.run_with_progress(&engine, generation, job, |progress| {
+                        let _ = tx.send(Response::RevisionTransferProgress {
+                            generation,
+                            progress,
+                        });
+                        ctx.request_repaint();
+                    })
                 },
             },
             Request::PlanSet { generation, job } => {
@@ -5147,15 +5157,22 @@ mod tests {
         let old_bytes = std::fs::read(&old).unwrap();
         let run = |generation, job| {
             worker.send(Request::RevisionTransfer { generation, job });
-            match next_response(worker) {
-                Response::RevisionTransferDone {
-                    generation: actual,
-                    result,
-                } => {
-                    assert_eq!(actual, generation);
-                    result
+            loop {
+                match next_response(worker) {
+                    Response::RevisionTransferDone {
+                        generation: actual,
+                        result,
+                    } => {
+                        assert_eq!(actual, generation);
+                        break result;
+                    }
+                    Response::RevisionTransferProgress {
+                        generation: actual, ..
+                    } => {
+                        assert_eq!(actual, generation);
+                    }
+                    _ => panic!("revision transfer response"),
                 }
-                _ => panic!("revision transfer response"),
             }
         };
         let cancel = || Arc::new(AtomicBool::new(false));
@@ -5287,6 +5304,142 @@ mod tests {
             matches!(run(1110, Job::Save { token: 1109, output: output.clone(), cancel: cancel() }).unwrap(), Outcome::Saved(report) if report.output_path == Some(output.clone()) && report.transferred.len() == 1)
         );
         assert!(output.is_file());
+        assert!(prepare(1111).is_ok());
+        let first_copy = dir.path().join("batch-first.pdf");
+        assert!(
+            run(
+                1112,
+                Job::QueueCurrent {
+                    token: 1111,
+                    id: "first".into(),
+                    output: first_copy.clone(),
+                    reviewed: vec![1, 2],
+                    cancel: cancel(),
+                }
+            )
+            .is_err(),
+            "claimed review is insufficient without rendering every target"
+        );
+        assert!(
+            run(
+                1113,
+                Job::QueueCurrent {
+                    token: 1109,
+                    id: "first".into(),
+                    output: first_copy.clone(),
+                    reviewed: vec![1, 2],
+                    cancel: cancel(),
+                }
+            )
+            .is_err(),
+            "an older candidate token cannot enqueue the new preview"
+        );
+        assert!(run(
+            1114,
+            Job::Render {
+                token: 1111,
+                page: 2,
+                password: Default::default(),
+                cancel: cancel()
+            }
+        )
+        .is_ok());
+        assert!(matches!(run(1115, Job::QueueCurrent {
+            token: 1111, id: "first".into(), output: first_copy.clone(),
+            reviewed: vec![1, 2], cancel: cancel(),
+        }).unwrap(), Outcome::BatchChanged(entries) if entries.len() == 1));
+        assert!(!first_copy.exists(), "queueing cannot save a file");
+        assert!(run(
+            1116,
+            Job::Inspect {
+                sources: Sources::Files([old.clone(), new.clone()]),
+                pairs: vec![(1, 1), (2, 2)],
+                passwords: Default::default(),
+                cancel: cancel(),
+            }
+        )
+        .is_ok());
+        assert!(matches!(
+            run(1117, Job::Discard).unwrap(),
+            Outcome::Discarded
+        ));
+        let second_old = dir.path().join("second-old.pdf");
+        let second_new = dir.path().join("second-new.pdf");
+        let second_copy = dir.path().join("batch-second.pdf");
+        std::fs::write(&second_old, &old_bytes).unwrap();
+        std::fs::write(&second_new, &fixture).unwrap();
+        assert!(run(
+            1118,
+            Job::Prepare {
+                paths: [second_old.clone(), second_new.clone()],
+                request: request.clone(),
+                page: 1,
+                passwords: Default::default(),
+                cancel: cancel(),
+            }
+        )
+        .is_ok());
+        assert!(run(
+            1119,
+            Job::Render {
+                token: 1118,
+                page: 2,
+                password: Default::default(),
+                cancel: cancel()
+            }
+        )
+        .is_ok());
+        assert!(
+            run(
+                1120,
+                Job::QueueCurrent {
+                    token: 1118,
+                    id: "first".into(),
+                    output: second_copy.clone(),
+                    reviewed: vec![1, 2],
+                    cancel: cancel(),
+                }
+            )
+            .is_err(),
+            "duplicate queue IDs must preserve the second current candidate for retry"
+        );
+        assert!(matches!(run(1121, Job::QueueCurrent {
+            token: 1118, id: "second".into(), output: second_copy.clone(),
+            reviewed: vec![1, 2], cancel: cancel(),
+        }).unwrap(), Outcome::BatchChanged(entries) if entries.len() == 2));
+        worker.send(Request::Edit(EditOp::AddAnnotShape {
+            page: 0,
+            shape: AnnotShape::Square,
+            rect: PointRect {
+                left: 120.0,
+                bottom: 50.0,
+                right: 150.0,
+                top: 80.0,
+            },
+            style: AnnotStyle::default(),
+            author: None,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(
+            run(1122, Job::SaveBatch { cancel: cancel() }).is_err(),
+            "worker must refuse a dirty source belonging to an earlier queued pair"
+        );
+        assert!(!first_copy.exists() && !second_copy.exists());
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(
+            matches!(run(1123, Job::SaveBatch { cancel: cancel() }).unwrap(),
+            Outcome::BatchSaved(outcome) if outcome.complete() && outcome.completed.len() == 2 && outcome.remaining.is_empty())
+        );
+        assert!(first_copy.is_file() && second_copy.is_file());
+        assert_eq!(std::fs::read(&second_old).unwrap(), old_bytes);
+        assert_eq!(std::fs::read(&second_new).unwrap(), fixture);
         assert_eq!(std::fs::read(&old).unwrap(), old_bytes);
         assert_eq!(std::fs::read(&new).unwrap(), fixture);
         assert!(

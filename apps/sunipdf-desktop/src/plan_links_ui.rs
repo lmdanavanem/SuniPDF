@@ -27,9 +27,13 @@ use sunipdf_i18n::{tr, Language};
 use zeroize::Zeroizing;
 
 mod batch;
+mod receipts;
 mod return_to_source;
+mod selection;
 use batch::{BatchCached, BatchState};
+pub use receipts::{ReceiptExport, SavedCopy};
 pub(crate) use return_to_source::ReturnOrigin;
+use selection::{indexed_pages, parse_pages, SelectionError};
 
 pub type Credentials = Vec<(String, Zeroizing<String>)>;
 
@@ -130,6 +134,15 @@ pub enum Job {
         credentials: Credentials,
         cancel: Arc<AtomicBool>,
     },
+    VerifySavedCopy {
+        copy: SavedCopy,
+        cancel: Arc<AtomicBool>,
+    },
+    ExportReceipt {
+        receipt: ReceiptExport,
+        output: PathBuf,
+        cancel: Arc<AtomicBool>,
+    },
     Clear,
 }
 pub enum Outcome {
@@ -167,6 +180,8 @@ pub enum Outcome {
         preview: Preview,
     },
     BatchSaved(core::PlanLinkBatchOutcome),
+    SavedCopyVerified(PathBuf),
+    ReceiptExported(PathBuf),
     Cleared,
 }
 struct Cached {
@@ -369,6 +384,21 @@ impl WorkerCache {
         job: Job,
         on_progress: impl FnMut(&core::PlanLinkBatchProgress),
     ) -> Result<Outcome, EngineError> {
+        // Reading or exporting a completed receipt must not invalidate another prepared copy.
+        let job = match job {
+            Job::VerifySavedCopy { copy, cancel } => {
+                return receipts::verify_saved_copy(&copy, &cancel).map(Outcome::SavedCopyVerified);
+            }
+            Job::ExportReceipt {
+                receipt,
+                output,
+                cancel,
+            } => {
+                receipts::export_receipt(&receipt, &output, &cancel)?;
+                return Ok(Outcome::ReceiptExported(output));
+            }
+            job => job,
+        };
         if matches!(
             job,
             Job::BatchInspect { .. }
@@ -588,6 +618,9 @@ impl WorkerCache {
             | Job::BatchPrepare { .. }
             | Job::BatchPreview { .. }
             | Job::BatchSave { .. } => Err(error("invalid batch dispatch")),
+            Job::VerifySavedCopy { .. } | Job::ExportReceipt { .. } => {
+                Err(error("invalid receipt dispatch"))
+            }
         }
     }
 }
@@ -610,6 +643,7 @@ pub struct PlanLinksState {
     source_id: String,
     pages: String,
     targets: HashSet<String>,
+    target_filter: String,
     passwords: Credentials,
     saved_only: bool,
     inspection: Option<PlanLinkInspection>,
@@ -620,6 +654,8 @@ pub struct PlanLinksState {
     target_index: usize,
     error: Option<String>,
     message: Option<String>,
+    receipt: Option<PlanLinkReceipt>,
+    receipt_operation: bool,
     generation: u64,
     pending: Option<(u64, bool)>,
     cancel: Arc<AtomicBool>,
@@ -668,33 +704,29 @@ impl PlanLinksState {
             selections,
         })
     }
-    fn scan(&self) -> Result<PlanLinkScanRequest, ()> {
-        let mut seen = HashSet::new();
-        let pages = self
-            .pages
-            .split(',')
-            .map(|s| {
-                s.trim()
-                    .parse::<usize>()
-                    .ok()
-                    .filter(|p| *p > 0 && seen.insert(*p))
-                    .ok_or(())
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        if pages.len() > core::MAX_SCAN_PAGES || self.targets.is_empty() {
-            return Err(());
+    fn scan(&self) -> Result<PlanLinkScanRequest, SelectionError> {
+        let context = self.context.as_ref().ok_or(SelectionError::Source)?;
+        let file = context
+            .set
+            .files
+            .iter()
+            .find(|file| file.id == self.source_id)
+            .ok_or(SelectionError::Source)?;
+        let pages = parse_pages(&self.pages, file.page_count)?;
+        let target_sheet_ids: Vec<_> = context
+            .set
+            .sheets
+            .iter()
+            .filter(|sheet| sheet.file_id != self.source_id && self.targets.contains(&sheet.id))
+            .map(|sheet| sheet.id.clone())
+            .collect();
+        if target_sheet_ids.is_empty() || target_sheet_ids.len() != self.targets.len() {
+            return Err(SelectionError::Targets);
         }
-        let context = self.context.as_ref().ok_or(())?;
         Ok(PlanLinkScanRequest {
             source_file_id: self.source_id.clone(),
             pages,
-            target_sheet_ids: context
-                .set
-                .sheets
-                .iter()
-                .filter(|s| self.targets.contains(&s.id))
-                .map(|s| s.id.clone())
-                .collect(),
+            target_sheet_ids,
         })
     }
 }
@@ -710,6 +742,8 @@ enum Action {
     Save,
     Navigate,
     RemotePreview,
+    OpenSavedCopy(SavedCopy),
+    ExportReceipt(ReceiptExport),
 }
 fn manifest_input_path(input: &str) -> Result<PathBuf, EngineError> {
     let path = PathBuf::from(input.trim());
@@ -879,6 +913,7 @@ impl SuniApp {
         }
         self.plan_links.generation = self.plan_links.generation.wrapping_add(1);
         self.plan_links.pending = None;
+        self.plan_links.receipt_operation = false;
         self.plan_links.open = false;
         self.plan_links.remote = None;
         self.plan_links.remote_epoch = None;
@@ -906,6 +941,7 @@ impl SuniApp {
         self.plan_links.generation = self.plan_links.generation.wrapping_add(1);
         self.plan_links.cancel = Arc::new(AtomicBool::new(false));
         self.plan_links.pending = Some((self.plan_links.generation, saving));
+        self.plan_links.receipt_operation = false;
         self.plan_links.remote_request = None;
         self.plan_links.error = None;
         self.plan_links.message = None;
@@ -922,6 +958,13 @@ impl SuniApp {
             job,
         });
     }
+    fn start_plan_receipt(&mut self, saving: bool, build: impl FnOnce(Arc<AtomicBool>) -> Job) {
+        if self.plan_links.busy() || !matches!(self.engine, EngineState::Ready) {
+            return;
+        }
+        self.start_plan_links(saving, |cancel, _| build(cancel));
+        self.plan_links.receipt_operation = true;
+    }
     pub(crate) fn on_plan_links(
         &mut self,
         ctx: &egui::Context,
@@ -932,6 +975,7 @@ impl SuniApp {
             return;
         }
         self.plan_links.pending = None;
+        let receipt_operation = std::mem::take(&mut self.plan_links.receipt_operation);
         let lang = self.lang();
         if let Some(binding) = self.plan_links.remote_request.take() {
             if self.plan_links.cancel.load(Ordering::Relaxed)
@@ -956,6 +1000,7 @@ impl SuniApp {
             Ok(Outcome::Loaded(context)) => {
                 self.plan_links.reset_scan();
                 self.plan_links.targets.clear();
+                self.plan_links.target_filter.clear();
                 self.plan_links.saved_only = false;
                 self.plan_links.source_id = context
                     .set
@@ -1011,6 +1056,22 @@ impl SuniApp {
                     tr(lang, "plan_links.saved"),
                     receipt.output.display()
                 ));
+                self.plan_links.receipt = Some(receipt);
+            }
+            Ok(Outcome::SavedCopyVerified(path)) => {
+                if !self.plan_links.cancel.load(Ordering::Relaxed) {
+                    self.close_plan_links();
+                    self.open_path(path, None);
+                } else {
+                    self.plan_links.message = Some(tr(lang, "status.cancelled").into());
+                }
+            }
+            Ok(Outcome::ReceiptExported(path)) => {
+                self.plan_links.message = Some(format!(
+                    "{} {}",
+                    tr(lang, "plan_links.receipt_exported"),
+                    path.display()
+                ));
             }
             Ok(Outcome::Navigate(mut navigation)) => {
                 navigation.return_source = self.capture_plan_return_origin().map(Box::new);
@@ -1040,11 +1101,15 @@ impl SuniApp {
             }
             Ok(Outcome::Cleared) => {}
             Err(EngineError::Cancelled) => {
-                self.plan_links.clear_preview();
+                if !receipt_operation {
+                    self.plan_links.clear_preview();
+                }
                 self.plan_links.message = Some(tr(lang, "status.cancelled").into());
             }
             Err(error) => {
-                self.plan_links.clear_preview();
+                if !receipt_operation {
+                    self.plan_links.clear_preview();
+                }
                 self.plan_links.error = Some(error.to_string());
             }
         }
@@ -1114,6 +1179,7 @@ impl SuniApp {
             ctx,
             spec,
             |ui| {
+                let mut scan_changed = false;
                 if state.remote.is_none()
                     && ui
                         .add_enabled(
@@ -1227,69 +1293,57 @@ impl SuniApp {
                                                 .changed()
                                             {
                                                 state.targets.clear();
+                                                state.pages = "1".into();
+                                                scan_changed = true;
                                             }
                                         }
                                     });
                                 ui.label(tr(lang, "plan_links.pages"));
-                                ui.add(
-                                    egui::TextEdit::singleline(&mut state.pages)
-                                        .char_limit(4096)
-                                        .desired_width(140.0),
-                                );
-                            });
-                            ui.label(tr(lang, "plan_links.targets"));
-                            ui.horizontal_wrapped(|ui| {
-                                if ui.button(tr(lang, "plan_links.select_targets")).clicked() {
-                                    state.targets = context
-                                        .set
-                                        .sheets
-                                        .iter()
-                                        .filter(|s| s.file_id != state.source_id)
-                                        .map(|s| s.id.clone())
-                                        .collect();
-                                }
-                                if ui.button(tr(lang, "plan_links.clear_targets")).clicked() {
-                                    state.targets.clear();
-                                }
-                            });
-                            egui::ScrollArea::vertical()
-                                .id_salt("plan-links-targets")
-                                .max_height(135.0)
-                                .show(ui, |ui| {
-                                    for sheet in context
-                                        .set
-                                        .sheets
-                                        .iter()
-                                        .filter(|s| s.file_id != state.source_id)
-                                    {
-                                        let mut selected = state.targets.contains(&sheet.id);
-                                        if ui
-                                            .checkbox(
-                                                &mut selected,
-                                                format!(
-                                                    "{} · {} · {} · {}",
-                                                    sheet.number,
-                                                    sheet.title,
-                                                    sheet.discipline,
-                                                    sheet.revision
-                                                ),
-                                            )
-                                            .changed()
-                                        {
-                                            if selected {
-                                                state.targets.insert(sheet.id.clone());
-                                            } else {
-                                                state.targets.remove(&sheet.id);
-                                            }
+                                scan_changed |= ui
+                                    .add(
+                                        egui::TextEdit::singleline(&mut state.pages)
+                                            .char_limit(4096)
+                                            .hint_text("1-8,12")
+                                            .desired_width(140.0),
+                                    )
+                                    .changed();
+                                if ui.button(tr(lang, "plan_links.indexed_pages")).clicked() {
+                                    match indexed_pages(context, &state.source_id) {
+                                        Ok(pages) => {
+                                            state.pages = pages;
+                                            state.error = None;
+                                            scan_changed = true;
+                                        }
+                                        Err(reason) => {
+                                            state.error = Some(tr(lang, reason.key()).into())
                                         }
                                     }
-                                });
+                                }
+                            });
+                            ui.small(tr(lang, "plan_links.pages_help"));
+                            ui.label(tr(lang, "plan_links.targets"));
+                            scan_changed |= selection::target_controls(
+                                ui,
+                                context,
+                                &state.source_id,
+                                &mut state.target_filter,
+                                &mut state.targets,
+                                lang,
+                            );
                             ui.checkbox(&mut state.saved_only, tr(lang, "plan_links.saved_only"));
                         });
+                        if scan_editable {
+                            if let Err(reason) = state.scan() {
+                                ui.colored_label(
+                                    ui.visuals().warn_fg_color,
+                                    tr(lang, reason.key()),
+                                );
+                            }
+                        }
                         ui.horizontal_wrapped(|ui| {
                             if ui
                                 .add_enabled(
-                                    scan_editable && state.saved_only,
+                                    scan_editable && state.saved_only && state.scan().is_ok(),
                                     egui::Button::new(tr(lang, "plan_links.inspect")),
                                 )
                                 .clicked()
@@ -1307,6 +1361,10 @@ impl SuniApp {
                             }
                         });
                     }
+                }
+                if scan_changed {
+                    state.reset_scan();
+                    state.error = None;
                 }
                 if let Some(report) = &state.inspection {
                     ui.separator();
@@ -1575,6 +1633,26 @@ impl SuniApp {
                 if let Some(message) = &state.message {
                     ui.label(message);
                 }
+                if !remote {
+                    if let Some(receipt) = &state.receipt {
+                        ui.separator();
+                        ui.label(tr(lang, "plan_links.saved_result"));
+                        ui.label(receipt.output.display().to_string());
+                        ui.small(format!("SHA-256: {}", receipt.report.output_sha256));
+                        ui.add_enabled_ui(ready, |ui| {
+                            ui.horizontal_wrapped(|ui| {
+                                if ui.button(tr(lang, "plan_links.open_saved_copy")).clicked() {
+                                    action = Some(Action::OpenSavedCopy(SavedCopy::from(receipt)));
+                                }
+                                if ui.button(tr(lang, "plan_links.export_receipt")).clicked() {
+                                    action = Some(Action::ExportReceipt(ReceiptExport::Single(
+                                        Box::new(receipt.clone()),
+                                    )));
+                                }
+                            });
+                        });
+                    }
+                }
             },
             |ui| {
                 if remote {
@@ -1756,6 +1834,22 @@ impl SuniApp {
             }
             Action::Navigate => self.start_remote_plan_link(false),
             Action::RemotePreview => self.start_remote_plan_link(true),
+            Action::OpenSavedCopy(copy) => {
+                self.start_plan_receipt(false, |cancel| Job::VerifySavedCopy { copy, cancel });
+            }
+            Action::ExportReceipt(receipt) => {
+                if let Some(output) = rfd::FileDialog::new()
+                    .add_filter("JSON", &["json"])
+                    .set_file_name("plan-link-receipt.json")
+                    .save_file()
+                {
+                    self.start_plan_receipt(true, |cancel| Job::ExportReceipt {
+                        receipt,
+                        output,
+                        cancel,
+                    });
+                }
+            }
         }
     }
     fn load_plan_link_manifest(&mut self, path: PathBuf) {
@@ -2135,6 +2229,116 @@ mod tests {
         assert!(
             state.inspection.is_none() && state.selections.is_empty() && state.candidate.is_none()
         );
+    }
+    #[test]
+    fn page_ranges_obey_the_selected_source_and_destination_scope() {
+        let mut state = populated();
+        state.context.as_mut().unwrap().set.files[0].page_count = 12;
+        state.pages = "1-3,8,10-12".into();
+        assert_eq!(state.scan().unwrap().pages, vec![1, 2, 3, 8, 10, 11, 12]);
+        assert!(
+            state.review().is_none(),
+            "destination scope is not approval"
+        );
+        state.pages = "1-13".into();
+        assert_eq!(state.scan().unwrap_err(), SelectionError::Pages);
+        state.pages = "1".into();
+        state.targets.insert("source-sheet".into());
+        assert_eq!(state.scan().unwrap_err(), SelectionError::Targets);
+        state.targets = HashSet::from(["missing-sheet".into()]);
+        assert_eq!(state.scan().unwrap_err(), SelectionError::Targets);
+    }
+
+    fn saved_receipt() -> PlanLinkReceipt {
+        PlanLinkReceipt {
+            output: "linked.pdf".into(),
+            bytes: 100,
+            report: PlanLinkReport {
+                version: 1,
+                inspection: inspection(),
+                created: vec![],
+                excluded_occurrences: vec![],
+                output_sha256: "d".repeat(64),
+            },
+        }
+    }
+
+    #[test]
+    fn receipt_actions_preserve_committed_results_and_refuse_cancelled_navigation() {
+        let (mut app, requests, _) = test_app();
+        app.plan_links = populated();
+        app.plan_links.open = true;
+        app.plan_links.receipt = Some(saved_receipt());
+        app.plan_links.candidate = Some((55, saved_receipt().report));
+        let copy = SavedCopy::from(app.plan_links.receipt.as_ref().unwrap());
+        app.plan_links_action(Action::OpenSavedCopy(copy.clone()));
+        let Request::PlanLinks {
+            generation,
+            job: Job::VerifySavedCopy { copy: sent, .. },
+        } = requests.try_recv().unwrap()
+        else {
+            panic!("saved copies must be verified before opening")
+        };
+        assert_eq!(sent, copy);
+        assert!(requests.try_iter().next().is_none());
+        app.on_plan_links(
+            &egui::Context::default(),
+            generation,
+            Err(error("saved copy changed")),
+        );
+        assert!(app.plan_links.receipt.is_some());
+        assert_eq!(app.plan_links.candidate.as_ref().unwrap().0, 55);
+        assert!(app.plan_links.error.as_ref().unwrap().contains("changed"));
+        app.plan_links_action(Action::OpenSavedCopy(copy));
+        let Request::PlanLinks { generation, .. } = requests.try_recv().unwrap() else {
+            panic!("missing verification")
+        };
+        app.plan_links.cancel.store(true, Ordering::Relaxed);
+        app.on_plan_links(
+            &egui::Context::default(),
+            generation,
+            Ok(Outcome::SavedCopyVerified("linked.pdf".into())),
+        );
+        assert!(app.plan_links.open && app.plan_links.receipt.is_some());
+        assert!(
+            requests.try_iter().next().is_none(),
+            "cancelled verification opened a PDF"
+        );
+        app.plan_links.reset_scan();
+        assert!(
+            app.plan_links.receipt.is_some(),
+            "editing another scan must keep the last save receipt"
+        );
+    }
+
+    #[test]
+    fn verified_copy_opening_keeps_the_existing_dirty_document_in_its_tab() {
+        let (mut app, requests, _) = test_app();
+        app.plan_links = populated();
+        app.plan_links.open = true;
+        app.plan_links.pending = Some((7, false));
+        app.plan_links.receipt_operation = true;
+        app.plan_links.receipt = Some(saved_receipt());
+        app.dirty = true;
+        let original = app.document.as_ref().unwrap().info.path.clone();
+        let recovery_id = app.tabs.tabs[0].recovery_id;
+        let output = PathBuf::from("verified-linked.pdf");
+        app.on_plan_links(
+            &egui::Context::default(),
+            7,
+            Ok(Outcome::SavedCopyVerified(output.clone())),
+        );
+        assert!(!app.plan_links.open);
+        assert_eq!(app.opening.as_ref(), Some(&output));
+        assert_eq!(app.tabs.tabs[0].path, original);
+        assert_eq!(app.tabs.tabs[0].recovery_id, recovery_id);
+        assert!(app.tabs.tabs[0].dirty && app.tabs.tabs[0].ui.is_some());
+        let sent: Vec<_> = requests.try_iter().collect();
+        assert!(sent.iter().any(|r| matches!(r, Request::Suspend)));
+        assert!(sent
+            .iter()
+            .any(|r| matches!(r, Request::Open { path, .. } if path == &output)));
+        assert!(!sent.iter().any(|r| matches!(r, Request::Close)));
     }
     #[test]
     fn close_invalidates_read_results_and_clears_secrets_but_keeps_password_fields() {
