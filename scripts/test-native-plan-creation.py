@@ -83,7 +83,7 @@ class NativeCommandPaletteTests(unittest.TestCase):
                 read_capture(path, "blue", psm=6, smooth=True)
             self.assertEqual(len(calls), before)
 
-    def test_smooth_capture_is_routed_only_to_typed_manifest_path_scene(self):
+    def test_scene_smoothing_is_routed_only_to_typed_manifest_path_scene(self):
         tree = ast.parse(Path(__file__).with_name("test-deb.py").read_text(encoding="utf-8"))
         calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)
                  and isinstance(node.func, ast.Name) and node.func.id == "scene"
@@ -145,6 +145,39 @@ class NativeCommandPaletteTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "not observed"):
             helper("Plan links", "creation-command-reopen")
         self.assertNotIn(("key", ("Return",)), calls)
+
+    def test_destination_controls_are_scoped_and_counter_verification_never_clicks(self):
+        transcript = tsv([(20, "Alpha.pdf"), (50, "Native destination two"), (80, "Beta.pdf"),
+                          (110, "Native destination two"), (140, "Destination sheets 1"), (170, "Target.pdf")])
+        observed = {"tsv": transcript, "text": "offline fixture", "scale": 2, "size": (320, 180)}
+        read_capture = MagicMock(return_value=observed)
+        commands = MagicMock(side_effect=AssertionError("Observation must never generate native input"))
+        namespace = {"fixtures": native, "read_capture": read_capture, "capture": lambda target: "full-capture.png",
+                     "actions": [], "command": commands}
+        creation_helper("evidence_fields", namespace)
+        locate = creation_helper("locate", namespace)
+        _, box = locate("Native destination two", below_label="Beta.pdf", above_label="Target.pdf", psm=6)
+        self.assertEqual(box[1], 110)
+        read_capture.assert_called_once_with("full-capture.png", None, psm=6, smooth=False)
+        read_capture.reset_mock()
+        _, box = locate("Native destination two", below_label="Beta.pdf", above_label="Target.pdf", psm=6, smooth=True)
+        read_capture.assert_called_once_with("full-capture.png", None, psm=6, smooth=True)
+        with self.assertRaisesRegex(AssertionError, "restricted"):
+            locate("Native destination two", psm=6, smooth=True)
+        with self.assertRaisesRegex(AssertionError, "restricted"):
+            locate("Save", below_label="Beta.pdf", above_label="Target.pdf", psm=6, smooth=True)
+        verify = creation_helper("verify_control", namespace)
+        verify("Destination sheets 1", below_label="Beta.pdf", above_label="Target.pdf")
+        self.assertEqual(namespace["actions"][0]["observedControl"], "Destination sheets 1")
+        self.assertEqual(namespace["actions"][0]["belowLabel"], "Beta.pdf")
+        self.assertEqual(namespace["actions"][0]["aboveLabel"], "Target.pdf")
+        self.assertNotIn("click", namespace["actions"][0])
+        commands.assert_not_called()
+        tree = ast.parse(Path(__file__).with_name("test-deb.py").read_text(encoding="utf-8"))
+        calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and node.args
+                 and isinstance(node.func, ast.Name) and isinstance(node.args[0], ast.Constant)
+                 and node.args[0].value == "Destination sheets 1"]
+        self.assertEqual([node.func.id for node in calls], ["verify_control"])
 
 
 def qpdf_document(link=None):
@@ -275,6 +308,18 @@ class NativeCreationTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "Ambiguous"):
             native.label_box(text, "Destination sheets 1", (900, 200))
         self.assertEqual(native.label_box(text, "Destination sheets 1", (900, 200), below=64)[1], 80)
+
+    def test_destination_scope_refuses_other_groups_even_when_only_wrong_label_is_recognized(self):
+        text = tsv([(20, "Alpha.pdf"), (50, "Native destination two"), (80, "Beta.pdf"),
+                    (110, "Native destination two"), (140, "Target.pdf")])
+        self.assertEqual(native.label_box(text, "Native destination two", (900, 200), below=34, above=80)[1], 50)
+        self.assertEqual(native.label_box(text, "Native destination two", (900, 200), below=94, above=140)[1], 110)
+        wrong_only = tsv([(20, "Alpha.pdf"), (50, "Native destination two"), (80, "Beta.pdf"),
+                          (110, "Native destination bwo"), (140, "Target.pdf")])
+        with self.assertRaises(native.LabelMissing):
+            native.label_box(wrong_only, "Native destination two", (900, 200), below=94, above=140)
+        with self.assertRaises(native.LabelMissing):
+            native.label_box(text, "Native destination two", (900, 200), below=94, above=110)
 
     def test_popup_choice_is_scoped_to_the_observed_combo_below_other_file_labels(self):
         text = tsv([(20, "Beta.pdf"), (80, "Beta.pdf")])
