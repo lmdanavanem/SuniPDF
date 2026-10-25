@@ -2709,7 +2709,21 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                         "Save or close the modified overlay source before continuing".into(),
                     ))
                 } else {
-                    crate::revision_overlay::run_job(&engine, job)
+                    crate::revision_overlay::run_job(&engine, job).and_then(|outcome| {
+                        if state.modified()
+                            && state
+                                .document
+                                .as_ref()
+                                .is_some_and(|doc| outcome.loaded_source_matches(&doc.info().path))
+                        {
+                            Err(EngineError::Other(
+                                "Save or close the modified overlay source before continuing"
+                                    .into(),
+                            ))
+                        } else {
+                            Ok(outcome)
+                        }
+                    })
                 },
             },
             Request::LocalReview(job) => {
@@ -6014,6 +6028,7 @@ mod tests {
                             .collect(),
                         long_side: 512,
                     },
+                    expected_hashes: vec![None; 4],
                     passwords: vec![
                         passwords[0].clone(),
                         passwords[1].clone(),
@@ -6046,6 +6061,7 @@ mod tests {
             generation: 500,
             job: Job::Preview {
                 options: three_options,
+                expected_hashes: vec![None; 3],
                 passwords: (0..3).map(|_| Default::default()).collect(),
                 cancel: Arc::new(AtomicBool::new(false)),
             },
@@ -6082,6 +6098,140 @@ mod tests {
                 _ => panic!("overlay export response"),
             }
         };
+        let setup_job = |generation, job| {
+            worker.send(Request::RevisionOverlay { generation, job });
+            match next_response(worker) {
+                Response::RevisionOverlayDone {
+                    generation: returned,
+                    result,
+                } => {
+                    assert_eq!(returned, generation);
+                    result
+                }
+                _ => panic!("overlay setup response"),
+            }
+        };
+        let setup = dir.path().join("overlay-setup.json");
+        assert!(matches!(
+            setup_job(
+                520,
+                Job::SaveSetup {
+                    preview: preview.clone(),
+                    path: setup.clone(),
+                    cancel: Arc::new(AtomicBool::new(false))
+                }
+            ),
+            Ok(Outcome::Exported(_))
+        ));
+        let setup_bytes = std::fs::read(&setup).unwrap();
+        let setup_json: serde_json::Value = serde_json::from_slice(&setup_bytes).unwrap();
+        assert!(setup_json["layers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|layer| layer["expected_sha256"]
+                .as_str()
+                .is_some_and(|hash| hash.len() == 64)
+                && layer.get("password_env").is_none()
+                && layer.get("password").is_none()));
+        assert!(setup_job(
+            521,
+            Job::SaveSetup {
+                preview: preview.clone(),
+                path: setup.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert_eq!(std::fs::read(&setup).unwrap(), setup_bytes);
+        let (loaded_options, loaded_hashes) = match setup_job(
+            522,
+            Job::LoadSetup {
+                path: setup.clone(),
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        )
+        .unwrap()
+        {
+            Outcome::SetupLoaded {
+                options,
+                expected_hashes,
+                ..
+            } => (options, expected_hashes),
+            _ => panic!("bounded overlay setup load"),
+        };
+        let bound_preview = |generation, options, hashes| {
+            setup_job(
+                generation,
+                Job::Preview {
+                    options,
+                    expected_hashes: hashes,
+                    passwords: (0..4).map(|_| Default::default()).collect(),
+                    cancel: Arc::new(AtomicBool::new(false)),
+                },
+            )
+        };
+        let reopened =
+            match bound_preview(523, loaded_options.clone(), loaded_hashes.clone()).unwrap() {
+                Outcome::Preview(prepared) => prepared,
+                _ => panic!("reopened source-bound setup preview"),
+            };
+        assert_eq!(reopened.image().rgba, preview.image().rgba);
+        crate::revision_overlay::tests::verify_setup_controls(
+            &reopened,
+            &loaded_options,
+            &loaded_hashes,
+        );
+        let missing = dir.path().join("temporarily-missing.pdf");
+        std::fs::rename(&fourth, &missing).unwrap();
+        assert!(
+            matches!(
+                setup_job(
+                    524,
+                    Job::LoadSetup {
+                        path: setup.clone(),
+                        cancel: Arc::new(AtomicBool::new(false))
+                    }
+                ),
+                Ok(Outcome::SetupLoaded { .. })
+            ),
+            "loading the setup does not read source PDFs"
+        );
+        assert!(bound_preview(525, loaded_options.clone(), loaded_hashes.clone()).is_err());
+        std::fs::rename(&missing, &fourth).unwrap();
+        let mut changed_hidden = bytes.clone();
+        changed_hidden.extend_from_slice(b"\n% changed hidden setup source\n");
+        std::fs::write(&fourth, changed_hidden).unwrap();
+        let mut hidden_options = loaded_options.clone();
+        hidden_options.layers[3].visible = false;
+        assert!(
+            bound_preview(526, hidden_options, loaded_hashes.clone()).is_err(),
+            "hidden sources retain their saved hash binding"
+        );
+        std::fs::write(&fourth, &bytes).unwrap();
+        assert!(matches!(
+            setup_job(
+                527,
+                Job::LoadSetup {
+                    path: setup.clone(),
+                    cancel: Arc::new(AtomicBool::new(true))
+                }
+            ),
+            Err(EngineError::Cancelled)
+        ));
+        let cancelled_setup = dir.path().join("cancelled-setup.json");
+        assert!(matches!(
+            setup_job(
+                528,
+                Job::SaveSetup {
+                    preview: preview.clone(),
+                    path: cancelled_setup.clone(),
+                    cancel: Arc::new(AtomicBool::new(true))
+                }
+            ),
+            Err(EngineError::Cancelled)
+        ));
+        assert!(!cancelled_setup.exists());
         let png = dir.path().join("overlay.png");
         assert!(matches!(
             export(502, png.clone(), false, false),
@@ -6146,6 +6296,28 @@ mod tests {
         let dirty_export = dir.path().join("dirty-source.png");
         assert!(export(511, dirty_export.clone(), false, false).is_err());
         assert!(!dirty_export.exists());
+        assert!(
+            setup_job(
+                529,
+                Job::LoadSetup {
+                    path: setup.clone(),
+                    cancel: Arc::new(AtomicBool::new(false))
+                }
+            )
+            .is_err(),
+            "the worker independently refuses a setup using its modified source"
+        );
+        let dirty_setup = dir.path().join("dirty-setup.json");
+        assert!(setup_job(
+            530,
+            Job::SaveSetup {
+                preview: preview.clone(),
+                path: dirty_setup.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert!(!dirty_setup.exists());
         worker.send(Request::Undo);
         assert!(matches!(
             next_response(worker),
@@ -6189,6 +6361,9 @@ mod tests {
         }
         assert_eq!(std::fs::read(base).unwrap(), bytes);
         assert_eq!(std::fs::read(revision).unwrap(), bytes);
+        assert_eq!(std::fs::read(third).unwrap(), bytes);
+        assert_eq!(std::fs::read(fourth).unwrap(), bytes);
+        assert_eq!(std::fs::read(setup).unwrap(), setup_bytes);
         assert!(!worker.has_pending_mutations());
     }
 

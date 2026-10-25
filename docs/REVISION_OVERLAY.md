@@ -1,10 +1,10 @@
 # Revision overlays
-[Original two-page qualification](RELEASE_0.47.0.md) · [Multi-layer 0.81 candidate](RELEASE_0.81.0.md).
+[Original two-page qualification](RELEASE_0.47.0.md) · [Multi-layer scope](RELEASE_0.81.0.md) · [Saved setups](RELEASE_0.83.0.md).
 
 ## Desktop
 
 1. Open **Revision overlay** from **Tools**, or use the same button in **Compare files**. The latter preselects the comparison's files and starting pages. No open PDF tab is required.
-2. Choose the base and second saved PDF, then set each **Page**. The 0.81 candidate supports **Add layer** up to four layers. Pages are physical and start at 1; each source has its own masked password field. Save or close modified source tabs first, since the overlay reads saved files.
+2. Choose the base and second saved PDF, then set each **Page**. Use **Add layer** for up to four layers. Pages are physical and start at 1; each source has its own masked password field. Save or close modified source tabs first, since the overlay reads saved files.
 3. Select a non-base layer to align. Choose **Manual alignment** and set **Horizontal offset**, **Vertical offset**, **Clockwise rotation** and **Scale factor**. **Preview** loads the base, selected source and combined result.
 4. Alternatively, choose **Two-point alignment**, then **Preview** to load the sources. Click two points on the base image and the corresponding points in the same order on the selected source. **Preview** recalculates alignment. Each pair must contain two distinct in-page points. **Reset alignment** clears the selected layer's points and restores the identity transform.
 5. Adjust each layer's color, visibility and opacity. The initial pair remains magenta/full density and cyan/0.65 density. At least one layer must remain visible. **Maximum image side** limits the source and output rasters. Changed settings disable export until a fresh preview succeeds. Changing a non-base source or page clears its alignment; changing the base clears every relative alignment.
@@ -13,6 +13,25 @@
 Switching from a completed two-point alignment to manual alignment retains its calculated transform for refinement. The point selections remain available until reset or a source/page change. Resetting alignment leaves the opacity and resolution settings intact. No alignment settings are written into either PDF.
 
 **Cancel** or **Escape** requests cancellation during work; the dialog waits for the worker to finish its current bounded operation. When idle, **Close** or **Escape** closes it. An export already committed before cancellation remains saved and is acknowledged. Source passwords stay in memory and are cleared when closing the dialog or replacing the corresponding file; the report does not contain them.
+
+## Save and reopen a setup
+
+After a successful **Preview**, choose **Save setup copy** to create a new JSON
+file with the pages, colors, visibility, opacity, alignment and every PDF's
+fingerprint. Use **Open setup** to restore it, enter any required passwords, then
+**Preview** again before exporting. Loading a setup does not modify a PDF.
+
+The file stores configuration and source paths, without embedding PDFs, preview
+images or credentials. Paths below the setup directory are relative, so the
+setup and those PDFs can move together. Other paths remain explicit local paths.
+Every source is checked, including hidden layers. Missing or changed files are
+refused; choose a replacement explicitly if intended. Replacing a source clears
+its saved fingerprint and alignment; replacing the base resets all alignments.
+Changing colors or other display settings retains source fingerprints.
+
+Desktop setup files require a fingerprint for every layer and cannot contain
+password environment references. A CLI report remains a separate output; open
+the saved setup file to restore the controls.
 
 ## Coordinates and image limits
 
@@ -40,7 +59,7 @@ Composition multiplies each visible layer's tinted darkness over white. Layer or
 
 ## Multi-layer CLI
 
-The 0.81 candidate adds `revision-overlay-stack`. Create a UTF-8 manifest of at most 256 KiB:
+Use `revision-overlay-stack` with a UTF-8 manifest of at most 256 KiB:
 
 ```json
 {
@@ -66,11 +85,13 @@ The 0.81 candidate adds `revision-overlay-stack`. Create a UTF-8 manifest of at 
 ```powershell
 sunipdf-cli revision-overlay-stack --manifest layers.json --out coordinated.png
 sunipdf-cli revision-overlay-stack --manifest layers.json --format json --out coordinated-report.json
+sunipdf-cli revision-overlay-stack --manifest layers.json --format setup --out coordinated-setup.json
+sunipdf-cli revision-overlay-stack --manifest coordinated-setup.json --out coordinated-again.png
 ```
 
 There must be two to four layers. Relative paths resolve against the manifest directory; explicit local absolute paths are accepted. Remote paths, unknown fields and unsupported versions are refused. The first layer requires identity manual alignment. Other layers may use the same `two_points` representation described below. Omitted pages default to 1, omitted visibility to true, and omitted styles use the four-layer palette. All-hidden stacks are refused.
 
-Each layer may add `expected_sha256` to require exact saved source bytes. Protected sources may name an existing environment variable in `password_env`; passwords are never stored in the manifest or report. Global password flags are refused for this command. Each invocation writes one new PNG or JSON file and refuses existing destinations, even with `--overwrite`.
+Each input layer may add `expected_sha256` to require exact saved source bytes. Protected sources may name an existing environment variable in `password_env`; password values are never stored in the manifest or report. Global password flags are refused for this command. Each invocation writes one new PNG, JSON report or setup file and refuses existing destinations, even with `--overwrite`. A setup export adds every verified source hash and omits all credential references; protected sources require passwords again when reused.
 
 The stack report has `schema: "sunipdf-revision-overlay-stack"`, `version: 1` and a `layers` array. Each zero-based layer entry records its source identity, selected path, resolved transform, alignment, color, visibility and opacity. `canvas.base_layer` is 0. This report describes the reviewed snapshot; it is not a desktop-importable recipe.
 
@@ -124,4 +145,4 @@ The report uses `schema: "sunipdf-revision-overlay"` and `version: 1`. Its `base
 
 For two-point alignment, `alignment.mode` is `two_points` and `alignment.base` and `alignment.revision` contain the two point pairs. The report also records the base canvas and clipping, colors, opacity, pixel limit, bilinear sampling and raster limitations. It contains no PDF content edits. Opening a report to restore desktop settings is not part of this release; the CLI accepts explicit parameters and optional expected source hashes.
 
-AEC-013 remains In progress. Automatic registration, layered/vector PDF output, desktop recipe import and broader native/interoperability qualification remain open. Reviewed change-outline proposals are a separate comparison workflow. This tool does not compare vectors, perform OCR, merge PDFs or recalibrate measurements.
+AEC-013 remains In progress. Automatic registration, layered/vector PDF output and broader native/interoperability qualification remain open. Reviewed change-outline proposals are a separate comparison workflow. This tool does not compare vectors, perform OCR, merge PDFs or recalibrate measurements.

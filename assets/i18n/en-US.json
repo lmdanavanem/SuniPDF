@@ -2082,5 +2082,10 @@
   "overlay.stack.align": "Align layer {number} to the base",
   "overlay.stack.selected": "Selected layer",
   "overlay.stack.dirty_source": "Save or close every modified source PDF before preparing or exporting the overlay.",
-  "library.capture_refusal": "Unavailable: {reason}"
+  "library.capture_refusal": "Unavailable: {reason}",
+  "overlay.setup.open": "Open setup",
+  "overlay.setup.save": "Save setup copy",
+  "overlay.setup.help": "Setups store source fingerprints, pages, styles and alignment. Passwords are never saved. Changed or missing files must be explicitly replaced before Preview.",
+  "overlay.setup.bound": "Saved source fingerprint",
+  "overlay.setup.loaded": "Loaded {name}. Preview again before exporting."
 }

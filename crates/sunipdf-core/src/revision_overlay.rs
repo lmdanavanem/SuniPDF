@@ -4,6 +4,7 @@
 //! unlike the bottom-left annotation coordinates. The revision is mapped onto the base page;
 //! anything outside that page is clipped. Raster alignment is not a vector comparison.
 
+pub mod recipe;
 pub mod stack;
 
 use crate::local_review::{check_permission, digest, read_pdf};

@@ -2082,5 +2082,10 @@
   "overlay.stack.align": "Aligner le calque {number} sur la base",
   "overlay.stack.selected": "Calque sélectionné",
   "overlay.stack.dirty_source": "Enregistrez ou fermez chaque PDF source modifié avant de préparer ou d’exporter la superposition.",
-  "library.capture_refusal": "Indisponible : {reason}"
+  "library.capture_refusal": "Indisponible : {reason}",
+  "overlay.setup.open": "Ouvrir une configuration",
+  "overlay.setup.save": "Enregistrer une copie",
+  "overlay.setup.help": "Les configurations conservent les empreintes, pages, styles et alignements. Aucun mot de passe n’est enregistré. Remplacez explicitement les fichiers modifiés ou manquants avant l’aperçu.",
+  "overlay.setup.bound": "Empreinte du fichier enregistré",
+  "overlay.setup.loaded": "{name} chargé. Relancez l’aperçu avant l’export."
 }
