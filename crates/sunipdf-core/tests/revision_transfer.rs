@@ -1016,3 +1016,191 @@ fn selected_source_alias_retarget_invalidates_preview_and_publication_on_both_si
     assert_eq!(std::fs::read(old).unwrap(), old_before);
     assert_eq!(std::fs::read(new).unwrap(), new_before);
 }
+
+#[test]
+fn reviewed_batch_reopens_two_real_revisions_with_existing_fields_and_new_annotation_ids() {
+    use sunipdf_core::revision_transfer::batch::PreparedTransferBatch;
+    let engine = engine();
+    let temporary = tempfile::tempdir().unwrap();
+    let root = temporary.path().canonicalize().unwrap();
+    let cancel = AtomicBool::new(false);
+    let mut batch = PreparedTransferBatch::new();
+    let mut sources = Vec::new();
+    for (id, rotations) in [("first", vec![0, 90]), ("second", vec![180])] {
+        let directory = root.join(id);
+        std::fs::create_dir(&directory).unwrap();
+        let (old, new) = fixtures(&engine, &directory, &rotations, true);
+        sources.push((old.clone(), std::fs::read(&old).unwrap()));
+        sources.push((new.clone(), std::fs::read(&new).unwrap()));
+        let pairs: Vec<_> = (1..=rotations.len()).map(|page| (page, page)).collect();
+        let request = request(&inspect(&engine, &old, &new, &pairs));
+        let prepared = prepare(&engine, &old, &new, &request);
+        batch
+            .push(id.into(), prepared, root.join(format!("{id}-reviewed.pdf")))
+            .unwrap();
+    }
+    assert_eq!(batch.len(), 2);
+    batch.preflight(&cancel).unwrap();
+    assert!(!root.join("first-reviewed.pdf").exists());
+    assert!(!root.join("second-reviewed.pdf").exists());
+    let preview = batch
+        .render_preview("first", &engine, 2, None, 256, &cancel)
+        .unwrap();
+    assert!(preview.width > 0 && preview.height > 0);
+    assert!(preview.width <= 256 && preview.height <= 256);
+    assert!(batch
+        .render_preview("missing", &engine, 1, None, 256, &cancel)
+        .is_err());
+    let outcome = batch.publish(&cancel, |_| {});
+    assert!(outcome.complete());
+    assert_eq!(outcome.completed.len(), 2);
+    assert!(outcome.remaining.is_empty());
+    for (completed, expected_pages) in outcome.completed.iter().zip([2, 1]) {
+        let report = &completed.report;
+        assert!(report.complete());
+        assert_eq!(report.pages.len(), expected_pages);
+        assert_eq!(report.transferred.len(), expected_pages * 7);
+        let output = report.output_path.as_ref().unwrap();
+        let reopened = engine.open(output, None).unwrap();
+        assert_eq!(reopened.page_count(), expected_pages);
+        assert!(reopened
+            .form_info()
+            .unwrap()
+            .fields
+            .iter()
+            .any(|f| f.name == "KeepField"));
+        assert_eq!(
+            reopened.annotation_details(0).unwrap()[0].author.as_deref(),
+            Some("Target author")
+        );
+        for transfer in &report.transferred {
+            assert_ne!(transfer.source_nm, transfer.target_nm);
+            let annotations = reopened.annotation_details(transfer.new_page - 1).unwrap();
+            let written = &annotations[transfer.target_index];
+            assert_eq!(written.name.as_deref(), Some(transfer.target_nm.as_str()));
+            assert_eq!(written.author.as_deref(), Some("Engineer Ω"));
+            assert_eq!(written.dash_pattern, vec![5.0, 3.0]);
+        }
+    }
+    for (path, original) in sources {
+        assert_eq!(std::fs::read(path).unwrap(), original);
+    }
+}
+
+#[test]
+fn reviewed_batch_refuses_a_changed_later_pdf_before_creating_any_copy() {
+    use sunipdf_core::revision_transfer::batch::{PreparedTransferBatch, TransferBatchStatus};
+    let engine = engine();
+    let temporary = tempfile::tempdir().unwrap();
+    let root = temporary.path().canonicalize().unwrap();
+    let mut batch = PreparedTransferBatch::new();
+    for id in ["first", "second"] {
+        let directory = root.join(id);
+        std::fs::create_dir(&directory).unwrap();
+        let (old, new) = fixtures(&engine, &directory, &[0], false);
+        let request = request(&inspect(&engine, &old, &new, &[(1, 1)]));
+        batch
+            .push(
+                id.into(),
+                prepare(&engine, &old, &new, &request),
+                root.join(format!("{id}-reviewed.pdf")),
+            )
+            .unwrap();
+    }
+    let later = root.join("second/new.pdf");
+    let mut changed = engine.open(&later, None).unwrap();
+    changed
+        .add_shape_annotation(0, AnnotShape::Square, rect(), &style(), Some("Later edit"))
+        .unwrap();
+    changed.save_as(&later).unwrap();
+    drop(changed);
+    let outcome = batch.publish(&AtomicBool::new(false), |_| {
+        panic!("all sources must be preflighted")
+    });
+    assert_eq!(outcome.status, TransferBatchStatus::Failed);
+    assert_eq!(
+        outcome.failure.as_ref().unwrap().id.as_deref(),
+        Some("second")
+    );
+    assert!(outcome.completed.is_empty());
+    assert_eq!(outcome.remaining.len(), 2);
+    assert!(!root.join("first-reviewed.pdf").exists());
+    assert!(!root.join("second-reviewed.pdf").exists());
+}
+
+#[test]
+fn reviewed_batch_keeps_each_encryption_mode_without_retaining_credentials() {
+    use sunipdf_core::revision_transfer::batch::PreparedTransferBatch;
+    let engine = engine();
+    let temporary = tempfile::tempdir().unwrap();
+    let root = temporary.path().canonicalize().unwrap();
+    let cancel = AtomicBool::new(false);
+    let mut batch = PreparedTransferBatch::new();
+    let reader_password = ["batch", "reader", "fixture"].join("-");
+    let owner_password = ["batch", "owner", "fixture"].join("-");
+    for (id, aes256) in [("aes128", false), ("aes256", true)] {
+        let directory = root.join(id);
+        std::fs::create_dir(&directory).unwrap();
+        let (old, new) = fixtures(&engine, &directory, &[0], false);
+        let protection = Protection {
+            user_password: reader_password.clone(),
+            owner_password: owner_password.clone(),
+            allow_print: false,
+            allow_copy: true,
+            allow_modify: false,
+            allow_annotate: true,
+            aes256,
+        };
+        for path in [&old, &new] {
+            let cleartext = std::fs::read(path).unwrap();
+            std::fs::write(
+                path,
+                security::protect(&cleartext, None, &protection).unwrap(),
+            )
+            .unwrap();
+        }
+        let credentials = TransferPasswords {
+            old: Some(&reader_password),
+            new: Some(&reader_password),
+        };
+        let inspection =
+            inspect_transfer_candidates(&engine, &old, &new, credentials, &[(1, 1)], &cancel)
+                .unwrap();
+        let prepared = prepare_revision_transfer(
+            &engine,
+            &old,
+            &new,
+            credentials,
+            &request(&inspection),
+            &cancel,
+        )
+        .unwrap();
+        batch
+            .push(id.into(), prepared, root.join(format!("{id}-reviewed.pdf")))
+            .unwrap();
+    }
+    let summary_json = serde_json::to_string(&batch.summaries()).unwrap();
+    assert!(!summary_json.contains(&reader_password));
+    assert!(!summary_json.contains(&owner_password));
+    assert!(batch
+        .render_preview("aes256", &engine, 1, None, 128, &cancel)
+        .is_err());
+    assert!(batch
+        .render_preview("aes256", &engine, 1, Some(&reader_password), 128, &cancel)
+        .is_ok());
+    let outcome = batch.publish(&cancel, |_| {});
+    assert!(outcome.complete());
+    assert_eq!(outcome.completed.len(), 2);
+    let outcome_json = outcome.json().to_string();
+    assert!(!outcome_json.contains(&reader_password));
+    assert!(!outcome_json.contains(&owner_password));
+    for completed in outcome.completed {
+        let output = completed.report.output_path.unwrap();
+        assert!(engine.open(&output, None).is_err());
+        let reopened = engine.open(&output, Some(&reader_password)).unwrap();
+        assert!(!reopened.properties().can_print);
+        assert!(!reopened.properties().can_modify);
+        assert!(reopened.properties().can_annotate);
+        assert_eq!(completed.report.transferred.len(), 1);
+    }
+}

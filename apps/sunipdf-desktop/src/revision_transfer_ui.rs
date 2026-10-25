@@ -23,6 +23,12 @@ use sunipdf_core::{
 use sunipdf_i18n::{tr, tr_args, Language};
 use zeroize::Zeroizing;
 
+mod batch;
+use batch::BatchState;
+use sunipdf_core::revision_transfer::batch::{
+    PreparedTransferBatch, TransferBatchEntrySummary, TransferBatchOutcome, TransferBatchProgress,
+};
+
 type Passwords = [Zeroizing<String>; 2];
 
 #[derive(Clone)]
@@ -87,6 +93,21 @@ pub enum Job {
         output: PathBuf,
         cancel: Arc<AtomicBool>,
     },
+    QueueCurrent {
+        token: u64,
+        id: String,
+        output: PathBuf,
+        reviewed: Vec<usize>,
+        cancel: Arc<AtomicBool>,
+    },
+    RemoveQueued {
+        id: String,
+    },
+    ClearBatch,
+    SaveBatch {
+        cancel: Arc<AtomicBool>,
+    },
+    DiscardAll,
     Discard,
 }
 
@@ -102,14 +123,18 @@ pub enum Outcome {
         report: core::RevisionTransferReport,
     },
     Saved(core::RevisionTransferReport),
+    BatchChanged(Vec<TransferBatchEntrySummary>),
+    BatchSaved(TransferBatchOutcome),
     Discarded,
 }
 
-/// Instantiated exclusively inside worker::run; one bounded candidate per worker.
+/// Instantiated exclusively inside worker::run; prepared bytes stay worker-owned.
 #[derive(Default)]
 pub struct WorkerCache {
     prepared: Option<(u64, core::PreparedRevisionTransfer)>,
     paths: Option<[PathBuf; 2]>,
+    rendered: HashSet<usize>,
+    batch: PreparedTransferBatch,
 }
 
 fn passwords(values: &Passwords) -> core::TransferPasswords<'_> {
@@ -121,9 +146,16 @@ fn passwords(values: &Passwords) -> core::TransferPasswords<'_> {
 
 impl WorkerCache {
     pub fn touches_modified(&self, job: &Job, path: &Path) -> bool {
+        if matches!(job, Job::SaveBatch { .. }) {
+            return self
+                .batch
+                .summaries()
+                .iter()
+                .any(|entry| same_path(&entry.old_path, path) || same_path(&entry.new_path, path));
+        }
         let paths = match job {
             Job::Prepare { paths, .. } => Some(paths),
-            Job::Render { .. } | Job::Save { .. } => self.paths.as_ref(),
+            Job::Render { .. } | Job::Save { .. } | Job::QueueCurrent { .. } => self.paths.as_ref(),
             _ => None,
         };
         paths.is_some_and(|paths| paths.iter().any(|source| same_path(source, path)))
@@ -135,10 +167,22 @@ impl WorkerCache {
         generation: u64,
         job: Job,
     ) -> Result<Outcome, EngineError> {
-        let result = self.run_inner(engine, generation, job);
-        if result.is_err() {
+        self.run_with_progress(engine, generation, job, |_| {})
+    }
+
+    pub fn run_with_progress(
+        &mut self,
+        engine: &Engine,
+        generation: u64,
+        job: Job,
+        progress: impl FnMut(TransferBatchProgress),
+    ) -> Result<Outcome, EngineError> {
+        let retain_current_on_error = matches!(job, Job::QueueCurrent { .. });
+        let result = self.run_inner(engine, generation, job, progress);
+        if result.is_err() && !retain_current_on_error {
             self.prepared = None;
             self.paths = None;
+            self.rendered.clear();
         }
         result
     }
@@ -148,6 +192,7 @@ impl WorkerCache {
         engine: &Engine,
         generation: u64,
         job: Job,
+        progress: impl FnMut(TransferBatchProgress),
     ) -> Result<Outcome, EngineError> {
         match job {
             Job::Inspect {
@@ -157,6 +202,8 @@ impl WorkerCache {
                 cancel,
             } => {
                 self.prepared = None;
+                self.paths = None;
+                self.rendered.clear();
                 if cancel.load(Ordering::Relaxed) {
                     return Err(EngineError::Cancelled);
                 }
@@ -195,6 +242,8 @@ impl WorkerCache {
                 cancel,
             } => {
                 self.prepared = None;
+                self.paths = None;
+                self.rendered.clear();
                 let prepared = core::prepare_revision_transfer(
                     engine,
                     &paths[0],
@@ -213,6 +262,7 @@ impl WorkerCache {
                 let report = prepared.report().clone();
                 self.prepared = Some((generation, prepared));
                 self.paths = Some(paths);
+                self.rendered.insert(page);
                 Ok(Outcome::Preview {
                     token: generation,
                     page,
@@ -240,6 +290,7 @@ impl WorkerCache {
                     1024,
                     &cancel,
                 )?;
+                self.rendered.insert(page);
                 Ok(Outcome::Preview {
                     token,
                     page,
@@ -260,9 +311,65 @@ impl WorkerCache {
                 }
                 core::publish_revision_transfer(prepared, &output, &cancel).map(Outcome::Saved)
             }
+            Job::QueueCurrent {
+                token,
+                id,
+                output,
+                reviewed,
+                cancel,
+            } => {
+                if cancel.load(Ordering::Relaxed) {
+                    return Err(EngineError::Cancelled);
+                }
+                let (_, prepared) = self
+                    .prepared
+                    .as_ref()
+                    .filter(|(id, _)| *id == token)
+                    .ok_or_else(|| {
+                        EngineError::Other("Prepared transfer expired; preview again".into())
+                    })?;
+                if prepared.report().pages.iter().any(|page| {
+                    !self.rendered.contains(&page.new_page) || !reviewed.contains(&page.new_page)
+                }) {
+                    return Err(EngineError::Other(
+                        "Preview and review every destination page before adding the transfer"
+                            .into(),
+                    ));
+                }
+                let (_, prepared) = self.prepared.take().expect("checked current candidate");
+                if let Err(refused) = self.batch.push(id, prepared, output) {
+                    let refused = *refused;
+                    self.prepared = Some((token, refused.prepared));
+                    return Err(refused.error);
+                }
+                self.paths = None;
+                self.rendered.clear();
+                Ok(Outcome::BatchChanged(self.batch.summaries()))
+            }
+            Job::RemoveQueued { id } => {
+                self.batch
+                    .remove(&id)
+                    .ok_or_else(|| EngineError::Other("Queued transfer no longer exists".into()))?;
+                Ok(Outcome::BatchChanged(self.batch.summaries()))
+            }
+            Job::ClearBatch => {
+                self.batch.clear();
+                Ok(Outcome::BatchChanged(self.batch.summaries()))
+            }
+            Job::SaveBatch { cancel } => Ok(Outcome::BatchSaved(
+                std::mem::take(&mut self.batch).publish(&cancel, progress),
+            )),
+            Job::DiscardAll => {
+                self.batch.clear();
+                self.prepared = None;
+                self.paths = None;
+                self.rendered.clear();
+                Ok(Outcome::Discarded)
+            }
             Job::Discard => {
                 self.prepared = None;
                 self.paths = None;
+                self.rendered.clear();
                 Ok(Outcome::Discarded)
             }
         }
@@ -301,6 +408,11 @@ enum Pending {
     Inspect,
     Preview,
     Save,
+    Queue,
+    RemoveQueued,
+    ClearBatch,
+    SaveBatch,
+    DiscardAll,
 }
 
 struct PreviewImage {
@@ -334,6 +446,7 @@ pub struct TransferState {
     repeated: bool,
     message: Option<String>,
     error: Option<String>,
+    batch: BatchState,
 }
 
 impl Default for TransferState {
@@ -358,6 +471,7 @@ impl Default for TransferState {
             repeated: false,
             message: None,
             error: None,
+            batch: BatchState::default(),
         }
     }
 }
@@ -453,7 +567,17 @@ impl TransferState {
     fn cancel_pending(&mut self) {
         self.cancel.store(true, Ordering::Relaxed);
         // A committed copy must still be reported even if cancellation raced publication.
-        if self.pending.is_some_and(|(_, kind)| kind == Pending::Save) {
+        if self.pending.is_some_and(|(_, kind)| {
+            matches!(
+                kind,
+                Pending::Save
+                    | Pending::Queue
+                    | Pending::RemoveQueued
+                    | Pending::ClearBatch
+                    | Pending::SaveBatch
+                    | Pending::DiscardAll
+            )
+        }) {
             return;
         }
         self.generation = self.generation.wrapping_add(1);
@@ -480,6 +604,9 @@ impl SuniApp {
     }
 
     pub(crate) fn close_revision_transfer(&mut self) {
+        if self.guard_revision_transfer_quit() {
+            return;
+        }
         if self.revision_transfer.busy() {
             self.cancel_revision_transfer_for_exit();
             return;
@@ -673,7 +800,7 @@ impl SuniApp {
         if self.revision_transfer.pending.map(|p| p.0) != Some(generation) {
             return;
         }
-        self.revision_transfer.pending = None;
+        let pending = self.revision_transfer.pending.take().map(|(_, kind)| kind);
         match result {
             Ok(Outcome::Inspected { paths, inspection }) => {
                 self.revision_transfer.paths = paths.map(Some);
@@ -718,19 +845,48 @@ impl SuniApp {
                 ));
                 self.revision_transfer.report = Some(report);
             }
-            Ok(Outcome::Discarded) => {}
+            Ok(Outcome::BatchChanged(entries)) => {
+                self.revision_transfer.batch.entries = entries;
+                self.revision_transfer.batch.confirm_discard = false;
+                if pending == Some(Pending::Queue) {
+                    self.revision_transfer.invalidate(true);
+                    self.revision_transfer.passwords = Default::default();
+                    self.revision_transfer.message =
+                        Some(tr(self.lang(), "transfer.batch.queued").into());
+                }
+            }
+            Ok(Outcome::BatchSaved(outcome)) => {
+                self.revision_transfer.batch.entries.clear();
+                self.revision_transfer.batch.progress = None;
+                self.revision_transfer.batch.confirm_discard = false;
+                self.revision_transfer.batch.outcome = Some(outcome);
+                self.revision_transfer.open = true;
+            }
+            Ok(Outcome::Discarded) => {
+                if pending == Some(Pending::DiscardAll) {
+                    self.revision_transfer.batch.entries.clear();
+                    self.revision_transfer.batch.confirm_discard = false;
+                    self.revision_transfer.open = false;
+                    self.revision_transfer.invalidate(true);
+                }
+            }
             Err(error) => {
-                self.revision_transfer.token = None;
-                self.revision_transfer.image = None;
-                self.revision_transfer.reviewed.clear();
+                self.revision_transfer.batch.progress = None;
+                if pending != Some(Pending::Queue) {
+                    self.revision_transfer.token = None;
+                    self.revision_transfer.image = None;
+                    self.revision_transfer.reviewed.clear();
+                }
                 self.revision_transfer.error = Some(format!(
                     "{} ({error})",
                     tr(self.lang(), crate::app::error_key(&error))
                 ));
-                self.worker.send(Request::RevisionTransfer {
-                    generation,
-                    job: Job::Discard,
-                });
+                if pending != Some(Pending::Queue) {
+                    self.worker.send(Request::RevisionTransfer {
+                        generation,
+                        job: Job::Discard,
+                    });
+                }
             }
         }
     }
@@ -859,6 +1015,10 @@ impl SuniApp {
         let can_preview = !busy
             && (self.revision_transfer.can_prepare() || self.revision_transfer.token.is_some());
         let can_save = self.revision_transfer.can_save();
+        let can_queue = self.revision_transfer.can_queue();
+        let compact_footer = ctx.content_rect().width() < 680.0;
+        let mut queue = false;
+        let mut batch_actions = batch::BatchActions::default();
         let (mut pick, mut inspect, mut preview, mut save, mut close, mut cancel, mut suggest) =
             (None, false, false, false, false, false, false);
         let (mut source_changed, mut changed) = (false, false);
@@ -876,6 +1036,8 @@ impl SuniApp {
             |ui| {
                 ui.label(tr(lang, "transfer.saved_files"));
                 ui.small(tr(lang, "transfer.limits"));
+                batch_actions =
+                    batch::render_queue(ui, lang, &mut self.revision_transfer.batch, busy);
                 ui.add_enabled_ui(!busy, |ui| {
                     ui.columns(2, |columns| {
                         for (index, column) in columns.iter_mut().enumerate() {
@@ -1198,6 +1360,10 @@ impl SuniApp {
                 if self.revision_transfer.token.is_some() {
                     ui.small(tr(lang, "transfer.review_all"));
                 }
+                queue = ui
+                    .add_enabled(can_queue, egui::Button::new(tr(lang, "transfer.batch.add")))
+                    .clicked();
+                ui.small(tr(lang, "transfer.batch.add_help"));
                 if let Some(error) = &self.revision_transfer.error {
                     ui.colored_label(crate::theme::ERROR, error);
                 }
@@ -1211,13 +1377,43 @@ impl SuniApp {
                         || ui.input(|i| i.key_pressed(egui::Key::Escape));
                 } else {
                     save = ui
-                        .add_enabled(can_save, egui::Button::new(tr(lang, "transfer.save")))
+                        .add_enabled(
+                            can_save,
+                            egui::Button::new(tr(
+                                lang,
+                                if compact_footer {
+                                    "transfer.save_short"
+                                } else {
+                                    "transfer.save"
+                                },
+                            )),
+                        )
                         .clicked();
                     preview = ui
-                        .add_enabled(can_preview, egui::Button::new(tr(lang, "transfer.preview")))
+                        .add_enabled(
+                            can_preview,
+                            egui::Button::new(tr(
+                                lang,
+                                if compact_footer {
+                                    "transfer.preview_short"
+                                } else {
+                                    "transfer.preview"
+                                },
+                            )),
+                        )
                         .clicked();
                     inspect = ui
-                        .add_enabled(can_inspect, egui::Button::new(tr(lang, "transfer.inspect")))
+                        .add_enabled(
+                            can_inspect,
+                            egui::Button::new(tr(
+                                lang,
+                                if compact_footer {
+                                    "transfer.inspect_short"
+                                } else {
+                                    "transfer.inspect"
+                                },
+                            )),
+                        )
                         .clicked();
                     close = dialog::secondary(ui, tr(lang, "dialog.close"))
                         || ui.input(|i| i.key_pressed(egui::Key::Escape));
@@ -1278,6 +1474,16 @@ impl SuniApp {
                 self.save_revision_transfer(output);
             }
         }
+        if queue {
+            if let Some(output) = rfd::FileDialog::new()
+                .add_filter(tr(lang, "dialog.open.filter_pdf"), &["pdf"])
+                .set_file_name("revision-transfer.pdf")
+                .save_file()
+            {
+                self.queue_revision_transfer(output);
+            }
+        }
+        self.apply_transfer_batch_action(batch_actions);
         if cancel {
             self.revision_transfer.cancel_pending();
             if !self.revision_transfer.busy() {
@@ -1702,6 +1908,405 @@ mod tests {
         assert!(state.paths.iter().all(Option::is_none));
         assert!(state.passwords.iter().all(|p| p.is_empty()));
         assert!(!state.can_prepare() && !state.can_save());
+    }
+
+    #[test]
+    fn queued_reviews_survive_current_draft_invalidation_and_inspection() {
+        let (mut app, requests, _) = test_app();
+        app.revision_transfer = state();
+        app.revision_transfer
+            .batch
+            .entries
+            .push(queued("first", "first-copy.pdf"));
+        app.revision_transfer.token = Some(17);
+        app.revision_transfer.reviewed.extend([1, 2]);
+        app.inspect_revision_transfer();
+        let generation = match requests.recv().unwrap() {
+            Request::RevisionTransfer {
+                generation,
+                job: Job::Inspect { .. },
+            } => generation,
+            _ => panic!("inspect the next pair"),
+        };
+        assert_eq!(app.revision_transfer.batch.entries[0].id, "first");
+        app.on_revision_transfer(
+            &egui::Context::default(),
+            generation,
+            Ok(Outcome::Inspected {
+                paths: ["second-old.pdf".into(), "second-new.pdf".into()],
+                inspection: inspection(),
+            }),
+        );
+        assert_eq!(app.revision_transfer.batch.entries.len(), 1);
+        app.discard_revision_transfer();
+        assert!(matches!(
+            requests.recv().unwrap(),
+            Request::RevisionTransfer {
+                job: Job::Discard,
+                ..
+            }
+        ));
+        assert_eq!(
+            app.revision_transfer.batch.entries[0].output,
+            PathBuf::from("first-copy.pdf")
+        );
+    }
+
+    fn queued(id: &str, output: &str) -> TransferBatchEntrySummary {
+        TransferBatchEntrySummary {
+            id: id.into(),
+            old_path: "queued-old.pdf".into(),
+            new_path: "queued-new.pdf".into(),
+            output: output.into(),
+            candidate_bytes: 100,
+            report: report(),
+        }
+    }
+
+    #[test]
+    fn queue_requires_every_review_and_cancellation_preserves_the_queue_acknowledgement() {
+        let (mut app, requests, _) = test_app();
+        app.revision_transfer = state();
+        app.revision_transfer.token = Some(17);
+        app.revision_transfer.reviewed.insert(1);
+        app.queue_revision_transfer("queued.pdf".into());
+        assert!(requests.try_iter().next().is_none());
+        app.revision_transfer.reviewed.insert(2);
+        app.queue_revision_transfer("queued.pdf".into());
+        let generation = match requests.recv().unwrap() {
+            Request::RevisionTransfer {
+                generation,
+                job: Job::QueueCurrent {
+                    token, reviewed, ..
+                },
+            } => {
+                assert_eq!(token, 17);
+                assert!(reviewed.contains(&1) && reviewed.contains(&2));
+                generation
+            }
+            _ => panic!("queue the reviewed candidate"),
+        };
+        app.revision_transfer.cancel_pending();
+        assert_eq!(
+            app.revision_transfer.pending,
+            Some((generation, Pending::Queue))
+        );
+        app.on_revision_transfer(
+            &egui::Context::default(),
+            generation,
+            Ok(Outcome::BatchChanged(vec![queued("first", "queued.pdf")])),
+        );
+        assert_eq!(app.revision_transfer.batch.entries.len(), 1);
+        assert!(app.revision_transfer.token.is_none());
+        assert!(app.revision_transfer.needs_close_guard());
+        app.close_revision_transfer();
+        assert!(app.revision_transfer.open);
+        assert!(app.revision_transfer.batch.confirm_discard);
+        assert!(
+            requests.try_iter().next().is_none(),
+            "close must not silently discard queued candidates"
+        );
+        app.apply_transfer_batch_action(batch::BatchActions {
+            discard_and_close: true,
+            ..Default::default()
+        });
+        let generation = match requests.recv().unwrap() {
+            Request::RevisionTransfer {
+                generation,
+                job: Job::DiscardAll,
+            } => generation,
+            _ => panic!("explicit queue discard"),
+        };
+        assert!(
+            app.revision_transfer.needs_close_guard(),
+            "wait for the discard acknowledgement"
+        );
+        app.on_revision_transfer(
+            &egui::Context::default(),
+            generation,
+            Ok(Outcome::Discarded),
+        );
+        assert!(!app.revision_transfer.open && !app.revision_transfer.needs_close_guard());
+    }
+
+    #[test]
+    fn refused_queue_output_keeps_the_current_review_available_for_another_name() {
+        let (mut app, requests, _) = test_app();
+        app.revision_transfer = state();
+        app.revision_transfer.token = Some(17);
+        app.revision_transfer.reviewed.extend([1, 2]);
+        app.queue_revision_transfer("existing.pdf".into());
+        let generation = match requests.recv().unwrap() {
+            Request::RevisionTransfer { generation, .. } => generation,
+            _ => panic!("queue operation"),
+        };
+        app.on_revision_transfer(
+            &egui::Context::default(),
+            generation,
+            Err(EngineError::AlreadyExists("existing.pdf".into())),
+        );
+        assert!(app.revision_transfer.can_queue());
+        assert_eq!(app.revision_transfer.token, Some(17));
+        assert!(
+            requests.try_iter().next().is_none(),
+            "do not discard the worker candidate after a queue refusal"
+        );
+    }
+
+    #[test]
+    fn dirty_any_queued_source_blocks_batch_even_when_current_pair_is_unrelated() {
+        let (mut app, requests, _) = test_app();
+        app.revision_transfer = state();
+        let mut entry = queued("first", "queued.pdf");
+        entry.old_path = app.document.as_ref().unwrap().info.path.clone();
+        app.revision_transfer.batch.entries.push(entry);
+        app.dirty = true;
+        app.can_undo = true;
+        app.apply_transfer_batch_action(batch::BatchActions {
+            save: true,
+            ..Default::default()
+        });
+        assert!(requests.try_iter().next().is_none());
+        assert!(app.revision_transfer.error.is_some());
+        assert!(app.dirty && app.can_undo);
+        app.dirty = false;
+        app.revision_transfer.batch.entries[0].old_path = "inactive.pdf".into();
+        app.tabs.tabs.push(crate::tabs::Tab {
+            path: "inactive.pdf".into(),
+            dirty: true,
+            recovery_id: 99,
+            ui: None,
+            doc: None,
+        });
+        app.apply_transfer_batch_action(batch::BatchActions {
+            save: true,
+            ..Default::default()
+        });
+        assert!(
+            requests.try_iter().next().is_none(),
+            "inactive dirty input must also block publication"
+        );
+        assert_eq!(app.revision_transfer.batch.entries.len(), 1);
+    }
+
+    #[test]
+    fn cancel_during_batch_publication_keeps_committed_and_unattempted_results() {
+        use sunipdf_core::revision_transfer::batch::{
+            TransferBatchCompleted, TransferBatchFailure, TransferBatchStatus,
+        };
+        let (mut app, _, _) = test_app();
+        app.revision_transfer = state();
+        app.revision_transfer
+            .batch
+            .entries
+            .push(queued("first", "first.pdf"));
+        app.revision_transfer
+            .batch
+            .entries
+            .push(queued("second", "second.pdf"));
+        let generation = app.revision_transfer.begin(Pending::SaveBatch);
+        assert!(app.guard_revision_transfer_quit());
+        assert_eq!(
+            app.revision_transfer.pending,
+            Some((generation, Pending::SaveBatch))
+        );
+        let mut saved = report();
+        saved.output_path = Some("first.pdf".into());
+        saved.output_sha256 = Some("d".repeat(64));
+        app.on_revision_transfer(
+            &egui::Context::default(),
+            generation,
+            Ok(Outcome::BatchSaved(TransferBatchOutcome {
+                version: 1,
+                status: TransferBatchStatus::Cancelled,
+                completed: vec![TransferBatchCompleted {
+                    id: "first".into(),
+                    report: saved,
+                }],
+                failure: Some(TransferBatchFailure {
+                    id: Some("second".into()),
+                    reason: "Cancelled before the next copy".into(),
+                }),
+                remaining: vec![queued("second", "second.pdf")],
+            })),
+        );
+        assert!(app.revision_transfer.open && !app.revision_transfer.busy());
+        assert!(app.revision_transfer.batch.entries.is_empty());
+        let result = app.revision_transfer.batch.outcome.as_ref().unwrap();
+        assert_eq!(result.completed.len(), 1);
+        assert_eq!(
+            result.completed[0].report.output_path.as_deref(),
+            Some(Path::new("first.pdf"))
+        );
+        assert_eq!(result.remaining[0].output, PathBuf::from("second.pdf"));
+        app.revision_transfer.invalidate(true);
+        assert!(
+            app.revision_transfer.batch.outcome.is_some(),
+            "current-draft changes must retain the batch result"
+        );
+    }
+
+    #[test]
+    fn queue_remove_and_clear_wait_for_matching_worker_acknowledgements() {
+        let (mut app, requests, _) = test_app();
+        app.revision_transfer = state();
+        app.revision_transfer.batch.entries =
+            vec![queued("first", "first.pdf"), queued("second", "second.pdf")];
+        app.apply_transfer_batch_action(batch::BatchActions {
+            remove: Some("first".into()),
+            ..Default::default()
+        });
+        let generation = match requests.recv().unwrap() {
+            Request::RevisionTransfer {
+                generation,
+                job: Job::RemoveQueued { id },
+            } => {
+                assert_eq!(id, "first");
+                generation
+            }
+            _ => panic!("remove queued item"),
+        };
+        assert_eq!(app.revision_transfer.batch.entries.len(), 2);
+        app.on_revision_transfer(
+            &egui::Context::default(),
+            generation,
+            Ok(Outcome::BatchChanged(vec![queued("second", "second.pdf")])),
+        );
+        app.apply_transfer_batch_action(batch::BatchActions {
+            clear: true,
+            ..Default::default()
+        });
+        let generation = match requests.recv().unwrap() {
+            Request::RevisionTransfer {
+                generation,
+                job: Job::ClearBatch,
+            } => generation,
+            _ => panic!("clear queue"),
+        };
+        app.revision_transfer.cancel_pending();
+        assert!(app.revision_transfer.busy());
+        app.on_revision_transfer(
+            &egui::Context::default(),
+            generation,
+            Ok(Outcome::BatchChanged(vec![])),
+        );
+        assert!(app.revision_transfer.batch.entries.is_empty());
+    }
+
+    #[test]
+    fn native_window_close_and_close_document_preserve_queued_work_and_dirty_history() {
+        for dirty in [false, true] {
+            let (mut app, requests, _) = test_app();
+            app.revision_transfer = state();
+            app.revision_transfer.open = false;
+            app.revision_transfer
+                .batch
+                .entries
+                .push(queued("first", "first-copy.pdf"));
+            app.dirty = dirty;
+            app.can_undo = dirty;
+            let ctx = egui::Context::default();
+            app.has_icons = crate::icons::install(&ctx);
+            crate::theme::apply(&ctx, app.settings.dark_theme);
+            let mut input = egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1280.0, 780.0),
+                )),
+                ..Default::default()
+            };
+            input
+                .viewports
+                .entry(egui::ViewportId::ROOT)
+                .or_default()
+                .events
+                .push(egui::ViewportEvent::Close);
+            let mut frame = eframe::Frame::_new_kittest();
+            let mut output = ctx.run_ui(input, |ui| eframe::App::ui(&mut app, ui, &mut frame));
+            output.textures_delta.clear();
+            assert!(output
+                .viewport_output
+                .values()
+                .any(|v| v.commands.contains(&egui::ViewportCommand::CancelClose)));
+            assert!(!output
+                .viewport_output
+                .values()
+                .any(|v| v.commands.contains(&egui::ViewportCommand::Close)));
+            assert!(app.revision_transfer.open && app.revision_transfer.batch.confirm_discard);
+            assert_eq!(app.revision_transfer.batch.entries.len(), 1);
+            assert_eq!(app.dirty, dirty);
+            assert_eq!(app.can_undo, dirty);
+            app.execute(&ctx, sunipdf_core::Command::CloseDocument);
+            assert!(app.document.is_some());
+            assert_eq!(app.revision_transfer.batch.entries.len(), 1);
+            assert!(!requests.try_iter().any(|request| matches!(
+                request,
+                Request::Close
+                    | Request::RevisionTransfer {
+                        job: Job::DiscardAll | Job::ClearBatch,
+                        ..
+                    }
+            )));
+        }
+    }
+
+    #[test]
+    fn narrow_bilingual_queue_dialog_keeps_close_and_review_actions_inside_window() {
+        for language in Language::ALL {
+            let (mut app, _, _) = test_app();
+            app.settings.set_language(language);
+            app.revision_transfer = state();
+            app.revision_transfer
+                .batch
+                .entries
+                .push(queued("first", "first-copy.pdf"));
+            app.revision_transfer.batch.confirm_discard = true;
+            let ctx = egui::Context::default();
+            ctx.enable_accesskit();
+            for frame in 0..3 {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(560.0, 680.0),
+                        )),
+                        time: Some(frame as f64 * 0.025),
+                        ..Default::default()
+                    },
+                    |_| app.revision_transfer_dialog(&ctx),
+                );
+                output.textures_delta.clear();
+                if frame < 2 {
+                    continue;
+                }
+                let tree = output.platform_output.accesskit_update.as_ref().unwrap();
+                for key in [
+                    "transfer.save_short",
+                    "transfer.preview_short",
+                    "transfer.inspect_short",
+                    "dialog.close",
+                    "transfer.batch.discard_close",
+                    "transfer.batch.keep",
+                ] {
+                    let button = tree
+                        .nodes
+                        .iter()
+                        .map(|(_, node)| node)
+                        .find(|node| node.label() == Some(tr(language, key)))
+                        .unwrap_or_else(|| {
+                            panic!("{key} must be reachable at 560 px in {}", language.code())
+                        });
+                    let bounds = button.bounds().expect("button bounds");
+                    assert!(
+                        bounds.x0 >= 0.0
+                            && bounds.x1 <= 560.0
+                            && bounds.y0 >= 0.0
+                            && bounds.y1 <= 680.0,
+                        "{key} must remain inside the window: {bounds:?}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

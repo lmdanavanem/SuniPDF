@@ -9,6 +9,17 @@ Create a [local plan set](PLAN_SETS.md) and verify its references first. Select 
 PDF, explicit physical pages and the destination sheets that may be linked. Sheet identities and
 stored fingerprints determine destinations; a similarly named file is not a substitute.
 
+The 0.79 development interface accepts physical page ranges such as `1-8,12`,
+bounded by the file's actual page count and the existing 32-page source limit.
+**Indexed pages** selects the exact sorted pages represented by that file's
+indexed sheets; an excessive selection is refused instead of truncated. Batch
+selection remains limited to 128 pages across at most 16 source PDFs.
+
+Filter destination sheets by their metadata and select or clear the visible
+destinations for each source. This defines the scan scope only; individual link
+occurrences still need explicit review and approval. Invalid selections show an
+explanation beside the controls.
+
 The scan uses the source PDF's existing text layer. OCR text is usable when already present, but
 the scan does not run OCR implicitly. Images without searchable text remain unresolved. Exact
 identifier boundaries prevent a reference to `A-10` from matching `A-101` or `XA-10`.
@@ -39,6 +50,18 @@ Other PDF readers may interpret standard remote links according to their own pol
 ability to navigate a link does not establish that they verified SuniPDF's stored destination hash.
 Moving the complete plan folder can preserve relative links; moving only the linked PDF can break
 them. Reinspect before creating replacement links.
+
+## Completed copies and receipts
+
+After saving, the 0.79 development interface retains the actual single-copy or
+batch result. **Open saved copy** is available only for a committed output. The
+worker checks the recorded byte count and SHA256 before opening through normal
+document/tab handling; missing or changed copies are refused. This check is not
+a filesystem lock against subsequent external modification.
+
+Export the receipt to a new JSON file to retain source/output identities and
+batch results. Existing files cannot be overwritten by this action. Cancelling
+or failing later work does not discard already committed copy receipts.
 
 ## Preview a saved link's destination
 

@@ -2,6 +2,8 @@
 //! Recipes contain identities and selections only. Prepared bytes are opaque and never trusted
 //! when supplied by a caller; publication rechecks both input files and creates one new copy.
 
+pub mod batch;
+
 use crate::annotation_library::{
     LibraryEntry, LibraryPlacement, LibraryPrimitive, LibraryProvenance, LibraryShape,
     LibraryStyle, OriginalCapture,
@@ -969,9 +971,19 @@ pub fn prepare_revision_transfer(
 /// Commit point is the atomic no-clobber publication. Cancellation after this succeeds must not
 /// turn the created output into a failure or remove it.
 pub fn publish_revision_transfer(
+    prepared: PreparedRevisionTransfer,
+    output: &Path,
+    cancel: &AtomicBool,
+) -> Result<RevisionTransferReport, EngineError> {
+    publish_revision_transfer_checked(prepared, output, cancel, true, || Ok(()))
+}
+
+fn publish_revision_transfer_checked(
     mut prepared: PreparedRevisionTransfer,
     output: &Path,
     cancel: &AtomicBool,
+    create_directory: bool,
+    before_commit: impl FnOnce() -> Result<(), EngineError>,
 ) -> Result<RevisionTransferReport, EngineError> {
     cancelled(cancel)?;
     if output.symlink_metadata().is_ok() {
@@ -985,7 +997,9 @@ pub fn publish_revision_transfer(
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
-    std::fs::create_dir_all(directory)?;
+    if create_directory {
+        std::fs::create_dir_all(directory)?;
+    }
     let mut temporary = tempfile::NamedTempFile::new_in(directory)?;
     for chunk in prepared.bytes.chunks(1024 * 1024) {
         cancelled(cancel)?;
@@ -993,6 +1007,7 @@ pub fn publish_revision_transfer(
     }
     temporary.as_file().sync_all()?;
     prepared.revalidate_sources(cancel)?;
+    before_commit()?;
     cancelled(cancel)?;
     temporary.persist_noclobber(output).map_err(|failure| {
         if failure.error.kind() == std::io::ErrorKind::AlreadyExists {

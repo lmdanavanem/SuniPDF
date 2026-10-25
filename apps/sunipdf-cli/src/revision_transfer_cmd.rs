@@ -9,6 +9,8 @@ use sunipdf_core::revision_transfer::{self, RevisionTransferRequest, TransferPas
 use sunipdf_core::{Engine, EngineError};
 use zeroize::Zeroize;
 
+mod batch;
+
 #[derive(Args)]
 pub struct RevisionTransferArgs {
     #[command(subcommand)]
@@ -54,6 +56,18 @@ pub struct PagePairs(Vec<(usize, usize)>);
 
 #[derive(Subcommand)]
 pub enum RevisionTransferCommand {
+    /// Validate and prepare every reviewed transfer in a bounded JSON batch; write no PDFs.
+    BatchPreview {
+        /// Version 1 JSON manifest; paths are relative to this file unless absolute.
+        #[arg(long)]
+        manifest: PathBuf,
+    },
+    /// Revalidate all reviewed transfers, then save separate new PDF copies with per-file results.
+    BatchApply {
+        /// Version 1 JSON manifest; existing outputs and source aliases are refused.
+        #[arg(long)]
+        manifest: PathBuf,
+    },
     /// Inspect explicitly paired physical pages. Use --password-env/--password-stdin for the old PDF.
     Inspect {
         #[command(flatten)]
@@ -93,11 +107,13 @@ pub enum RevisionTransferCommand {
 }
 
 impl RevisionTransferArgs {
-    pub fn sources_mut(&mut self) -> &mut TransferSources {
+    pub fn sources_mut(&mut self) -> Option<&mut TransferSources> {
         match &mut self.command {
             RevisionTransferCommand::Inspect { sources, .. }
             | RevisionTransferCommand::Preview { sources, .. }
-            | RevisionTransferCommand::Apply { sources, .. } => sources,
+            | RevisionTransferCommand::Apply { sources, .. } => Some(sources),
+            RevisionTransferCommand::BatchPreview { .. }
+            | RevisionTransferCommand::BatchApply { .. } => None,
         }
     }
 
@@ -106,12 +122,16 @@ impl RevisionTransferArgs {
             RevisionTransferCommand::Inspect { sources, .. }
             | RevisionTransferCommand::Preview { sources, .. }
             | RevisionTransferCommand::Apply { sources, .. } => sources.new_password_stdin,
+            RevisionTransferCommand::BatchPreview { .. }
+            | RevisionTransferCommand::BatchApply { .. } => false,
         }
     }
 
     pub fn output_path(&self) -> Option<&Path> {
         match &self.command {
-            RevisionTransferCommand::Inspect { .. } => None,
+            RevisionTransferCommand::Inspect { .. }
+            | RevisionTransferCommand::BatchPreview { .. }
+            | RevisionTransferCommand::BatchApply { .. } => None,
             RevisionTransferCommand::Preview { preview_out, .. } => preview_out.as_deref(),
             RevisionTransferCommand::Apply { out, .. } => Some(out),
         }
@@ -182,6 +202,8 @@ pub fn run(engine: &Engine, args: RevisionTransferArgs) -> Result<Value, EngineE
     }
     let cancel = AtomicBool::new(false);
     match &args.command {
+        RevisionTransferCommand::BatchPreview { manifest } => batch::run(engine, manifest, false),
+        RevisionTransferCommand::BatchApply { manifest } => batch::run(engine, manifest, true),
         RevisionTransferCommand::Inspect { sources, pages } => {
             let inspection = revision_transfer::inspect_transfer_candidates(
                 engine,
@@ -285,6 +307,37 @@ pub fn run(engine: &Engine, args: RevisionTransferArgs) -> Result<Value, EngineE
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn batch_commands_use_manifest_scoped_credentials_and_explicit_actions() {
+        for action in ["batch-preview", "batch-apply"] {
+            let mut cli = crate::tests::parse_cli([
+                "sunipdf-cli",
+                "revision-transfer",
+                action,
+                "--manifest",
+                "transfers.json",
+            ])
+            .unwrap();
+            let crate::Command::RevisionTransfer(args) = &mut cli.command else {
+                panic!("wrong command")
+            };
+            assert!(args.sources_mut().is_none());
+            assert!(!args.new_password_stdin());
+            assert!(args.output_path().is_none());
+            let mut unexpected = crate::tests::parse_cli([
+                "sunipdf-cli",
+                "--password-env",
+                "UNUSED_BATCH_PASSWORD",
+                "revision-transfer",
+                action,
+                "--manifest",
+                "transfers.json",
+            ])
+            .unwrap();
+            assert!(unexpected.passwords.apply(&mut unexpected.command).is_err());
+        }
+    }
 
     #[test]
     fn page_pairs_are_explicit_bounded_and_one_to_one() {

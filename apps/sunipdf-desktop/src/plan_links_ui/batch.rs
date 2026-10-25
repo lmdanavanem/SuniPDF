@@ -204,6 +204,7 @@ struct SourceRow {
     included: bool,
     pages: String,
     targets: HashSet<String>,
+    target_filter: String,
     output_name: String,
 }
 struct PictureIdentity {
@@ -256,23 +257,6 @@ pub(super) struct BatchState {
     outcome: Option<PlanLinkBatchOutcome>,
 }
 
-fn parse_pages(value: &str) -> Result<Vec<usize>, ()> {
-    let mut seen = HashSet::new();
-    let pages = value
-        .split(',')
-        .map(|s| {
-            s.trim()
-                .parse::<usize>()
-                .ok()
-                .filter(|p| *p > 0 && seen.insert(*p))
-                .ok_or(())
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    if pages.len() > core::MAX_SCAN_PAGES {
-        return Err(());
-    }
-    Ok(pages)
-}
 impl BatchState {
     pub(super) fn load(&mut self, context: &Context) {
         *self = Self::default();
@@ -290,6 +274,7 @@ impl BatchState {
                     included: false,
                     pages: "1".into(),
                     targets: HashSet::new(),
+                    target_filter: String::new(),
                     output_name: format!("{stem}-linked.pdf"),
                 }
             })
@@ -305,17 +290,33 @@ impl BatchState {
         self.inspection = None;
         self.selections.clear();
     }
-    fn scan(&self, context: &Context) -> Result<PlanLinkBatchScanRequest, ()> {
+    fn scan(&self, context: &Context) -> Result<PlanLinkBatchScanRequest, SelectionError> {
+        let included = self.rows.iter().filter(|row| row.included).count();
+        if included == 0 {
+            return Err(SelectionError::Sources);
+        }
+        if included > core::MAX_BATCH_SOURCES {
+            return Err(SelectionError::SourceLimit);
+        }
         let mut pages_total = 0;
         let sources = self
             .rows
             .iter()
             .filter(|row| row.included)
             .map(|row| {
-                let pages = parse_pages(&row.pages)?;
+                let file = context
+                    .set
+                    .files
+                    .iter()
+                    .find(|file| file.id == row.file_id)
+                    .ok_or(SelectionError::Source)?;
+                let pages = parse_pages(&row.pages, file.page_count)?;
                 pages_total += pages.len();
+                if pages_total > core::MAX_BATCH_PAGES {
+                    return Err(SelectionError::TotalPages);
+                }
                 if row.targets.is_empty() {
-                    return Err(());
+                    return Err(SelectionError::Targets);
                 }
                 let targets: Vec<_> = context
                     .set
@@ -325,7 +326,7 @@ impl BatchState {
                     .map(|s| s.id.clone())
                     .collect();
                 if targets.len() != row.targets.len() {
-                    return Err(());
+                    return Err(SelectionError::Targets);
                 }
                 Ok(PlanLinkScanRequest {
                     source_file_id: row.file_id.clone(),
@@ -334,12 +335,6 @@ impl BatchState {
                 })
             })
             .collect::<Result<Vec<_>, _>>()?;
-        if sources.is_empty()
-            || sources.len() > core::MAX_BATCH_SOURCES
-            || pages_total > core::MAX_BATCH_PAGES
-        {
-            return Err(());
-        }
         Ok(PlanLinkBatchScanRequest { sources })
     }
     fn review(&self, context: &Context) -> Option<PlanLinkBatchReview> {
@@ -448,6 +443,8 @@ enum BatchAction {
     Prepare,
     Preview(bool),
     Save,
+    OpenSavedCopy(SavedCopy),
+    ExportReceipt,
 }
 
 impl SuniApp {
@@ -595,6 +592,7 @@ impl SuniApp {
                         });
                     });
                     let editable = ready && state.batch.inspection.is_none();
+                    let mut scan_changed = false;
                     ui.add_enabled_ui(editable, |ui| {
                         for row in &mut state.batch.rows {
                             let Some(file) = context.set.files.iter().find(|f| f.id == row.file_id)
@@ -603,14 +601,32 @@ impl SuniApp {
                             };
                             ui.push_id(&row.file_id, |ui| {
                                 ui.horizontal_wrapped(|ui| {
-                                    ui.checkbox(&mut row.included, &file.path);
+                                    scan_changed |=
+                                        ui.checkbox(&mut row.included, &file.path).changed();
                                     if row.included {
                                         ui.label(tr(lang, "plan_links.pages"));
-                                        ui.add(
-                                            egui::TextEdit::singleline(&mut row.pages)
-                                                .char_limit(4096)
-                                                .desired_width(110.0),
-                                        );
+                                        scan_changed |= ui
+                                            .add(
+                                                egui::TextEdit::singleline(&mut row.pages)
+                                                    .char_limit(4096)
+                                                    .hint_text("1-8,12")
+                                                    .desired_width(110.0),
+                                            )
+                                            .changed();
+                                        if ui.button(tr(lang, "plan_links.indexed_pages")).clicked()
+                                        {
+                                            match indexed_pages(context, &row.file_id) {
+                                                Ok(pages) => {
+                                                    row.pages = pages;
+                                                    state.error = None;
+                                                    scan_changed = true;
+                                                }
+                                                Err(reason) => {
+                                                    state.error =
+                                                        Some(tr(lang, reason.key()).into())
+                                                }
+                                            }
+                                        }
                                     }
                                 });
                                 if row.included {
@@ -622,34 +638,14 @@ impl SuniApp {
                                                 row.targets.len()
                                             ),
                                             |ui| {
-                                                for sheet in context
-                                                    .set
-                                                    .sheets
-                                                    .iter()
-                                                    .filter(|s| s.file_id != row.file_id)
-                                                {
-                                                    let mut selected =
-                                                        row.targets.contains(&sheet.id);
-                                                    if ui
-                                                        .checkbox(
-                                                            &mut selected,
-                                                            format!(
-                                                                "{} · {} · {} · {}",
-                                                                sheet.number,
-                                                                sheet.title,
-                                                                sheet.discipline,
-                                                                sheet.revision
-                                                            ),
-                                                        )
-                                                        .changed()
-                                                    {
-                                                        if selected {
-                                                            row.targets.insert(sheet.id.clone());
-                                                        } else {
-                                                            row.targets.remove(&sheet.id);
-                                                        }
-                                                    }
-                                                }
+                                                scan_changed |= selection::target_controls(
+                                                    ui,
+                                                    context,
+                                                    &row.file_id,
+                                                    &mut row.target_filter,
+                                                    &mut row.targets,
+                                                    lang,
+                                                );
                                             },
                                         );
                                     });
@@ -658,6 +654,16 @@ impl SuniApp {
                         }
                         ui.checkbox(&mut state.saved_only, tr(lang, "plan_links.saved_only"));
                     });
+                    if scan_changed {
+                        state.batch.reset_scan();
+                        state.error = None;
+                    }
+                    if editable {
+                        ui.small(tr(lang, "plan_links.pages_help"));
+                        if let Err(reason) = state.batch.scan(context) {
+                            ui.colored_label(ui.visuals().warn_fg_color, tr(lang, reason.key()));
+                        }
+                    }
                     ui.horizontal_wrapped(|ui| {
                         if ui
                             .add_enabled(
@@ -701,7 +707,7 @@ impl SuniApp {
                         ));
                     }
                 }
-                render_outcome(ui, state.batch.outcome.as_ref(), lang);
+                render_outcome(ui, state.batch.outcome.as_ref(), lang, ready, &mut action);
                 if let Some(error) = &state.error {
                     ui.colored_label(ui.visuals().error_fg_color, error);
                 }
@@ -773,8 +779,12 @@ impl SuniApp {
                 let Some(context) = self.plan_links.context.clone() else {
                     return;
                 };
-                let Ok(scan) = self.plan_links.batch.scan(&context) else {
-                    return;
+                let scan = match self.plan_links.batch.scan(&context) {
+                    Ok(scan) => scan,
+                    Err(reason) => {
+                        self.plan_links.error = Some(tr(self.lang(), reason.key()).into());
+                        return;
+                    }
                 };
                 self.start_plan_links(false, |cancel, credentials| Job::BatchInspect {
                     context,
@@ -825,6 +835,14 @@ impl SuniApp {
                     credentials,
                     cancel,
                 });
+            }
+            BatchAction::OpenSavedCopy(copy) => self.plan_links_action(Action::OpenSavedCopy(copy)),
+            BatchAction::ExportReceipt => {
+                if let Some(outcome) = self.plan_links.batch.outcome.clone() {
+                    self.plan_links_action(Action::ExportReceipt(ReceiptExport::Batch(Box::new(
+                        outcome,
+                    ))));
+                }
             }
         }
     }
@@ -1204,7 +1222,13 @@ fn render_picture(ui: &mut egui::Ui, batch: &BatchState, lang: Language) {
     }
 }
 
-fn render_outcome(ui: &mut egui::Ui, outcome: Option<&PlanLinkBatchOutcome>, lang: Language) {
+fn render_outcome(
+    ui: &mut egui::Ui,
+    outcome: Option<&PlanLinkBatchOutcome>,
+    lang: Language,
+    ready: bool,
+    action: &mut Option<BatchAction>,
+) {
     let Some(outcome) = outcome else {
         return;
     };
@@ -1218,6 +1242,15 @@ fn render_outcome(ui: &mut egui::Ui, outcome: Option<&PlanLinkBatchOutcome>, lan
         },
     ));
     ui.label(tr(lang, "plan_links.batch.receipt_help"));
+    if ui
+        .add_enabled(
+            ready,
+            egui::Button::new(tr(lang, "plan_links.export_receipt")),
+        )
+        .clicked()
+    {
+        *action = Some(BatchAction::ExportReceipt);
+    }
     for receipt in &outcome.completed {
         ui.collapsing(
             format!(
@@ -1233,6 +1266,15 @@ fn render_outcome(ui: &mut egui::Ui, outcome: Option<&PlanLinkBatchOutcome>, lan
                     tr(lang, "plan_links.approved"),
                     receipt.report.created.len()
                 ));
+                if ui
+                    .add_enabled(
+                        ready,
+                        egui::Button::new(tr(lang, "plan_links.open_saved_copy")),
+                    )
+                    .clicked()
+                {
+                    *action = Some(BatchAction::OpenSavedCopy(SavedCopy::from(receipt)));
+                }
             },
         );
     }
@@ -1380,6 +1422,46 @@ mod tests {
             })
             .collect();
         assert!(batch.scan(&context).is_err());
+    }
+
+    #[test]
+    fn batch_range_validation_reports_source_and_total_limits_without_approving_links() {
+        let mut context = context();
+        let template = context.set.files[0].clone();
+        context.set.files[0].page_count = 40;
+        for index in 2..6 {
+            let mut file = template.clone();
+            file.id = format!("source-{index}");
+            file.path = format!("source-{index}.pdf");
+            file.page_count = 40;
+            context.set.files.push(file);
+        }
+        let mut batch = BatchState::default();
+        batch.load(&context);
+        assert_eq!(batch.scan(&context).unwrap_err(), SelectionError::Sources);
+        for row in batch.rows.iter_mut().filter(|row| row.file_id != "target") {
+            row.included = true;
+            row.pages = "1-32".into();
+            row.targets.insert("target-sheet".into());
+        }
+        assert_eq!(
+            batch.scan(&context).unwrap_err(),
+            SelectionError::TotalPages
+        );
+        batch.rows.last_mut().unwrap().included = false;
+        let scan = batch.scan(&context).unwrap();
+        assert_eq!(
+            scan.sources.iter().map(|s| s.pages.len()).sum::<usize>(),
+            128
+        );
+        assert!(batch.selections.is_empty() && batch.review(&context).is_none());
+        batch.rows[0].pages = "1-33".into();
+        assert_eq!(batch.scan(&context).unwrap_err(), SelectionError::PageLimit);
+        batch.rows[0].pages = "41".into();
+        assert_eq!(batch.scan(&context).unwrap_err(), SelectionError::Pages);
+        batch.rows[0].pages = "1".into();
+        batch.rows[0].targets.clear();
+        assert_eq!(batch.scan(&context).unwrap_err(), SelectionError::Targets);
     }
 
     #[test]

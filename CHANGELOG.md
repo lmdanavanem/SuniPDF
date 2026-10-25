@@ -5,7 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-Further work remains in the [roadmap](docs/ROADMAP.md).
+- Queue reviewed annotation transfers across several pairs of saved PDF revisions, then save separate new copies with per-file results.
+- Preflight all queued sources and destinations, retain completed copies after cancellation or a later failure, and guard closing an unsaved queue.
+- Add source-bound batch preview/apply commands with strict local manifests and optional per-file password environment references.
+- Accept bounded page ranges and indexed-page selection when creating plan links, with clearer input errors and filtered destination selection.
+- Retain plan-link save receipts and provide verified opening of completed copies and receipt export.
+
+The 0.79 increment is under qualification. Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.78.0] - 2026-10-25
 

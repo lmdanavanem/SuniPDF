@@ -279,6 +279,19 @@ jobs:
           }
           if (-not (Test-Path -LiteralPath $cli -PathType Leaf)) { throw 'Regression CLI is missing.' }
           "SUNIPDF_QA_CLI=$cli" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Reviewed revision batch and independent PDF checks
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-revision-transfer-batch.py --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --directory target\revision-batch-evidence
+          if ($LASTEXITCODE -ne 0) { throw 'Reviewed revision batch regression failed.' }
+      - name: Reviewed revision batch evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: revision-batch-evidence
+          path: target/revision-batch-evidence/
+          if-no-files-found: ignore
       - name: PDF inspection regression
         if: steps.changes.outputs.docs_only != 'true'
         run: |
@@ -396,6 +409,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.75.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.76.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.77.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.78.0
       - name: MSI upgrade regression evidence
         if: steps.changes.outputs.docs_only != 'true' && always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
