@@ -166,7 +166,7 @@ impl Canvas {
     fn rectangle_rotation(&mut self, app: &mut SuniApp, value: &str) {
         self.control(app, "measure.rectangle.rotation");
         self.ctx.memory_mut(|memory| {
-            memory.request_focus(egui::Id::new("dimensioned-rectangle-rotation"))
+            memory.request_focus(egui::Id::unique("dimensioned-rectangle-rotation"))
         });
         self.frame(
             app,
