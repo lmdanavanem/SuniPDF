@@ -90,6 +90,27 @@ fn text_pixels_at_contrast(
     readable
 }
 
+fn text_pixel_diagnostics(pixels: &[u8], size: [u32; 2], rect: Rect) -> Value {
+    let rect = rect.intersect(Rect::from_min_size(
+        egui::Pos2::ZERO,
+        vec2(size[0] as f32, size[1] as f32),
+    ));
+    let mut colors = std::collections::BTreeMap::<[u8; 3], usize>::new();
+    for y in rect.top().ceil().max(0.0) as u32..rect.bottom().floor().max(0.0) as u32 {
+        for x in rect.left().ceil().max(0.0) as u32..rect.right().floor().max(0.0) as u32 {
+            let offset = ((y * size[0] + x) * 4) as usize;
+            *colors
+                .entry([pixels[offset], pixels[offset + 1], pixels[offset + 2]])
+                .or_default() += 1;
+        }
+    }
+    let sampled = colors.values().sum::<usize>();
+    let mut colors = colors.into_iter().collect::<Vec<_>>();
+    colors.sort_by_key(|(rgb, count)| (std::cmp::Reverse(*count), *rgb));
+    colors.truncate(8);
+    json!({"sampledPixels": sampled, "dominantRgb": colors})
+}
+
 #[test]
 fn text_pixel_evidence_rejects_blank_and_low_contrast_headings() {
     let rect = Rect::from_min_size(egui::Pos2::ZERO, vec2(32.0, 4.0));
@@ -652,6 +673,68 @@ fn readback(
     Ok(pixels)
 }
 
+fn glyph_text_color(text: &egui::epaint::TextShape) -> Option<egui::Color32> {
+    if !text.opacity_factor.is_finite() || text.opacity_factor <= 0.0 {
+        return None;
+    }
+    let mut found = None;
+    for row in &text.galley.rows {
+        // A color glyph also samples its own atlas colors, so one foreground
+        // cannot prove its pixels. These evidence labels use monochrome glyphs.
+        if row
+            .glyphs
+            .iter()
+            .any(|glyph| glyph.is_color && !glyph.uv_rect.is_nothing())
+        {
+            return None;
+        }
+        for vertex in row
+            .visuals
+            .mesh
+            .vertices
+            .get(row.visuals.glyph_vertex_range.clone())?
+        {
+            // Match epaint's tessellate_text: the painter can fade the mesh
+            // vertices without modifying the original LayoutJob sections.
+            let mut color = text.override_text_color.unwrap_or_else(|| {
+                if vertex.color == egui::Color32::PLACEHOLDER {
+                    text.fallback_color
+                } else {
+                    vertex.color
+                }
+            });
+            if text.opacity_factor < 1.0 {
+                color = color.gamma_multiply(text.opacity_factor);
+            }
+            if color == egui::Color32::PLACEHOLDER
+                || found.is_some_and(|previous| previous != color)
+            {
+                // Do not qualify a mixed-color label using only its first run.
+                return None;
+            }
+            found = Some(color);
+        }
+    }
+    found
+}
+
+fn glyph_vertex_colors(text: &egui::epaint::TextShape) -> Vec<[u8; 4]> {
+    let mut colors = text
+        .galley
+        .rows
+        .iter()
+        .flat_map(|row| {
+            row.visuals.mesh.vertices[row.visuals.glyph_vertex_range.clone()]
+                .iter()
+                .map(|vertex| vertex.color.to_array())
+        })
+        .collect::<Vec<_>>();
+    colors.sort_unstable();
+    colors.dedup();
+    colors.truncate(8);
+    colors
+}
+
 fn home_text_paint(
     frame: &egui::FullOutput,
     label: &str,
@@ -668,19 +751,7 @@ fn home_text_paint(
             egui::Shape::Text(text) if text.galley.text() == label => {
                 let rect = Rect::from_min_size(text.pos, text.galley.size());
                 if region.contains_rect(rect) && clip.contains_rect(rect) {
-                    if let Some(section) = text.galley.job.sections.first() {
-                        let color = text.override_text_color.unwrap_or_else(|| {
-                            if section.format.color == egui::Color32::PLACEHOLDER {
-                                text.fallback_color
-                            } else {
-                                section.format.color
-                            }
-                        });
-                        let color = if text.opacity_factor < 1.0 {
-                            color.gamma_multiply(text.opacity_factor)
-                        } else {
-                            color
-                        };
+                    if let Some(color) = glyph_text_color(text) {
                         found.push((rect, clip, color));
                     }
                 }
@@ -750,6 +821,130 @@ fn home_label_pixels_cannot_come_from_sidebar_or_clipped_scroll_content() {
     let faded = home_text_paint(&frame, "Review", main_content);
     assert_eq!(faded.len(), 1);
     assert_eq!(faded[0].2, egui::Color32::WHITE.gamma_multiply(0.5));
+}
+
+#[test]
+fn disabled_button_proof_color_matches_actual_tessellator_vertices() {
+    fn find_text(shape: &egui::Shape, label: &str) -> Option<egui::epaint::TextShape> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text() == label => Some(text.clone()),
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| find_text(shape, label)),
+            _ => None,
+        }
+    }
+    for (lang, dark) in [(Language::English, false), (Language::French, true)] {
+        let context = egui::Context::default();
+        crate::theme::apply(&context, dark);
+        let palette = crate::theme::palette_for(&context);
+        let label = tr(lang, "register.bulk.apply").replace("{count}", "2");
+        for enabled in [true, false] {
+            let mut frame = context.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(360.0, 180.0))),
+                    ..Default::default()
+                },
+                |ui| {
+                    let response = ui.add_enabled(
+                        enabled,
+                        egui::Button::new(egui::RichText::new(&label).color(palette.text)),
+                    );
+                    assert_eq!(response.enabled(), enabled);
+                },
+            );
+            // This regression uses the actual UI and tessellator, without a GPU.
+            frame.textures_delta.clear();
+            let text = frame
+                .shapes
+                .iter()
+                .find_map(|shape| find_text(&shape.shape, &label))
+                .expect("button text was painted");
+            assert_eq!(text.galley.job.sections[0].format.color, palette.text);
+            let color = glyph_text_color(&text).expect("uniform actual glyph color");
+            if enabled {
+                assert_eq!(color, palette.text);
+            } else {
+                // Disabled UI changes the mesh, while LayoutJob stays opaque.
+                assert_ne!(color, text.galley.job.sections[0].format.color);
+                assert_eq!(
+                    color,
+                    palette
+                        .text
+                        .gamma_multiply(context.style().visuals.disabled_alpha())
+                );
+            }
+            for opacity in [1.0, 0.5] {
+                let mut text = text.clone();
+                text.opacity_factor = opacity;
+                let expected = glyph_text_color(&text).unwrap();
+                let mut tessellator = egui::epaint::Tessellator::new(
+                    frame.pixels_per_point,
+                    Default::default(),
+                    [1, 1],
+                    Vec::new(),
+                );
+                let mut mesh = egui::epaint::Mesh::default();
+                tessellator.tessellate_text(&text, &mut mesh);
+                assert!(!mesh.vertices.is_empty());
+                assert!(mesh.vertices.iter().all(|vertex| vertex.color == expected));
+            }
+            let paints = home_text_paint(
+                &frame,
+                &label,
+                Rect::from_min_size(egui::Pos2::ZERO, vec2(360.0, 180.0)),
+            );
+            assert_eq!(paints.len(), 1);
+            assert_eq!(paints[0].2, color);
+        }
+    }
+}
+
+#[test]
+fn glyph_color_proof_uses_fallback_and_override_but_refuses_mixed_ink() {
+    let context = egui::Context::default();
+    let mut frame = context.run_ui(Default::default(), |ui| {
+        ui.painter().text(
+            pos2(20.0, 20.0),
+            egui::Align2::LEFT_TOP,
+            "Review",
+            egui::FontId::proportional(16.0),
+            egui::Color32::WHITE,
+        );
+    });
+    frame.textures_delta.clear();
+    let mut text = frame
+        .shapes
+        .iter()
+        .find_map(|shape| match &shape.shape {
+            egui::Shape::Text(text) => Some(text.clone()),
+            _ => None,
+        })
+        .unwrap();
+    {
+        let galley = Arc::make_mut(&mut text.galley);
+        let row = Arc::make_mut(&mut galley.rows[0].row);
+        let range = row.visuals.glyph_vertex_range.clone();
+        assert!(range.len() > 1);
+        for vertex in &mut row.visuals.mesh.vertices[range] {
+            vertex.color = egui::Color32::PLACEHOLDER;
+        }
+    }
+    text.fallback_color = egui::Color32::from_rgb(15, 23, 42);
+    assert_eq!(glyph_text_color(&text), Some(text.fallback_color));
+    {
+        let galley = Arc::make_mut(&mut text.galley);
+        let row = Arc::make_mut(&mut galley.rows[0].row);
+        let first = row.visuals.glyph_vertex_range.start;
+        row.visuals.mesh.vertices[first].color = egui::Color32::WHITE;
+    }
+    assert!(glyph_text_color(&text).is_none());
+    text.override_text_color = Some(egui::Color32::BLACK);
+    text.opacity_factor = 0.5;
+    assert_eq!(
+        glyph_text_color(&text),
+        Some(egui::Color32::BLACK.gamma_multiply(0.5))
+    );
+    text.opacity_factor = 0.0;
+    assert!(glyph_text_color(&text).is_none());
 }
 
 fn verify_home_labels(
@@ -962,7 +1157,13 @@ fn verify_dialog_label(
     );
     require(
         ink >= 20,
-        &format!("Register dialog label {text:?} has only {ink} verified text pixels"),
+        &format!(
+            "Register dialog label {text:?} has only {ink} verified text pixels; bounds={rect:?}; clip={clip:?}; paint_rgba={:?}; displayed_rgba={:?}; background_rgba={:?}; minimum_contrast={minimum_contrast}; pixels={}",
+            foreground.to_array(),
+            displayed_foreground.to_array(),
+            paint.background.to_array(),
+            text_pixel_diagnostics(paint.pixels, paint.size, rect),
+        ),
     )?;
     Ok(json!({
         "key": key, "text": text, "accessible": true,
@@ -1416,7 +1617,12 @@ fn capture_scene(
             "paintedText": frame.shapes.iter().filter_map(|shape| match &shape.shape {
                 egui::Shape::Text(text) => Some(json!({
                     "text": text.galley.text(),
-                    "color": text.override_text_color.unwrap_or_else(|| text.galley.job.sections.first().map_or(text.fallback_color, |section| if section.format.color == egui::Color32::PLACEHOLDER { text.fallback_color } else { section.format.color })).to_array(),
+                    "color": glyph_text_color(text).map(|color| color.to_array()),
+                    "layoutColors": text.galley.job.sections.iter().take(8).map(|section| section.format.color.to_array()).collect::<Vec<_>>(),
+                    "glyphVertexColors": glyph_vertex_colors(text),
+                    "fallbackColor": text.fallback_color.to_array(),
+                    "overrideTextColor": text.override_text_color.map(|color| color.to_array()),
+                    "opacityFactor": text.opacity_factor,
                     "bounds": [text.pos.x, text.pos.y, text.pos.x + text.galley.size().x, text.pos.y + text.galley.size().y],
                     "clip": [shape.clip_rect.min.x, shape.clip_rect.min.y, shape.clip_rect.max.x, shape.clip_rect.max.y],
                 })),
