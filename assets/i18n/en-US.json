@@ -1662,7 +1662,7 @@
   "quantity.formula_error.division_by_zero": "Division by zero",
   "quantity.formula_error.overflow": "Numeric overflow",
   "library.capture_page": "Capture from current page",
-  "library.capture_help": "Select 1–16 native shapes, lines, polygons or clouds. Unsupported annotations are disabled. Declare the source; originals remain unchanged.",
+  "library.capture_help": "Select 1 to 16 supported native annotations: shapes, lines, polygons, clouds, standard stamps or image stamps. Stamp appearances must pass verification. Saved text annotations and review history are not supported. Declare the source; originals remain unchanged.",
   "library.capture_source_page": "Source page",
   "library.capture_save": "Save selected annotations as a group",
   "measure.rectangle.title": "Dimensioned rectangle",
@@ -2081,5 +2081,6 @@
   "overlay.stack.add": "Add layer",
   "overlay.stack.align": "Align layer {number} to the base",
   "overlay.stack.selected": "Selected layer",
-  "overlay.stack.dirty_source": "Save or close every modified source PDF before preparing or exporting the overlay."
+  "overlay.stack.dirty_source": "Save or close every modified source PDF before preparing or exporting the overlay.",
+  "library.capture_refusal": "Unavailable: {reason}"
 }

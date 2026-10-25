@@ -78,6 +78,24 @@ fn decode_bytes(bytes: &[u8], opacity: f32, png_only: bool) -> Result<RgbaImage,
     Ok(rgba)
 }
 
+/// The only supported native image appearance, shared with saved-library verification.
+pub(crate) fn image_ap(w: f32, h: f32, width: u32, height: u32) -> Ap {
+    let fit = (w / width as f32).min(h / height as f32);
+    let (draw_w, draw_h) = (width as f32 * fit, height as f32 * fit);
+    let values = [draw_w, draw_h, (w - draw_w) / 2.0, (h - draw_h) / 2.0].map(fmt_num);
+    Ap {
+        w,
+        h,
+        opacity: 1.0,
+        uses_font: false,
+        content: format!(
+            "q /GS gs {} 0 0 {} {} {} cm /Image Do Q\n",
+            values[0], values[1], values[2], values[3]
+        )
+        .into_bytes(),
+    }
+}
+
 impl Document<'_> {
     /// Fits an image inside a displayed-page rectangle, retaining its aspect ratio and alpha.
     /// The image is embedded in a real Stamp annotation; failure preserves the current document.
@@ -149,23 +167,7 @@ impl Document<'_> {
             }
             image.compress().map_err(lopdf_err)?;
             let image_id = pdf.add_object(image);
-            let fit = (w / rgba.width() as f32).min(h / rgba.height() as f32);
-            let (draw_w, draw_h) = (rgba.width() as f32 * fit, rgba.height() as f32 * fit);
-            let values = [draw_w, draw_h, (w - draw_w) / 2.0, (h - draw_h) / 2.0].map(fmt_num);
-            let mut ap = ap_stream(
-                &Ap {
-                    w,
-                    h,
-                    opacity: 1.0,
-                    uses_font: false,
-                    content: format!(
-                        "q /GS gs {} 0 0 {} {} {} cm /Image Do Q\n",
-                        values[0], values[1], values[2], values[3]
-                    )
-                    .into_bytes(),
-                },
-                geo,
-            );
+            let mut ap = ap_stream(&image_ap(w, h, rgba.width(), rgba.height()), geo);
             ap.dict
                 .get_mut(b"Resources")
                 .map_err(lopdf_err)?

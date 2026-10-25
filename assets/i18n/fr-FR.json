@@ -1662,7 +1662,7 @@
   "quantity.formula_error.division_by_zero": "Division par zéro",
   "quantity.formula_error.overflow": "Dépassement numérique",
   "library.capture_page": "Capturer depuis la page actuelle",
-  "library.capture_help": "Sélectionnez de 1 à 16 formes, lignes, polygones ou nuages natifs. Les annotations non prises en charge sont désactivées. Indiquez la source ; les originaux restent inchangés.",
+  "library.capture_help": "Sélectionnez 1 à 16 annotations natives compatibles : formes, lignes, polygones, nuages, tampons standards ou tampons image. Leur apparence doit être vérifiée. Les annotations textuelles enregistrées et leur historique de révision ne sont pas pris en charge. Indiquez la source ; les originaux restent inchangés.",
   "library.capture_source_page": "Page source",
   "library.capture_save": "Enregistrer la sélection comme groupe",
   "measure.rectangle.title": "Rectangle coté",
@@ -2081,5 +2081,6 @@
   "overlay.stack.add": "Ajouter un calque",
   "overlay.stack.align": "Aligner le calque {number} sur la base",
   "overlay.stack.selected": "Calque sélectionné",
-  "overlay.stack.dirty_source": "Enregistrez ou fermez chaque PDF source modifié avant de préparer ou d’exporter la superposition."
+  "overlay.stack.dirty_source": "Enregistrez ou fermez chaque PDF source modifié avant de préparer ou d’exporter la superposition.",
+  "library.capture_refusal": "Indisponible : {reason}"
 }

@@ -344,6 +344,20 @@ jobs:
           name: overlay-stack-evidence
           path: target/overlay-stack-evidence/
           if-no-files-found: ignore
+      - name: Saved stamp library independent appearance checks
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-saved-stamp-library.py --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --directory target\saved-stamp-evidence --expected-version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Saved stamp library appearance regression failed.' }
+      - name: Saved stamp library evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: saved-stamp-evidence
+          path: target/saved-stamp-evidence/
+          if-no-files-found: ignore
       - name: Page decorations regression
         if: steps.changes.outputs.docs_only != 'true'
         run: |
