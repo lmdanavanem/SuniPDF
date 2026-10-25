@@ -5,13 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-- Queue reviewed annotation transfers across several pairs of saved PDF revisions, then save separate new copies with per-file results.
-- Preflight all queued sources and destinations, retain completed copies after cancellation or a later failure, and guard closing an unsaved queue.
-- Add source-bound batch preview/apply commands with strict local manifests and optional per-file password environment references.
-- Accept bounded page ranges and indexed-page selection when creating plan links, with clearer input errors and filtered destination selection.
-- Retain plan-link save receipts and provide verified opening of completed copies and receipt export.
+Further work remains in the [roadmap](docs/ROADMAP.md).
 
-The 0.79 increment is under qualification. Further work remains in the [roadmap](docs/ROADMAP.md).
+## [0.79.0] - 2026-10-25
+
+- Queue up to 16 reviewed old/new PDF pairs and save separate new copies.
+- Preflight the whole queue and retain completed copies and receipts after cancellation or a later failure.
+- Use source-bound CLI batch preview/apply with explicit page mappings.
+- Select plan-link pages by ranges or indexed entries, filter destinations and reopen verified completed copies.
+
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.79.0). See [qualification and limits](docs/RELEASE_0.79.0.md).
 
 ## [0.78.0] - 2026-10-25
 

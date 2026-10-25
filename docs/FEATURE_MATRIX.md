@@ -4,6 +4,15 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
+## Added in 0.79.0
+
+- Queue up to 16 reviewed old/new PDF pairs and save separate new copies.
+- Preflight the whole queue and retain completed copies and receipts after cancellation or a later failure.
+- Use source-bound CLI batch preview/apply with explicit page mappings.
+- Select plan-link pages by ranges or indexed entries, filter destinations and reopen verified completed copies.
+
+[Qualification and remaining limits](RELEASE_0.79.0.md).
+
 ## Added in 0.78.0
 
 - Use a calmer Glass workspace with neutral light/dark surfaces and continuous docked bars.

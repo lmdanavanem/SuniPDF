@@ -2,23 +2,17 @@
 
 ## Next development
 
-The 0.79 increment adds a reviewed multi-file annotation-transfer queue, CLI batch
-preview/apply and clearer plan-link creation controls. Each new copy is committed
-separately after shared preflight; completed copies and per-file results remain
-available after cancellation or later refusal. Qualification is in progress; the
-current published release remains 0.78.0.
+Delivered in [0.79.0](RELEASE_0.79.0.md): Reviewed transfer batches and clearer plan-link creation. Queue up to 16 reviewed old/new PDF pairs and save separate new copies. Preflight the whole queue and retain completed copies and receipts after cancellation or a later failure. Use source-bound CLI batch preview/apply with explicit page mappings. Select plan-link pages by ranges or indexed entries, filter destinations and reopen verified completed copies.
 
-Delivered in [0.78.0](RELEASE_0.78.0.md): Glass uses a continuous neutral workspace in light and dark modes, with compact task families and Open/Recent priority on the welcome screen. After following a verified plan link, Return to source restores the original open document and reading positions. Unsaved changes remain in memory; the latest successful return is session-only.
-
-Remaining plan-link priorities are native desktop link creation/saving,
-broader batch interaction and external-reader interoperability. AEC-017
-stays In progress. AEC-011 visual search and AEC-012 region fill retain
-their open native and broader-drawing criteria. Implementation and
-complete acceptance remain separate.
+Work continues on the remaining local plan, annotation and review criteria below. Implementation, native interaction and independent interoperability retain separate acceptance gates.
 
 ## Published scope
 
-[0.78.0](RELEASE_0.78.0.md) is the current stable release. Glass uses a continuous neutral workspace in light and dark modes, with compact task families and Open/Recent priority on the welcome screen. After following a verified plan link, Return to source restores the original open document and reading positions. Unsaved changes remain in memory; the latest successful return is session-only.
+[0.79.0](RELEASE_0.79.0.md) is the current stable release. Reviewed transfer batches and clearer plan-link creation. Queue up to 16 reviewed old/new PDF pairs and save separate new copies. Preflight the whole queue and retain completed copies and receipts after cancellation or a later failure. Use source-bound CLI batch preview/apply with explicit page mappings. Select plan-link pages by ranges or indexed entries, filter destinations and reopen verified completed copies.
+
+[Qualification evidence](qa/RELEASE_0.79.0.json) records the exact source, packages and remaining limits.
+
+[0.78.0](RELEASE_0.78.0.md) was published previously. Glass uses a continuous neutral workspace in light and dark modes, with compact task families and Open/Recent priority on the welcome screen. After following a verified plan link, Return to source restores the original open document and reading positions. Unsaved changes remain in memory; the latest successful return is session-only.
 
 [Qualification evidence](qa/RELEASE_0.78.0.json) records the exact source, package identities, native scope and remaining limits.
 
