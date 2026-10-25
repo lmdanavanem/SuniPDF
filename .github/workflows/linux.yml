@@ -95,6 +95,7 @@ jobs:
       - name: Packaging boundary regressions
         run: |
           python scripts/test-linux-packaging.py
+          python scripts/test-native-plan-creation.py
           python scripts/test-linux-update-helper.py
           python scripts/test-linux-update-installed.py --self-test
           python scripts/license-inventory.py --self-test
@@ -195,7 +196,7 @@ jobs:
     name: Install and run on Ubuntu ${{ matrix.ubuntu }}
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     strategy:
       fail-fast: false
       matrix:
