@@ -687,6 +687,7 @@ impl SuniApp {
             | Command::CutObjects => self.edit.selection.is_some(),
             Command::RotateObjectLeft | Command::RotateObjectRight => self.edit.selection.is_some(),
             Command::HistoryBack => self.view.reading.history.can_back(),
+            Command::ReturnToPlanSource => self.plan_return_ready(),
             Command::HistoryForward => self.view.reading.history.can_forward(),
             Command::PasteObjects | Command::PasteEditableObjects => self.edit.clip.is_some(),
             Command::RedactClear | Command::RedactApply => {

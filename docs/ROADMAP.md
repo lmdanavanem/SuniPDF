@@ -2,6 +2,10 @@
 
 ## Next development
 
+Following increment: [0.78 return to the source plan](RELEASE_0.78.0.md), preserving
+the open document and its reading positions. Implementation and qualification are
+tracked separately from the preceding release.
+
 In development: [0.77 linked-sheet previews and native navigation checks](RELEASE_0.77.0.md).
 This lot also caches historical Windows packages to reduce repeated download work
 without reducing the upgrade scenarios.

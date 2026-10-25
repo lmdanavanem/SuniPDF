@@ -266,6 +266,22 @@ def plan_error_visible(kind, text):
     return re.search(patterns[kind], text, re.I) is not None
 
 
+def plan_source_location(tsv, image_size, scale):
+    """Observe two separate source-PDF anchors, never sidebar or page-number labels."""
+    assert scale > 0
+    return {label: [coordinate / scale for coordinate in theme_label_center(tsv, label, image_size)]
+            for label in ("Native source document", "A-101")}
+
+
+def plan_location_restored(before, after):
+    """A small raster tolerance permits antialiasing, not a different zoom or scroll."""
+    labels = {"Native source document", "A-101"}
+    return (set(before) == labels and set(after) == labels
+            and all(len(before[label]) == len(after[label]) == 2
+                    and all(abs(old - new) <= 3 for old, new in zip(before[label], after[label]))
+                    for label in labels))
+
+
 def plan_link_navigation(evidence, version):
     """Qualify native navigation only; the linked PDF is prepared by the installed CLI."""
     from PIL import Image
@@ -344,26 +360,45 @@ def plan_link_navigation(evidence, version):
                         "ocr": str(tsv_path.relative_to(evidence)), "ocrSha256": sha(tsv_path)})
         command(["xdotool", "mousemove", "--window", window, x, y, "click", "1"])
 
-    def wait_scene(name, *, kind=None, text_pattern=None, error_kind=None, expected_title=None):
+    def wait_scene(name, *, kind=None, text_pattern=None, error_kind=None, expected_title=None,
+                   observe_source_location=False, expected_source_location=None, different_source_location=None):
         path = evidence / (name + ".png")
         deadline = time.monotonic() + 30
         last = ""
         while time.monotonic() < deadline:
             capture(path)
-            last, ink, mask, _, _ = ocr(path, "blue" if kind == "source" else "red" if kind else None)
+            last, ink, mask, scale, size = ocr(path, "blue" if kind == "source" else "red" if kind else None)
             matched = (plan_fixture_visible(kind, ink, last) if kind else
                        plan_error_visible(error_kind, last) if error_kind else
                        re.search(text_pattern, last, re.I) is not None)
             caption = title()
+            location = None
+            if matched and (observe_source_location or expected_source_location is not None or different_source_location is not None):
+                assert kind == "source", "Reading-position evidence must come from source PDF ink"
+                tsv = command(["tesseract", mask, "stdout", "-l", "eng", "--psm", 11, "tsv"], timeout=20)
+                try:
+                    location = plan_source_location(tsv, size, scale)
+                except ThemeLabelMissing:
+                    matched = False
+                if expected_source_location is not None:
+                    matched = matched and plan_location_restored(expected_source_location, location)
+                if different_source_location is not None:
+                    matched = matched and not plan_location_restored(different_source_location, location)
             if matched and (expected_title is None or expected_title in caption):
                 text_path = path.with_suffix(".txt")
                 text_path.write_text(last + "\n", encoding="utf-8")
-                scenes.append({"name": name, "png": path.name, "pngSha256": sha(path),
+                scene = {"name": name, "png": path.name, "pngSha256": sha(path),
                                "windowTitle": caption, "text": last, "textSha256": sha(text_path),
                                "pdfKind": kind, "pdfInkPixels": ink, "errorKind": error_kind,
                                "ocrMask": mask.name if kind else None,
-                               "ocrMaskSha256": sha(mask) if kind else None})
-                return
+                               "ocrMaskSha256": sha(mask) if kind else None}
+                if location is not None:
+                    tsv_path = path.with_suffix(".tsv")
+                    tsv_path.write_text(tsv, encoding="utf-8")
+                    scene.update(sourceLocation=location, sourceLocationOcr=tsv_path.name,
+                                 sourceLocationOcrSha256=sha(tsv_path), locationTolerancePixels=3)
+                scenes.append(scene)
+                return scene
             time.sleep(0.25)
         raise AssertionError(f"Native plan-link scene {name} did not qualify: {last}")
 
@@ -401,7 +436,8 @@ def plan_link_navigation(evidence, version):
             time.sleep(0.25)
             command(["xdotool", "type", "--clearmodifiers", "--delay", "35", "Fit Page"])
             key("Return")
-            wait_scene("native-plan-source-fit-page", kind="source", expected_title=fixture["linked"].name)
+            fitted = wait_scene("native-plan-source-fit-page", kind="source", expected_title=fixture["linked"].name,
+                                observe_source_location=True)
             stored = json.loads(settings.read_text(encoding="utf-8"))
             assert not stored["show_thumbnails"] and not stored["show_tools"], "Navigation ink could contaminate plan-link evidence"
             open_preview("native-plan-cancel", load=True)
@@ -438,11 +474,34 @@ def plan_link_navigation(evidence, version):
                 assert all(sha(Path(path)) == expected for path, expected in fixture["protected"].items())
                 cases.append("native-plan-link-" + failure + "-after-preview-refused")
 
+            key("ctrl+k")
+            time.sleep(0.25)
+            command(["xdotool", "type", "--clearmodifiers", "--delay", "35", "Zoom In"])
+            key("Return")
+            departure = wait_scene("native-plan-source-before-departure", kind="source",
+                                   expected_title=fixture["linked"].name,
+                                   different_source_location=fitted["sourceLocation"])
             open_preview("native-plan-open")
             click_label("Open verified destination")
             wait_scene("native-plan-opened-physical-page-two", kind="destination", expected_title=fixture["target"].name)
             assert "*" not in title(), "Native navigation dirtied the destination"
             cases.append("native-plan-link-open-verified-physical-page-two")
+            click_label("Return to source")
+            returned = wait_scene("native-plan-returned-source-location", kind="source",
+                                  expected_title=fixture["linked"].name,
+                                  expected_source_location=departure["sourceLocation"])
+            assert "*" not in title(), "Returning to the plan source dirtied the document"
+            # Move away from the former button so its hover text cannot outlive it.
+            x, y = returned["sourceLocation"]["Native source document"]
+            command(["xdotool", "mousemove", "--window", window, round(x), round(y)])
+            consumed = wait_scene("native-plan-return-control-consumed",
+                                  text_pattern=r"(?s)\A(?=.*\bMenu\b)(?=.*\bTools\b)(?!.*\bReturn\s+to\s+source\b)",
+                                  expected_title=fixture["linked"].name)
+            report["returnToSource"] = {"departureScene": departure["name"], "returnedScene": returned["name"],
+                                        "sameSourcePdfAndReadingPosition": True, "twoPaneRestoreTested": False,
+                                        "consumedControlScene": consumed["name"], "returnControlHiddenAfterReturn": True,
+                                        "repeatedReturnTested": False}
+            cases.append("native-plan-link-return-to-source-restores-reading-position")
             assert all(sha(Path(path)) == expected for path, expected in fixture["protected"].items())
             report["status"] = "passed"
             report["fixturesUnchanged"] = True
@@ -874,7 +933,9 @@ def lifecycle(package, evidence, identity):
     assert plan_proof["version"] == version and plan_proof["sourceSha"] == source_sha
     assert plan_proof["syntheticOnly"] and plan_proof["isolatedProfile"]
     assert not plan_proof["desktopLinkCreationTested"] and not plan_proof["desktopLinkSavingTested"]
-    assert len(plan_proof["cases"]) == 5 and len(set(plan_proof["cases"])) == 5
+    assert len(plan_proof["cases"]) == 6 and len(set(plan_proof["cases"])) == 6
+    assert plan_proof["returnToSource"]["sameSourcePdfAndReadingPosition"]
+    assert plan_proof["returnToSource"]["returnControlHiddenAfterReturn"]
     assert all(case in runtime_proof["cases"] for case in plan_proof["cases"])
     protected = {Path(runtime_proof["source"]): runtime_proof["sourceSha256"], Path(runtime_proof["settings"]): runtime_proof["settingsSha256"]}
     protected.update({Path(path): expected for path, expected in plan_proof["protectedFiles"].items()})
@@ -905,6 +966,7 @@ def lifecycle(package, evidence, identity):
                          "native_plan_link_verified_physical_page_navigation": True,
                          "native_plan_link_changed_or_missing_destination_refused": True,
                          "native_plan_link_changed_source_refused": True,
+                         "native_plan_link_return_to_source_preserves_reading_position": True,
                          "verified_public_deb_upgrade": True, "update_refusal_guards": True,
                          "reinstall": True, "uninstall": True, "user_data_preserved": True},
               "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged",

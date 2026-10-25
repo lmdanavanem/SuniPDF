@@ -26,6 +26,32 @@ plan_fixture = load("native-plan-link-fixture.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_plan_source_location_uses_both_unique_pdf_anchors_and_actual_image_scale(self):
+        header = "level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext\n"
+        title = "".join(f"5\t1\t1\t1\t1\t{index + 1}\t{30 + 90 * index}\t60\t60\t30\t95\t{word}\n"
+                        for index, word in enumerate("Native source document".split()))
+        reference = "5\t1\t2\t1\t1\t1\t30\t360\t90\t30\t95\tA-101\n"
+        self.assertEqual(installed.plan_source_location(header + title + reference, (900, 1200), 3),
+                         {"Native source document": [50, 25], "A-101": [25, 125]})
+        for incomplete in (title, reference, title + reference.replace("A-101", "A-102")):
+            with self.subTest(text=incomplete), self.assertRaises(installed.ThemeLabelMissing):
+                installed.plan_source_location(header + incomplete, (900, 1200), 3)
+        duplicate = reference.replace("\t1\t2\t1\t1\t1\t", "\t1\t3\t1\t1\t1\t")
+        with self.assertRaises(AssertionError):
+            installed.plan_source_location(header + title + reference + duplicate, (900, 1200), 3)
+
+    def test_plan_source_return_rejects_different_scroll_zoom_or_missing_anchor(self):
+        before = {"Native source document": [300, 250], "A-101": [250, 450]}
+        self.assertTrue(installed.plan_location_restored(before, before))
+        self.assertTrue(installed.plan_location_restored(before, {"Native source document": [303, 247], "A-101": [249, 452]}))
+        for after in ({"Native source document": [300, 260], "A-101": [250, 460]},
+                      {"Native source document": [300, 250], "A-101": [250, 470]},
+                      {"Native source document": [300, 250]},
+                      {"Native source document": [300, 250], "A-101": [250]},
+                      {"Native source document": [300, 250], "A-101": [float("nan"), 450]}):
+            with self.subTest(after=after):
+                self.assertFalse(installed.plan_location_restored(before, after))
+
     def test_plan_navigation_requires_unique_colored_pdf_title(self):
         for kind, title, wrong in (("source", "Native source document", "Native destination two"),
                                    ("destination", "Native destination two", "Native wrong first page")):

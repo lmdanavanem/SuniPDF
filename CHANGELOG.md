@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
+## [0.78.0] - Unreleased
+
+- Return explicitly to the source after following a verified plan link.
+- Restore source view settings and both pane positions without reopening the PDF from disk.
+- Preserve unsaved documents and refuse stale, closed or conflicting return targets.
+
+Development candidate: [scope and pending qualification](docs/RELEASE_0.78.0.md).
+
 ## [0.77.0] - Unreleased
 
 - Add an explicit verified destination preview before opening saved plan-sheet links.

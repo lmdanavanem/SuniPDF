@@ -84,6 +84,7 @@ pub fn command_icon(command: Command) -> (&'static str, &'static str) {
         Command::RotateViewCounterClockwise => (glyph::ROTATE_LEFT, "↺"),
         Command::FullScreenReading => (glyph::FIT_PAGE, "⛶"),
         Command::HistoryBack => (glyph::CHEVRON_LEFT, "←"),
+        Command::ReturnToPlanSource => (glyph::UNDO, "↶"),
         Command::HistoryForward => (glyph::CHEVRON_RIGHT, "→"),
         Command::ToolAddRadioField => (glyph::ELLIPSE, "◉"),
         Command::ToolAddComboField => (glyph::CHEVRON_DOWN, "▾"),
@@ -554,6 +555,24 @@ impl SuniApp {
             if all_tools.clicked() {
                 all_tools.surrender_focus();
                 run = Some(Command::ToggleTools);
+            }
+            if self.plan_return_visible() {
+                let response = bar_button(
+                    ui,
+                    self.has_icons,
+                    BarButton {
+                        icon: command_icon(Command::ReturnToPlanSource),
+                        tint: None,
+                        label: tr(lang, "plan_links.return_source"),
+                        show_label: !compact,
+                        tooltip: tr(lang, "plan_links.return_hint"),
+                        selected: false,
+                        enabled: self.plan_return_ready(),
+                    },
+                );
+                if response.clicked() {
+                    run = Some(Command::ReturnToPlanSource);
+                }
             }
             if let Some(c) = run {
                 self.execute(ctx, c);

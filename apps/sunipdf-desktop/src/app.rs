@@ -742,6 +742,7 @@ impl SuniApp {
                     }
                 }
                 Response::SuspendFailed(error) => {
+                    self.plan_return_transition_failed();
                     self.plan_sets.navigation_failed();
                     self.review.pending_page = None;
                     self.opening = None;
@@ -912,6 +913,14 @@ impl SuniApp {
                             has_signatures,
                         });
                         continue;
+                    }
+                    if let Some(tab_id) = self
+                        .tabs
+                        .active
+                        .and_then(|index| self.tabs.tabs.get(index))
+                        .map(|tab| tab.recovery_id)
+                    {
+                        self.plan_return_source_changed(tab_id);
                     }
                     self.measurement_scale_changed();
                     self.annotate.register.invalidate();
@@ -2155,12 +2164,14 @@ impl SuniApp {
                 | Command::ViewSwitchPane
                 | Command::HistoryBack
                 | Command::HistoryForward
+                | Command::ReturnToPlanSource
         ) {
             self.form_builder.cancel();
         }
         match command {
             Command::PlanSets => self.open_plan_sets(),
             Command::PlanLinks => self.open_plan_links(),
+            Command::ReturnToPlanSource => self.return_to_plan_source(),
             Command::RevisionOutlines => self.open_revision_outlines(),
             Command::PlanZones => self.open_plan_zones(),
             Command::VisualSearch => self.open_visual_search(),

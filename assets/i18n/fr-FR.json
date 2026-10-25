@@ -2021,5 +2021,9 @@
   "reader.close_split": "Fermer la vue divisée",
   "reader.pane": "Vue {number}",
   "reader.location": "Page {page} · {zoom}%",
-  "reader.activate_hint": "Cliquez sur une vue pour l’activer. Les commandes de lecture et les outils suivent la vue active."
+  "reader.activate_hint": "Cliquez sur une vue pour l’activer. Les commandes de lecture et les outils suivent la vue active.",
+  "plan_links.return_source": "Retour à la source",
+  "plan_links.return_hint": "Revenir à l’onglet source et à sa position de lecture. Les modifications non enregistrées restent dans les deux onglets.",
+  "plan_links.return_unavailable": "L’onglet source n’est plus disponible, a changé ou une transition de document est en cours.",
+  "plan_links.returned": "Retour à l’onglet source. Les modifications non enregistrées ont été conservées."
 }

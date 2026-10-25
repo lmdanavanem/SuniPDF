@@ -27,7 +27,9 @@ use sunipdf_i18n::{tr, Language};
 use zeroize::Zeroizing;
 
 mod batch;
+mod return_to_source;
 use batch::{BatchCached, BatchState};
+pub(crate) use return_to_source::ReturnOrigin;
 
 pub type Credentials = Vec<(String, Zeroizing<String>)>;
 
@@ -550,6 +552,7 @@ impl WorkerCache {
                     password: secret,
                     page_count: doc.page_count(),
                     active_source: None,
+                    return_source: None,
                 }))
             }
             Job::RemotePreview {
@@ -597,6 +600,7 @@ struct Picture {
 }
 #[derive(Default)]
 pub struct PlanLinksState {
+    return_to_source: return_to_source::ReturnState,
     pub open: bool,
     batch_mode: bool,
     batch: BatchState,
@@ -1008,7 +1012,8 @@ impl SuniApp {
                     receipt.output.display()
                 ));
             }
-            Ok(Outcome::Navigate(navigation)) => {
+            Ok(Outcome::Navigate(mut navigation)) => {
+                navigation.return_source = self.capture_plan_return_origin().map(Box::new);
                 self.close_plan_links();
                 self.navigate_plan_sheet(navigation);
             }

@@ -4,6 +4,12 @@ See [project status](PROJECT_STATUS.md) for the current published version and do
 Versioned release notes distinguish implemented source from qualified packages and untested native workflows.
 The historical sections retain the limits and results of their own releases.
 
+## In development: 0.78.0
+
+- Explicit return to the source of the latest successful verified plan link.
+- Session-only restoration of source views, with retained unsaved document state.
+- [Scope and pending qualification](RELEASE_0.78.0.md).
+
 ## In development: 0.77.0
 
 - Explicit preview of a saved plan link's verified destination before navigation.

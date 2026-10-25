@@ -258,6 +258,14 @@ impl SuniApp {
 
     /// Edits already queued before Suspend still belong to that tab's UI state.
     pub(crate) fn on_suspending_document_changed(&mut self, state: crate::worker::DocState) {
+        if let Some(tab_id) = self
+            .tabs
+            .suspending
+            .and_then(|index| self.tabs.tabs.get(index))
+            .map(|tab| tab.recovery_id)
+        {
+            self.plan_return_source_changed(tab_id);
+        }
         let Some(tab) = self
             .tabs
             .suspending
@@ -315,6 +323,10 @@ impl SuniApp {
         let Some(index) = self.tabs.resuming.take() else {
             return;
         };
+        let Some(tab_id) = self.tabs.tabs.get(index).map(|tab| tab.recovery_id) else {
+            return;
+        };
+        let return_location = self.plan_return_resume_location(tab_id, &state.info);
         let Some(tab) = self.tabs.tabs.get_mut(index) else {
             return;
         };
@@ -346,6 +358,9 @@ impl SuniApp {
                         .anchor
                         .filter(|page| *page < doc.info.page_count());
                 }
+                if let Some(origin) = &return_location {
+                    self.restore_plan_source_mode(origin);
+                }
                 self.put_tab(ui);
             }
             None => {
@@ -361,6 +376,7 @@ impl SuniApp {
         self.can_undo = state.can_undo;
         self.can_redo = state.can_redo;
         self.dirty = state.modified;
+        self.finish_plan_return_resume(tab_id, return_location);
         self.finish_plan_set_navigation();
         self.update_title(ctx);
         self.worker.send(Request::Bookmarks);
@@ -376,6 +392,7 @@ impl SuniApp {
 
     /// Keep the tab, its UI and its complete journal available for an explicit retry.
     pub fn on_resume_failed(&mut self, suspended: SuspendedDoc) {
+        self.plan_return_transition_failed();
         self.plan_sets.navigation_failed();
         if let Some(i) = self.tabs.resuming.take() {
             if let Some(tab) = self.tabs.tabs.get_mut(i) {
