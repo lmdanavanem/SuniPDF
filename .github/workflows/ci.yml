@@ -405,6 +405,23 @@ jobs:
           name: register-field-batch-evidence
           path: target/register-field-batch-evidence/
           if-no-files-found: ignore
+      - name: Saved text library independent appearance checks
+        if: steps.changes.outputs.docs_only != 'true'
+        timeout-minutes: 6
+        run: |
+          python .\scripts\test-saved-text-library.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Saved text library fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-saved-text-library.py --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --directory target\saved-text-library-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Saved text library regression failed.' }
+      - name: Saved text library evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: saved-text-library-evidence
+          path: target/saved-text-library-evidence/
+          if-no-files-found: ignore
       - name: Page decorations regression
         if: steps.changes.outputs.docs_only != 'true'
         run: |

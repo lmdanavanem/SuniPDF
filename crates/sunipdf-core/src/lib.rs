@@ -11,6 +11,15 @@ pub mod annot;
 pub mod annot_rich;
 pub mod annot_write;
 pub mod annotation_library;
+
+#[cfg(test)]
+pub(crate) fn test_engine() -> std::sync::MutexGuard<'static, Engine> {
+    static ENGINE: std::sync::OnceLock<std::sync::Mutex<Engine>> = std::sync::OnceLock::new();
+    ENGINE
+        .get_or_init(|| std::sync::Mutex::new(Engine::new().expect("native PDF engine")))
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+}
 pub mod annotation_register;
 pub mod annotation_register_batch;
 mod appearance;

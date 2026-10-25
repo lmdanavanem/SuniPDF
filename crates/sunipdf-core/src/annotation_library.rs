@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read};
 
 mod capture_stamps;
+mod capture_text;
 
 pub const MAX_LIBRARY_BYTES: usize = 16 * 1024 * 1024;
 pub const MAX_LIBRARY_ENTRIES: usize = 64;
@@ -378,6 +379,9 @@ impl LibraryPrimitive {
         let mut result = self.clone();
         result.translate(dx, dy);
         result.validate()?;
+        if matches!(self, Self::FreeText { .. }) {
+            capture_text::preserve_dimensions(self.bounds(), result.bounds(), 1.0)?;
+        }
         Ok(result)
     }
 
@@ -502,7 +506,11 @@ impl LibraryEntry {
         let bounds = self.bounds()?;
         let mut result = self.clone();
         for p in &mut result.primitives {
+            let original = p.bounds();
             p.translate(-bounds[0], -bounds[1]);
+            if matches!(p, LibraryPrimitive::FreeText { .. }) {
+                capture_text::preserve_dimensions(original, p.bounds(), 1.0)?;
+            }
         }
         result.validate()?;
         Ok(result)
@@ -1329,6 +1337,7 @@ fn capture_replied_indices(
 }
 
 fn capture_without_thread(
+    document: &Document<'_>,
     pdf: &lopdf::Document,
     dict: &lopdf::Dictionary,
     geo: &crate::geometry::PageGeometry,
@@ -1344,11 +1353,7 @@ fn capture_without_thread(
     if matches!(purpose, CapturePurpose::Library) {
         match capture_subtype(dict).as_str() {
             "Stamp" => return capture_stamps::capture(pdf, dict, geo),
-            "FreeText" => {
-                return Err(invalid(
-                    "saved FreeText capture requires verified font resources and is not supported",
-                ));
-            }
+            "FreeText" => return capture_text::capture(document, pdf, dict, geo),
             _ => {}
         }
     }
@@ -1410,6 +1415,7 @@ impl Document<'_> {
                         ));
                     }
                     capture_without_thread(
+                        self,
                         &pdf,
                         dict,
                         &geo,
@@ -1475,6 +1481,7 @@ impl Document<'_> {
                 let dict = capture_annotation(&pdf, page_id, index)?;
                 let subtype = capture_subtype(dict);
                 let result = capture_without_thread(
+                    self,
                     &pdf,
                     dict,
                     &geo,
@@ -1521,6 +1528,7 @@ impl Document<'_> {
             }
             let dict = capture_annotation(&pdf, page_id, selected.index)?;
             let (primitive, fingerprint) = capture_without_thread(
+                self,
                 &pdf,
                 dict,
                 &geo,
@@ -1640,14 +1648,22 @@ impl Document<'_> {
                     rect: r,
                     text,
                     style,
-                } => self.add_rich_free_text_annotation(
-                    page,
-                    None,
-                    rect(*r),
-                    text,
-                    &style.placed(placement.scale),
-                    author,
-                )?,
+                } => {
+                    let placed = rect(*r);
+                    capture_text::preserve_dimensions(
+                        *r,
+                        [placed.left, placed.bottom, placed.right, placed.top],
+                        placement.scale,
+                    )?;
+                    self.add_rich_free_text_annotation(
+                        page,
+                        None,
+                        placed,
+                        text,
+                        &style.placed(placement.scale),
+                        author,
+                    )?
+                }
                 LibraryPrimitive::Vertices {
                     vertex_kind,
                     points,

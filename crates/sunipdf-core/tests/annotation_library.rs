@@ -486,14 +486,10 @@ fn saved_groups_capture_round_trip_and_refuse_stale_or_mixed_sources(engine: &En
             .is_err());
         let inventory = doc.library_capture_candidates(0).unwrap();
         assert!(
-            inventory[unsupported].fingerprint.is_none()
-                && inventory[unsupported].refusal.is_some()
+            inventory[unsupported].fingerprint.is_some()
+                && inventory[unsupported].refusal.is_none(),
+            "native saved text is reusable, but the supplied stale fingerprint is refused"
         );
-        assert!(inventory[unsupported]
-            .refusal
-            .as_deref()
-            .unwrap()
-            .contains("font resources"));
         assert_eq!(
             normalized(&mixed_before, None),
             normalized(&doc.snapshot().unwrap(), None)

@@ -1,10 +1,10 @@
 # Annotation libraries
 
-[0.61 release scope](RELEASE_0.61.0.md) · [User guide](USER_GUIDE.en.md)
+[0.61 release scope](RELEASE_0.61.0.md) Â· [User guide](USER_GUIDE.en.md)
 
 ## Desktop
 
-Open **Tools → Review & measure → Annotation library**. The library is stored locally, separately from application preferences. You can manage it without an open PDF; creating a draft, capturing saved annotations or placing a template requires an open document.
+Open **Tools â†’ Review & measure â†’ Annotation library**. The library is stored locally, separately from application preferences. You can manage it without an open PDF; creating a draft, capturing saved annotations or placing a template requires an open document.
 
 The original template workflow shipped in [0.45.0](RELEASE_0.45.0.md); [its evidence](qa/RELEASE_0.45.0.json) does not qualify the new saved-annotation capture workflow.
 
@@ -22,7 +22,7 @@ Scale is a uniform size multiplier: `1` keeps the template size. It is independe
 ## Capture a group from an existing page
 
 1. Open the source PDF at the desired page, then open the library and choose **Capture from current page**.
-2. Select 1–16 supported saved annotations. Native SuniPDF rectangles, ellipses, lines/arrows, polygons, polylines and clouds are eligible when their geometry, style and appearance can be reproduced. The [0.85 candidate](RELEASE_0.85.0.md) also accepts supported native standard stamps and image stamps with verified appearances. Unsupported rows stay visible but disabled; hover for the refusal reason. Nothing is selected automatically.
+2. Select 1â€“16 supported saved annotations. Native SuniPDF rectangles, ellipses, lines/arrows, polygons, polylines and clouds are eligible when their geometry, style and appearance can be reproduced. The [0.85 candidate](RELEASE_0.85.0.md) also accepts supported native standard stamps and image stamps with verified appearances. Unsupported rows stay visible but disabled; hover for the refusal reason. Nothing is selected automatically.
 3. Enter a unique name and declare **Source or provenance**. Credit and licence remain optional declarations. Choose **Save selected annotations as a group**. This saves a local library entry without modifying the PDF.
 4. Reuse it through **Place on page**, preview and apply. Relative displayed-page geometry, stroke/fill colors, width, dashes and opacity are retained. Each placed member gets a fresh identity, and the complete placement has one Undo step.
 
@@ -30,7 +30,9 @@ Capture requires copying permission and supports documents up to 128 MiB and sou
 
 The 0.82 candidate accepts the native Approved, Draft, Confidential and Rejected stamps. Native image stamps require a verified RGB image, optional matching alpha mask and reproducible aspect-fit appearance. Capture produces a metadata-free embedded PNG. Its template opacity is 1 because the saved pixels already contain the original opacity; this prevents applying transparency twice. Mixed supported shapes, stamps and images may be captured as one group.
 
-Saved FreeText, foreign/custom appearances, review threads, measurements, page scales and extra annotation semantics remain excluded. Saved text needs stronger font-resource validation before capture can reproduce it. Supported text templates can still be created from new drafts as described above. The library never silently drops an unsupported selected member, and these additions do not change the revision-transfer workflow's supported annotation types.
+The [0.88 candidate](RELEASE_0.88.0.md) also captures native rich-text FreeText annotations using the twelve standard Helvetica, Times and Courier font variants. Text, font style, color, fill, border and opacity must reproduce the saved appearance exactly. The appearance and its font resources are validated against a regenerated annotation; no source font resources are imported.
+
+Legacy simple-text annotations, foreign/custom appearances, embedded or altered fonts, review threads, measurements, page scales and extra annotation semantics remain excluded. Normalization, group offsets and placement must preserve text-box dimensions exactly at the requested scale; incompatible coordinates are refused to protect line wrapping. Supported text templates can still be created from new drafts as described above. The library never silently drops an unsupported selected member, and these additions do not change the revision-transfer workflow's supported annotation types.
 
 Canonical appearance inspection retains its 2 MiB graph budget, including decoded resources. An image may satisfy the general PNG limits yet still exceed this stricter saved-appearance capture budget; the candidate is then refused explicitly.
 
@@ -57,7 +59,7 @@ sunipdf-cli annotation-library export review-library.json --id review-draft --ou
 sunipdf-cli annotation-library remove review-library.json --id review-draft --out remaining-library.json
 ```
 
-Pages start at 1. The origin uses displayed-page coordinates in PDF points, measured from the page's lower-left corner, including rotation/crop handling. CLI placement transforms each local coordinate as `origin + coordinate × scale`; a manually authored entry can therefore retain local padding. Scale is explicit and uniform. Geometry and styles must still fit the page and supported annotation limits after scaling. Existing destinations are refused, including with `--overwrite`; choose a new output filename. Protected input uses the existing `--password-stdin` or `--password-env` options. Placement requires annotation permission and retains supported encryption.
+Pages start at 1. The origin uses displayed-page coordinates in PDF points, measured from the page's lower-left corner, including rotation/crop handling. CLI placement transforms each local coordinate as `origin + coordinate Ã— scale`; a manually authored entry can therefore retain local padding. Scale is explicit and uniform. Geometry and styles must still fit the page and supported annotation limits after scaling. Existing destinations are refused, including with `--overwrite`; choose a new output filename. Protected input uses the existing `--password-stdin` or `--password-env` options. Placement requires annotation permission and retains supported encryption.
 
 To capture saved annotations, first inspect their availability and fingerprints. This example captures the first supported record; repeat `--annotation INDEX:FINGERPRINT` to capture a group:
 

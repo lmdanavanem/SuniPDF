@@ -627,7 +627,7 @@ pub(crate) fn vertex_annotation_components(
 }
 
 impl<'a> Document<'a> {
-    fn rich_text_source(
+    pub(crate) fn rich_text_source(
         &self,
         w: f32,
         h: f32,

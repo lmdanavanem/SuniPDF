@@ -10,7 +10,7 @@ members = [
 [workspace.package]
 edition = "2021"
 license = "MIT OR Apache-2.0"
-version = "0.87.0"
+version = "0.88.0"
 rust-version = "1.95"
 authors = ["Emanuel DE ALMEIDA <https://github.com/lmdanavanem>"]
 repository = "https://github.com/lmdanavanem/SuniPDF"
