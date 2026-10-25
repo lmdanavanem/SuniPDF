@@ -124,8 +124,9 @@ jobs:
           name: performance-windows-x64
           path: target/performance-evidence/
           if-no-files-found: warn
+      # Failed PR workspace tests cannot qualify follow-up gates; retain their logs below.
       - name: Reader interface layout and DX12 software rendering
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-reader-ui-evidence.ps1
       - name: Reader interface evidence
         if: steps.changes.outputs.docs_only != 'true' && always()
@@ -135,7 +136,7 @@ jobs:
           path: target/reader-ui-evidence/
           if-no-files-found: error
       - name: Pinned independent font reader
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: |
           .\scripts\fetch-test-mupdf.ps1
           python .\scripts\test-font-reader.py --mutool target/test-mupdf/1.28.5/mutool.exe --directory target/font-embedding-evidence
@@ -151,7 +152,7 @@ jobs:
             target/font-embedding-evidence/
           if-no-files-found: ignore
       - name: Native DX12 software renderer and texture limits
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-built-ci-test.ps1 -TestName native_wgpu
       - name: Native renderer evidence
         if: steps.changes.outputs.docs_only != 'true' && always()
@@ -161,13 +162,13 @@ jobs:
           path: target/native-wgpu-evidence/
           if-no-files-found: ignore
       - name: Pinned independent QPDF checker
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\fetch-qpdf.ps1
       - name: Independent feature-reader checker self-test
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: python .\scripts\test-feature-reader.py --self-test
       - name: Rich annotation and document structure independent readers
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: |
           .\scripts\fetch-test-mupdf.ps1
           python .\scripts\test-feature-reader.py
@@ -182,27 +183,27 @@ jobs:
             target/feature-030-evidence/
           if-no-files-found: ignore
       - name: QPDF archive checksum self-test
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\fetch-qpdf.ps1 -SelfTest
       - name: Synthetic corpus and generated PDF structural checks
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-built-ci-test.ps1 -TestName qpdf_corpus
       - name: Real corpus checksum self-test
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\fetch-regression-corpus.ps1 -SelfTest
       - name: Pinned licensed real PDF corpus
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\fetch-regression-corpus.ps1
       - name: Real PDFs and independent output regression
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-built-ci-test.ps1 -TestName real_corpus
       - name: Pinned PDF 2.0 interoperability corpus
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: |
           .\scripts\fetch-regression-corpus.ps1 -Interop -SelfTest
           .\scripts\fetch-regression-corpus.ps1 -Interop
       - name: PDF 2.0 text, pixels, annotations and immutable sources
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-built-ci-test.ps1 -TestName interop_corpus
       - name: Interoperability and bounded mutation evidence
         if: steps.changes.outputs.docs_only != 'true' && always()
@@ -215,14 +216,14 @@ jobs:
           if-no-files-found: error
       - name: Restore pinned Office MSI only
         id: office_installer_cache
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: target/test-office-installer/installer.msi
           key: windows-x64-office-msi-v1-${{ hashFiles('scripts/test-libreoffice.json', 'scripts/fetch-test-libreoffice.ps1') }}
       - name: Pinned local Office converter on disposable runner
         id: office_converter
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: |
           pwsh -NoProfile -File .\scripts\fetch-test-libreoffice.ps1 -SelfTest
           if ($LASTEXITCODE -ne 0) { throw 'Office converter setup self-test failed.' }
@@ -237,7 +238,7 @@ jobs:
           path: target/test-office-installer/installer.msi
           key: ${{ steps.office_installer_cache.outputs.cache-primary-key }}
       - name: Measured licensed Office exports and local converter profiles
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         env:
           SUNIPDF_REQUIRE_OFFICE_CONVERTER: '1'
         run: |
