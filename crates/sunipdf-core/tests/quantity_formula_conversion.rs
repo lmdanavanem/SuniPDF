@@ -7,6 +7,20 @@ use sunipdf_core::quantity_workbook::{
 };
 use sunipdf_core::Engine;
 
+fn snapshot_without_volatile_second_id(bytes: &[u8]) -> lopdf::Document {
+    let mut pdf = lopdf::Document::load_mem(bytes).unwrap();
+    let ids = pdf.trailer.get_mut(b"ID").unwrap().as_array_mut().unwrap();
+    assert_eq!(ids.len(), 2, "snapshot file ID must contain two strings");
+    assert!(
+        ids.iter()
+            .all(|id| matches!(id, lopdf::Object::String(_, _))),
+        "snapshot file ID must contain two strings"
+    );
+    // PDFium may refresh the save identifier; the permanent ID and every object stay exact.
+    ids[1] = lopdf::Object::Null;
+    pdf
+}
+
 #[test]
 fn saved_quantity_conversion_exports_and_refreshes_without_changing_pdf_or_schema() {
     let engine = Engine::new().expect("PDFium is required");
@@ -41,9 +55,10 @@ fn saved_quantity_conversion_exports_and_refreshes_without_changing_pdf_or_schem
     )
     .unwrap();
     let saved = doc.snapshot().unwrap();
-    let reopened = engine
-        .open_bytes(saved, None, Path::new("reopened.pdf"))
-        .unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let source = directory.path().join("reopened.pdf");
+    std::fs::write(&source, &saved).unwrap();
+    let reopened = engine.open(&source, None).unwrap();
     let before = reopened.snapshot().unwrap();
     let formulas = vec![FormulaColumn {
         name: "Length in metres".into(),
@@ -123,12 +138,16 @@ fn saved_quantity_conversion_exports_and_refreshes_without_changing_pdf_or_schem
         .changes
         .iter()
         .all(|change| change.status == WorkbookChangeStatus::Unchanged));
-    let directory = tempfile::tempdir().unwrap();
     let output = directory.path().join("converted.xlsx");
     let receipt = reopened
         .publish_quantity_workbook(&refreshed, WorkbookFormat::Xlsx, &output, &cancel)
         .unwrap();
     assert!(receipt.source_unchanged);
     assert!(std::fs::metadata(output).unwrap().len() > 0);
-    assert_eq!(reopened.snapshot().unwrap(), before);
+    assert_eq!(std::fs::read(&source).unwrap(), saved);
+    let before = snapshot_without_volatile_second_id(&before);
+    let after = snapshot_without_volatile_second_id(&reopened.snapshot().unwrap());
+    assert_eq!(after.version, before.version);
+    assert_eq!(after.objects, before.objects);
+    assert_eq!(after.trailer, before.trailer);
 }
