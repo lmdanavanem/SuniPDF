@@ -1683,25 +1683,27 @@ mod tests {
             beta.path = "Beta.pdf".into();
             beta.page_count = 4;
             context.set.files.push(beta);
-            let mut batch = BatchState::default();
-            batch.candidate = Some((
-                9,
-                vec![
-                    PlanLinkBatchFilePlan {
-                        source_file_id: "source".into(),
-                        output: "Alpha-linked.pdf".into(),
-                        selected_occurrences: 1,
-                        preview_pages: vec![1, 2],
-                    },
-                    PlanLinkBatchFilePlan {
-                        source_file_id: "beta-source".into(),
-                        output: "Beta-linked.pdf".into(),
-                        selected_occurrences: 1,
-                        preview_pages: vec![3, 4],
-                    },
-                ],
-            ));
-            batch.preview_page = 1;
+            let mut batch = BatchState {
+                candidate: Some((
+                    9,
+                    vec![
+                        PlanLinkBatchFilePlan {
+                            source_file_id: "source".into(),
+                            output: "Alpha-linked.pdf".into(),
+                            selected_occurrences: 1,
+                            preview_pages: vec![1, 2],
+                        },
+                        PlanLinkBatchFilePlan {
+                            source_file_id: "beta-source".into(),
+                            output: "Beta-linked.pdf".into(),
+                            selected_occurrences: 1,
+                            preview_pages: vec![3, 4],
+                        },
+                    ],
+                )),
+                preview_page: 1,
+                ..Default::default()
+            };
             for source in ["source", "beta-source"] {
                 batch
                     .selections
