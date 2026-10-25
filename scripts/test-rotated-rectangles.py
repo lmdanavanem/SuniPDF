@@ -146,6 +146,22 @@ def main():
                       for edge, wanted in zip(drawn_edges, [40, 60, 40, 60])))
                 drawn_angle = math.degrees(math.atan2(drawn_edges[0][1], drawn_edges[0][0]))
                 check(name + ': drawn clockwise angle', abs((drawn_angle + angle + 180) % 360 - 180) < .005)
+                appearance = annotation['_appearance']
+                check(name + ': form appearance', appearance['/Subtype'] == '/Form')
+                a, b, c, d, e, f = appearance['/Matrix']
+                transform = lambda point: (a * point[0] + c * point[1] + e, b * point[0] + d * point[1] + f)
+                bx0, by0, bx1, by1 = appearance['/BBox']
+                bounds = [transform(point) for point in [(bx0, by0), (bx1, by0), (bx1, by1), (bx0, by1)]]
+                minimum = [min(point[axis] for point in bounds) for axis in [0, 1]]
+                maximum = [max(point[axis] for point in bounds) for axis in [0, 1]]
+                x0, y0, x1, y1 = annotation['/Rect']
+                check(name + ': finite nonempty appearance bounds', all(math.isfinite(value) for value in [*minimum, *maximum, x0, y0, x1, y1])
+                      and maximum[0] > minimum[0] and maximum[1] > minimum[1] and x1 > x0 and y1 > y0)
+                mapped = [((point[0] - minimum[0]) * (x1 - x0) / (maximum[0] - minimum[0]) + x0,
+                           (point[1] - minimum[1]) * (y1 - y0) / (maximum[1] - minimum[1]) + y0)
+                          for point in map(transform, drawn)]
+                check(name + ': drawn geometry matches stored measurement', all(math.isclose(actual, expected, abs_tol=.002)
+                      for actual_point, expected_point in zip(mapped, points) for actual, expected in zip(actual_point, expected_point)))
                 report['outputs'].append({'name': output.name, 'sha256': sha(output), 'page': page_index + 1,
                                           'page_rotation': page_rotation, 'rotation_degrees': angle % 360, 'area_points_squared': area})
         for angle in ['NaN', 'inf', '-inf']:
