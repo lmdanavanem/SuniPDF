@@ -629,17 +629,21 @@ def plan_link_creation(evidence, version):
         time.sleep(0.15)
 
     def locate(label, *, line_contains=None, exact_line=False, color=None, target=None, allow_scroll=True,
-               below_label=None, within=None):
+               below_label=None, above_label=None, within=None, psm=11, smooth=False):
+        assert not smooth or (label == "Native destination two" and color is None and target is None and psm == 6
+                              and (below_label, above_label) in (("Alpha.pdf", "Beta.pdf"), ("Beta.pdf", "Target.pdf"))), \
+            "Smooth control OCR is restricted to an explicitly scoped destination selection"
         for attempt in range(12 if allow_scroll and target is None else 6):
-            observed = read_capture(capture(target), color)
+            observed = read_capture(capture(target), color, psm=psm, smooth=smooth)
             try:
                 size = tuple(value * observed["scale"] for value in observed["size"])
                 if isinstance(below_label, tuple):
                     below = fixtures.label_box(observed["tsv"], below_label[0], size, line_contains=below_label[1])[3]
                 else:
                     below = fixtures.label_box(observed["tsv"], below_label, size)[3] if below_label else None
+                above = fixtures.label_box(observed["tsv"], above_label, size)[1] if above_label else None
                 box = fixtures.label_box(observed["tsv"], label, size,
-                                         line_contains=line_contains, exact_line=exact_line, below=below,
+                                         line_contains=line_contains, exact_line=exact_line, below=below, above=above,
                                          within=tuple(value * observed["scale"] for value in within) if within else None)
                 return observed, box
             except fixtures.LabelMissing:
@@ -657,10 +661,20 @@ def plan_link_creation(evidence, version):
         point = [(box[0] + box[2]) // (2 * scale), (box[1] + box[3]) // (2 * scale)]
         target = options.get("target") or window
         actions.append({"click": label, "lineContains": options.get("line_contains"), "point": point,
+                        "belowLabel": options.get("below_label"), "aboveLabel": options.get("above_label"),
+                        **({"ocrPreparation": "full-rgb-lanczos-4x-psm6"} if options.get("smooth") else {}),
                         "window": target, **evidence_fields(observed)})
         command(["xdotool", "mousemove", "--window", target, *map(str, point), "click", "1"])
         time.sleep(0.2)
         return point
+
+    def verify_control(label, **options):
+        observed, box = locate(label, **options)
+        scale = observed["scale"]
+        point = [(box[0] + box[2]) // (2 * scale), (box[1] + box[3]) // (2 * scale)]
+        actions.append({"observedControl": label, "belowLabel": options.get("below_label"),
+                        "aboveLabel": options.get("above_label"), "point": point,
+                        **evidence_fields(observed)})
 
     def scene(name, *, pattern=None, kind=None, caption=None, allow_scroll=False, psm=11, smooth=False):
         assert not smooth or (name == "creation-manifest-path-entered" and kind is None and psm == 6), \
@@ -785,11 +799,15 @@ def plan_link_creation(evidence, version):
             scene("creation-loaded-manifest", pattern=r"Native\s+creation\s+fixture")
             click("Link multiple PDFs", allow_scroll=False)
             scene("creation-batch-mode", pattern=r"Link\s+multiple\s+plan\s+PDFs")
-            for source in fixture["sources"]:
+            for index, source in enumerate(fixture["sources"]):
+                following = (fixture["sources"][index + 1] if index + 1 < len(fixture["sources"])
+                             else fixture["target"]).name
                 click(source.name)
-                click("Destination sheets 0")
-                click("Native destination two")
-                click("Destination sheets 1", below_label=source.name)
+                click("Destination sheets 0", below_label=source.name, above_label=following)
+                click("Native destination two", below_label=source.name, above_label=following, psm=6, smooth=True)
+                # Selecting a destination changes the header identity and collapses
+                # the list. Observe the new count without reopening the prior source.
+                verify_control("Destination sheets 1", below_label=source.name, above_label=following)
             click("Use saved files only")
             click("Find references")
             scene("creation-two-scanned-sources", pattern=r"Pages\s+checked\s*:?\s*2.*References\s+found\s*:?\s*2", allow_scroll=True)
