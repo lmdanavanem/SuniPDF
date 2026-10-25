@@ -719,13 +719,16 @@ def theme_settings(app, window, evidence):
     require_choice("liquid_glass", "dark", True)
     record("native-theme-glass-dark-reduced", True)
     click_label("System")
-    wait_for("persist system mode", lambda: stored().get("theme_mode") == "system")
+    require_choice("liquid_glass", "system", True)
     click_label("Light")
     require_choice("liquid_glass", "light", True)
     click_label("Classic")
     require_choice("classic", "light", True)
     record("native-theme-classic-light", False)
     click_label("Liquid Glass")
+    # The Glass-only effects row changes the modal height and its centered
+    # position. Wait for persistence and repaint before locating the next choice.
+    require_choice("liquid_glass", "light", True)
     click_label("Dark")
     require_choice("liquid_glass", "dark", True)
     command(["xdotool", "key", "--clearmodifiers", "Escape"])

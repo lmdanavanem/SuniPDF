@@ -7,12 +7,23 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import struct
 import subprocess
 from datetime import datetime, timezone
 
 
 def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def same_pdf_rgb(left, right):
+    """Require identical native binary32 RGB values, despite decimal spelling."""
+    return (isinstance(left, list) and isinstance(right, list)
+            and len(left) == len(right) == 3
+            and all(type(a) in (int, float) and type(b) in (int, float)
+                    and 0 <= a <= 1 and 0 <= b <= 1
+                    and struct.pack('!f', a) == struct.pack('!f', b)
+                    for a, b in zip(left, right)))
 
 
 def main():
@@ -126,10 +137,14 @@ def main():
                   for key in ['/MediaBox', '/CropBox', '/Rotate']))
             check(f'pair {number}: existing plus transferred annotations', len(saved['annotations']) == 2)
             for key in ['/Subtype', '/Rect', '/Contents', '/T', '/NM', '/C']:
-                check(f'pair {number}: original annotation {key}', saved['annotations'][0].get(key) == new['annotations'][0].get(key))
+                actual, expected = saved['annotations'][0].get(key), new['annotations'][0].get(key)
+                check(f'pair {number}: original annotation {key}',
+                      same_pdf_rgb(actual, expected) if key == '/C' else actual == expected)
             copied = saved['annotations'][1]
             for key in ['/Subtype', '/Rect', '/T', '/C']:
-                check(f'pair {number}: transferred annotation {key}', copied.get(key) == old['annotations'][0].get(key))
+                actual, expected = copied.get(key), old['annotations'][0].get(key)
+                check(f'pair {number}: transferred annotation {key}',
+                      same_pdf_rgb(actual, expected) if key == '/C' else actual == expected)
             check(f'pair {number}: fresh annotation identity', copied['/NM'] != old['annotations'][0]['/NM']
                   and copied['/NM'] not in identities)
             identities.add(copied['/NM'])
