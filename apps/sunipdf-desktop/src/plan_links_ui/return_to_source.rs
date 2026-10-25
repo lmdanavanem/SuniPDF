@@ -548,7 +548,12 @@ mod tests {
                         .page_sizes
                         .pop();
                 }
-                "pending_file" => app.pending_files.push("queued.pdf".into()),
+                "pending_file" => {
+                    app.engine = EngineState::Starting;
+                    app.open_path("queued.pdf".into(), None);
+                    app.engine = EngineState::Ready;
+                    assert!(app.document_transition_pending());
+                }
                 "note" => app.annotate.note_prompt = Some((0, 1.0, 2.0, "draft note".into())),
                 "form_dialog" => app.form_builder.visible = true,
                 _ => unreachable!(),
@@ -570,7 +575,7 @@ mod tests {
                 assert!(app.form_builder.visible);
             }
             if blocked == "pending_file" {
-                assert_eq!(app.pending_files.len(), 1);
+                assert!(app.document_transition_pending());
             }
         }
     }
