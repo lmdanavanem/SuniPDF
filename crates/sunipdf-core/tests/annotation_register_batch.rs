@@ -1,13 +1,25 @@
 use lopdf::{dictionary, Document as Pdf, Object, ObjectId};
-use std::{collections::BTreeMap, path::Path, sync::Mutex};
-
-static PDFIUM_LOCK: Mutex<()> = Mutex::new(());
+use std::{
+    collections::BTreeMap,
+    path::Path,
+    sync::{Mutex, MutexGuard, OnceLock},
+};
 use sunipdf_core::annotation_register::{RegisterFields, RegisterRow};
 use sunipdf_core::annotation_register_batch::{
     register_row_fingerprint, FieldPatch, RegisterFieldsPatch, MAX_REGISTER_BATCH_ROWS,
 };
 use sunipdf_core::quantity_table::{DecimalValue, QuantityFields, QuantityUnit, TypedValue};
 use sunipdf_core::{security, Engine, EngineError, Protection, ReviewStatus};
+
+// Keep the process-wide PDFium bindings alive and serialize complete test cases.
+static ENGINE: OnceLock<Mutex<Engine>> = OnceLock::new();
+
+fn engine() -> MutexGuard<'static, Engine> {
+    ENGINE
+        .get_or_init(|| Mutex::new(Engine::new().expect("PDFium is required")))
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+}
 
 fn credential() -> String {
     let mut bytes = [0u8; 16];
@@ -132,10 +144,7 @@ fn write_pdf(mut pdf: Pdf) -> Vec<u8> {
 
 #[test]
 fn reviewed_batch_preserves_all_other_pdf_data_saved_sources_and_single_snapshot_history() {
-    let _guard = PDFIUM_LOCK
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
-    let engine = Engine::new().expect("PDFium is required");
+    let engine = engine();
     let bytes = source(&engine);
     let directory = tempfile::tempdir().unwrap();
     let input = directory.path().join("original.pdf");
@@ -223,10 +232,7 @@ fn reviewed_batch_preserves_all_other_pdf_data_saved_sources_and_single_snapshot
 
 #[test]
 fn no_op_selection_forged_rows_and_stale_source_never_modify_any_record() {
-    let _guard = PDFIUM_LOCK
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
-    let engine = Engine::new().unwrap();
+    let engine = engine();
     let bytes = source(&engine);
     let mut doc = engine
         .open_bytes(bytes, None, Path::new("guards.pdf"))
@@ -316,10 +322,7 @@ fn no_op_selection_forged_rows_and_stale_source_never_modify_any_record() {
 
 #[test]
 fn last_invalid_fields_and_locked_or_shared_targets_refuse_the_entire_batch() {
-    let _guard = PDFIUM_LOCK
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
-    let engine = Engine::new().unwrap();
+    let engine = engine();
     let bytes = source(&engine);
     let mut doc = engine
         .open_bytes(bytes.clone(), None, Path::new("limit.pdf"))
@@ -411,10 +414,7 @@ fn last_invalid_fields_and_locked_or_shared_targets_refuse_the_entire_batch() {
 
 #[test]
 fn permission_and_exact_selection_cap_are_enforced() {
-    let _guard = PDFIUM_LOCK
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
-    let engine = Engine::new().unwrap();
+    let engine = engine();
     let bytes = source(&engine);
     let mut pdf = Pdf::load_mem(&bytes).unwrap();
     let page = pdf.get_pages()[&1];
@@ -507,9 +507,6 @@ fn permission_and_exact_selection_cap_are_enforced() {
 
 #[test]
 fn strict_patch_json_and_complete_row_fingerprints_preserve_explicit_intent() {
-    let _guard = PDFIUM_LOCK
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
     let parsed: RegisterFieldsPatch = serde_json::from_str(r#"{"business_status":{"operation":"set","value":"Ready"},"custom":{"Room":{"operation":"clear"}}}"#).unwrap();
     parsed.validate().unwrap();
     assert_eq!(parsed.discipline, FieldPatch::Keep);
@@ -557,7 +554,7 @@ fn strict_patch_json_and_complete_row_fingerprints_preserve_explicit_intent() {
         .custom
         .insert("Too long".into(), FieldPatch::Set("x".repeat(1025)));
     assert!(field.validate().is_err());
-    let engine = Engine::new().unwrap();
+    let engine = engine();
     let doc = engine
         .open_bytes(source(&engine), None, Path::new("fingerprints.pdf"))
         .unwrap();

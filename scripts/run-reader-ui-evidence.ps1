@@ -47,15 +47,23 @@ try {
     if ($reportFile.Length -gt 128KB -or $reportFile.LastWriteTimeUtc -lt $started) { throw 'Reader UI report is oversized or stale.' }
     $report = [IO.File]::ReadAllText($reportPath) | ConvertFrom-Json
     if ($report.status -cne 'passed' -or $report.sourceSha -cne $env:GITHUB_SHA -or
-        -not $report.fixtureUnchanged -or @($report.scenes).Count -ne 16) { throw 'Reader UI report did not qualify the current source.' }
+        -not $report.fixtureUnchanged -or @($report.scenes).Count -ne 20) { throw 'Reader UI report did not qualify the current source.' }
     $expected = @('reader-en-dark-measurements', 'reader-fr-light-720-zoom149', 'reader-en-light-pages', 'reader-en-dark-docked-register', 'reader-fr-light-720-docked-quantities', 'reader-en-glass-light-pages', 'reader-en-glass-dark-measurements', 'reader-en-glass-dark-docked-register', 'settings-en-glass-light', 'settings-fr-glass-dark-720-reduced', 'reader-en-dark-split-independent', 'reader-fr-light-720-split-independent', 'reader-en-glass-light-split-synchronized', 'home-en-glass-light-tools', 'home-en-glass-dark', 'home-en-glass-light-560')
+    $expected += @('register-en-light-bulk-preview', 'register-fr-dark-720-bulk-preview', 'register-en-light-saved-filters', 'register-fr-dark-720-saved-filters')
+    $registerFixture = Join-Path $root 'target/reader-ui-evidence/register-dialog-fixture.pdf'
+    if ($report.registerFixture.pdf -cne 'register-dialog-fixture.pdf' -or
+        $report.registerFixture.annotationCount -ne 2 -or -not $report.registerFixture.sourceUnchanged -or
+        $report.registerFixture.sha256 -cnotmatch '^[a-f0-9]{64}$' -or
+        (Get-FileHash -LiteralPath $registerFixture -Algorithm SHA256).Hash.ToLowerInvariant() -cne $report.registerFixture.sha256) {
+        throw 'Register dialog source PDF is missing or differs from the actual computed fixture.'
+    }
     foreach ($scene in $report.scenes) {
         if ($scene.name -cnotin $expected -or $scene.png -cne "$($scene.name).png" -or
             -not $scene.actualApplicationRenderUi -or $scene.unsavedChanges -cne $false -or $null -ne $scene.appError -or
             $scene.pngSha256 -cnotmatch '^[a-f0-9]{64}$') {
             throw 'Reader UI scene metadata is invalid.'
         }
-        $expectedSurface = if ($scene.name -like 'home-*') { 'home' } elseif ($scene.name -like 'settings-*') { 'settings' } else { 'reader' }
+        $expectedSurface = if ($scene.name -like 'home-*') { 'home' } elseif ($scene.name -like 'settings-*') { 'settings' } elseif ($scene.name -like 'register-*') { 'register-dialog' } else { 'reader' }
         if ($scene.surface -cne $expectedSurface) { throw 'UI scene surface differs from its scenario.' }
         if ($scene.surface -ceq 'home') {
             if ($scene.documentOpen -cne $false -or $scene.actualPdfiumTiles -ne 0 -or
@@ -97,6 +105,76 @@ try {
         } elseif ($scene.surface -ceq 'reader' -and ($scene.themeSettingsOpen -or -not $scene.pdfFixtureBlueInkVerified -or $scene.pdfFixtureBlueInkPixels -le 20)) {
             throw 'Reader evidence must retain visible actual PDF ink.'
         }
+        if ($scene.surface -ceq 'register-dialog') {
+            $proof = $scene.registerDialog
+            $bulk = $scene.name -like '*bulk-preview'
+            $french = $scene.name -like 'register-fr-*'
+            $kind = if ($bulk) { 'bulk-preview' } else { 'saved-filters' }
+            $width = if ($french) { 720 } else { 1280 }
+            $height = if ($french) { 640 } else { 780 }
+            if ($proof.kind -cne $kind -or $scene.outputPixels[0] -ne $width -or $scene.outputPixels[1] -ne $height -or
+                [bool]$scene.darkTheme -ne $french -or $scene.language -cne $(if ($french) { 'fr-FR' } else { 'en-US' }) -or
+                $scene.themeSettingsOpen -or $scene.themeSettingsLabelsVerified -or $scene.pdfFixtureBlueInkVerified -or
+                $scene.measurementToolsOpen -or $null -ne $scene.dockedTable -or $scene.dockedTableControlsAndRowVerified -or
+                -not $proof.actualRegisterComputed -or -not $proof.documentRegisterUnchanged -or -not $proof.sourcePdfUnchanged -or
+                $proof.sourcePdf -cne 'register-dialog-fixture.pdf' -or
+                $proof.sourcePdfSha256Before -cne $report.registerFixture.sha256 -or
+                $proof.sourcePdfSha256After -cne $report.registerFixture.sha256 -or
+                $proof.registerSourceSha256 -cnotmatch '^[a-f0-9]{64}$') {
+                throw 'Register dialog does not match its real source, language, size or modal scene.'
+            }
+            $labels = @($proof.labels)
+            $required = if ($bulk) {
+                @('register.bulk.title','register.bulk.summary','register.bulk.before','register.bulk.after','register.bulk.reviewed','before.business_status','after.business_status','register.bulk.preview','register.bulk.back')
+            } else {
+                @('register.presets.title','register.presets.scope','register.presets.name','register.presets.saved','register.presets.import_help','savedPresetName','register.presets.save','register.presets.load','register.presets.delete','register.presets.import','register.presets.export','register.close')
+            }
+            if ($labels.Count -ne $required.Count -or @($labels.key | Select-Object -Unique).Count -ne $required.Count) { throw 'Register dialog label inventory differs.' }
+            foreach ($key in $required) { if ($key -cnotin $labels.key) { throw 'Register dialog required label is missing.' } }
+            foreach ($label in $labels) {
+                if (-not $label.accessible -or $label.disabled -or $label.readablePixels -lt 20 -or $label.minimumContrast -ne 4.5 -or
+                    @($label.bounds).Count -ne 4 -or @($label.clip).Count -ne 4 -or
+                    $label.bounds[0] -lt 0 -or $label.bounds[1] -lt 0 -or
+                    $label.bounds[2] -le $label.bounds[0] -or $label.bounds[3] -le $label.bounds[1] -or
+                    $label.bounds[2] -gt $width -or $label.bounds[3] -gt $height -or
+                    $label.clip[0] -gt $label.bounds[0] -or $label.clip[1] -gt $label.bounds[1] -or
+                    $label.clip[2] -lt $label.bounds[2] -or $label.clip[3] -lt $label.bounds[3]) {
+                    throw 'Register dialog required label is clipped, disabled or unreadable.'
+                }
+            }
+            if ($bulk) {
+                $apply = $proof.applyControl
+                if (-not $proof.actualPreviewComputed -or $proof.reviewed -or -not $proof.applyDisabled -or
+                    $proof.selectionCount -ne 2 -or $proof.report.source_sha256 -cne $proof.registerSourceSha256 -or
+                    $proof.report.selected_count -ne 2 -or $proof.report.changed_count -ne 2 -or @($proof.report.changes).Count -ne 2 -or
+                    $apply.key -cne 'register.bulk.apply' -or -not $apply.accessible -or -not $apply.button -or -not $apply.disabled -or
+                    $apply.readablePixels -lt 20 -or $apply.minimumContrast -ne 1.5 -or
+                    @($apply.bounds).Count -ne 4 -or @($apply.clip).Count -ne 4 -or
+                    $apply.bounds[0] -lt 0 -or $apply.bounds[1] -lt 0 -or
+                    $apply.bounds[2] -le $apply.bounds[0] -or $apply.bounds[3] -le $apply.bounds[1] -or
+                    $apply.bounds[2] -gt $width -or $apply.bounds[3] -gt $height -or
+                    $apply.clip[0] -gt $apply.bounds[0] -or $apply.clip[1] -gt $apply.bounds[1] -or
+                    $apply.clip[2] -lt $apply.bounds[2] -or $apply.clip[3] -lt $apply.bounds[3] -or
+                    @($proof.report.changes.index | Select-Object -Unique).Count -ne 2) {
+                    throw 'Bulk preview is absent, invented, already reviewed or permits Apply before review.'
+                }
+                foreach ($change in $proof.report.changes) {
+                    if ($change.page -ne 1 -or $change.index -notin @(0,1) -or
+                        $change.expected_row_sha256 -cnotmatch '^[a-f0-9]{64}$' -or
+                        $change.before.business_status -cne 'Open' -or $change.after.business_status -cne 'Ready for site' -or
+                        $change.before.discipline -cne 'Electrical' -or $change.after.discipline -cne 'Electrical') {
+                        throw 'Bulk preview before/after differs from its actual fixture and patch.'
+                    }
+                }
+            } elseif ($proof.selectionCount -ne 0 -or $proof.library.format -cne 'sunipdf-register-filter-presets' -or
+                $proof.library.version -ne 1 -or @($proof.library.presets).Count -ne 1 -or
+                $proof.library.presets[0].criteria.business_status -cne 'Open' -or
+                $proof.library.presets[0].criteria.discipline -cne 'Electrical') {
+                throw 'Saved filters lost their actual captured criteria or selected annotations automatically.'
+            }
+        } elseif ($null -ne $scene.registerDialog) {
+            throw 'Other scenes unexpectedly claim register dialog evidence.'
+        }
         $expectedStyle = if ($scene.name -like '*glass*') { 'liquid_glass' } else { 'classic' }
         if ($scene.interfaceStyle -cne $expectedStyle -or [bool]$scene.reduceTransparency -ne ($scene.name -like '*reduced')) {
             throw 'Reader evidence appearance does not match its named scenario.'
@@ -137,5 +215,5 @@ try {
             throw 'Non-split scene unexpectedly reports split reader qualification.'
         }
     }
-    if (@($report.scenes.name | Select-Object -Unique).Count -ne 16) { throw 'Reader UI scene names are not unique.' }
+    if (@($report.scenes.name | Select-Object -Unique).Count -ne 20) { throw 'Reader UI scene names are not unique.' }
 } finally { Pop-Location }

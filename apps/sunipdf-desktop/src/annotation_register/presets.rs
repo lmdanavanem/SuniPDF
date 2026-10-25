@@ -30,6 +30,13 @@ enum Action {
 }
 
 impl Draft {
+    #[cfg(all(test, windows))]
+    pub(super) fn evidence_open(&mut self, name: &str) {
+        self.open = true;
+        self.name = "Next review".into();
+        self.selected = Some(name.into());
+    }
+
     pub fn menu(&mut self, ui: &mut egui::Ui, lang: Language, enabled: bool) {
         if ui
             .add_enabled(

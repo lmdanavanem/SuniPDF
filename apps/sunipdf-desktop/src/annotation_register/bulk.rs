@@ -86,6 +86,20 @@ pub(super) struct Draft {
 }
 
 impl Draft {
+    #[cfg(all(test, windows))]
+    pub(super) fn evidence_start(&mut self, worker: &Worker) {
+        self.status = ValueDraft {
+            action: Action::Set,
+            value: "Ready for site".into(),
+        };
+        self.start(worker);
+    }
+
+    #[cfg(all(test, windows))]
+    pub(super) fn evidence_preview(&self) -> Option<(&RegisterBatchReport, bool)> {
+        self.preview.as_ref().map(|report| (report, self.reviewed))
+    }
+
     pub fn bind(
         &mut self,
         register: Arc<core::AnnotationRegister>,

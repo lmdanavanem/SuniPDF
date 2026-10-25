@@ -121,6 +121,60 @@ impl Default for RegisterState {
 }
 
 impl RegisterState {
+    #[cfg(all(test, windows))]
+    pub(crate) fn evidence_open_bulk(
+        &mut self,
+        register: Arc<AnnotationRegister>,
+        worker: &crate::worker::Worker,
+        epoch: u64,
+    ) {
+        let rows = register.rows.iter().take(2).cloned().collect::<Vec<_>>();
+        self.bulk_selected = rows.iter().map(|row| (row.page, row.index)).collect();
+        self.report = Some(register.clone());
+        self.open = true;
+        self.bulk.bind(register, rows, epoch);
+        self.bulk.evidence_start(worker);
+    }
+
+    #[cfg(all(test, windows))]
+    pub(crate) fn evidence_bulk_preview(
+        &self,
+    ) -> Option<(
+        &sunipdf_core::annotation_register_batch::RegisterBatchReport,
+        bool,
+    )> {
+        self.bulk.evidence_preview()
+    }
+
+    #[cfg(all(test, windows))]
+    pub(crate) fn evidence_open_presets(
+        &mut self,
+        register: Arc<AnnotationRegister>,
+        name: &str,
+    ) -> Result<sunipdf_core::register_presets::RegisterPreset, EngineError> {
+        let row = register
+            .rows
+            .first()
+            .ok_or_else(|| EngineError::Other("evidence register is empty".into()))?;
+        self.filter.author = row.author.clone().unwrap_or_default();
+        self.filter.business_status = row.fields.business_status.clone().unwrap_or_default();
+        self.filter.discipline = row.fields.discipline.clone().unwrap_or_default();
+        self.report = Some(register);
+        self.open = true;
+        self.presets.evidence_open(name);
+        sunipdf_core::register_presets::RegisterPreset::capture(
+            name,
+            &self.filter,
+            self.sort,
+            self.descending,
+        )
+    }
+
+    #[cfg(all(test, windows))]
+    pub(crate) fn evidence_selection_count(&self) -> usize {
+        self.bulk_selected.len()
+    }
+
     fn load_preset(
         &mut self,
         preset: &sunipdf_core::register_presets::RegisterPreset,
