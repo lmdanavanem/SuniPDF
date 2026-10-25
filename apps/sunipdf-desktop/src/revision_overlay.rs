@@ -1373,9 +1373,30 @@ pub(crate) mod tests {
                     }
                 }
                 if let Some(tree) = output.platform_output.accesskit_update {
-                    for (_, node) in tree.nodes {
+                    for (_, node) in &tree.nodes {
                         if let Some(label) = node.label() {
                             accessible.insert(label.to_owned());
+                        }
+                        // Color wells expose their swatch value separately from the
+                        // accessible name inherited from the visible localized label.
+                        if node.role() == egui::accesskit::Role::ColorWell
+                            && node
+                                .value()
+                                .is_some_and(|value| value.starts_with('#') && value.len() == 9)
+                            && node.labelled_by().iter().any(|label_id| {
+                                tree.nodes.iter().any(|(id, label)| {
+                                    id == label_id
+                                        && label.value() == Some(tr(lang, "overlay.stack.color"))
+                                })
+                            })
+                            && node.bounds().is_some_and(|bounds| {
+                                bounds.x0 >= 0.0
+                                    && bounds.y0 >= 0.0
+                                    && bounds.x1 <= f64::from(controls.size.x)
+                                    && bounds.y1 <= f64::from(controls.size.y)
+                            })
+                        {
+                            accessible.insert(tr(lang, "overlay.stack.color").to_owned());
                         }
                     }
                 }
