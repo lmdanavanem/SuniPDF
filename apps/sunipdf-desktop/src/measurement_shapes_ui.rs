@@ -4,8 +4,8 @@ use crate::{app::SuniApp, measure_tools::measurement_panel_button};
 use egui::{Color32, Painter, Pos2, Rect, Stroke};
 use sunipdf_core::measurement::{
     dimensioned_ellipse_point_diameters, dimensioned_ellipse_points, dimensioned_rectangle_corners,
-    dimensioned_rectangle_point_dimensions, normalize_rectangle_rotation, MeasurementUnit,
-    PageCalibration,
+    dimensioned_rectangle_point_dimensions, dimensioned_segment_point_length,
+    dimensioned_segment_points, normalize_rectangle_rotation, MeasurementUnit, PageCalibration,
 };
 use sunipdf_i18n::{tr, tr_args, Language};
 
@@ -15,6 +15,7 @@ pub(crate) enum DimensionedShape {
     Rectangle,
     Circle,
     Ellipse,
+    Segment,
 }
 
 impl DimensionedShape {
@@ -23,6 +24,7 @@ impl DimensionedShape {
             Self::Rectangle => "measure.rectangle.title",
             Self::Circle => "measure.circle.title",
             Self::Ellipse => "measure.ellipse.title",
+            Self::Segment => "measure.segment.title",
         }
     }
 
@@ -31,12 +33,15 @@ impl DimensionedShape {
             Self::Rectangle => "measure.rectangle.place",
             Self::Circle => "measure.circle.place",
             Self::Ellipse => "measure.ellipse.place",
+            Self::Segment => "measure.segment.place",
         }
     }
 
     fn rotation_help(self) -> &'static str {
         if self == Self::Rectangle {
             "measure.rectangle.rotation_help"
+        } else if self == Self::Segment {
+            "measure.segment.rotation_help"
         } else {
             "measure.ellipse.rotation_help"
         }
@@ -66,12 +71,13 @@ pub(crate) struct RectanglePlacement {
 impl RectanglePlacement {
     pub(crate) fn valid(&self) -> bool {
         self.width.is_finite()
-            && self.height.is_finite()
             && self.rotation_degrees.is_finite()
             && self.width > 0.0
-            && self.height > 0.0
             && (self.shape != DimensionedShape::Circle || self.width == self.height)
-            && (self.width * self.height).is_finite()
+            && (self.shape == DimensionedShape::Segment
+                || (self.height.is_finite()
+                    && self.height > 0.0
+                    && (self.width * self.height).is_finite()))
             && self.anchor.0.is_finite()
             && self.anchor.1.is_finite()
             && self.precision <= 4
@@ -83,6 +89,8 @@ impl RectanglePlacement {
             lang,
             if self.shape == DimensionedShape::Rectangle {
                 "measure.rectangle.dimensions"
+            } else if self.shape == DimensionedShape::Segment {
+                "measure.segment.dimensions"
             } else {
                 "measure.ellipse.dimensions"
             },
@@ -104,13 +112,15 @@ impl RectanglePlacement {
                     ("unit", self.unit.id()),
                 ],
             ));
-        } else {
+        } else if self.shape != DimensionedShape::Segment {
             ui.small(tr(lang, "measure.ellipse.approximation"));
         }
         ui.label(tr_args(
             lang,
             if self.shape == DimensionedShape::Rectangle {
                 "measure.rectangle.anchor"
+            } else if self.shape == DimensionedShape::Segment {
+                "measure.segment.start"
             } else {
                 "measure.ellipse.center"
             },
@@ -152,6 +162,8 @@ impl RectanglePlacement {
             lang,
             if self.shape == DimensionedShape::Rectangle {
                 "measure.rectangle.preview_note"
+            } else if self.shape == DimensionedShape::Segment {
+                "measure.segment.preview_note"
             } else {
                 "measure.ellipse.preview_note"
             },
@@ -213,12 +225,18 @@ impl RectangleToolsState {
             sunipdf_core::measurement::parse_measurement_distance(value, self.unit).ok()
         };
         let width = parse(&self.width)?;
-        let height = if self.shape == DimensionedShape::Circle {
+        let height = if matches!(
+            self.shape,
+            DimensionedShape::Circle | DimensionedShape::Segment
+        ) {
             width
         } else {
             parse(&self.height)?
         };
-        (width > 0.0 && height > 0.0 && (width * height).is_finite()).then_some((width, height))
+        (width > 0.0
+            && height > 0.0
+            && (self.shape == DimensionedShape::Segment || (width * height).is_finite()))
+        .then_some((width, height))
     }
 
     fn change_unit(&mut self, next: MeasurementUnit) {
@@ -270,6 +288,7 @@ impl SuniApp {
                         DimensionedShape::Rectangle,
                         DimensionedShape::Circle,
                         DimensionedShape::Ellipse,
+                        DimensionedShape::Segment,
                     ] {
                         ui.selectable_value(&mut tools.shape, shape, tr(lang, shape.title()));
                     }
@@ -285,6 +304,7 @@ impl SuniApp {
                         DimensionedShape::Rectangle => "measure.rectangle.width",
                         DimensionedShape::Circle => "measure.circle.diameter",
                         DimensionedShape::Ellipse => "measure.ellipse.diameter_x",
+                        DimensionedShape::Segment => "measure.segment.length",
                     },
                 ));
                 columns[0]
@@ -297,6 +317,8 @@ impl SuniApp {
                     .labelled_by(width_label.id);
                 if tools.shape == DimensionedShape::Circle {
                     columns[1].small(tr(lang, "measure.circle.equal_diameters"));
+                } else if tools.shape == DimensionedShape::Segment {
+                    columns[1].small(tr(lang, "measure.segment.endpoint_note"));
                 } else {
                     let height_label = columns[1].label(tr(
                         lang,
@@ -350,7 +372,10 @@ impl SuniApp {
             )
             .labelled_by(label.id);
             ui.small(tr(lang, tools.shape.rotation_help()));
-            if tools.shape != DimensionedShape::Rectangle {
+            if matches!(
+                tools.shape,
+                DimensionedShape::Circle | DimensionedShape::Ellipse
+            ) {
                 ui.small(tr(lang, "measure.ellipse.approximation"));
             }
             let selected = match &tools.scale {
@@ -445,6 +470,8 @@ impl SuniApp {
                     lang,
                     if tools.shape == DimensionedShape::Rectangle {
                         "measure.rectangle.invalid_dimensions"
+                    } else if tools.shape == DimensionedShape::Segment {
+                        "measure.segment.invalid_dimensions"
                     } else {
                         "measure.ellipse.invalid_dimensions"
                     },
@@ -462,6 +489,8 @@ impl SuniApp {
                 lang,
                 if tools.shape == DimensionedShape::Rectangle {
                     "measure.rectangle.place_hint"
+                } else if tools.shape == DimensionedShape::Segment {
+                    "measure.segment.place_hint"
                 } else {
                     "measure.ellipse.place_hint"
                 },
@@ -579,7 +608,12 @@ impl SuniApp {
         } else {
             Color32::from_rgb(200, 45, 55)
         };
-        for index in 0..points.len() {
+        let edges = if draft.placement.shape == DimensionedShape::Segment {
+            points.len().saturating_sub(1)
+        } else {
+            points.len()
+        };
+        for index in 0..edges {
             painter.line_segment(
                 [
                     screen(points[index]),
@@ -600,6 +634,18 @@ pub(crate) fn indicative_outline(
 ) -> Option<Vec<(f32, f32)>> {
     if !placement.valid() {
         return None;
+    }
+    if placement.shape == DimensionedShape::Segment {
+        let length = dimensioned_segment_point_length(
+            placement.width,
+            placement.unit,
+            calibration,
+            page_size,
+        )
+        .ok()?;
+        return dimensioned_segment_points(anchor, length, placement.rotation_degrees, page_size)
+            .ok()
+            .map(|points| points.to_vec());
     }
     let dimensions = if placement.shape == DimensionedShape::Rectangle {
         dimensioned_rectangle_point_dimensions
@@ -628,6 +674,47 @@ pub(crate) fn indicative_outline(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn segment_ignores_hidden_height_and_shares_exact_open_outline() {
+        let mut tools = RectangleToolsState {
+            shape: DimensionedShape::Segment,
+            width: "6' 6\"".into(),
+            height: "invalid hidden height".into(),
+            unit: MeasurementUnit::Feet,
+            ..Default::default()
+        };
+        assert_eq!(tools.dimensions(), Some((6.5, 6.5)));
+        tools.change_unit(MeasurementUnit::Inches);
+        assert_eq!(tools.dimensions(), Some((78.0, 78.0)));
+        let calibration = PageCalibration {
+            points: [(10.0, 10.0), (110.0, 10.0)],
+            known_distance: 10.0,
+            unit: MeasurementUnit::Metres,
+        };
+        let placement = RectanglePlacement {
+            shape: DimensionedShape::Segment,
+            anchor: (50.0, 100.0),
+            width: 2.0,
+            height: f64::NAN,
+            rotation_degrees: 90.0,
+            unit: MeasurementUnit::Metres,
+            precision: 2,
+            scale: RectangleScaleSelection::Local(calibration.clone()),
+        };
+        assert!(placement.valid());
+        assert_eq!(
+            indicative_outline(&placement, placement.anchor, &calibration, (600.0, 800.0)).unwrap(),
+            vec![(50.0, 100.0), (50.0, 80.0)]
+        );
+        assert!(
+            indicative_outline(&placement, (50.0, 0.0), &calibration, (600.0, 800.0)).is_none()
+        );
+        for value in ["0", "-1", "NaN", "inf", ""] {
+            tools.width = value.into();
+            assert!(tools.dimensions().is_none());
+        }
+    }
 
     #[test]
     fn circles_keep_equal_diameters_and_unit_changes_preserve_their_size() {
@@ -770,11 +857,43 @@ mod tests {
             known_distance: 10.0,
             unit: MeasurementUnit::Metres,
         };
-        for (scale, expected_segments) in [
-            (RectangleScaleSelection::Local(calibration.clone()), 4),
-            (RectangleScaleSelection::Page, 4),
-            (RectangleScaleSelection::Region("detail".into()), 0),
-            (RectangleScaleSelection::Automatic, 0),
+        for (shape, scale, expected_segments) in [
+            (
+                DimensionedShape::Rectangle,
+                RectangleScaleSelection::Local(calibration.clone()),
+                4,
+            ),
+            (
+                DimensionedShape::Rectangle,
+                RectangleScaleSelection::Page,
+                4,
+            ),
+            (
+                DimensionedShape::Rectangle,
+                RectangleScaleSelection::Region("detail".into()),
+                0,
+            ),
+            (
+                DimensionedShape::Rectangle,
+                RectangleScaleSelection::Automatic,
+                0,
+            ),
+            (
+                DimensionedShape::Segment,
+                RectangleScaleSelection::Local(calibration.clone()),
+                1,
+            ),
+            (DimensionedShape::Segment, RectangleScaleSelection::Page, 1),
+            (
+                DimensionedShape::Segment,
+                RectangleScaleSelection::Region("detail".into()),
+                0,
+            ),
+            (
+                DimensionedShape::Segment,
+                RectangleScaleSelection::Automatic,
+                0,
+            ),
         ] {
             let (mut app, requests, _) = crate::app::tests::test_app();
             let ctx = egui::Context::default();
@@ -800,7 +919,7 @@ mod tests {
                 page: 0,
                 epoch,
                 placement: RectanglePlacement {
-                    shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
+                    shape,
                     anchor: (0.0, 0.0),
                     width: 2.0,
                     height: 3.0,

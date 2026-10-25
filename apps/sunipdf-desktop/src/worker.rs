@@ -3481,7 +3481,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             } => {
                 use crate::measurement_shapes_ui::{DimensionedShape, RectangleScaleSelection};
                 use sunipdf_core::measurement::{
-                    DimensionedEllipse, DimensionedRectangle, RectangleScale,
+                    DimensionedEllipse, DimensionedRectangle, DimensionedSegment, RectangleScale,
                 };
                 state.rich_preview = None;
                 let result = state
@@ -3506,7 +3506,18 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                             RectangleScaleSelection::Region(id) => RectangleScale::Region(id),
                             RectangleScaleSelection::Automatic => RectangleScale::Automatic,
                         };
-                        let annotation = if rectangle.shape == DimensionedShape::Rectangle {
+                        let annotation = if rectangle.shape == DimensionedShape::Segment {
+                            sunipdf_core::annot_rich::RichAnnotation::DimensionedSegment(
+                                DimensionedSegment {
+                                    start: rectangle.anchor,
+                                    length: rectangle.width,
+                                    rotation_degrees: rectangle.rotation_degrees,
+                                    unit: rectangle.unit,
+                                    precision: rectangle.precision,
+                                    scale,
+                                },
+                            )
+                        } else if rectangle.shape == DimensionedShape::Rectangle {
                             sunipdf_core::annot_rich::RichAnnotation::DimensionedRectangle(
                                 DimensionedRectangle {
                                     anchor: rectangle.anchor,
@@ -7014,6 +7025,7 @@ mod tests {
             DimensionedShape::Rectangle,
             DimensionedShape::Circle,
             DimensionedShape::Ellipse,
+            DimensionedShape::Segment,
         ] {
             let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
@@ -7178,7 +7190,14 @@ mod tests {
             let records = read();
             assert_eq!(records.len(), 1);
             assert!(records[0].validity.is_current());
-            assert_eq!(records[0].measurement.kind, MeasurementKind::Area);
+            assert_eq!(
+                records[0].measurement.kind,
+                if shape == DimensionedShape::Segment {
+                    MeasurementKind::Length
+                } else {
+                    MeasurementKind::Area
+                }
+            );
             let hover = crate::measurement_shapes_ui::indicative_outline(
                 &rectangle,
                 rectangle.anchor,
@@ -7188,7 +7207,9 @@ mod tests {
             .unwrap();
             assert_eq!(records[0].measurement.points, hover.to_vec());
             let area = records[0].measurement.value().unwrap();
-            let expected_area = if shape == DimensionedShape::Rectangle {
+            let expected_area = if shape == DimensionedShape::Segment {
+                rectangle.width
+            } else if shape == DimensionedShape::Rectangle {
                 rectangle.width * rectangle.height
             } else {
                 let n = sunipdf_core::measurement::DIMENSIONED_ELLIPSE_SEGMENTS as f64;
@@ -7197,7 +7218,9 @@ mod tests {
             assert!((area - expected_area).abs() < 1e-4);
             assert_eq!(
                 records[0].measurement.points.len(),
-                if shape == DimensionedShape::Rectangle {
+                if shape == DimensionedShape::Segment {
+                    2
+                } else if shape == DimensionedShape::Rectangle {
                     4
                 } else {
                     128

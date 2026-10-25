@@ -554,7 +554,12 @@ impl SuniApp {
         draft.page = page;
         draft.mode = RichMode::Measurement;
         draft.interactive_measurement = true;
-        draft.measure_kind = MeasurementKind::Area;
+        draft.measure_kind =
+            if rectangle.shape == crate::measurement_shapes_ui::DimensionedShape::Segment {
+                MeasurementKind::Length
+            } else {
+                MeasurementKind::Area
+            };
         draft.rectangle = Some(rectangle);
         self.request_rich_preview();
         true
@@ -1888,9 +1893,16 @@ mod tests {
                 _ => None,
             }
         }
-        for (language, height) in ["en-US", "fr-FR"]
+        for (language, height, shape) in ["en-US", "fr-FR"]
             .into_iter()
             .flat_map(|language| [480.0_f32, 680.0].map(move |height| (language, height)))
+            .flat_map(|(language, height)| {
+                [
+                    crate::measurement_shapes_ui::DimensionedShape::Rectangle,
+                    crate::measurement_shapes_ui::DimensionedShape::Segment,
+                ]
+                .map(move |shape| (language, height, shape))
+            })
         {
             let (mut app, requests, _) = crate::app::tests::test_app();
             app.settings.language = language.into();
@@ -1900,7 +1912,7 @@ mod tests {
             assert!(app.open_dimensioned_rectangle_preview(
                 0,
                 crate::measurement_shapes_ui::RectanglePlacement {
-                    shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
+                    shape,
                     anchor: (100.0, 100.0),
                     width: 2.0,
                     height: 3.0,

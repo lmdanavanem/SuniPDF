@@ -1,6 +1,6 @@
 # Dimensioned circles and ellipses
 
-Development candidate for [0.90](RELEASE_0.90.0.md). Package qualification is pending.
+Development candidate for [0.91](RELEASE_0.91.0.md). Package qualification is pending.
 
 Create a circular or elliptical area from real dimensions and an explicit scale.
 The saved measurement is an editable polygon with 128 vertices. The interface

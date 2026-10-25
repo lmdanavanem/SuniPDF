@@ -56,6 +56,7 @@ mod measurement_area;
 mod measurement_batch;
 mod measurement_distance;
 mod measurement_ellipses;
+mod measurement_segments;
 mod measurement_shapes;
 mod measurement_snap;
 mod measurement_viewports;

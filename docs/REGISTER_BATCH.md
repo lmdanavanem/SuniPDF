@@ -61,6 +61,6 @@ Protected inputs use the existing global `--password-env` or `--password-stdin` 
 - Saved source and edited document snapshots are bounded to 128 MiB. The existing register limits of 1,000 pages and 10,000 rows still apply.
 - Signed documents, unsupported annotation types and ambiguous annotation ownership are refused. The operation does not repair malformed metadata or bypass document permissions.
 
-Qualification is pending for the 0.86 candidate. Automated fixtures, native desktop interaction and broader independent-reader interoperability are separate evidence scopes.
+Qualification is pending for the 0.91 candidate. Automated fixtures, native desktop interaction and broader independent-reader interoperability are separate evidence scopes.
 
 [Annotation register](MARKUP_REGISTER.md) · [Quantity tables](QUANTITY_TABLE.md)

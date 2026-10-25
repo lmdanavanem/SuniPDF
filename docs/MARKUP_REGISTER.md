@@ -34,7 +34,7 @@ Use [saved filters](REGISTER_FILTERS.md) to reuse named criteria and sorting. Ap
 
 ## Match a custom text field
 
-The [0.89 candidate](RELEASE_0.89.0.md) adds one optional exact key/value criterion. Use it with the existing filters to isolate annotations such as `Room = A-101`; a match in the comment or in another field does not satisfy this criterion.
+The [0.91 candidate](RELEASE_0.91.0.md) adds one optional exact key/value criterion. Use it with the existing filters to isolate annotations such as `Room = A-101`; a match in the comment or in another field does not satisfy this criterion.
 
 Open **Filters ? Custom text field**, choose **Add field filter**, then set **Field name** and **Exact text value**. Use **Clear field filter** to remove this criterion. The same controls are available in the quantity table.
 

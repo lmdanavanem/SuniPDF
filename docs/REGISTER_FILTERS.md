@@ -17,7 +17,7 @@ Filter matching is unchanged: search is case-insensitive, named fields use their
 
 Use **Export…** to write the saved-filter library to a new JSON file. Existing files are refused. **Import…** validates the complete file before adding any entries; a duplicate name, unsupported version or invalid entry leaves the current library unchanged.
 
-The [0.89 candidate](RELEASE_0.89.0.md) adds an optional exact custom-text-field criterion. Libraries that contain this criterion use version2. Version1 libraries remain supported and retain their previous representation when the criterion is absent. Older applications may refuse version2; import it only into a supporting version.
+The [0.91 candidate](RELEASE_0.91.0.md) adds an optional exact custom-text-field criterion. Libraries that contain this criterion use version 2. Version 1 libraries remain supported and retain their previous representation when the criterion is absent. Older applications may refuse version 2; import it only into a supporting version.
 
 The portable file stores criteria and sort order, not PDFs, annotation selections or document identities. Review search and author text before sharing it. Imported filters do not apply themselves to the open document.
 
@@ -25,6 +25,6 @@ The library supports at most 16 filters and 128 KiB of serialized JSON. Names co
 
 Settings without saved filters keep their existing behavior. An invalid saved-filter preference does not reset unrelated preferences; an import or save error is reported without replacing valid data.
 
-Qualification is pending for the 0.87 candidate. Native operating-system file dialogs and physical accessibility retain separate qualification scopes.
+Qualification is pending for the 0.91 candidate. Native operating-system file dialogs and physical accessibility retain separate qualification scopes.
 
 [Annotation register](MARKUP_REGISTER.md) · [Bulk field editing](REGISTER_BATCH.md)

@@ -27,11 +27,19 @@ The original axis-aligned increment is published in [0.62.0](RELEASE_0.62.0.md);
 
 ## Place a dimensioned circle or ellipse
 
-The [0.90 candidate](DIMENSIONED_ELLIPSES.md) adds a centre and diameter(s), with
+The [0.91 candidate](DIMENSIONED_ELLIPSES.md) adds a centre and diameter(s), with
 an optional clockwise angle, to the same calibrated preview workflow. It creates
 an editable 128-vertex area approximation. The visible approximation and actual
 saved polygon area remain explicit; it does not introduce analytic curves or
 permanent shape constraints. Package qualification is pending.
+
+## Place a segment with a real length
+
+The [0.91 candidate segment workflow](DIMENSIONED_SEGMENTS.md) accepts a starting
+point, physical length and clockwise angle. Review the open line before applying
+it as a two-endpoint length measurement. The complete segment follows the same
+scale and source guards; quantities use its stored length. Package qualification
+is pending.
 
 ## Recalibrate a selected batch
 

@@ -22,6 +22,9 @@ pub use crate::measurement_ellipses::{
     dimensioned_ellipse_point_diameters, dimensioned_ellipse_points, DimensionedEllipse,
     DIMENSIONED_ELLIPSE_SEGMENTS,
 };
+pub use crate::measurement_segments::{
+    dimensioned_segment_point_length, dimensioned_segment_points, DimensionedSegment,
+};
 pub use crate::measurement_shapes::{
     dimensioned_rectangle_corners, dimensioned_rectangle_point_dimensions,
     normalize_rectangle_rotation, DimensionedRectangle, LocalCalibrationReference, RectangleScale,

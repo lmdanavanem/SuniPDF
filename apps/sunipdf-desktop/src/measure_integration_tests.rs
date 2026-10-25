@@ -351,6 +351,12 @@ fn dimensioned_rectangle_apply_closes_the_modal_and_allows_next_placement() {
             "measure.ellipse.place",
             3.0,
         ),
+        (
+            DimensionedShape::Segment,
+            "measure.segment.title",
+            "measure.segment.place",
+            2.0,
+        ),
     ] {
         for language in ["en-US", "fr-FR"] {
             let (mut app, requests, responses) = crate::app::tests::test_app();
@@ -392,6 +398,14 @@ fn dimensioned_rectangle_apply_closes_the_modal_and_allows_next_placement() {
                 })
                 .unwrap();
             app.handle_responses(&canvas.ctx);
+            assert_eq!(
+                app.annotate.adv.rich.as_ref().unwrap().measure_kind,
+                if shape == DimensionedShape::Segment {
+                    MeasurementKind::Length
+                } else {
+                    MeasurementKind::Area
+                }
+            );
             canvas.control(&mut app, "bar.apply");
             let commits = requests
                 .try_iter()
@@ -455,6 +469,12 @@ fn dimensioned_rectangle_controls_capture_reference_place_once_and_cancel_withou
             "measure.ellipse.title",
             "measure.ellipse.place",
             3.0,
+        ),
+        (
+            DimensionedShape::Segment,
+            "measure.segment.title",
+            "measure.segment.place",
+            2.0,
         ),
     ] {
         for language in ["en-US", "fr-FR"] {

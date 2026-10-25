@@ -80,6 +80,7 @@ pub enum RichAnnotation {
     Measurement(crate::measurement::Measurement),
     DimensionedRectangle(crate::measurement::DimensionedRectangle),
     DimensionedEllipse(crate::measurement::DimensionedEllipse),
+    DimensionedSegment(crate::measurement::DimensionedSegment),
     UpdateMeasurement {
         target: crate::measurement::MeasurementTarget,
         measurement: crate::measurement::Measurement,
@@ -938,6 +939,9 @@ impl<'a> Document<'a> {
             }
             RichAnnotation::DimensionedRectangle(request) => {
                 self.add_dimensioned_rectangle(page, request, author)
+            }
+            RichAnnotation::DimensionedSegment(request) => {
+                self.add_dimensioned_segment(page, request, author)
             }
             RichAnnotation::DimensionedEllipse(request) => {
                 self.add_dimensioned_ellipse(page, request, author)

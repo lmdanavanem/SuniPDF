@@ -592,9 +592,11 @@ def plan_link_creation(evidence, version):
                    "full-rgb-lanczos-3x-psm11": (3, Image.LANCZOS, 11),
                    "full-rgb-lanczos-4x-psm11": (4, Image.LANCZOS, 11),
                    "full-rgb-lanczos-4x-psm6": (4, Image.LANCZOS, 6),
-                   "color-mask-nearest-3x-psm11": (3, Image.NEAREST, 11)}
+                   "color-mask-nearest-3x-psm11": (3, Image.NEAREST, 11),
+                   "color-mask-nearest-3x-psm6": (3, Image.NEAREST, 6),
+                   "color-mask-lanczos-3x-psm11": (3, Image.LANCZOS, 11)}
         assert preparation in methods, "Unknown native OCR preparation"
-        assert bool(color) == (preparation == "color-mask-nearest-3x-psm11"), \
+        assert bool(color) == preparation.startswith("color-mask-"), \
             "Coloured PDF fixtures retain their original OCR mask"
         scale, resample, psm = methods[preparation]
         with Image.open(path) as image:
@@ -624,7 +626,11 @@ def plan_link_creation(evidence, version):
     def observations(path, color=None):
         # All alternatives read one unchanged full frame. Only a missing literal
         # label permits another preparation; ambiguous labels remain fatal.
-        preparations = (("color-mask-nearest-3x-psm11",) if color else
+        # PDF alternatives never read the RGB image: every method starts from
+        # the same full-frame color mask and original ink count. Neutral interface
+        # text is excluded; the expected complete PDF title must still be unique.
+        preparations = (("color-mask-nearest-3x-psm11", "color-mask-nearest-3x-psm6",
+                         "color-mask-lanczos-3x-psm11") if color else
                         ("full-rgb-nearest-2x-psm11", "full-rgb-lanczos-3x-psm11",
                          "full-rgb-lanczos-4x-psm11", "full-rgb-lanczos-4x-psm6"))
         for preparation in preparations:

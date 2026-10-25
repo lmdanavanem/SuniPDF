@@ -2149,8 +2149,18 @@
   "measure.ellipse.rotation_help": "Rotate clockwise around the centre. Diameters follow the rotated axes.",
   "measure.ellipse.approximation": "Area approximation with 128 straight segments. Quantities use the saved polygon area.",
   "measure.ellipse.center": "Centre: {x}, {y} pt",
-  "measure.ellipse.dimensions": "Diameters: {width} ? {height} {unit}",
+  "measure.ellipse.dimensions": "Diameters: {width} × {height} {unit}",
   "measure.ellipse.preview_note": "Dimensions and scale are retained in this preview. Cancel to change them. Apply creates a polygon area measurement; later vertex editing does not preserve an ellipse.",
   "measure.ellipse.invalid_dimensions": "Enter positive, finite diameters in the selected unit.",
-  "measure.ellipse.place_hint": "Click the centre. Snapping affects only this centre; Escape cancels."
+  "measure.ellipse.place_hint": "Click the centre. Snapping affects only this centre; Escape cancels.",
+  "measure.segment.title": "Dimensioned segment",
+  "measure.segment.place": "Place segment",
+  "measure.segment.length": "Length",
+  "measure.segment.dimensions": "Length: {width} {unit}",
+  "measure.segment.start": "Start: {x}, {y} pt",
+  "measure.segment.rotation_help": "0° points right; 90° points down. Positive angles turn clockwise.",
+  "measure.segment.preview_note": "Review the line and length before applying. The saved endpoints remain editable.",
+  "measure.segment.invalid_dimensions": "Enter a positive finite length.",
+  "measure.segment.place_hint": "Click the starting point, then review the segment. Esc cancels.",
+  "measure.segment.endpoint_note": "The endpoint follows the length and angle."
 }

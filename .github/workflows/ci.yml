@@ -439,6 +439,23 @@ jobs:
           name: dimensioned-ellipse-evidence
           path: target/dimensioned-ellipse-evidence/
           if-no-files-found: ignore
+      - name: Dimensioned segment independent geometry checks
+        if: steps.changes.outputs.docs_only != 'true'
+        timeout-minutes: 12
+        run: |
+          python .\scripts\test-dimensioned-segments-offline.py
+          if ($LASTEXITCODE -ne 0) { throw 'Dimensioned segment fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-dimensioned-segments.py --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --directory target\dimensioned-segment-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Dimensioned segment geometry regression failed.' }
+      - name: Dimensioned segment evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: dimensioned-segment-evidence
+          path: target/dimensioned-segment-evidence/
+          if-no-files-found: ignore
       - name: Page decorations regression
         if: steps.changes.outputs.docs_only != 'true'
         run: |

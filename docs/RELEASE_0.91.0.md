@@ -1,9 +1,10 @@
-# SuniPDF 0.89.0 - candidate
+# SuniPDF 0.91.0 - candidate
 
-This cumulative candidate combines reviewed bulk edits, saved register filters,
-reusable rich-text annotations and exact custom-field filtering. It follows
-0.85.0; the intermediate development versions are not separate public releases.
-Publication and package qualification are pending.
+This cumulative candidate adds reviewed bulk edits, saved register filters,
+reusable rich-text annotations, exact custom-field filtering and dimensioned
+circles, ellipses and straight segments. It follows 0.85.0; intermediate
+development versions are not separate public releases. Publication and package
+qualification are pending.
 
 ## Review and edit annotation fields together
 
@@ -59,20 +60,50 @@ or edit history. Foreign or embedded fonts, altered appearances, legacy simple
 text and unsupported semantics remain refused. Geometry that would change text
 box dimensions or wrapping during normalization or placement is also refused.
 
+## Draw circles and ellipses to a measured size
+
+Choose a centre and real diameter, or two diameters and a clockwise angle, using
+a captured calibration, saved page scale, named region or automatic reference
+resolution. Review the prepared PDF preview before applying one undoable area
+measurement. Edited parameters or source changes invalidate the prepared result.
+
+The saved contour contains 128 editable vertices. Its approximation is explicit
+in the interface; quantities use the actual stored polygon area. It does not
+create analytic curves, permanent shape constraints or independent horizontal
+and vertical scales. The CLI provides the same guarded construction through
+`dimensioned-circle` and `dimensioned-ellipse`, writing new copies only.
+
+## Draw a segment to a measured length
+
+Choose a starting point, physical length and clockwise angle. The indicative
+outline is an open line. Review the prepared PDF preview, then apply one undoable
+length measurement. The same captured, page, region and automatic references
+retain their source and geometry guards.
+
+The saved line has two editable endpoints. Quantities use their actual stored
+distance; coordinate-precision checks refuse a change of the displayed value
+during storage. Save/reopen and subsequent endpoint edits do not impose a
+permanent length or angle constraint. Architectural extension lines and dimension
+arrows remain outside this increment. `dimensioned-segment` uses the same
+constructor and refuses existing output paths.
+
 ## Qualification scope
 
-Source tests cover atomic changes, stale selection, settings persistence,
-serialization compatibility, literal filtering and preserved source files. The
-packaged CLI corpora independently inspect saved annotation dictionaries,
-appearance streams, standard fonts, mixed groups, rotated/cropped geometry and
-rendered pixels. Four additional Windows offscreen scenes exercise the bulk-edit
-review and saved-filter dialogs in English/light and French/dark layouts.
+The planned gates include source tests for atomic changes, stale selections,
+settings persistence, literal filtering, geometry, permissions and source
+preservation. Separate packaged CLI/QPDF corpora inspect actual annotation
+dictionaries, complete appearance paths, standard fonts, mixed groups, calibrated
+lengths and areas, rotated/cropped pages and rendered pixels. Four Windows
+offscreen scenes exercise the bulk-edit review and saved-filter dialogs in
+English/light and French/dark layouts.
 
-These are the planned validation gates. Exact-source runtime results and public
-packages remain pending. Offscreen scenes do not qualify native mouse, keyboard
-or assistive-technology interaction. Existing hardware, interoperability and
-private-plan limits remain open.
+Exact-source runtime results and public packages remain pending. Offscreen scenes
+do not qualify native mouse, keyboard or assistive-technology interaction. The
+shape corpora do not establish native placement, external-reader measurement
+editing or physical survey accuracy. Existing hardware and private-plan limits
+remain open.
 
-[Bulk editing](REGISTER_BATCH.md) · [Saved filters](REGISTER_FILTERS.md) ·
-[Annotation register](MARKUP_REGISTER.md) · [Annotation library](ANNOTATION_LIBRARY.md) ·
+[Bulk editing](REGISTER_BATCH.md) | [Saved filters](REGISTER_FILTERS.md) |
+[Annotation register](MARKUP_REGISTER.md) | [Annotation library](ANNOTATION_LIBRARY.md) |
+[Circles and ellipses](DIMENSIONED_ELLIPSES.md) | [Segments](DIMENSIONED_SEGMENTS.md) |
 [Project status](PROJECT_STATUS.md)
