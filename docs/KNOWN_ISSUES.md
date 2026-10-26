@@ -1,8 +1,14 @@
 # Known limitations
 
-Current scope: [SuniPDF 0.75.0](RELEASE_0.75.0.md). This page lists supported boundaries
+Current scope: [SuniPDF 0.91.0](RELEASE_0.91.0.md). This page lists supported boundaries
 and remaining qualification gaps. See [project status](PROJECT_STATUS.md) for executed
 checks and the [roadmap](ROADMAP.md) for planned work.
+
+## Register workflow qualification
+
+The new register-batch corpus covers 113 checks, 35 commands, 18 cases and 16 refusals; the saved-text corpus covers 388 checks, 45 commands, eight cases and four refusals. Actual plain PDF graphs, saved text glyph mappings and rendered pixels are independently checked. Encrypted register output retains independently inspected QPDF objects and permission dictionaries; ephemeral passwords are not retained for a second independent decryption. Four additional offscreen dialog scenes qualify recorded rendering and control states, not native mouse/keyboard, Undo/Redo interaction or physical accessibility. Exact field filtering adds no numeric ranges or regular expressions and has no separate packaged corpus. Foreign, embedded or arbitrary text fonts, unsupported semantics and incompatible text-box geometry remain refused. All affected backlog cards retain their remaining acceptance criteria. Rectangle rotation does not create persistent geometric constraints. Saved annotation capture retains its supported native appearance and image bounds. Overlay setups retain source hashes and configuration, not PDF data, rendered rasters or credentials; automatic registration and layered PDF output remain open. Formula conversion supports only the existing geometric unit families; each conversion rounds to six decimal places and sub-micro values can round to zero. Source quantities keep their exact unit guard. Every affected backlog card retains its remaining acceptance criteria. Circles and ellipses use 128 editable polygon vertices, about 0.0402% below ideal analytic area before coordinate rounding. Segments use two stored endpoints and linear quantities; none of these shapes has a persistent analytic constraint. The ellipse corpus verifies 327 checks, 62 commands, 27 cases and 19 refusals across eight PDFs/1024 vertices. The segment corpus verifies 359 checks, 67 commands, 29 cases and 20 refusals across nine PDFs/18 endpoints. Both retain actual PDF/QPDF, appearance and stored-quantity checks across four cropped rotations and five units. No new native shape mouse/keyboard, Undo/Redo, physical survey or external-reader qualification is claimed. Independent X/Y calibration, permanent constraints, analytic curves and broader interoperability remain open; AEC-008 remains In progress.
+
+[Current release evidence](RELEASE_0.91.0.md).
 
 ## Platforms, installation and updates
 
@@ -44,12 +50,9 @@ checks and the [roadmap](ROADMAP.md) for planned work.
 
 ## Formula and saved-group limits
 
-The [0.61 release](RELEASE_0.61.0.md) adds bounded report formulas. They
-accept dimensionless numeric fields and quantities with an exact declared unit. They do not
-change stored prices, subtotals or PDF metadata; missing inputs and calculation errors remain
-explicit. Saved-group capture accepts reproducible native shape appearances only; foreign,
-text/image/stamp, reply and extra-semantic records are refused atomically. Broader formulas
-and annotation capture remain planned.
+Typed numeric fields retain their declared units. Report formulas accept explicit `convert(expression, unit)` for matching length, area and volume dimensions; counts, angles and dimensionless values cannot be converted. The source quantity retains its exact declared unit. Every conversion rounds half away from zero at six decimal places; sub-micro values can round to zero. Missing inputs, mismatches and overflow remain explicit errors. These calculations do not modify the PDF, stored prices or source quantities. [Formula limits](QUANTITY_TABLE.md).
+
+Saved-group capture accepts reproducible native shapes, supported standard and image stamps with verified RGB/optional alpha resources, and supported native rich-text FreeText using twelve standard font/style variants when appearance and resources reproduce exactly. The existing 2 MiB appearance-graph budget still applies. Legacy simple text, foreign appearances, embedded or arbitrary fonts, replies and extra semantics remain refused; incompatible text geometry is refused to preserve wrapping. Unsupported selected members are never silently dropped. [Library limits](ANNOTATION_LIBRARY.md). Remaining native interaction and independent-reader criteria stay open.
 
 ## Editing, annotations and forms
 

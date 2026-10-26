@@ -1,6 +1,6 @@
 # Dimensioned segments
 
-Development candidate for [0.91](RELEASE_0.91.0.md). Package qualification is pending.
+Published in [0.91.0](RELEASE_0.91.0.md). Packaged-CLI evidence verifies saved PDF geometry and quantities; native segment interaction remains unqualified.
 
 Create a straight calibrated length from a starting point, a real length and a
 clockwise angle. The saved annotation is an ordinary length measurement with two

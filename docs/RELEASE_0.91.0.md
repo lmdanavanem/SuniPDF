@@ -1,8 +1,6 @@
-# SuniPDF 0.91.0 - candidate
+# SuniPDF 0.91.0
 
-This cumulative candidate combines the plan-review changes since 0.79.0.
-Development increments 0.80 through 0.90 are not separate public releases.
-Publication and package qualification are pending.
+Published stable on 2026-10-26. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.0) | [Qualification evidence](qa/RELEASE_0.91.0.json).
 
 ## Rotated dimensioned rectangles
 
@@ -44,7 +42,7 @@ Automatic registration and layered PDF output remain outside this scope.
 
 ## Desktop plan-link workflow and Ubuntu update checks
 
-The planned installed-Ubuntu qualification creates and reviews two linked source
+The installed-Ubuntu qualification creates and reviews two linked source
 PDFs through native controls, saves new copies, exports the actual receipt and
 reopens the physical destination page. It retains occupied-output refusal and
 independent PDF content, resource and link checks. Its original synthetic
@@ -151,24 +149,39 @@ permanent length or angle constraint. Architectural extension lines and dimensio
 arrows remain outside this increment. `dimensioned-segment` uses the same
 constructor and refuses existing output paths.
 
-## Qualification scope
+## Qualification and limits
 
-Ten packaged CLI corpora are required. The planned gates include source tests
-for atomic changes, stale selections,
-settings persistence, literal filtering, geometry, permissions and source
-preservation. Separate packaged CLI/QPDF corpora inspect actual annotation
-dictionaries, complete appearance paths, standard fonts, mixed groups, calibrated
-lengths and areas, rotated/cropped pages and rendered pixels. Four Windows
-offscreen scenes exercise the bulk-edit review and saved-filter dialogs in
-English/light and French/dark layouts.
+The tagged source passed all 11 release jobs. Windows qualification includes
+20 offscreen interface scenes (3 Home and 17 PDF/settings scenes), 57 portable upgrade baselines plus
+4 guards, and 55 MSI upgrade baselines. Ubuntu 22.04 and 24.04
+each passed 27 installed runtime cases, including 6 plan-link cases.
+Apple Silicon passed 7 installed checks on macOS 15.7.9.
 
-Exact-source runtime results and public packages remain pending. Offscreen scenes
-do not qualify native mouse, keyboard or assistive-technology interaction. The
-shape corpora do not establish native placement, external-reader measurement
-editing or physical survey accuracy. Existing hardware and private-plan limits
-remain open.
+Independent PDF validation passed the recorded 12-fixture corpus. The public
+DEB contains the same CLI bytes as that conformance run. All ten public downloads
+were checked anonymously against their SHA256 values, verified 2026-10-26T04:09:34.597549+00:00.
 
-[Bulk editing](REGISTER_BATCH.md) | [Saved filters](REGISTER_FILTERS.md) |
-[Annotation register](MARKUP_REGISTER.md) | [Annotation library](ANNOTATION_LIBRARY.md) |
-[Circles and ellipses](DIMENSIONED_ELLIPSES.md) | [Segments](DIMENSIONED_SEGMENTS.md) |
-[Project status](PROJECT_STATUS.md)
+Visual review covers 36 recorded images. Windows captures use offscreen software
+rendering; Ubuntu interaction uses the recorded X11/Openbox/Xvfb environment.
+Capture identities, review methods and exact-source limits are retained in
+[qualification evidence](qa/RELEASE_0.91.0.json).
+
+The ten retained packaged-CLI corpora include register-field batches with 113 checks, 35 commands, 18 cases and 16 refusals. Native plan-link creation separately passed five cases and 32 retained scenes per Ubuntu version; the six navigation cases retain their separate scope.
+
+Four additional Windows WARP scenes cover English and French register dialogs: two real batch previews and two saved-filter views. Their recorded source bindings, control states, text geometry and pixels were checked independently.
+
+The new register-batch corpus covers 113 checks, 35 commands, 18 cases and 16 refusals; the saved-text corpus covers 388 checks, 45 commands, eight cases and four refusals. Actual plain PDF graphs, saved text glyph mappings and rendered pixels are independently checked. Encrypted register output retains independently inspected QPDF objects and permission dictionaries; ephemeral passwords are not retained for a second independent decryption. Four additional offscreen dialog scenes qualify recorded rendering and control states, not native mouse/keyboard, Undo/Redo interaction or physical accessibility. Exact field filtering adds no numeric ranges or regular expressions and has no separate packaged corpus. Foreign, embedded or arbitrary text fonts, unsupported semantics and incompatible text-box geometry remain refused. All affected backlog cards retain their remaining acceptance criteria. Rectangle rotation does not create persistent geometric constraints. Saved annotation capture retains its supported native appearance and image bounds. Overlay setups retain source hashes and configuration, not PDF data, rendered rasters or credentials; automatic registration and layered PDF output remain open. Formula conversion supports only the existing geometric unit families; each conversion rounds to six decimal places and sub-micro values can round to zero. Source quantities keep their exact unit guard. Every affected backlog card retains its remaining acceptance criteria. Circles and ellipses use 128 editable polygon vertices, about 0.0402% below ideal analytic area before coordinate rounding. Segments use two stored endpoints and linear quantities; none of these shapes has a persistent analytic constraint. The ellipse corpus verifies 327 checks, 62 commands, 27 cases and 19 refusals across eight PDFs/1024 vertices. The segment corpus verifies 359 checks, 67 commands, 29 cases and 20 refusals across nine PDFs/18 endpoints. Both retain actual PDF/QPDF, appearance and stored-quantity checks across four cropped rotations and five units. No new native shape mouse/keyboard, Undo/Redo, physical survey or external-reader qualification is claimed. Independent X/Y calibration, permanent constraints, analytic curves and broader interoperability remain open; AEC-008 remains In progress.
+
+Installed Ubuntu creation qualification uses original synthetic searchable PDFs and actual X11/Openbox/Xvfb controls. It verifies two reviewed source copies, independent QPDF page/content/resource checks, an exported save receipt, occupied-output refusal and navigation to physical destination page two. The separate six-case navigation corpus retains its recorded scope. Image-only references, encrypted creation inputs, dirty-tab creation, Wayland, physical GPUs and external-reader interoperability remain unqualified. Windows offscreen scenes do not establish native plan-link creation.
+
+Windows packages remain unsigned, and Windows ARM64 is cross-built without
+native hardware execution. The Apple Silicon app is ad hoc signed, not
+notarized; macOS 12 is a binary-checked deployment minimum. Physical Macs,
+interactive Finder opening and clipboard interoperability remain unqualified.
+Ubuntu updater-helper checks do not establish graphical authorization or a
+complete desktop updater interaction. Physical GPUs, Wayland, printers and
+human accessibility remain separate gates.
+
+The corresponding annotation-workflow backlog card remains in progress; full acceptance needs its remaining independent criteria.
+
+[Bulk editing](REGISTER_BATCH.md) | [Saved filters](REGISTER_FILTERS.md) | [Annotation library](ANNOTATION_LIBRARY.md) | [Project status](PROJECT_STATUS.md).

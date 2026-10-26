@@ -1,6 +1,6 @@
 # SuniPDF documentation
 
-Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download-0790) or
+Start with the [user guide](USER_GUIDE.en.md), [downloads](../README.md#download-0910) or
 [Ubuntu installation](UBUNTU.md) or [macOS installation](MACOS.md). This documentation is maintained in English; the application supports English and French.
 
 ## Use SuniPDF
@@ -37,6 +37,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Releases and history
 
+- [0.91.0 release and limits](RELEASE_0.91.0.md) and [qualification evidence](qa/RELEASE_0.91.0.json).
 - [0.79.0 release and limits](RELEASE_0.79.0.md) and [qualification evidence](qa/RELEASE_0.79.0.json).
 - [0.78.0 release and limits](RELEASE_0.78.0.md) and [qualification evidence](qa/RELEASE_0.78.0.json).
 - [0.77.0 release and limits](RELEASE_0.77.0.md) and [qualification evidence](qa/RELEASE_0.77.0.json).
