@@ -18,18 +18,18 @@ The interface defaults to English; French is also available.
 
 Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
 
-## Download 0.79.0
+## Download 0.91.0
 
-SuniPDF 0.79.0 is the latest stable release, verified 2026-10-25T05:43:29.006968+00:00.
+SuniPDF 0.91.0 is the latest stable release, verified 2026-10-26T04:09:34.597549+00:00.
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.79.0/SuniPDF-0.79.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.79.0/SuniPDF-0.79.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.79.0/SuniPDF-0.79.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.79.0/SuniPDF-0.79.0-linux-amd64.deb) |
-| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.79.0/SuniPDF-0.79.0-macos-arm64.dmg) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.0/SuniPDF-0.91.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.0/SuniPDF-0.91.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.0/SuniPDF-0.91.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.0/SuniPDF-0.91.0-linux-amd64.deb) |
+| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.0/SuniPDF-0.91.0-macos-arm64.dmg) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.79.0) · [qualification evidence](docs/qa/RELEASE_0.79.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.0) · [qualification evidence](docs/qa/RELEASE_0.91.0.json)
 
 Windows packages are unsigned; the macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
 See [Ubuntu platform limits](docs/UBUNTU.md), [macOS platform limits](docs/MACOS.md) and [known issues](docs/KNOWN_ISSUES.md).
@@ -39,7 +39,7 @@ Open **Menu > Settings > Theme** for Classic or Liquid Glass, System/Light/Dark 
 ## Get started
 
 - **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.79.0-linux-amd64.deb`.
+- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.91.0-linux-amd64.deb`.
 - **macOS:** open the DMG and drag **SuniPDF** to **Applications**. On first launch, allow it in **System Settings > Privacy & Security > Open Anyway**.
 - Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
 - Use **Ctrl+K** (**⌘K** on macOS) to find a command. Save your document to keep applied changes.
@@ -62,14 +62,27 @@ offering installation. Ubuntu 0.74 adds verified downloads, administrator author
 
 [Feature matrix and limits](docs/FEATURE_MATRIX.md) · [User guide](docs/USER_GUIDE.en.md)
 
-## New in 0.79.0
+## New in 0.91.0
 
-- Queue up to 16 reviewed old/new PDF pairs and save separate new copies.
-- Preflight the whole queue and retain completed copies and receipts after cancellation or a later failure.
-- Use source-bound CLI batch preview/apply with explicit page mappings.
-- Select plan-link pages by ranges or indexed entries, filter destinations and reopen verified completed copies.
+- Create calibrated dimensioned rectangles at an explicit clockwise angle, with matching preview and saved measurement geometry.
+- Compare two to four saved PDF pages with independent layer colors, visibility, opacity and reviewed alignment.
+- Capture supported native stamp and image groups into the local annotation library, preserving pixels and transparency.
+- Save reusable overlay setups with exact source hashes, including hidden layers, and require a fresh preview when reopening.
+- Qualify reviewed two-source plan-link creation, guarded new-copy saves, exported receipts and verified destination navigation in installed Ubuntu packages.
+- Convert formula inputs explicitly between supported length, area or volume units with checked decimal arithmetic and retained source-unit guards.
+- Review and apply keep/set/clear changes to business status, discipline and individual custom text keys across up to 256 explicitly selected annotations as one atomic Undo/Redo operation.
+- Refuse stale, locked or invalid selections as a complete batch; the annotation-fields-batch CLI previews changes and saves a new copy without overwriting existing files.
+- Save and exchange named register filters with their criteria and sort order; the bounded local library supports 16 entries and 128 KiB.
+- Match one stored custom text key and value literally and case-sensitively, distinguishing present empty values from missing fields; share the criterion across register, quantity and issue-report selections.
+- Use version-2 saved-filter libraries only when the custom-field criterion is present, preserving the exact version-1 representation otherwise.
+- Capture supported saved native rich-text annotations using twelve Helvetica, Times and Courier font/style variants with supported shapes and stamps, preserving verified appearances and geometry across cropped page rotations.
+- Create dimensioned circles and ellipses from explicit real dimensions, rotation and a captured/page/region/automatic calibration; keep their 128-vertex polygon approximation visible and compute area from saved vertices.
+- Create dimensioned two-point segments from a real length and clockwise angle with the same explicit scale sources; save an ordinary editable calibrated length without permanent geometric constraints.
+- Review source-bound previews before applying the complete measurement, and refuse invalid dimensions, stale references, unavailable scales or existing CLI output files.
 
-[Plan-link workflow](docs/PLAN_LINKS.md) | [Appearance](docs/APPEARANCE.md) | [Release qualification](docs/RELEASE_0.79.0.md) | [Project status](docs/PROJECT_STATUS.md).
+[Feature guide](docs/REGISTER_BATCH.md) | [Release qualification](docs/RELEASE_0.91.0.md).
+
+[Plan-link workflow](docs/PLAN_LINKS.md) | [Appearance](docs/APPEARANCE.md) | [Release qualification](docs/RELEASE_0.91.0.md) | [Project status](docs/PROJECT_STATUS.md).
 
 Earlier additions include [independent reader views](docs/RELEASE_0.76.0.md),
 [Apple Silicon support](docs/RELEASE_0.75.0.md), [themes and Ubuntu updates](docs/RELEASE_0.74.0.md),

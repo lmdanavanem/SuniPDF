@@ -1,6 +1,6 @@
 # Dimensioned circles and ellipses
 
-Development candidate for [0.91](RELEASE_0.91.0.md). Package qualification is pending.
+Published in [0.91.0](RELEASE_0.91.0.md). Packaged-CLI evidence verifies saved PDF geometry and quantities; native circle/ellipse interaction remains unqualified.
 
 Create a circular or elliptical area from real dimensions and an explicit scale.
 The saved measurement is an editable polygon with 128 vertices. The interface

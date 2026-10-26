@@ -1,8 +1,28 @@
 # Plan workflow backlog
 
-[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.79.0 release scope](RELEASE_0.79.0.md) · Published as a stable release.
+[Roadmap](ROADMAP.md) | [Importable CSV](AEC_BACKLOG.csv) | [0.91.0 release scope](RELEASE_0.91.0.md) | Published stable.
 
 This is the detailed capability backlog for the free, open-source local application. Status refers to the complete acceptance criteria, including qualification; an implemented subset does not close the whole card.
+
+## Delivered in 0.91.0
+
+- Create calibrated dimensioned rectangles at an explicit clockwise angle, with matching preview and saved measurement geometry.
+- Compare two to four saved PDF pages with independent layer colors, visibility, opacity and reviewed alignment.
+- Capture supported native stamp and image groups into the local annotation library, preserving pixels and transparency.
+- Save reusable overlay setups with exact source hashes, including hidden layers, and require a fresh preview when reopening.
+- Qualify reviewed two-source plan-link creation, guarded new-copy saves, exported receipts and verified destination navigation in installed Ubuntu packages.
+- Convert formula inputs explicitly between supported length, area or volume units with checked decimal arithmetic and retained source-unit guards.
+- Review and apply keep/set/clear changes to business status, discipline and individual custom text keys across up to 256 explicitly selected annotations as one atomic Undo/Redo operation.
+- Refuse stale, locked or invalid selections as a complete batch; the annotation-fields-batch CLI previews changes and saves a new copy without overwriting existing files.
+- Save and exchange named register filters with their criteria and sort order; the bounded local library supports 16 entries and 128 KiB.
+- Match one stored custom text key and value literally and case-sensitively, distinguishing present empty values from missing fields; share the criterion across register, quantity and issue-report selections.
+- Use version-2 saved-filter libraries only when the custom-field criterion is present, preserving the exact version-1 representation otherwise.
+- Capture supported saved native rich-text annotations using twelve Helvetica, Times and Courier font/style variants with supported shapes and stamps, preserving verified appearances and geometry across cropped page rotations.
+- Create dimensioned circles and ellipses from explicit real dimensions, rotation and a captured/page/region/automatic calibration; keep their 128-vertex polygon approximation visible and compute area from saved vertices.
+- Create dimensioned two-point segments from a real length and clockwise angle with the same explicit scale sources; save an ordinary editable calibrated length without permanent geometric constraints.
+- Review source-bound previews before applying the complete measurement, and refuse invalid dimensions, stale references, unavailable scales or existing CLI output files.
+
+AEC-004, AEC-006, AEC-007, AEC-008, AEC-013 and AEC-017 remain in progress with their remaining acceptance criteria. [Exact qualification](RELEASE_0.91.0.md).
 
 ## Delivered in 0.79.0
 
