@@ -431,6 +431,186 @@ class NativeCommandPaletteTests(unittest.TestCase):
         self.assertEqual(namespace["actions"], [])
 
 
+class NativeSaveChooserTests(unittest.TestCase):
+    @staticmethod
+    def properties(pid=123, state="Normal", wm_class='"portal", "Portal"'):
+        return (f'WM_STATE(WM_STATE):\n\twindow state: {state}\n\ticon window: 0x0\n'
+                f'_NET_WM_PID(CARDINAL) = {pid}\nWM_CLASS(STRING) = {wm_class}\n'
+                '_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_DIALOG\n'
+                'WM_TRANSIENT_FOR:  not found.')
+
+    def harness(self, path, *, candidates=(202,), states=None, recognized=True,
+                fallback=False, replace_identity=False, additional_after_selection=False):
+        state = {"opened": False, "saved": False, "clock": 0}
+        commands, captures, inputs, actions = [], [], [], []
+        discovery = {"method": "EWMH _NET_CLIENT_LIST", "snapshots": []}
+
+        def command(arguments):
+            commands.append(arguments)
+            if arguments == ["xprop", "-root", "_NET_CLIENT_LIST"]:
+                windows = [101] + (list(candidates) if state["opened"] and not state["saved"] else [])
+                if additional_after_selection and len(discovery["snapshots"]) >= 2:
+                    windows.append(404)
+                return '_NET_CLIENT_LIST(WINDOW): window id # ' + ', '.join(hex(value) for value in windows)
+            if arguments[:2] == ["xprop", "-id"]:
+                candidate = int(arguments[2])
+                pid = 999 if replace_identity and len(discovery["snapshots"]) >= 3 else 123
+                return self.properties(pid, (states or {}).get(candidate, "Normal"))
+            if arguments[:2] == ["xdotool", "getwindowgeometry"]:
+                return f'WINDOW={arguments[-1]}\nWIDTH=600\nHEIGHT=400\nX=30\nY=40\nSCREEN=0'
+            self.fail(f"Unexpected native process in offline test: {arguments}")
+
+        def save():
+            path.write_text('{"offline": true}', encoding="utf-8")
+            state["saved"] = True
+
+        def click(label, **options):
+            inputs.append(("click", label, options))
+            if label == "Export save receipt":
+                state["opened"] = True
+            elif label == "Save":
+                save()
+
+        def key(value, **options):
+            inputs.append(("key", value, options))
+            if value == "Return" and not fallback:
+                save()
+
+        def monotonic():
+            state["clock"] += 5
+            return state["clock"]
+
+        def capture(candidate):
+            captures.append(candidate)
+            return f'capture-{candidate}.png'
+
+        def observations(filename):
+            yield {"text": "Save Name Location" if recognized else "An unrelated application",
+                   "png": filename, "pngSha256": "a" * 64, "ocr": filename + ".tsv",
+                   "ocrSha256": "b" * 64, "ocrInput": filename + "-ocr.png",
+                   "ocrInputSha256": "c" * 64, "ocrPreparation": "full-rgb-nearest-2x-psm11"}
+
+        namespace = {"command": command, "re": re, "chooser_discovery": discovery,
+                     "click": click, "key": key, "capture": capture, "observations": observations,
+                     "actions": actions, "time": SimpleNamespace(monotonic=monotonic, sleep=lambda _: None),
+                     "type_text": lambda value, **options: inputs.append(("type", str(value), options)),
+                     "scene": MagicMock()}
+        creation_helper("evidence_fields", namespace)
+        creation_helper("managed_clients", namespace)
+        export = creation_helper("export_receipt", namespace)
+        return export, discovery, commands, captures, inputs, actions, namespace
+
+    def test_frame_and_client_appearance_only_enumerates_real_managed_client(self):
+        # X11 frame 303 and client 202 can display the same chooser. EWMH lists
+        # only 202; a recursive search would incorrectly return both.
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "receipt.json"
+            export, discovery, commands, captures, inputs, actions, _ = self.harness(path)
+            export(path)
+            self.assertEqual(captures, ["202"])
+            self.assertFalse(any("search" in command for command in commands))
+            self.assertFalse(any("303" in command for command in commands))
+            self.assertEqual(discovery["selectedWindow"], "202")
+            self.assertEqual(discovery["selectionSnapshot"], 1)
+            self.assertEqual([row["stage"] for row in discovery["snapshots"]],
+                             ["before-export", "chooser-poll", "before-location", "before-path",
+                              "before-submit", "after-submit", "after-save"])
+            poll = discovery["snapshots"][1]
+            self.assertEqual(poll["matches"], ["202"])
+            self.assertEqual(poll["clients"][1]["observations"][0]["png"], "capture-202.png")
+            self.assertIn('window id # 0x65, 0xca', poll["clientList"])
+            self.assertEqual(actions[0]["managedClient"],
+                             {"window": "202", "pid": 123, "wmClass": '"portal", "Portal"'})
+            self.assertEqual([row[1] for row in inputs if row[0] == "key"], ["ctrl+l", "Return"])
+            self.assertEqual(discovery["snapshots"][-1]["clients"][0]["window"], "101")
+            self.assertTrue(path.is_file())
+
+    def test_two_real_chooser_clients_are_retained_and_refused_before_input(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "receipt.json"
+            export, discovery, _, captures, inputs, actions, _ = self.harness(path, candidates=(202, 404))
+            with self.assertRaisesRegex(AssertionError, "More than one"):
+                export(path)
+            self.assertEqual(captures, ["202", "404"])
+            self.assertEqual(discovery["snapshots"][-1]["matches"], ["202", "404"])
+            self.assertEqual([row[0] for row in inputs], ["click"])
+            self.assertEqual(actions, [])
+            self.assertFalse(path.exists())
+
+    def test_no_new_client_unmapped_client_and_unrecognized_client_never_get_input(self):
+        for options in ({"candidates": ()}, {"states": {202: "Iconic"}}, {"recognized": False}):
+            with self.subTest(options=options), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "receipt.json"
+                export, discovery, _, _, inputs, actions, _ = self.harness(path, **options)
+                with self.assertRaisesRegex(AssertionError, "not observed"):
+                    export(path)
+                self.assertNotIn("selectedWindow", discovery)
+                self.assertEqual([row[0] for row in inputs], ["click"])
+                self.assertEqual(actions, [])
+                self.assertFalse(path.exists())
+
+    def test_changed_process_identity_refuses_before_typing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "receipt.json"
+            export, discovery, _, _, inputs, _, _ = self.harness(path, replace_identity=True)
+            with self.assertRaisesRegex(AssertionError, "identity changed"):
+                export(path)
+            self.assertEqual(discovery["snapshots"][-1]["stage"], "before-location")
+            self.assertEqual([row[0] for row in inputs], ["click"])
+            self.assertFalse(path.exists())
+
+    def test_optional_save_button_uses_same_verified_real_chooser(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "receipt.json"
+            export, discovery, _, _, inputs, _, _ = self.harness(path, fallback=True)
+            export(path)
+            self.assertEqual(inputs[-1], ("click", "Save", {"exact_line": True, "target": "202", "allow_scroll": False}))
+            self.assertEqual([row["stage"] for row in discovery["snapshots"]][-3:],
+                             ["after-submit", "before-save", "after-save"])
+            self.assertTrue(path.is_file())
+
+    def test_new_managed_client_after_selection_refuses_before_typing(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "receipt.json"
+            export, discovery, _, _, inputs, _, _ = self.harness(path, additional_after_selection=True)
+            with self.assertRaisesRegex(AssertionError, "clients changed"):
+                export(path)
+            self.assertEqual([row["window"] for row in discovery["snapshots"][-1]["clients"]],
+                             ["101", "202", "404"])
+            self.assertEqual([row[0] for row in inputs], ["click"])
+            self.assertFalse(path.exists())
+
+    def test_malformed_root_window_identity_is_retained_and_refused(self):
+        for raw in ('_NET_CLIENT_LIST: no such atom on any window.',
+                    '_NET_CLIENT_LIST(WINDOW): window id # 0x0',
+                    '_NET_CLIENT_LIST(WINDOW): window id # 202',
+                    '_NET_CLIENT_LIST(WINDOW): window id # 0x100000000',
+                    '_NET_CLIENT_LIST(WINDOW): window id # 0xa, 0xA',
+                    '_NET_CLIENT_LIST(WINDOW): window id # 0xca, invalid'):
+            discovery = {"snapshots": []}
+            command = MagicMock(return_value=raw)
+            helper = creation_helper("managed_clients", {"command": command, "re": re, "chooser_discovery": discovery})
+            with self.subTest(raw=raw), self.assertRaises(AssertionError):
+                helper("before-export")
+            self.assertEqual(discovery["snapshots"][0]["clientList"], raw)
+            command.assert_called_once_with(["xprop", "-root", "_NET_CLIENT_LIST"])
+
+    def test_empty_client_list_is_valid_but_bad_client_properties_are_refused(self):
+        discovery = {"snapshots": []}
+        helper = creation_helper("managed_clients", {"command": MagicMock(return_value='_NET_CLIENT_LIST(WINDOW): window id #'),
+                                                      "re": re, "chooser_discovery": discovery})
+        self.assertEqual(helper("before-export")["clients"], [])
+        for raw in (self.properties(pid=0), self.properties(pid=-1), self.properties(pid=4294967296),
+                    self.properties(state="Withdrawn"), self.properties(wm_class='""'),
+                    self.properties() + '\n_NET_WM_PID(CARDINAL) = 124'):
+            discovery = {"snapshots": []}
+            command = MagicMock(side_effect=['_NET_CLIENT_LIST(WINDOW): window id # 0xca', raw])
+            helper = creation_helper("managed_clients", {"command": command, "re": re, "chooser_discovery": discovery})
+            with self.subTest(raw=raw), self.assertRaises(AssertionError):
+                helper("chooser-poll")
+            self.assertEqual(discovery["snapshots"][0]["clients"][0]["properties"], raw)
+
+
 def qpdf_document(link=None):
     page = {"/Type": "/Page", "/Parent": "2 0 R", "/MediaBox": [0, 0, 600, 800],
             "/Resources": {"/Font": {"/F1": "3 0 R"}}, "/Contents": "5 0 R"}

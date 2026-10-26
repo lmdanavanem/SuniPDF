@@ -88,8 +88,9 @@ annotations. Application saves a new copy and refuses an existing output.
 
 Save the current review criteria and sort order with a name, explicitly apply a
 saved filter, or exchange a local library through JSON import/export. Applying
-a filter preserves the current page and zone scope. It changes neither the PDF
-nor the selected bulk-edit rows automatically.
+a filter preserves the current page and zone scope, clears the bulk-edit
+selection and preview, and never selects rows automatically. It does not change
+the PDF.
 
 Imports validate completely before modifying the library. Duplicate names and
 existing output files are refused. The library is bounded to 16 filters and

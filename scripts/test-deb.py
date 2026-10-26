@@ -557,11 +557,13 @@ def plan_link_creation(evidence, version):
     scene_directory = evidence / "native-plan-creation-scenes"
     scene_directory.mkdir(exist_ok=False)
     cases, scenes, actions = [], [], []
+    chooser_discovery = {"method": "EWMH _NET_CLIENT_LIST", "snapshots": []}
     app, manager, window = None, None, None
     capture_index = 0
     report = {"schema": 1, "status": "failed", "version": version, "sourceSha": os.environ.get("GITHUB_SHA"),
               "fixtureReport": fixture["fixtureReport"], "fixtureReportSha256": sha(evidence / fixture["fixtureReport"]),
               "syntheticOnly": True, "isolatedProfile": True, "cases": cases, "scenes": scenes, "actions": actions,
+              "nativeSaveChooserDiscovery": chooser_discovery,
               "protectedFiles": dict(fixture["protected"]), "desktopLinkCreationTested": False,
               "desktopLinkSavingTested": False, "sourceCount": 2, "expectedPhysicalDestinationPage": 2,
               "method": "Installed desktop, actual X11/OCR controls, independent QPDF object inspection and exported save receipt",
@@ -791,45 +793,108 @@ def plan_link_creation(evidence, version):
             click("Preview destination", line_contains=name)
             scene("created-destination-for-" + name[:-4].lower(), kind="destination", allow_scroll=True)
 
+    def managed_clients(stage):
+        # EWMH lists managed application clients, not decoration frames or their
+        # descendants. Keep the original properties so identity is independently
+        # reviewable even when discovering a chooser fails.
+        raw = command(["xprop", "-root", "_NET_CLIENT_LIST"])
+        snapshot = {"stage": stage, "clientList": raw, "clients": []}
+        chooser_discovery["snapshots"].append(snapshot)
+        match = re.fullmatch(r"_NET_CLIENT_LIST\(WINDOW\): window id #\s*(.*)", raw)
+        assert match is not None, "Managed X11 client list is missing or malformed"
+        tokens = match[1].split(",") if match[1] else []
+        windows = []
+        for token in tokens:
+            token = token.strip()
+            assert re.fullmatch(r"0x[0-9a-fA-F]{1,8}", token), "Malformed managed X11 window identity"
+            value = int(token, 16)
+            assert value > 0 and str(value) not in windows, "Zero or duplicate managed X11 window identity"
+            windows.append(str(value))
+        assert len(windows) <= 64, "Managed X11 client list is unexpectedly large"
+        for candidate in windows:
+            properties = command(["xprop", "-id", candidate, "WM_STATE", "_NET_WM_PID", "WM_CLASS",
+                                  "_NET_WM_WINDOW_TYPE", "WM_TRANSIENT_FOR"])
+            row = {"window": candidate, "properties": properties}
+            snapshot["clients"].append(row)
+            states = re.findall(r"^\s*window state: (Normal|Iconic)\s*$", properties, re.M)
+            assert len(states) == 1 and "WM_STATE(WM_STATE):" in properties, "Managed X11 client has no unique normal/iconic state"
+            pids = re.findall(r"^_NET_WM_PID\(CARDINAL\) = ([1-9][0-9]*)$", properties, re.M)
+            assert len(pids) <= 1 and (pids or "_NET_WM_PID(CARDINAL)" not in properties), "Malformed managed X11 process identity"
+            assert not pids or int(pids[0]) <= 0xffffffff, "Managed X11 process identity exceeds CARDINAL"
+            classes = re.findall(r'^WM_CLASS\(STRING\) = (".+", ".+")$', properties, re.M)
+            assert len(classes) <= 1 and (classes or "WM_CLASS(STRING)" not in properties), "Malformed managed X11 class identity"
+            row.update(state=states[0], pid=int(pids[0]) if pids else None, wmClass=classes[0] if classes else None)
+        return snapshot
+
     def export_receipt(path):
         assert not path.exists()
-        before = set(command(["xdotool", "search", "--onlyvisible", "--name", ".*"]).splitlines())
+        before = {row["window"] for row in managed_clients("before-export")["clients"]}
         click("Export save receipt")
-        chooser = None
+        chooser, identity = None, None
         deadline = time.monotonic() + 30
         while time.monotonic() < deadline:
-            visible = set(command(["xdotool", "search", "--onlyvisible", "--name", ".*"]).splitlines()) - before
+            snapshot = managed_clients("chooser-poll")
             matches = []
-            for candidate in visible:
+            snapshot["matches"] = []
+            for client in snapshot["clients"]:
+                candidate = client["window"]
+                if candidate in before or client["state"] != "Normal":
+                    continue
                 geometry = command(["xdotool", "getwindowgeometry", "--shell", candidate])
+                client["geometry"] = geometry
                 values = dict(line.split("=", 1) for line in geometry.splitlines() if "=" in line)
+                assert values.get("WINDOW") == candidate, "Managed X11 geometry belongs to another client"
                 if int(values.get("WIDTH", "0")) < 300 or int(values.get("HEIGHT", "0")) < 150:
                     continue
+                client["observations"] = []
+                client["matchesSaveChooser"] = False
                 for observed in observations(capture(candidate)):
+                    client["observations"].append(evidence_fields(observed))
                     if re.search(r"\bSave\b", observed["text"], re.I) and re.search(r"\b(?:Name|Location)\b", observed["text"], re.I):
-                        matches.append((candidate, observed))
+                        assert client["pid"] is not None and client["wmClass"] is not None, "Native save chooser has no process/class identity"
+                        client["matchesSaveChooser"] = True
+                        snapshot["matches"].append(candidate)
+                        matches.append((client, observed))
                         break
             assert len(matches) <= 1, "More than one native save chooser was visible"
             if matches:
-                chooser, observed = matches[0]
-                actions.append({"nativeSaveChooser": chooser, **evidence_fields(observed)})
+                client, observed = matches[0]
+                chooser = client["window"]
+                identity = {key: client[key] for key in ("window", "pid", "wmClass")}
+                chooser_discovery.update(selectedWindow=chooser, selectionSnapshot=len(chooser_discovery["snapshots"]) - 1)
+                actions.append({"nativeSaveChooser": chooser, "managedClient": identity, **evidence_fields(observed)})
                 break
             time.sleep(0.25)
         assert chooser is not None, "Native receipt save chooser was not observed"
+
+        def verify_chooser(stage):
+            clients = managed_clients(stage)["clients"]
+            assert {row["window"] for row in clients if row["state"] == "Normal"} == \
+                {row["window"] for row in snapshot["clients"] if row["state"] == "Normal"}, \
+                "Normal managed X11 clients changed after chooser selection"
+            matches = [row for row in clients if row["window"] == chooser]
+            assert len(matches) == 1 and matches[0]["state"] == "Normal", "Native save chooser is no longer a normal managed client"
+            assert {key: matches[0][key] for key in identity} == identity, "Native save chooser process/class identity changed"
+
         # GTK portal and Zenity file choosers both expose the actual location
         # entry through Ctrl+L. No dialog process or return value is replaced.
+        verify_chooser("before-location")
         key("ctrl+l", target=chooser)
+        verify_chooser("before-path")
         type_text(path, target=chooser)
+        verify_chooser("before-submit")
         key("Return", target=chooser)
         time.sleep(1)
+        after = managed_clients("after-submit")
         if not path.exists():
-            visible = set(command(["xdotool", "search", "--onlyvisible", "--name", ".*"]).splitlines())
-            if chooser in visible:
+            if any(row["window"] == chooser and row["state"] == "Normal" for row in after["clients"]):
+                verify_chooser("before-save")
                 click("Save", exact_line=True, target=chooser, allow_scroll=False)
         deadline = time.monotonic() + 25
         while time.monotonic() < deadline and not path.exists():
             time.sleep(0.25)
         assert path.is_file(), "Native save chooser did not export the receipt"
+        managed_clients("after-save")
         scene("created-receipt-exported", pattern=r"Save\s+receipt\s+exported", allow_scroll=True)
 
     try:
