@@ -11,7 +11,17 @@ pub mod annot;
 pub mod annot_rich;
 pub mod annot_write;
 pub mod annotation_library;
+
+#[cfg(test)]
+pub(crate) fn test_engine() -> std::sync::MutexGuard<'static, Engine> {
+    static ENGINE: std::sync::OnceLock<std::sync::Mutex<Engine>> = std::sync::OnceLock::new();
+    ENGINE
+        .get_or_init(|| std::sync::Mutex::new(Engine::new().expect("native PDF engine")))
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+}
 pub mod annotation_register;
+pub mod annotation_register_batch;
 mod appearance;
 pub mod bookmarks;
 pub mod boundary_fill;
@@ -45,6 +55,8 @@ pub mod measurement;
 mod measurement_area;
 mod measurement_batch;
 mod measurement_distance;
+mod measurement_ellipses;
+mod measurement_segments;
 mod measurement_shapes;
 mod measurement_snap;
 mod measurement_viewports;
@@ -61,6 +73,7 @@ pub mod quantity_table;
 pub mod quantity_workbook;
 mod quantity_workbook_render;
 pub mod redact;
+pub mod register_presets;
 pub mod revision_outlines;
 pub mod revision_overlay;
 pub mod revision_transfer;

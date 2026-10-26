@@ -608,6 +608,17 @@ pub struct QuantityOptions {
 }
 
 impl QuantityOptions {
+    fn unit_conversion_policy(&self) -> &'static str {
+        if self
+            .formulas
+            .iter()
+            .any(FormulaColumn::uses_unit_conversion)
+        {
+            "price_basis_and_explicit_formulas"
+        } else {
+            "price_basis_only"
+        }
+    }
     fn compiled_formulas(&self) -> Result<Vec<formula::CompiledFormula>, EngineError> {
         let mut names = std::collections::HashSet::new();
         if self.formulas.len() > 8 {
@@ -975,7 +986,7 @@ impl QuantityTable {
                 .as_object()
                 .is_some_and(|values| values.values().all(|value| value["error"].is_null()))
         });
-        json!({"schema":"sunipdf-quantity-table","version":version,"complete":options.filter.zone.is_none()||self.zone_coverage(&options.filter).complete,"zone_coverage":self.zone_coverage(&options.filter),"source_sha256":self.source_sha256(),"page_count":self.page_count(),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","rows":rows,"summary":evaluated.summary,"formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"formula_rows":formula_rows})
+        json!({"schema":"sunipdf-quantity-table","version":version,"complete":options.filter.zone.is_none()||self.zone_coverage(&options.filter).complete,"zone_coverage":self.zone_coverage(&options.filter),"source_sha256":self.source_sha256(),"page_count":self.page_count(),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":options.unit_conversion_policy(),"rows":rows,"summary":evaluated.summary,"formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"formula_rows":formula_rows})
     }
     pub fn csv(&self, options: &QuantityOptions) -> Result<String, EngineError> {
         if !self.can_export {
@@ -1237,7 +1248,7 @@ impl QuantityTable {
         let mut metadata = vec![String::new(); 22];
         metadata[0] = "metadata".into();
         metadata[1] = self.source_sha256().into();
-        metadata[21]=json!({"version":version,"zone_coverage":self.zone_coverage(&options.filter),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":"price_basis_only","formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"matched_rows":summary.matched_rows,"quantity_rows":summary.quantity_rows,"additive_quantity_rows":summary.additive_quantity_rows,"angular_rows":summary.angular_rows,"unquantified_rows":summary.unquantified_rows,"excluded_quantity_rows":summary.excluded_quantity_rows,"unverified_measurement_rows":summary.unverified_measurement_rows,"legacy_measurement_rows":summary.legacy_measurement_rows,"stale_measurement_rows":summary.stale_measurement_rows}).to_string();
+        metadata[21]=json!({"version":version,"zone_coverage":self.zone_coverage(&options.filter),"filter":options.filter,"sort":options.sort.id(),"descending":options.descending,"group_by":options.group_by.id(),"pricing_quantity_decimals":6,"money_rounding":"half_away_from_zero_per_line","unit_conversion":options.unit_conversion_policy(),"formulas":options.formulas,"formula_arithmetic":"decimal_6_places_half_away_from_zero_each_operation","formula_subtotal_policy":"sum_rounded_row_results_by_formula_group_unit_and_precision","formula_evaluation_complete":formula_complete,"matched_rows":summary.matched_rows,"quantity_rows":summary.quantity_rows,"additive_quantity_rows":summary.additive_quantity_rows,"angular_rows":summary.angular_rows,"unquantified_rows":summary.unquantified_rows,"excluded_quantity_rows":summary.excluded_quantity_rows,"unverified_measurement_rows":summary.unverified_measurement_rows,"legacy_measurement_rows":summary.legacy_measurement_rows,"stale_measurement_rows":summary.stale_measurement_rows}).to_string();
         out.push_str(&line(metadata, &[]));
         out
     }
@@ -1815,6 +1826,357 @@ mod tests {
             quantity_unit: Some(QuantityUnit::Metres),
             rounding_decimals: 2,
         }
+    }
+
+    fn conversion_field_row(value: &str, unit: Option<QuantityUnit>) -> QuantityRow {
+        let mut source = row(0, QuantityUnit::Metres, 2.0, None);
+        source.fields.custom.insert(
+            "Input".into(),
+            TypedValue::Number {
+                value: DecimalValue::parse(value).unwrap(),
+                unit,
+            },
+        );
+        source
+    }
+
+    #[test]
+    fn explicit_conversion_uses_exact_international_factors_and_dimension_powers() {
+        use QuantityUnit::*;
+        for (source_unit, target, expected) in [
+            (Millimetres, Metres, "0.001000"),
+            (Centimetres, Metres, "0.010000"),
+            (Metres, Metres, "1.000000"),
+            (Inches, Metres, "0.025400"),
+            (Feet, Metres, "0.304800"),
+            (Metres, Millimetres, "1000.000000"),
+            (Metres, Centimetres, "100.000000"),
+            (Metres, Inches, "39.370079"),
+            (Metres, Feet, "3.280840"),
+            (Feet, Inches, "12.000000"),
+            (Inches, Feet, "0.083333"),
+            (SquareMillimetres, SquareMetres, "0.000001"),
+            (SquareCentimetres, SquareMetres, "0.000100"),
+            (SquareMetres, SquareMetres, "1.000000"),
+            (SquareInches, SquareMetres, "0.000645"),
+            (SquareFeet, SquareMetres, "0.092903"),
+            (SquareMetres, SquareMillimetres, "1000000.000000"),
+            (SquareMetres, SquareCentimetres, "10000.000000"),
+            (SquareMetres, SquareInches, "1550.003100"),
+            (SquareMetres, SquareFeet, "10.763910"),
+            (SquareFeet, SquareInches, "144.000000"),
+            (CubicMillimetres, CubicMetres, "0.000000"),
+            (CubicCentimetres, CubicMetres, "0.000001"),
+            (CubicMetres, CubicMetres, "1.000000"),
+            (CubicInches, CubicMetres, "0.000016"),
+            (CubicFeet, CubicMetres, "0.028317"),
+            (CubicMetres, CubicMillimetres, "1000000000.000000"),
+            (CubicMetres, CubicCentimetres, "1000000.000000"),
+            (CubicMetres, CubicInches, "61023.744095"),
+            (CubicMetres, CubicFeet, "35.314667"),
+            (CubicFeet, CubicInches, "1728.000000"),
+        ] {
+            let mut column = formula(&format!("convert([Input], {})", target.id()));
+            column.quantity_unit = None;
+            column.rounding_decimals = 6;
+            let actual = column
+                .evaluate(&conversion_field_row("1", Some(source_unit)))
+                .unwrap();
+            assert_eq!(actual.error, None, "{source_unit:?} -> {target:?}");
+            assert_eq!(actual.value.as_deref(), Some(expected));
+            assert_eq!(actual.unit, Some(target));
+        }
+    }
+
+    #[test]
+    fn explicit_conversion_rounds_each_call_and_checks_decimal_limits() {
+        use QuantityUnit::*;
+        for (input, unit, expression, expected) in [
+            ("0.0005", Millimetres, "convert([Input], m)", "0.000001"),
+            ("-0.0005", Millimetres, "convert([Input], m)", "-0.000001"),
+            ("0.000499", Millimetres, "convert([Input], m)", "0.000000"),
+            ("-0.000499", Millimetres, "convert([Input], m)", "0.000000"),
+            ("0", CubicMetres, "convert([Input], mm3)", "0.000000"),
+            (
+                "0.0005",
+                Millimetres,
+                "convert(convert([Input], m), mm)",
+                "0.001000",
+            ),
+            (
+                "1",
+                Feet,
+                "convert([Input], m) + convert([Input], m)",
+                "0.609600",
+            ),
+            ("2", Feet, "convert([Input] * [Input], m2)", "0.371612"),
+            (
+                "2",
+                Feet,
+                "convert([Input], m) * convert([Input], m)",
+                "0.371612",
+            ),
+            (
+                "1000",
+                CubicMetres,
+                "convert([Input], mm3)",
+                "1000000000000.000000",
+            ),
+            (
+                "1000000000000",
+                CubicMetres,
+                "convert([Input], m3)",
+                "1000000000000.000000",
+            ),
+            (
+                "-1000000000000",
+                CubicMetres,
+                "convert([Input], m3)",
+                "-1000000000000.000000",
+            ),
+        ] {
+            let mut column = formula(expression);
+            column.rounding_decimals = 6;
+            let actual = column
+                .evaluate(&conversion_field_row(input, Some(unit)))
+                .unwrap();
+            assert_eq!(actual.error, None, "{input} {unit:?}: {expression}");
+            assert_eq!(actual.value.as_deref(), Some(expected), "{expression}");
+        }
+        for input in ["1000.000001", "-1000.000001", "1000000000000"] {
+            let actual = formula("convert([Input], mm3)")
+                .evaluate(&conversion_field_row(input, Some(CubicMetres)))
+                .unwrap();
+            assert_eq!(actual.error, Some(FormulaError::Overflow));
+            assert!(actual.value.is_none());
+        }
+    }
+
+    #[test]
+    fn explicit_conversion_keeps_source_guard_and_refuses_implicit_or_unsupported_units() {
+        use QuantityUnit::*;
+        for unit in [
+            None,
+            Some(Each),
+            Some(Degrees),
+            Some(SquareMetres),
+            Some(CubicMetres),
+        ] {
+            let actual = formula("convert([Input], m)")
+                .evaluate(&conversion_field_row("0", unit))
+                .unwrap();
+            assert_eq!(actual.error, Some(FormulaError::UnitMismatch));
+        }
+        let mut source = conversion_field_row("1", Some(Feet));
+        for expression in [
+            "[Input] + quantity",
+            "convert([Input], m2)",
+            "convert(1, m)",
+            "convert(quantity / quantity, m)",
+            "convert(quantity + [Input], m)",
+        ] {
+            assert_eq!(
+                formula(expression).evaluate(&source).unwrap().error,
+                Some(FormulaError::UnitMismatch),
+                "{expression}"
+            );
+        }
+        let column = formula("convert(quantity, ft)");
+        assert_eq!(
+            column.evaluate(&source).unwrap().value.as_deref(),
+            Some("6.56")
+        );
+        source.quantity.as_mut().unwrap().unit = Centimetres;
+        assert_eq!(
+            column.evaluate(&source).unwrap().error,
+            Some(FormulaError::UnitMismatch)
+        );
+        source.quantity.as_mut().unwrap().unit = Metres;
+        for validity in [
+            MeasurementValidity::LegacyUnverified,
+            MeasurementValidity::Stale,
+        ] {
+            source.measurement_validity = Some(validity);
+            assert_eq!(
+                column.evaluate(&source).unwrap().error,
+                Some(FormulaError::UnverifiedQuantity)
+            );
+        }
+        source.measurement_validity = None;
+        source.quantity = None;
+        assert_eq!(
+            column.evaluate(&source).unwrap().error,
+            Some(FormulaError::MissingQuantity)
+        );
+        assert_eq!(
+            formula("convert([Absent], m)")
+                .evaluate(&source)
+                .unwrap()
+                .error,
+            Some(FormulaError::MissingField)
+        );
+        source
+            .fields
+            .custom
+            .insert("Input".into(), TypedValue::Text { value: "1".into() });
+        assert_eq!(
+            formula("convert([Input], m)")
+                .evaluate(&source)
+                .unwrap()
+                .error,
+            Some(FormulaError::NonNumericField)
+        );
+        assert_eq!(formula("convert(quantity, m)").quantity_unit, Some(Metres));
+    }
+
+    #[test]
+    fn conversion_parser_bounds_include_arguments_and_punctuation() {
+        for expression in [
+            "convert",
+            "convert()",
+            "convert(quantity)",
+            "convert(,m)",
+            "convert(quantity,m,m)",
+            "convert(quantity,m",
+            "convert(quantity,m))",
+            "convert(quantity,each)",
+            "convert(quantity,deg)",
+            "convert(quantity,kg)",
+            "convert(quantity,M)",
+            "convert(quantity,m4)",
+            "convert(quantity,m^2)",
+            "convert(quantity,m²)",
+            "convert(quantity,\"m\")",
+            "convert(quantity,[m])",
+            "convert(quantity,m + 1)",
+            "convert(quantity,convert(quantity,m))",
+            "convert(quantity,m);open('/file')",
+            "convert(quantity,m).value",
+            "convert(quantityx,m)",
+            "convertx(quantity,m)",
+            "Convert(quantity,m)",
+        ] {
+            assert!(formula(expression).validate().is_err(), "{expression}");
+        }
+        formula(" convert ( quantity * (1 + 2), ft ) ")
+            .validate()
+            .unwrap();
+        let mut no_source_guard = formula("convert(quantity, m)");
+        no_source_guard.quantity_unit = None;
+        assert!(no_source_guard.validate().is_err());
+        let mut nested = "quantity".to_owned();
+        for _ in 0..10 {
+            nested = format!("convert({nested},m)");
+        }
+        formula(&nested).validate().unwrap();
+        nested = format!("convert({nested},m)");
+        assert!(formula(&nested).validate().is_err());
+        // Each call has six tokens; the connecting + adds one. 18 calls = 125.
+        formula(&["convert([X],m)"; 18].join("+"))
+            .validate()
+            .unwrap();
+        let exact_tokens = format!("{}++1", ["convert([X],m)"; 18].join("+"));
+        formula(&exact_tokens).validate().unwrap();
+        assert!(formula(&format!("+{exact_tokens}")).validate().is_err());
+        assert!(formula(&["convert([X],m)"; 19].join("+"))
+            .validate()
+            .is_err());
+        let expression = "convert(quantity,m)";
+        formula(&format!(
+            "{expression}{}",
+            " ".repeat(512 - expression.len())
+        ))
+        .validate()
+        .unwrap();
+        assert!(formula(&format!(
+            "{expression}{}",
+            " ".repeat(513 - expression.len())
+        ))
+        .validate()
+        .is_err());
+    }
+
+    #[test]
+    fn conversion_exports_keep_source_values_exact_totals_and_legacy_policy() {
+        let mut rows = Vec::new();
+        for (index, (input, unit)) in [
+            ("0.0005", QuantityUnit::Millimetres),
+            ("0.0005", QuantityUnit::Millimetres),
+            ("-0.0005", QuantityUnit::Millimetres),
+            ("12", QuantityUnit::Each),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let mut source = conversion_field_row(input, Some(unit));
+            source.register.index = index;
+            source.register.annotation_id = Some(format!("test-{index}"));
+            rows.push(source);
+        }
+        let mut column = formula("convert([Input], m)");
+        column.rounding_decimals = 6;
+        let options = QuantityOptions {
+            formulas: vec![column.clone()],
+            ..Default::default()
+        };
+        let table = test_table(rows);
+        let json = table.json(&options).unwrap();
+        assert_eq!(json["version"], 2);
+        assert_eq!(json["unit_conversion"], "price_basis_and_explicit_formulas");
+        assert_eq!(
+            json["formula_arithmetic"],
+            "decimal_6_places_half_away_from_zero_each_operation"
+        );
+        assert_eq!(json["formulas"], json!([column]));
+        assert_eq!(
+            json["rows"][0]["fields"]["custom"]["Input"],
+            json!({"type":"number","value":"0.0005","unit":"mm"})
+        );
+        assert_eq!(
+            json["formula_rows"][0]["values"]["Result"],
+            json!({"value":"0.000001","unit":"m","error":null})
+        );
+        assert_eq!(
+            json["formula_rows"][2]["values"]["Result"],
+            json!({"value":"-0.000001","unit":"m","error":null})
+        );
+        assert_eq!(
+            json["formula_rows"][3]["values"]["Result"],
+            json!({"value":null,"unit":null,"error":"unit_mismatch"})
+        );
+        assert_eq!(json["formula_evaluation_complete"], false);
+        let summary = &json["summary"]["formula_groups"][0];
+        assert_eq!(
+            summary["totals"],
+            json!([{"amount":"0.000001","unit":"m","rounding_decimals":6,"contributing_rows":3}])
+        );
+        assert_eq!(summary["errors"], json!({"unit_mismatch":1}));
+        assert_eq!(summary["complete"], false);
+        let csv = table.csv(&options).unwrap();
+        assert!(csv.contains("\"0.0005\",\"mm\",\"0.000001\",\"m\",\"\""));
+        assert!(csv.contains("\"-0.0005\",\"mm\",\"-0.000001\",\"m\",\"\""));
+        assert!(csv.contains("\"12\",\"each\",\"\",\"\",\"unit_mismatch\""));
+        assert!(csv.contains("\"Result\",\"0.000001\",\"3\",\"1\",\"{\"\"unit_mismatch\"\":1}\""));
+        assert!(csv.contains("\"\"unit_conversion\"\":\"\"price_basis_and_explicit_formulas\"\""));
+        for expression in ["quantity * 2", "[convert(quantity,m)]"] {
+            let legacy = QuantityOptions {
+                formulas: vec![formula(expression)],
+                ..Default::default()
+            };
+            assert_eq!(
+                table.json(&legacy).unwrap()["unit_conversion"],
+                "price_basis_only"
+            );
+            assert!(table
+                .csv(&legacy)
+                .unwrap()
+                .contains("\"\"unit_conversion\"\":\"\"price_basis_only\"\""));
+        }
+        let empty = test_table(Vec::new());
+        assert_eq!(
+            empty.json(&options).unwrap()["unit_conversion"],
+            "price_basis_and_explicit_formulas"
+        );
     }
 
     #[test]

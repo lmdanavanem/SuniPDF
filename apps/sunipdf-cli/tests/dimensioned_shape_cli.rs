@@ -161,6 +161,113 @@ fn rectangle_converts_reference_units_and_accepts_fractional_feet_inches() {
 }
 
 #[test]
+fn rotated_rectangle_reports_normalized_angle_and_preserves_dimensions_after_reopening() {
+    let directory = tempfile::tempdir().unwrap();
+    for rotation in [0_i64, 90, 180, 270] {
+        let source = directory
+            .path()
+            .join(format!("rotated-source-{rotation}.pdf"));
+        let mut pdf = lopdf::Document::load(fixture()).unwrap();
+        let page = pdf.get_pages()[&1];
+        let page = pdf.get_dictionary_mut(page).unwrap();
+        page.set("Rotate", rotation);
+        page.set(
+            "CropBox",
+            vec![20.into(), 30.into(), 592.into(), 762.into()],
+        );
+        pdf.save(&source).unwrap();
+        let original = std::fs::read(&source).unwrap();
+        let mut previous_points = None;
+        for (unit, width, height, angle, expected_area) in [
+            ("m", "0.8", "1.1", "37.5", 0.88),
+            ("cm", "80", "110", "-322.5", 8800.0),
+        ] {
+            let output = directory
+                .path()
+                .join(format!("rotated-output-{rotation}-{unit}.pdf"));
+            let result = success(
+                rectangle(&source, &output, "220,260", width, height)
+                    .args([
+                        "--calibration",
+                        "40,40 140,40",
+                        "--calibration-unit",
+                        "m",
+                        "--known-distance",
+                        "1",
+                        "--unit",
+                        unit,
+                        "--rotation-degrees",
+                        angle,
+                    ])
+                    .output()
+                    .unwrap(),
+            );
+            assert_eq!(result["rotation_degrees"], 37.5);
+            assert_area(&result, expected_area, &format!("{unit}2"));
+            assert_eq!(result["measurement"]["points"][0], json!([220.0, 260.0]));
+            assert!(result["measurement"]["points"][1][1].as_f64().unwrap() < 260.0);
+            if let Some(expected_points) = previous_points {
+                assert_eq!(result["measurement"]["points"], expected_points);
+            }
+            previous_points = Some(result["measurement"]["points"].clone());
+            let inventory = success(
+                cli("measurements", &output)
+                    .args(["--page", "1"])
+                    .output()
+                    .unwrap(),
+            );
+            let record = &inventory["pages"][0]["measurements"][0];
+            assert_eq!(record["validity"], "current");
+            assert!(
+                (record["value"].as_f64().unwrap() - expected_area).abs() <= expected_area * 1e-5
+            );
+            assert_eq!(record["points"], result["measurement"]["points"]);
+            let table = success(cli("quantity-table", &output).output().unwrap());
+            assert_eq!(table["summary"]["quantity_rows"], 1);
+            assert_eq!(table["summary"]["unverified_measurement_rows"], 0);
+            assert_eq!(table["rows"][0]["quantity"]["unit"], format!("{unit}2"));
+            assert!(
+                (table["rows"][0]["quantity"]["value"].as_f64().unwrap() - expected_area).abs()
+                    <= expected_area * 1e-5
+            );
+            assert_eq!(std::fs::read(&source).unwrap(), original);
+        }
+    }
+}
+
+#[test]
+fn rectangle_rotation_refuses_nonfinite_angles_or_out_of_page_geometry_without_writes() {
+    let directory = tempfile::tempdir().unwrap();
+    let source = directory.path().join("original.pdf");
+    std::fs::copy(fixture(), &source).unwrap();
+    let original = std::fs::read(&source).unwrap();
+    let output = directory.path().join("must-not-exist.pdf");
+    for value in ["NaN", "inf", "-inf", "1e999"] {
+        let result = local_rectangle(&source, &output, "2", "3")
+            .args(["--rotation-degrees", value])
+            .output()
+            .unwrap();
+        assert!(!result.status.success());
+        assert!(!output.exists());
+    }
+    failure(
+        rectangle(&source, &output, "0,0", "2", "3")
+            .args([
+                "--calibration",
+                "40,40 140,40",
+                "--known-distance",
+                "1",
+                "--rotation-degrees",
+                "45",
+            ])
+            .output()
+            .unwrap(),
+    );
+    assert!(!output.exists());
+    assert_eq!(std::fs::read(&source).unwrap(), original);
+}
+
+#[test]
 fn rectangle_refuses_invalid_geometry_and_destinations_without_mutating_sources() {
     let directory = tempfile::tempdir().unwrap();
     let source = directory.path().join("original.pdf");

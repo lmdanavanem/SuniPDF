@@ -1,5 +1,9 @@
 //! Per-tab markup table and explicit, on-plan manual counting.
 
+pub(crate) mod bulk;
+pub(crate) mod field_filter;
+mod presets;
+
 use crate::{
     annotate::Tool,
     app::SuniApp,
@@ -38,6 +42,10 @@ pub struct RegisterState {
     selection: SelectionCache,
     sort_columns: BTreeSet<String>,
     progress: Option<(usize, usize)>,
+    bulk_selected: BTreeSet<(usize, usize)>,
+    bulk_filter: RegisterFilter,
+    bulk: bulk::Draft,
+    presets: presets::Draft,
 }
 
 #[derive(Default)]
@@ -105,11 +113,93 @@ impl Default for RegisterState {
             selection: SelectionCache::default(),
             sort_columns: BTreeSet::new(),
             progress: None,
+            bulk_selected: BTreeSet::new(),
+            bulk_filter: RegisterFilter::default(),
+            bulk: bulk::Draft::default(),
+            presets: presets::Draft::default(),
         }
     }
 }
 
 impl RegisterState {
+    #[cfg(all(test, windows))]
+    pub(crate) fn evidence_open_bulk(
+        &mut self,
+        register: Arc<AnnotationRegister>,
+        worker: &crate::worker::Worker,
+        epoch: u64,
+    ) {
+        let rows = register.rows.iter().take(2).cloned().collect::<Vec<_>>();
+        self.bulk_selected = rows.iter().map(|row| (row.page, row.index)).collect();
+        self.report = Some(register.clone());
+        self.open = true;
+        self.bulk.bind(register, rows, epoch);
+        self.bulk.evidence_start(worker);
+    }
+
+    #[cfg(all(test, windows))]
+    pub(crate) fn evidence_bulk_preview(
+        &self,
+    ) -> Option<(
+        &sunipdf_core::annotation_register_batch::RegisterBatchReport,
+        bool,
+    )> {
+        self.bulk.evidence_preview()
+    }
+
+    #[cfg(all(test, windows))]
+    pub(crate) fn evidence_open_presets(
+        &mut self,
+        register: Arc<AnnotationRegister>,
+        name: &str,
+    ) -> Result<sunipdf_core::register_presets::RegisterPreset, EngineError> {
+        let row = register
+            .rows
+            .first()
+            .ok_or_else(|| EngineError::Other("evidence register is empty".into()))?;
+        self.filter.author = row.author.clone().unwrap_or_default();
+        self.filter.business_status = row.fields.business_status.clone().unwrap_or_default();
+        self.filter.discipline = row.fields.discipline.clone().unwrap_or_default();
+        self.report = Some(register);
+        self.open = true;
+        self.presets.evidence_open(name);
+        sunipdf_core::register_presets::RegisterPreset::capture(
+            name,
+            &self.filter,
+            self.sort,
+            self.descending,
+        )
+    }
+
+    #[cfg(all(test, windows))]
+    pub(crate) fn evidence_selection_count(&self) -> usize {
+        self.bulk_selected.len()
+    }
+
+    fn load_preset(
+        &mut self,
+        preset: &sunipdf_core::register_presets::RegisterPreset,
+    ) -> Result<(), EngineError> {
+        preset.apply_to(&mut self.filter, &mut self.sort, &mut self.descending)?;
+        self.page = self.filter.page.unwrap_or(0);
+        self.offset = 0;
+        self.selection = SelectionCache::default();
+        // Loading is an explicit scope decision, even when the criteria happen to match.
+        self.bulk_selected.clear();
+        self.bulk.source_changed();
+        self.sync_bulk_filter();
+        Ok(())
+    }
+
+    fn sync_bulk_filter(&mut self) {
+        let mut current = self.filter.clone();
+        current.custom_sort = None;
+        if self.bulk_filter != current {
+            self.bulk_filter = current;
+            self.bulk_selected.clear();
+            self.bulk.invalidate();
+        }
+    }
     pub(crate) fn issue_report_selection(
         &self,
     ) -> (
@@ -130,7 +220,7 @@ impl RegisterState {
         )
     }
     pub fn dialog_open(&self) -> bool {
-        self.count_open || self.edit.is_some()
+        self.count_open || self.edit.is_some() || self.bulk.open || self.presets.open
     }
     pub fn invalidate(&mut self) {
         self.generation = self.generation.wrapping_add(1);
@@ -140,6 +230,8 @@ impl RegisterState {
         self.progress = None;
         self.selection = SelectionCache::default();
         self.error = None;
+        self.bulk_selected.clear();
+        self.bulk.source_changed();
         if self.edit.as_ref().is_some_and(|e| e.applying) {
             self.edit = None;
         }
@@ -200,6 +292,14 @@ pub(crate) fn filter_summary(
     }
     if filter.include_replies {
         summary.push(tr(lang, "register.include_replies").into());
+    }
+    if let Some(field) = &filter.custom_field {
+        summary.push(format!(
+            "{}: {:?} = {:?}",
+            tr(lang, "register.field_filter.title"),
+            field.key,
+            field.value
+        ));
     }
     if let Some(zone) = &filter.zone {
         let name = plan_zones
@@ -279,6 +379,7 @@ impl SuniApp {
     }
 
     pub(crate) fn register_edit_failed(&mut self, error: &EngineError) {
+        self.annotate.register.bulk.failed(error);
         if let Some(edit) = self.annotate.register.edit.as_mut().filter(|e| e.applying) {
             edit.applying = false;
             edit.error = Some(error.to_string());
@@ -383,6 +484,7 @@ impl SuniApp {
         let lang = self.lang();
         let text_color = crate::theme::palette_for(ctx).text;
         let mut state = std::mem::take(&mut self.annotate.register);
+        state.sync_bulk_filter();
         if state.report.is_none() && state.pending.is_none() && state.error.is_none() {
             state.generation = state.generation.wrapping_add(1);
             state.pending = Some((self.view.epoch, state.generation));
@@ -401,15 +503,20 @@ impl SuniApp {
         let mut zones = false;
         let mut issue_report = false;
         let mut cancel_collection = false;
+        let mut open_bulk = false;
         let report = state.report.clone();
         let enabled = !self.worker.has_pending_mutations();
-        let row_actions_enabled = enabled && state.edit.is_none();
-        let can_refresh = enabled && state.edit.is_none();
+        let row_actions_enabled =
+            enabled && state.edit.is_none() && !state.bulk.open && !state.presets.open;
+        let can_refresh = row_actions_enabled;
         let can_export = can_refresh
             && report
                 .as_ref()
                 .is_some_and(|r| r.validate_zone_filter(&state.filter).is_ok());
-        let can_close = state.edit.as_ref().is_none_or(|e| !e.applying);
+        let can_close = state.edit.as_ref().is_none_or(|e| !e.applying)
+            && !state.bulk.applying
+            && !state.bulk.open
+            && !state.presets.open;
         let width = (ctx.content_rect().width() - 60.0).clamp(420.0, 1050.0);
         let selection = self
             .annotate
@@ -462,6 +569,26 @@ impl SuniApp {
                     let totals = &selected.totals;
                     // Group totals are available without pushing the first result below the fold.
                     ui.horizontal_wrapped(|ui| {
+                        open_bulk = ui
+                            .add_enabled(
+                                row_actions_enabled && !state.bulk_selected.is_empty(),
+                                egui::Button::new(
+                                    tr(lang, "register.bulk.edit")
+                                        .replace("{count}", &state.bulk_selected.len().to_string()),
+                                ),
+                            )
+                            .clicked();
+                        if !state.bulk_selected.is_empty()
+                            && ui
+                                .add_enabled(
+                                    row_actions_enabled,
+                                    egui::Button::new(tr(lang, "register.bulk.clear_selection")),
+                                )
+                                .clicked()
+                        {
+                            state.bulk_selected.clear();
+                            state.bulk.invalidate();
+                        }
                         issue_report = ui
                             .add_enabled(
                                 can_export,
@@ -480,6 +607,11 @@ impl SuniApp {
                             )
                         };
                         ui.menu_button(filter_label, |ui| {
+                            state.presets.menu(ui, lang, row_actions_enabled);
+                            if field_filter::menu(ui, lang, &mut state.filter) {
+                                state.offset = 0;
+                            }
+                            ui.separator();
                             egui::Grid::new("register-filters")
                                 .num_columns(4)
                                 .show(ui, |ui| {
@@ -624,10 +756,13 @@ impl SuniApp {
                             state.offset += 50;
                         }
                     });
+                    // A sort changes presentation only; a filter changes the explicit selection scope.
+                    state.sync_bulk_filter();
                     ui.scope(|ui| {
                         egui::Grid::new("register-table")
                             .striped(true)
                             .show(ui, |ui| {
+                                ui.strong(tr(lang,"register.bulk.select"));
                                 for key in [
                                     "page",
                                     "kind",
@@ -655,6 +790,18 @@ impl SuniApp {
                                 ui.end_row();
                                 for index in rows.iter().skip(state.offset).take(50) {
                                     let row = &report.rows[*index];
+                                    let identity = (row.page,row.index);
+                                    let mut checked = state.bulk_selected.contains(&identity);
+                                    let eligible = !row.locked && !row.is_reply && row.kind != "Widget";
+                                    let within_limit = checked || state.bulk_selected.len() < sunipdf_core::annotation_register_batch::MAX_REGISTER_BATCH_ROWS;
+                                    let checkbox_enabled = row_actions_enabled && eligible && within_limit;
+                                    let checkbox_label = tr(lang,"register.bulk.select_row").replace("{page}",&row.page.to_string()).replace("{index}",&row.index.to_string());
+                                    let response = ui.add_enabled(checkbox_enabled,egui::Checkbox::without_text(&mut checked)).on_hover_text(&checkbox_label);
+                                    response.widget_info(||egui::WidgetInfo::selected(egui::Role::CheckBox,checkbox_enabled,checked,checkbox_label.as_str()));
+                                    if response.changed() {
+                                        if checked { state.bulk_selected.insert(identity); } else { state.bulk_selected.remove(&identity); }
+                                        state.bulk.invalidate();
+                                    }
                                     if ui
                                         .add_enabled(
                                             row_actions_enabled && row.rect.is_some(),
@@ -813,6 +960,26 @@ impl SuniApp {
         if layout_changed {
             self.persist_settings();
         }
+        presets::show(&mut state, &mut self.settings, ctx, lang, self.has_icons);
+        if open_bulk && !state.bulk_selected.is_empty() {
+            if let Some(report) = &report {
+                let rows = report
+                    .rows
+                    .iter()
+                    .filter(|row| state.bulk_selected.contains(&(row.page, row.index)))
+                    .cloned()
+                    .collect();
+                state.bulk.bind(report.clone(), rows, self.view.epoch);
+            }
+        }
+        state.bulk.show(
+            ctx,
+            &self.worker,
+            self.view.epoch,
+            lang,
+            self.settings.dark_theme,
+            self.has_icons,
+        );
         if apply {
             if let Some(edit) = &mut state.edit {
                 let value = fields(&edit.business_status, &edit.discipline, &edit.custom).and_then(
@@ -951,7 +1118,7 @@ mod tests {
         }
     }
 
-    fn large_register() -> Arc<AnnotationRegister> {
+    pub(super) fn large_register() -> Arc<AnnotationRegister> {
         let mut report = AnnotationRegister::default();
         report.page_count = 1000;
         report.rows = (0..10_000)
@@ -1340,6 +1507,107 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn explicit_bulk_selection_keeps_identity_when_sorted_and_clears_on_filter_or_refresh() {
+        let mut state = RegisterState::default();
+        state.bulk_selected.insert((2, 7));
+        state.sort = RegisterSort::Kind;
+        state.descending = true;
+        state.filter.custom_sort = Some("Room".into());
+        state.sync_bulk_filter();
+        assert!(state.bulk_selected.contains(&(2, 7)));
+        state.filter.query = "selected scope".into();
+        state.sync_bulk_filter();
+        assert!(state.bulk_selected.is_empty());
+        state.bulk_selected.insert((2, 7));
+        state.invalidate();
+        assert!(state.bulk_selected.is_empty());
+    }
+
+    #[test]
+    fn small_register_has_explicit_localized_checkboxes_without_automatic_selection() {
+        for language in ["en-US", "fr-FR"] {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.settings.language = language.into();
+            app.annotate.register.open = true;
+            let mut report = (*large_register()).clone();
+            report.rows.truncate(2);
+            report.rows[1].locked = true;
+            app.annotate.register.report = Some(Arc::new(report));
+            let ctx = egui::Context::default();
+            ctx.enable_accesskit();
+            let mut point = None;
+            let label = tr(app.lang(), "register.bulk.select_row")
+                .replace("{page}", "1")
+                .replace("{index}", "0");
+            let mut time = 1.0;
+            for _ in 0..3 {
+                time += 0.025;
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(720.0, 480.0),
+                        )),
+                        time: Some(time),
+                        ..Default::default()
+                    },
+                    |ui| app.annotation_register_dock(&ctx, ui),
+                );
+                if let Some(tree) = output.platform_output.accesskit_update.as_ref() {
+                    if let Some(bounds) = tree.nodes.iter().find_map(|(_, node)| {
+                        (node.label() == Some(label.as_str()))
+                            .then(|| node.bounds())
+                            .flatten()
+                    }) {
+                        point = Some(egui::pos2(
+                            ((bounds.x0 + bounds.x1) / 2.0) as f32,
+                            ((bounds.y0 + bounds.y1) / 2.0) as f32,
+                        ));
+                    }
+                }
+                output.textures_delta.clear();
+            }
+            assert!(app.annotate.register.bulk_selected.is_empty());
+            let point = point.expect("localized checkbox has an accessible name and bounds");
+            assert!(
+                egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(720.0, 480.0))
+                    .contains(point)
+            );
+            for pressed in [true, false] {
+                time += 0.025;
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(720.0, 480.0),
+                        )),
+                        time: Some(time),
+                        events: vec![
+                            egui::Event::PointerMoved(point),
+                            egui::Event::PointerButton {
+                                pos: point,
+                                button: egui::PointerButton::Primary,
+                                pressed,
+                                modifiers: egui::Modifiers::NONE,
+                            },
+                        ],
+                        ..Default::default()
+                    },
+                    |ui| app.annotation_register_dock(&ctx, ui),
+                );
+                output.textures_delta.clear();
+            }
+            assert_eq!(
+                app.annotate.register.bulk_selected,
+                BTreeSet::from([(1, 0)])
+            );
+            assert!(requests
+                .try_iter()
+                .all(|request| !matches!(request, Request::Edit(_))));
         }
     }
 }

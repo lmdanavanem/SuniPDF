@@ -49,6 +49,17 @@ fn readable_text_pixels(
     foreground: egui::Color32,
     background: egui::Color32,
 ) -> usize {
+    text_pixels_at_contrast(pixels, size, rect, foreground, background, 4.5)
+}
+
+fn text_pixels_at_contrast(
+    pixels: &[u8],
+    size: [u32; 2],
+    rect: Rect,
+    foreground: egui::Color32,
+    background: egui::Color32,
+    minimum_contrast: f64,
+) -> usize {
     let [width, height] = size;
     let rect = rect.intersect(Rect::from_min_size(
         egui::Pos2::ZERO,
@@ -71,12 +82,33 @@ fn readable_text_pixels(
             }
             let luminance = relative_luminance(rgb);
             let contrast = (luminance.max(background) + 0.05) / (luminance.min(background) + 0.05);
-            if contrast >= 4.5 {
+            if contrast >= minimum_contrast {
                 readable += 1;
             }
         }
     }
     readable
+}
+
+fn text_pixel_diagnostics(pixels: &[u8], size: [u32; 2], rect: Rect) -> Value {
+    let rect = rect.intersect(Rect::from_min_size(
+        egui::Pos2::ZERO,
+        vec2(size[0] as f32, size[1] as f32),
+    ));
+    let mut colors = std::collections::BTreeMap::<[u8; 3], usize>::new();
+    for y in rect.top().ceil().max(0.0) as u32..rect.bottom().floor().max(0.0) as u32 {
+        for x in rect.left().ceil().max(0.0) as u32..rect.right().floor().max(0.0) as u32 {
+            let offset = ((y * size[0] + x) * 4) as usize;
+            *colors
+                .entry([pixels[offset], pixels[offset + 1], pixels[offset + 2]])
+                .or_default() += 1;
+        }
+    }
+    let sampled = colors.values().sum::<usize>();
+    let mut colors = colors.into_iter().collect::<Vec<_>>();
+    colors.sort_by_key(|(rgb, count)| (std::cmp::Reverse(*count), *rgb));
+    colors.truncate(8);
+    json!({"sampledPixels": sampled, "dominantRgb": colors})
 }
 
 #[test]
@@ -142,6 +174,13 @@ struct Scene {
     split: Option<SplitScene>,
     /// Home surface with an explicitly open or closed tools sidebar; no PDF is loaded.
     home_tools: Option<bool>,
+    register_dialog: Option<RegisterDialog>,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RegisterDialog {
+    BulkPreview,
+    SavedFilters,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -254,6 +293,19 @@ fn fulfill_requests(
                 generation,
                 result: document.annotation_register(),
             },
+            Request::PreviewRegisterBatch { job, .. } => {
+                require(
+                    !job.cancel.load(std::sync::atomic::Ordering::Acquire),
+                    "Register preview was cancelled before computation",
+                )?;
+                let plan = document.preview_annotation_register_batch(
+                    &job.register,
+                    &job.rows,
+                    &job.patch,
+                )?;
+                job.reply.send(Ok(plan.report().clone()))?;
+                continue;
+            }
             Request::QuantityTable { epoch, generation } => Response::QuantityTable {
                 epoch,
                 generation,
@@ -621,6 +673,68 @@ fn readback(
     Ok(pixels)
 }
 
+fn glyph_text_color(text: &egui::epaint::TextShape) -> Option<egui::Color32> {
+    if !text.opacity_factor.is_finite() || text.opacity_factor <= 0.0 {
+        return None;
+    }
+    let mut found = None;
+    for row in &text.galley.rows {
+        // A color glyph also samples its own atlas colors, so one foreground
+        // cannot prove its pixels. These evidence labels use monochrome glyphs.
+        if row
+            .glyphs
+            .iter()
+            .any(|glyph| glyph.is_color && !glyph.uv_rect.is_nothing())
+        {
+            return None;
+        }
+        for vertex in row
+            .visuals
+            .mesh
+            .vertices
+            .get(row.visuals.glyph_vertex_range.clone())?
+        {
+            // Match epaint's tessellate_text: the painter can fade the mesh
+            // vertices without modifying the original LayoutJob sections.
+            let mut color = text.override_text_color.unwrap_or_else(|| {
+                if vertex.color == egui::Color32::PLACEHOLDER {
+                    text.fallback_color
+                } else {
+                    vertex.color
+                }
+            });
+            if text.opacity_factor < 1.0 {
+                color = color.gamma_multiply(text.opacity_factor);
+            }
+            if color == egui::Color32::PLACEHOLDER
+                || found.is_some_and(|previous| previous != color)
+            {
+                // Do not qualify a mixed-color label using only its first run.
+                return None;
+            }
+            found = Some(color);
+        }
+    }
+    found
+}
+
+fn glyph_vertex_colors(text: &egui::epaint::TextShape) -> Vec<[u8; 4]> {
+    let mut colors = text
+        .galley
+        .rows
+        .iter()
+        .flat_map(|row| {
+            row.visuals.mesh.vertices[row.visuals.glyph_vertex_range.clone()]
+                .iter()
+                .map(|vertex| vertex.color.to_array())
+        })
+        .collect::<Vec<_>>();
+    colors.sort_unstable();
+    colors.dedup();
+    colors.truncate(8);
+    colors
+}
+
 fn home_text_paint(
     frame: &egui::FullOutput,
     label: &str,
@@ -637,14 +751,7 @@ fn home_text_paint(
             egui::Shape::Text(text) if text.galley.text() == label => {
                 let rect = Rect::from_min_size(text.pos, text.galley.size());
                 if region.contains_rect(rect) && clip.contains_rect(rect) {
-                    if let Some(section) = text.galley.job.sections.first() {
-                        let color = text.override_text_color.unwrap_or_else(|| {
-                            if section.format.color == egui::Color32::PLACEHOLDER {
-                                text.fallback_color
-                            } else {
-                                section.format.color
-                            }
-                        });
+                    if let Some(color) = glyph_text_color(text) {
                         found.push((rect, clip, color));
                     }
                 }
@@ -700,6 +807,144 @@ fn home_label_pixels_cannot_come_from_sidebar_or_clipped_scroll_content() {
     assert_eq!(labels.len(), 1);
     assert_eq!(labels[0].0.min, pos2(240.0, 60.0));
     assert!(home_text_paint(&frame, "Missing", main_content).is_empty());
+    fn fade(shape: &mut egui::Shape) {
+        match shape {
+            egui::Shape::Text(text) => text.opacity_factor = 0.5,
+            egui::Shape::Vec(shapes) => shapes.iter_mut().for_each(fade),
+            _ => {}
+        }
+    }
+    frame
+        .shapes
+        .iter_mut()
+        .for_each(|shape| fade(&mut shape.shape));
+    let faded = home_text_paint(&frame, "Review", main_content);
+    assert_eq!(faded.len(), 1);
+    assert_eq!(faded[0].2, egui::Color32::WHITE.gamma_multiply(0.5));
+}
+
+#[test]
+fn disabled_button_proof_color_matches_actual_tessellator_vertices() {
+    fn find_text(shape: &egui::Shape, label: &str) -> Option<egui::epaint::TextShape> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text() == label => Some(text.clone()),
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| find_text(shape, label)),
+            _ => None,
+        }
+    }
+    for (lang, dark) in [(Language::English, false), (Language::French, true)] {
+        let context = egui::Context::default();
+        crate::theme::apply(&context, dark);
+        let palette = crate::theme::palette_for(&context);
+        let label = tr(lang, "register.bulk.apply").replace("{count}", "2");
+        for enabled in [true, false] {
+            let mut frame = context.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(360.0, 180.0))),
+                    ..Default::default()
+                },
+                |ui| {
+                    let response = ui.add_enabled(
+                        enabled,
+                        egui::Button::new(egui::RichText::new(&label).color(palette.text)),
+                    );
+                    assert_eq!(response.enabled(), enabled);
+                },
+            );
+            // This regression uses the actual UI and tessellator, without a GPU.
+            frame.textures_delta.clear();
+            let text = frame
+                .shapes
+                .iter()
+                .find_map(|shape| find_text(&shape.shape, &label))
+                .expect("button text was painted");
+            assert_eq!(text.galley.job.sections[0].format.color, palette.text);
+            let color = glyph_text_color(&text).expect("uniform actual glyph color");
+            if enabled {
+                assert_eq!(color, palette.text);
+            } else {
+                // Disabled UI changes the mesh, while LayoutJob stays opaque.
+                assert_ne!(color, text.galley.job.sections[0].format.color);
+                assert_eq!(
+                    color,
+                    palette
+                        .text
+                        .gamma_multiply(context.global_style().visuals.disabled_alpha())
+                );
+            }
+            for opacity in [1.0, 0.5] {
+                let mut text = text.clone();
+                text.opacity_factor = opacity;
+                let expected = glyph_text_color(&text).unwrap();
+                let mut tessellator = egui::epaint::Tessellator::new(
+                    frame.pixels_per_point,
+                    Default::default(),
+                    [1, 1],
+                    Vec::new(),
+                );
+                let mut mesh = egui::epaint::Mesh::default();
+                tessellator.tessellate_text(&text, &mut mesh);
+                assert!(!mesh.vertices.is_empty());
+                assert!(mesh.vertices.iter().all(|vertex| vertex.color == expected));
+            }
+            let paints = home_text_paint(
+                &frame,
+                &label,
+                Rect::from_min_size(egui::Pos2::ZERO, vec2(360.0, 180.0)),
+            );
+            assert_eq!(paints.len(), 1);
+            assert_eq!(paints[0].2, color);
+        }
+    }
+}
+
+#[test]
+fn glyph_color_proof_uses_fallback_and_override_but_refuses_mixed_ink() {
+    let context = egui::Context::default();
+    let mut frame = context.run_ui(Default::default(), |ui| {
+        ui.painter().text(
+            pos2(20.0, 20.0),
+            egui::Align2::LEFT_TOP,
+            "Review",
+            egui::FontId::proportional(16.0),
+            egui::Color32::WHITE,
+        );
+    });
+    frame.textures_delta.clear();
+    let mut text = frame
+        .shapes
+        .iter()
+        .find_map(|shape| match &shape.shape {
+            egui::Shape::Text(text) => Some(text.clone()),
+            _ => None,
+        })
+        .unwrap();
+    {
+        let galley = Arc::make_mut(&mut text.galley);
+        let row = Arc::make_mut(&mut galley.rows[0].row);
+        let range = row.visuals.glyph_vertex_range.clone();
+        assert!(range.len() > 1);
+        for vertex in &mut row.visuals.mesh.vertices[range] {
+            vertex.color = egui::Color32::PLACEHOLDER;
+        }
+    }
+    text.fallback_color = egui::Color32::from_rgb(15, 23, 42);
+    assert_eq!(glyph_text_color(&text), Some(text.fallback_color));
+    {
+        let galley = Arc::make_mut(&mut text.galley);
+        let row = Arc::make_mut(&mut galley.rows[0].row);
+        let first = row.visuals.glyph_vertex_range.start;
+        row.visuals.mesh.vertices[first].color = egui::Color32::WHITE;
+    }
+    assert!(glyph_text_color(&text).is_none());
+    text.override_text_color = Some(egui::Color32::BLACK);
+    text.opacity_factor = 0.5;
+    assert_eq!(
+        glyph_text_color(&text),
+        Some(egui::Color32::BLACK.gamma_multiply(0.5))
+    );
+    text.opacity_factor = 0.0;
+    assert!(glyph_text_color(&text).is_none());
 }
 
 fn verify_home_labels(
@@ -814,6 +1059,281 @@ fn verify_home_labels(
     )
 }
 
+struct DialogPaint<'a> {
+    frame: &'a egui::FullOutput,
+    pixels: &'a [u8],
+    size: [u32; 2],
+    background: egui::Color32,
+}
+
+fn composite_text_color(foreground: egui::Color32, background: egui::Color32) -> egui::Color32 {
+    let channel = |front: u8, back: u8| {
+        (u32::from(front) + (u32::from(back) * (255 - u32::from(foreground.a())) + 127) / 255)
+            .min(255) as u8
+    };
+    egui::Color32::from_rgb(
+        channel(foreground.r(), background.r()),
+        channel(foreground.g(), background.g()),
+        channel(foreground.b(), background.b()),
+    )
+}
+
+#[test]
+fn disabled_text_proof_uses_composited_ink_without_changing_opaque_labels() {
+    assert_eq!(
+        composite_text_color(egui::Color32::BLACK, egui::Color32::WHITE),
+        egui::Color32::BLACK
+    );
+    assert_eq!(
+        composite_text_color(egui::Color32::from_black_alpha(128), egui::Color32::WHITE),
+        egui::Color32::from_gray(127)
+    );
+    assert_eq!(
+        composite_text_color(egui::Color32::TRANSPARENT, egui::Color32::WHITE),
+        egui::Color32::WHITE
+    );
+}
+
+fn verify_dialog_label(
+    paint: &DialogPaint<'_>,
+    key: &str,
+    text: &str,
+    disabled_button: Option<bool>,
+) -> EvidenceResult<Value> {
+    let viewport = Rect::from_min_size(
+        egui::Pos2::ZERO,
+        vec2(paint.size[0] as f32, paint.size[1] as f32),
+    );
+    let paints = home_text_paint(paint.frame, text, viewport);
+    let (rect, clip, foreground) = if key.ends_with(".title") {
+        paints.first()
+    } else {
+        paints.last()
+    }
+    .copied()
+    .ok_or_else(|| format!("Register dialog label is not fully painted: {text}"))?;
+    let tree = paint
+        .frame
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .ok_or("missing dialog accessibility tree")?;
+    let node = tree
+        .nodes
+        .iter()
+        .rev()
+        .map(|(_, node)| node)
+        .find(|node| {
+            (node.label() == Some(text) || node.value() == Some(text))
+                && disabled_button.is_none_or(|disabled| {
+                    node.role() == egui::accesskit::Role::Button && node.is_disabled() == disabled
+                })
+                && node.bounds().is_some_and(|bounds| {
+                    Rect::from_min_max(
+                        pos2(bounds.x0 as f32, bounds.y0 as f32),
+                        pos2(bounds.x1 as f32, bounds.y1 as f32),
+                    )
+                    .intersects(rect)
+                })
+        })
+        .ok_or_else(|| {
+            format!("Register dialog label lacks a matching accessible control: {text}")
+        })?;
+    // Enabled actions and text must meet 4.5:1. A disabled Apply is separately
+    // identified as unavailable; its subdued ink must still be present in the PNG.
+    let minimum_contrast = if disabled_button == Some(true) {
+        1.5
+    } else {
+        4.5
+    };
+    let displayed_foreground = composite_text_color(foreground, paint.background);
+    let ink = text_pixels_at_contrast(
+        paint.pixels,
+        paint.size,
+        rect,
+        displayed_foreground,
+        paint.background,
+        minimum_contrast,
+    );
+    require(
+        ink >= 20,
+        &format!(
+            "Register dialog label {text:?} has only {ink} verified text pixels; bounds={rect:?}; clip={clip:?}; paint_rgba={:?}; displayed_rgba={:?}; background_rgba={:?}; minimum_contrast={minimum_contrast}; pixels={}",
+            foreground.to_array(),
+            displayed_foreground.to_array(),
+            paint.background.to_array(),
+            text_pixel_diagnostics(paint.pixels, paint.size, rect),
+        ),
+    )?;
+    Ok(json!({
+        "key": key, "text": text, "accessible": true,
+        "bounds": [rect.left(), rect.top(), rect.right(), rect.bottom()],
+        "clip": [clip.left(), clip.top(), clip.right(), clip.bottom()],
+        "foreground": displayed_foreground.to_array(), "paintForeground": foreground.to_array(), "background": paint.background.to_array(),
+        "readablePixels": ink, "minimumContrast": minimum_contrast,
+        "button": disabled_button.is_some(), "disabled": node.is_disabled(),
+    }))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn verify_register_dialog(
+    app: &crate::app::SuniApp,
+    context: &egui::Context,
+    frame: &egui::FullOutput,
+    pixels: &[u8],
+    size: [u32; 2],
+    kind: RegisterDialog,
+    register: &sunipdf_core::annotation_register::AnnotationRegister,
+    source_sha256: &str,
+) -> EvidenceResult<Value> {
+    require(
+        app.dialog_open(),
+        "Register dialog does not block background document edits",
+    )?;
+    let paint = DialogPaint {
+        frame,
+        pixels,
+        size,
+        background: crate::theme::palette_for(context).surface,
+    };
+    let mut labels = Vec::new();
+    let mut proof = json!({
+        "kind": if kind == RegisterDialog::BulkPreview { "bulk-preview" } else { "saved-filters" },
+        "sourcePdf": "register-dialog-fixture.pdf",
+        "sourcePdfSha256Before": source_sha256, "sourcePdfSha256After": source_sha256,
+        "sourcePdfUnchanged": true, "documentRegisterUnchanged": true,
+        "registerSourceSha256": register.source_sha256,
+        "actualRegisterComputed": true,
+        "selectionCount": app.annotate.register.evidence_selection_count(),
+    });
+    match kind {
+        RegisterDialog::BulkPreview => {
+            let (report, reviewed) = app
+                .annotate
+                .register
+                .evidence_bulk_preview()
+                .ok_or("missing computed bulk preview")?;
+            require(
+                !reviewed
+                    && report.selected_count == 2
+                    && report.changed_count == 2
+                    && report.changes.len() == 2
+                    && report.source_sha256 == register.source_sha256
+                    && app.annotate.register.evidence_selection_count() == 2,
+                "Bulk preview is not the real unreviewed two-row plan",
+            )?;
+            for (change, row) in report.changes.iter().zip(&register.rows) {
+                require(
+                    change.page == row.page
+                        && change.index == row.index
+                        && change.before == row.fields
+                        && change.before.business_status.as_deref() == Some("Open")
+                        && change.after.business_status.as_deref() == Some("Ready for site")
+                        && change.after.discipline == change.before.discipline
+                        && change.after.custom == change.before.custom,
+                    "Bulk before/after does not match the real fixture rows and requested patch",
+                )?;
+            }
+            let summary = tr(app.lang(), "register.bulk.summary")
+                .replace("{changed}", "2")
+                .replace("{selected}", "2");
+            labels.push(verify_dialog_label(
+                &paint,
+                "register.bulk.title",
+                &tr(app.lang(), "register.bulk.title").replace("{count}", "2"),
+                None,
+            )?);
+            labels.push(verify_dialog_label(
+                &paint,
+                "register.bulk.summary",
+                &summary,
+                None,
+            )?);
+            for key in [
+                "register.bulk.before",
+                "register.bulk.after",
+                "register.bulk.reviewed",
+            ] {
+                labels.push(verify_dialog_label(&paint, key, tr(app.lang(), key), None)?);
+            }
+            for (key, value) in [
+                ("before.business_status", "Open"),
+                ("after.business_status", "Ready for site"),
+            ] {
+                labels.push(verify_dialog_label(
+                    &paint,
+                    key,
+                    &format!("{}: {value}", tr(app.lang(), "register.business_status")),
+                    None,
+                )?);
+            }
+            for key in ["register.bulk.preview", "register.bulk.back"] {
+                labels.push(verify_dialog_label(
+                    &paint,
+                    key,
+                    tr(app.lang(), key),
+                    Some(false),
+                )?);
+            }
+            let apply = tr(app.lang(), "register.bulk.apply").replace("{count}", "2");
+            proof["applyControl"] =
+                verify_dialog_label(&paint, "register.bulk.apply", &apply, Some(true))?;
+            proof["actualPreviewComputed"] = json!(true);
+            proof["reviewed"] = json!(reviewed);
+            proof["applyDisabled"] = json!(true);
+            proof["report"] = serde_json::to_value(report)?;
+        }
+        RegisterDialog::SavedFilters => {
+            require(
+                app.annotate.register.evidence_selection_count() == 0
+                    && app.settings.register_presets.entries().len() == 1,
+                "Saved filters unexpectedly selected annotations or changed the fixture library",
+            )?;
+            for key in [
+                "register.presets.title",
+                "register.presets.scope",
+                "register.presets.name",
+                "register.presets.saved",
+                "register.presets.import_help",
+            ] {
+                labels.push(verify_dialog_label(&paint, key, tr(app.lang(), key), None)?);
+            }
+            let preset = &app.settings.register_presets.entries()[0];
+            require(
+                preset.criteria.business_status == "Open"
+                    && preset.criteria.discipline == "Electrical"
+                    && preset.criteria.author
+                        == register.rows[0].author.as_deref().unwrap_or_default(),
+                "Saved criteria do not come from the actual annotation register",
+            )?;
+            labels.push(verify_dialog_label(
+                &paint,
+                "savedPresetName",
+                &preset.name,
+                None,
+            )?);
+            for key in [
+                "register.presets.save",
+                "register.presets.load",
+                "register.presets.delete",
+                "register.presets.import",
+                "register.presets.export",
+                "register.close",
+            ] {
+                labels.push(verify_dialog_label(
+                    &paint,
+                    key,
+                    tr(app.lang(), key),
+                    Some(false),
+                )?);
+            }
+            proof["library"] = serde_json::from_slice(&app.settings.register_presets.to_json()?)?;
+        }
+    }
+    proof["labels"] = json!(labels);
+    Ok(proof)
+}
+
 fn capture_scene(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
@@ -840,7 +1360,8 @@ fn capture_scene(
     app.settings.show_thumbnails = scene.home_tools.is_none()
         && !scene.measurements
         && scene.table.is_none()
-        && scene.split.is_none();
+        && scene.split.is_none()
+        && scene.register_dialog.is_none();
     app.show_tools = scene.home_tools.unwrap_or(scene.measurements);
     app.settings.show_tools = app.show_tools;
     if scene.home_tools.is_some() {
@@ -848,7 +1369,8 @@ fn capture_scene(
             !scene.settings_open
                 && !scene.measurements
                 && scene.table.is_none()
-                && scene.split.is_none(),
+                && scene.split.is_none()
+                && scene.register_dialog.is_none(),
             "Home scene cannot also qualify document tools or settings",
         )?;
         app.document = None;
@@ -866,9 +1388,14 @@ fn capture_scene(
         app.thumbs_failed.clear();
     } else {
         let mut info = document.info().clone();
-        info.path = PathBuf::from("fixtures/two-pages.pdf");
+        let display_path = if scene.register_dialog.is_some() {
+            "fixtures/register-dialog-fixture.pdf"
+        } else {
+            "fixtures/two-pages.pdf"
+        };
+        info.path = PathBuf::from(display_path);
         app.document = Some(OpenDocument { info, page: 0 });
-        app.tabs.tabs[0].path = PathBuf::from("fixtures/two-pages.pdf");
+        app.tabs.tabs[0].path = PathBuf::from(display_path);
     }
     app.zoom = scene.zoom;
     if scene.split.is_some() {
@@ -922,9 +1449,49 @@ fn capture_scene(
     let mut final_frame = None;
     let mut pending_texture_frees = Vec::new();
     let mut frame_states = Vec::with_capacity(12);
+    let register_before = scene
+        .register_dialog
+        .map(|_| document.annotation_register())
+        .transpose()?;
+    let source_pdf_sha_before = scene
+        .register_dialog
+        .map(|_| {
+            std::fs::read(output.join("register-dialog-fixture.pdf")).map(|bytes| sha256(&bytes))
+        })
+        .transpose()?;
     for index in 0..12 {
         if index == 6 && scene.settings_open {
             app.execute(&context, Command::ThemeSettings);
+        }
+        if index == 6 {
+            if let Some(kind) = scene.register_dialog {
+                let register = Arc::new(
+                    register_before
+                        .as_ref()
+                        .ok_or("missing real register")?
+                        .clone(),
+                );
+                app.settings.tables.placement = crate::workspace_table::Placement::Bottom;
+                match kind {
+                    RegisterDialog::BulkPreview => app.annotate.register.evidence_open_bulk(
+                        register,
+                        &app.worker,
+                        app.view.epoch,
+                    ),
+                    RegisterDialog::SavedFilters => {
+                        let name = if scene.language == Language::French {
+                            "Revue de chantier"
+                        } else {
+                            "Site review"
+                        };
+                        let preset = app
+                            .annotate
+                            .register
+                            .evidence_open_presets(register, name)?;
+                        app.settings.register_presets.insert(preset)?;
+                    }
+                }
+            }
         }
         if index == 6 && scene.split == Some(SplitScene::Synchronized) {
             app.execute(&context, Command::ViewSync);
@@ -948,6 +1515,24 @@ fn capture_scene(
                 )),
                 max_texture_side: Some(device.limits().max_texture_dimension_2d as usize),
                 time: Some(index as f64 * 0.25),
+                events: if index == 9 && scene.register_dialog == Some(RegisterDialog::BulkPreview)
+                {
+                    vec![
+                        egui::Event::PointerMoved(pos2(
+                            scene.width as f32 / 2.0,
+                            scene.height as f32 / 2.0,
+                        )),
+                        egui::Event::MouseWheel {
+                            source: egui::MouseWheelSource::Wheel,
+                            unit: egui::MouseWheelUnit::Point,
+                            delta: vec2(0.0, -1200.0),
+                            phase: egui::TouchPhase::Move,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ]
+                } else {
+                    Vec::new()
+                },
                 ..Default::default()
             },
             |ui| app.render_ui(ui),
@@ -1027,10 +1612,17 @@ fn capture_scene(
             "nodes": tree.nodes.iter().map(|(_, node)| json!({
                 "role": format!("{:?}", node.role()), "label": node.label(), "value": node.value(),
                 "bounds": node.bounds().map(|rect| [rect.x0, rect.y0, rect.x1, rect.y1]),
+                "disabled": node.is_disabled(),
             })).collect::<Vec<_>>(),
             "paintedText": frame.shapes.iter().filter_map(|shape| match &shape.shape {
                 egui::Shape::Text(text) => Some(json!({
                     "text": text.galley.text(),
+                    "color": glyph_text_color(text).map(|color| color.to_array()),
+                    "layoutColors": text.galley.job.sections.iter().take(8).map(|section| section.format.color.to_array()).collect::<Vec<_>>(),
+                    "glyphVertexColors": glyph_vertex_colors(text),
+                    "fallbackColor": text.fallback_color.to_array(),
+                    "overrideTextColor": text.override_text_color.map(|color| color.to_array()),
+                    "opacityFactor": text.opacity_factor,
                     "bounds": [text.pos.x, text.pos.y, text.pos.x + text.galley.size().x, text.pos.y + text.galley.size().y],
                     "clip": [shape.clip_rect.min.x, shape.clip_rect.min.y, shape.clip_rect.max.x, shape.clip_rect.max.y],
                 })),
@@ -1278,20 +1870,50 @@ fn capture_scene(
                     && viewport.contains_rect(Rect::from_min_size(text.pos, text.galley.size())))),
                 &format!("Theme settings label is clipped or not painted: {label}"))?;
         }
-    } else {
+    } else if scene.register_dialog.is_none() {
         require(
             blue_ink > 20,
             "PDFium fixture ink is missing from the actual UI pixel readback",
         )?;
     }
+    let register_dialog_evidence = if let Some(kind) = scene.register_dialog {
+        let before = register_before.as_ref().ok_or("missing real register")?;
+        let after = document.annotation_register()?;
+        require(
+            serde_json::to_value(&before.rows)? == serde_json::to_value(&after.rows)?
+                && before.page_count == after.page_count,
+            "Register dialog changed the live document register",
+        )?;
+        let before_sha = source_pdf_sha_before
+            .as_ref()
+            .ok_or("missing source PDF digest")?;
+        let after_sha = sha256(&std::fs::read(output.join("register-dialog-fixture.pdf"))?);
+        require(
+            *before_sha == after_sha,
+            "Register dialog changed its saved source PDF",
+        )?;
+        verify_register_dialog(
+            &app,
+            &context,
+            &frame,
+            &pixels,
+            [scene.width, scene.height],
+            kind,
+            before,
+            before_sha,
+        )?
+    } else {
+        Value::Null
+    };
     Ok(json!({
-        "name": scene.name, "surface": if scene.settings_open { "settings" } else { "reader" },
+        "name": scene.name, "surface": if scene.settings_open { "settings" } else if scene.register_dialog.is_some() { "register-dialog" } else { "reader" },
         "documentOpen": app.document.is_some(), "unsavedChanges": false, "appError": Value::Null,
         "homeLabelsVerified": false,
         "language": scene.language.code(), "darkTheme": scene.dark,
         "interfaceStyle": scene.style, "reduceTransparency": scene.reduce_transparency,
         "themeSettingsOpen": scene.settings_open, "themeSettingsLabelsVerified": scene.settings_open,
-        "pdfFixtureBlueInkVerified": !scene.settings_open,
+        "pdfFixtureBlueInkVerified": !scene.settings_open && scene.register_dialog.is_none(),
+        "registerDialog": register_dialog_evidence,
         "outputPixels": [scene.width, scene.height], "measurementToolsOpen": scene.measurements,
         "dockedTable": table_name, "dockedTableControlsAndRowVerified": scene.table.is_some(),
         "dockedTableTextContrast": table_text_contrast,
@@ -1353,6 +1975,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "reader-fr-light-720-zoom149",
@@ -1368,6 +1991,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "reader-en-light-pages",
@@ -1383,6 +2007,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "reader-en-glass-light-pages",
@@ -1398,6 +2023,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "reader-en-glass-dark-measurements",
@@ -1413,6 +2039,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "settings-en-glass-light",
@@ -1428,6 +2055,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: true,
             split: None,
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "settings-fr-glass-dark-720-reduced",
@@ -1443,6 +2071,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: true,
             split: None,
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "reader-en-dark-split-independent",
@@ -1458,6 +2087,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: Some(SplitScene::Independent),
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "reader-fr-light-720-split-independent",
@@ -1473,6 +2103,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: Some(SplitScene::Independent),
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "reader-en-glass-light-split-synchronized",
@@ -1488,6 +2119,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: Some(SplitScene::Synchronized),
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "home-en-glass-light-tools",
@@ -1503,6 +2135,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: Some(true),
+            register_dialog: None,
         },
         Scene {
             name: "home-en-glass-dark",
@@ -1518,6 +2151,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: Some(false),
+            register_dialog: None,
         },
         Scene {
             name: "home-en-glass-light-560",
@@ -1533,6 +2167,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: Some(false),
+            register_dialog: None,
         },
     ];
     let mut results = Vec::new();
@@ -1577,6 +2212,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "reader-fr-light-720-docked-quantities",
@@ -1592,6 +2228,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: None,
+            register_dialog: None,
         },
         Scene {
             name: "reader-en-glass-dark-docked-register",
@@ -1607,6 +2244,7 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             settings_open: false,
             split: None,
             home_tools: None,
+            register_dialog: None,
         },
     ] {
         results.push(capture_scene(
@@ -1617,6 +2255,92 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             output,
         )?);
     }
+    // The new dialogs use their own saved, reopened input. Existing table scenes
+    // above retain precisely their previous in-memory fixture and rendering setup.
+    let register_fixture = output.join("register-dialog-fixture.pdf");
+    let mut register_document =
+        engine.open_bytes(table_document.snapshot()?, None, &register_fixture)?;
+    for index in 0..2 {
+        let register = register_document.annotation_register()?;
+        require(
+            register.rows.len() == 2,
+            "Register dialog fixture requires exactly two actual annotations",
+        )?;
+        register_document.set_annotation_register_fields(
+            &register.target(&register.rows[index]),
+            &sunipdf_core::annotation_register::RegisterFields {
+                business_status: Some("Open".into()),
+                discipline: Some("Electrical".into()),
+                ..Default::default()
+            },
+            None,
+        )?;
+    }
+    std::fs::write(&register_fixture, register_document.snapshot()?)?;
+    drop(register_document);
+    let register_document = engine.open(&register_fixture, None)?;
+    let register_fixture_sha = sha256(&std::fs::read(&register_fixture)?);
+    for (name, kind, language, dark, width, height) in [
+        (
+            "register-en-light-bulk-preview",
+            RegisterDialog::BulkPreview,
+            Language::English,
+            false,
+            1280,
+            780,
+        ),
+        (
+            "register-fr-dark-720-bulk-preview",
+            RegisterDialog::BulkPreview,
+            Language::French,
+            true,
+            720,
+            640,
+        ),
+        (
+            "register-en-light-saved-filters",
+            RegisterDialog::SavedFilters,
+            Language::English,
+            false,
+            1280,
+            780,
+        ),
+        (
+            "register-fr-dark-720-saved-filters",
+            RegisterDialog::SavedFilters,
+            Language::French,
+            true,
+            720,
+            640,
+        ),
+    ] {
+        results.push(capture_scene(
+            &device,
+            &queue,
+            &register_document,
+            Scene {
+                name,
+                language,
+                dark,
+                width,
+                height,
+                measurements: false,
+                zoom: Zoom::FitPage,
+                table: None,
+                style: crate::theme::Style::Classic,
+                reduce_transparency: false,
+                settings_open: false,
+                split: None,
+                home_tools: None,
+                register_dialog: Some(kind),
+            },
+            output,
+        )?);
+    }
+    require(
+        sha256(&std::fs::read(&register_fixture)?) == register_fixture_sha,
+        "Register scenes changed their saved fixture",
+    )?;
     require(
         sha256(&std::fs::read(&fixture)?) == fixture_sha,
         "UI evidence changed the fixture document",
@@ -1624,11 +2348,12 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
     Ok(json!({
         "schema": 1, "status": "passed", "version": env!("CARGO_PKG_VERSION"),
         "sourceSha": std::env::var("GITHUB_SHA").ok(),
-        "qualification": "Actual application Home, reader and settings UI rendered offscreen with DX12 WARP. Reader scenes use real PDFium document tiles; Home scenes have no document or PDF requests. Native window presentation and physical GPU interaction are not covered.",
+        "qualification": "Actual application Home, reader, settings and register dialogs rendered offscreen with DX12 WARP. Document scenes use real PDFium tiles; Home scenes have no document or PDF requests. Register previews are computed by the core through application requests. Native window presentation and physical GPU interaction are not covered.",
         "adapter": { "name": info.name, "backend": format!("{:?}", info.backend), "deviceType": format!("{:?}", info.device_type) },
         "fixture": "crates/sunipdf-core/tests/fixtures/two-pages.pdf", "fixtureSha256": fixture_sha,
         "fixtureUnchanged": true, "scenes": results
         , "tableFixture": { "source": "same two-page fixture, prepared only in memory", "countGroup": "Fixture equipment", "count": 1, "lengthMetres": 10 }
+        , "registerFixture": { "pdf": "register-dialog-fixture.pdf", "sha256": register_fixture_sha, "annotationCount": 2, "sourceUnchanged": true }
     }))
 }
 
@@ -1659,5 +2384,5 @@ fn reader_ui_dx12_warp_evidence() {
     if let Err(error) = result {
         panic!("Reader UI evidence failed: {error}");
     }
-    eprintln!("Reader UI offscreen evidence PASS: 16 actual application scenes (3 Home, 11 reader, 2 settings)");
+    eprintln!("Reader UI offscreen evidence PASS: 20 actual application scenes (3 Home, 11 reader, 2 settings, 4 register dialogs)");
 }

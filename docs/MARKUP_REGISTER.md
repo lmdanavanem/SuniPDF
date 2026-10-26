@@ -28,6 +28,26 @@ Only supported manual SuniPDF markers are counted. Generic imported stamps and p
 
 The table displays 50 rows at a time; exports include **every matching row**. Refresh reloads the current snapshot. An edit checks snapshot revision and annotation identity to prevent shifted-index or stale-target mistakes. Failed edits preserve the draft and add no successful Undo step.
 
+For explicit selection, before/after review and atomic changes across up to 256 annotations, see [Edit annotation fields in a batch](REGISTER_BATCH.md). Batch custom-field changes merge by key; the existing single-row editor replaces its submitted field map.
+
+Use [saved filters](REGISTER_FILTERS.md) to reuse named criteria and sorting. Applying one preserves the current page and zone scope and clears the explicit batch-edit selection.
+
+## Match a custom text field
+
+The [0.91 candidate](RELEASE_0.91.0.md) adds one optional exact key/value criterion. Use it with the existing filters to isolate annotations such as `Room = A-101`; a match in the comment or in another field does not satisfy this criterion.
+
+Open **Filters ? Custom text field**, choose **Add field filter**, then set **Field name** and **Exact text value**. Use **Clear field filter** to remove this criterion. The same controls are available in the quantity table.
+
+Key and value matching is literal and case-sensitive. An empty value matches a present empty field, while a missing key does not match. The criterion combines with the other filters using AND. Changing it clears an outstanding bulk-edit selection and preview; it does not select rows automatically or modify the document.
+
+The same criterion is available as `--field-equals KEY=VALUE` on `annotation-register`, `quantity-table` and `issue-report`. Additional equals signs belong to the value; `Room=` requests a present empty value. Quantity workbooks retain it in `options.quantities.filter.custom_field` through their existing settings/manifest workflow. It selects register text fields, not typed numeric quantity columns.
+
+```powershell
+sunipdf-cli annotation-register plan.pdf --field-equals "Room=A-101" --out room-review.json
+sunipdf-cli annotation-register plan.pdf --field-equals "Room=" --format csv --out unassigned-room.csv
+sunipdf-cli quantity-table plan.pdf --field-equals "Room=A-101" --out room-quantities.json
+```
+
 ## Export
 
 JSON schema `sunipdf-annotation-register`, version 1, records the current in-memory snapshot SHA256, page count, filters/sort, rows and group totals. Every total references actual markers by physical page, zero-based annotation index and `/NM`. Optional unknowns remain `null`; rectangles use displayed-page points with bottom-left origin.

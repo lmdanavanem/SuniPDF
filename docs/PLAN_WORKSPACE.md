@@ -17,11 +17,29 @@ Content and resource traversal each have a 32 MiB aggregate limit, with an 8 MiB
 
 ## Place a rectangle with real dimensions
 
-The [dimensioned rectangle workflow](MEASUREMENTS.md#dimensioned-rectangles) uses the same scale sources and page coordinates. Enter width and height, choose a scale explicitly and place the lower-left anchor. The rectangle remains aligned to the displayed page axes, including rotated or cropped pages. Only its anchor snaps; dimensions stay fixed through the placement preview. Review the candidate before applying it as an ordinary four-vertex area measurement.
+The [dimensioned rectangle workflow](MEASUREMENTS.md#dimensioned-rectangles) uses the same scale sources and page coordinates. Enter width and height, choose a scale explicitly and place the lower-left anchor. In the 0.91 candidate workflow, an explicit clockwise angle rotates the rectangle around that anchor; zero degrees retains alignment with the displayed page axes. Only its anchor snaps; dimensions follow the rotated sides and stay fixed through the placement preview. Review the candidate before applying it as an ordinary four-vertex area measurement.
 
 Region selection validates the whole rectangle, including boundary crossings and enclosed regions. Automatic selection never chooses an arbitrary overlapping region. A saved page scale is an explicit override; a temporary reference must still match the captured content, geometry, scales and protection. Annotation-only changes may retain the local reference; applying a prepared candidate still requires its complete source state to match. Invalid geometry, an unavailable scale, unsupported page units or insufficient PDF permissions refuse the operation without adding an annotation. Save/reopen and quantity exports use the measurement's own persisted scale and provenance, independent of later page-default changes.
 
-This increment covers axis-aligned rectangles. Subsequent polygon editing is unconstrained; circles remain a separate backlog item. The rectangle increment is published in [0.62.0](RELEASE_0.62.0.md). Deducted areas and constant-depth volumes belong to the [0.63.0 candidate](MEASUREMENT_VOLUMES.md), with their own qualification gates.
+The angle can be changed before placement or in the preview. Changing it invalidates the prepared result until it is previewed again. Finite input is normalized from zero inclusive to 360 exclusive; negative angles turn in the opposite direction. Every rotated vertex and its stored-coordinate precision must pass the same page and scale checks.
+
+The original axis-aligned increment is published in [0.62.0](RELEASE_0.62.0.md); [0.91 rotation qualification](RELEASE_0.91.0.md) remains in progress. Rotation persists through the four saved vertices, not permanent rectangle constraints. Subsequent polygon editing is unconstrained; exact circles remain a separate backlog item. [Deducted areas and constant-depth volumes](MEASUREMENT_VOLUMES.md) retain their own qualification scope.
+
+## Place a dimensioned circle or ellipse
+
+The [0.91 candidate](DIMENSIONED_ELLIPSES.md) adds a centre and diameter(s), with
+an optional clockwise angle, to the same calibrated preview workflow. It creates
+an editable 128-vertex area approximation. The visible approximation and actual
+saved polygon area remain explicit; it does not introduce analytic curves or
+permanent shape constraints. Package qualification is pending.
+
+## Place a segment with a real length
+
+The [0.91 candidate segment workflow](DIMENSIONED_SEGMENTS.md) accepts a starting
+point, physical length and clockwise angle. Review the open line before applying
+it as a two-endpoint length measurement. The complete segment follows the same
+scale and source guards; quantities use its stored length. Package qualification
+is pending.
 
 ## Recalibrate a selected batch
 
@@ -49,6 +67,7 @@ sunipdf-cli recalibrate-measurements input.pdf --requests recalibration.json
 sunipdf-cli recalibrate-measurements input.pdf --requests recalibration.json --out recalibrated.pdf
 sunipdf-cli measurement-snap input.pdf --page 1 --point "210,320" --tolerance 5
 sunipdf-cli dimensioned-rectangle input.pdf --page 1 --anchor "40,80" --width 2 --height 3 --unit m --use-page-calibration --out rectangle.pdf
+sunipdf-cli dimensioned-rectangle input.pdf --page 1 --anchor "200,300" --width 2 --height 3 --unit m --rotation-degrees 35 --use-page-calibration --out rotated-rectangle.pdf
 ```
 
 The `expected` and `regions` files contain arrays. A region has exactly `id`, `name`, `bounds` (`[left,bottom,right,top]`) and `calibration` (`points`, `known_distance`, `unit`). The reference points use displayed-page coordinates, bottom-left origin. Use the `regions` array from the read command as the exact expected state. Each JSON file is limited to 128 KiB.

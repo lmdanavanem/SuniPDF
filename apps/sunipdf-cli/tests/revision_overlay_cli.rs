@@ -71,6 +71,253 @@ fn png(path: &Path) -> image::RgbaImage {
     image::load_from_memory(&bytes).unwrap().into_rgba8()
 }
 
+fn stack(manifest: &Path, out: &Path, format: &str) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_sunipdf-cli"));
+    command
+        .arg("revision-overlay-stack")
+        .arg("--manifest")
+        .arg(manifest)
+        .args(["--format", format, "--out"])
+        .arg(out);
+    command
+}
+
+#[test]
+fn saved_overlay_setups_relocate_with_sources_preserve_pixels_and_refuse_changed_hidden_layers() {
+    use sunipdf_core::revision_overlay::recipe;
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let names = ["base.pdf", "revision.pdf", "hidden.pdf", "detail.pdf"];
+    let mut originals = Vec::new();
+    for (index, name) in names.iter().enumerate() {
+        let path = root.join(name);
+        seed(&path, index as i64 * 90);
+        originals.push(std::fs::read(path).unwrap());
+    }
+    let input = root.join("input.json");
+    let value = serde_json::json!({"version":1,"long_side":128,"layers":[
+        {"path":names[0],"color":[180,30,40],"opacity":0.9},
+        {"path":names[1],"color":[20,130,230],"opacity":0.4,
+         "alignment":{"mode":"manual","transform":{"scale":0.8,"rotation_degrees":13.0,"translation":[15.0,-8.0]}}},
+        {"path":names[2],"visible":false},
+        {"path":names[3],"color":[30,190,80],"opacity":0.6}
+    ]});
+    std::fs::write(&input, serde_json::to_vec(&value).unwrap()).unwrap();
+    let expected = root.join("expected.png");
+    let before = success(stack(&input, &expected, "png").output().unwrap());
+    let setup = root.join("review.setup.json");
+    let saved = success(stack(&input, &setup, "setup").output().unwrap());
+    assert_eq!(saved["format"], "setup");
+    assert_eq!(saved["originals_unchanged"], true);
+    let setup_bytes = std::fs::read(&setup).unwrap();
+    let loaded = recipe::parse(&setup_bytes).unwrap();
+    recipe::require_desktop(&loaded).unwrap();
+    assert_eq!(loaded.layers.len(), 4);
+    assert_eq!(loaded.long_side, 128);
+    for (index, layer) in loaded.layers.iter().enumerate() {
+        assert_eq!(layer.path, Path::new(names[index]));
+        assert_eq!(
+            layer.expected_sha256.as_deref(),
+            before["report"]["layers"][index]["source"]["source_sha256"].as_str()
+        );
+        assert!(layer.password_env.is_none());
+    }
+    assert_eq!(loaded.layers[2].visible, Some(false));
+    assert!(!String::from_utf8_lossy(&setup_bytes).contains("password_env"));
+    let moved = root.join("relocated");
+    std::fs::create_dir(&moved).unwrap();
+    for (name, original) in names.iter().zip(&originals) {
+        std::fs::write(moved.join(name), original).unwrap();
+    }
+    let moved_setup = moved.join("review.setup.json");
+    std::fs::write(&moved_setup, &setup_bytes).unwrap();
+    let moved_png = moved.join("same.png");
+    success(stack(&moved_setup, &moved_png, "png").output().unwrap());
+    assert_eq!(png(&moved_png), png(&expected));
+    failure(
+        stack(&input, &setup, "setup")
+            .arg("--overwrite")
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(std::fs::read(&setup).unwrap(), setup_bytes);
+    let mut changed = originals[2].clone();
+    changed.extend_from_slice(b"\n% Changed hidden source\n");
+    std::fs::write(moved.join(names[2]), changed).unwrap();
+    for format in ["png", "json", "setup"] {
+        let refused = moved.join(format!("refused-{format}"));
+        failure(stack(&moved_setup, &refused, format).output().unwrap());
+        assert!(!refused.exists());
+    }
+    for (name, original) in names.iter().zip(originals) {
+        assert_eq!(std::fs::read(root.join(name)).unwrap(), original);
+    }
+}
+
+#[test]
+fn saved_overlay_setup_omits_protected_layer_credentials_and_requires_them_again() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let source = root.join("plain.pdf");
+    seed(&source, 0);
+    let plain = std::fs::read(&source).unwrap();
+    let user = format!("overlay-setup-user-{}", std::process::id());
+    let owner = format!("overlay-setup-owner-{}", std::process::id());
+    let encrypted = root.join("protected.pdf");
+    protected(&encrypted, &plain, &user, &owner, true, true);
+    let input = root.join("protected-input.json");
+    std::fs::write(
+        &input,
+        serde_json::to_vec(&serde_json::json!({"version":1,"long_side":128,"layers":[
+            {"path":"plain.pdf"},
+            {"path":"protected.pdf","password_env":"SUNIPDF_SETUP_TEST_SECRET"}
+        ]}))
+        .unwrap(),
+    )
+    .unwrap();
+    let setup = root.join("protected.setup.json");
+    success(
+        stack(&input, &setup, "setup")
+            .env("SUNIPDF_SETUP_TEST_SECRET", &user)
+            .output()
+            .unwrap(),
+    );
+    let bytes = std::fs::read(&setup).unwrap();
+    let text = String::from_utf8(bytes.clone()).unwrap();
+    for secret in [
+        user.as_str(),
+        owner.as_str(),
+        "SUNIPDF_SETUP_TEST_SECRET",
+        "password_env",
+    ] {
+        assert!(!text.contains(secret));
+    }
+    let manifest = sunipdf_core::revision_overlay::recipe::parse(&bytes).unwrap();
+    sunipdf_core::revision_overlay::recipe::require_desktop(&manifest).unwrap();
+    let output = root.join("needs-password.png");
+    failure(
+        stack(&setup, &output, "png")
+            .env("SUNIPDF_SETUP_TEST_SECRET", &user)
+            .output()
+            .unwrap(),
+    );
+    assert!(!output.exists());
+    assert_eq!(std::fs::read(&setup).unwrap(), bytes);
+    assert_eq!(std::fs::read(&source).unwrap(), plain);
+}
+
+#[test]
+fn stack_manifest_preserves_legacy_pixels_and_controls_each_added_layer() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let source = root.join("page.pdf");
+    seed(&source, 90);
+    let original = std::fs::read(&source).unwrap();
+    let legacy = root.join("legacy.png");
+    success(cli(&source, &source, &legacy, "png").output().unwrap());
+    let manifest = root.join("layers.json");
+    let mut recipe = serde_json::json!({"version":1,"long_side":128,"layers":[{"path":"page.pdf"},{"path":"page.pdf"}]});
+    std::fs::write(&manifest, serde_json::to_vec(&recipe).unwrap()).unwrap();
+    let two = root.join("two.png");
+    let result = success(stack(&manifest, &two, "png").output().unwrap());
+    assert_eq!(png(&two), png(&legacy));
+    assert_eq!(result["report"]["schema"], "sunipdf-revision-overlay-stack");
+    assert_eq!(result["report"]["layers"].as_array().unwrap().len(), 2);
+    let hash = result["report"]["layers"][0]["source"]["source_sha256"].clone();
+    recipe["layers"][0]["expected_sha256"] = hash;
+    recipe["layers"].as_array_mut().unwrap().extend([
+        serde_json::json!({"path":"page.pdf","color":[0,180,70],"opacity":0.7}),
+        serde_json::json!({"path":"page.pdf","color":[255,140,0],"opacity":0.5}),
+    ]);
+    std::fs::write(&manifest, serde_json::to_vec(&recipe).unwrap()).unwrap();
+    let four = root.join("four.png");
+    let result = success(stack(&manifest, &four, "png").output().unwrap());
+    assert_eq!(result["report"]["layers"].as_array().unwrap().len(), 4);
+    assert_ne!(png(&four), png(&two));
+    let report = root.join("four.json");
+    let exported = success(stack(&manifest, &report, "json").output().unwrap());
+    let saved: Value = serde_json::from_slice(&std::fs::read(report).unwrap()).unwrap();
+    assert_eq!(saved, exported["report"]);
+    assert_eq!(saved, result["report"]);
+    recipe["layers"][2]["visible"] = false.into();
+    recipe["layers"][3]["opacity"] = 0.into();
+    std::fs::write(&manifest, serde_json::to_vec(&recipe).unwrap()).unwrap();
+    let isolated = root.join("isolated.png");
+    success(stack(&manifest, &isolated, "png").output().unwrap());
+    assert_eq!(png(&isolated), png(&two));
+    assert_eq!(std::fs::read(&source).unwrap(), original);
+    let before = std::fs::read(&four).unwrap();
+    failure(
+        stack(&manifest, &four, "png")
+            .arg("--overwrite")
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(std::fs::read(&four).unwrap(), before);
+    recipe["layers"][0]["expected_sha256"] = "0".repeat(64).into();
+    std::fs::write(&manifest, serde_json::to_vec(&recipe).unwrap()).unwrap();
+    let refused = root.join("stale.png");
+    failure(stack(&manifest, &refused, "png").output().unwrap());
+    assert!(!refused.exists());
+}
+
+#[test]
+fn stack_manifest_checks_hidden_layer_permissions_and_independent_secret_sources() {
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let source = root.join("page.pdf");
+    seed(&source, 0);
+    let bytes = std::fs::read(&source).unwrap();
+    let user = format!("stack-user-{}", std::process::id());
+    let owner = format!("stack-owner-{}", std::process::id());
+    let protected_path = root.join("protected.pdf");
+    protected(&protected_path, &bytes, &user, &owner, true, true);
+    let restricted_path = root.join("restricted.pdf");
+    protected(&restricted_path, &bytes, &user, &owner, false, false);
+    let manifest = root.join("layers.json");
+    let mut recipe = serde_json::json!({"version":1,"long_side":128,"layers":[
+        {"path":"page.pdf"},
+        {"path":"protected.pdf","password_env":"SUNIPDF_STACK_TEST_SECRET"}
+    ]});
+    std::fs::write(&manifest, serde_json::to_vec(&recipe).unwrap()).unwrap();
+    let output = root.join("allowed.png");
+    let result = success(
+        stack(&manifest, &output, "png")
+            .env("SUNIPDF_STACK_TEST_SECRET", &user)
+            .output()
+            .unwrap(),
+    );
+    assert!(!result.to_string().contains(&user));
+    assert!(!result.to_string().contains("SUNIPDF_STACK_TEST_SECRET"));
+    recipe["layers"][1]["path"] = "restricted.pdf".into();
+    recipe["layers"][1]["visible"] = false.into();
+    std::fs::write(&manifest, serde_json::to_vec(&recipe).unwrap()).unwrap();
+    let refused = root.join("refused.png");
+    failure(
+        stack(&manifest, &refused, "png")
+            .env("SUNIPDF_STACK_TEST_SECRET", &user)
+            .output()
+            .unwrap(),
+    );
+    assert!(!refused.exists());
+    failure(
+        stack(&manifest, &refused, "png")
+            .env_remove("SUNIPDF_STACK_TEST_SECRET")
+            .output()
+            .unwrap(),
+    );
+    assert!(!refused.exists());
+    failure(
+        stack(&manifest, &refused, "png")
+            .args(["--password-env", "SUNIPDF_STACK_TEST_SECRET"])
+            .env("SUNIPDF_STACK_TEST_SECRET", &user)
+            .output()
+            .unwrap(),
+    );
+    assert!(!refused.exists());
+    assert_eq!(std::fs::read(source).unwrap(), bytes);
+}
+
 #[test]
 fn exports_identity_overlay_with_crop_rotation_source_hashes_and_unchanged_inputs() {
     let directory = tempfile::tempdir().unwrap();

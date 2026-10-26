@@ -4,6 +4,8 @@
 mod annot_cmd;
 mod boundary_fill_cmd;
 mod calibration_cmd;
+mod dimensioned_ellipse_cmd;
+mod dimensioned_segment_cmd;
 mod dimensioned_shape_cmd;
 mod feature_cmd;
 mod issue_report_cmd;
@@ -12,12 +14,14 @@ mod measurement_cmd;
 mod measurement_workspace_cmd;
 mod output;
 mod overlay_cmd;
+mod overlay_stack_cmd;
 mod password_input;
 mod plan_links_cmd;
 mod plan_set_cmd;
 mod plan_zones_cmd;
 mod quantity_cmd;
 mod quantity_workbook_cmd;
+mod register_batch_cmd;
 mod register_cmd;
 mod revision_outlines_cmd;
 mod revision_transfer_cmd;
@@ -64,6 +68,8 @@ enum Command {
     QuantityWorkbook(quantity_workbook_cmd::QuantityWorkbookArgs),
     /// Overlay two explicitly aligned PDF pages as a new PNG or source-bound JSON report.
     RevisionOverlay(overlay_cmd::OverlayArgs),
+    /// Combine two to four independently aligned local PDF pages as PNG or source-bound JSON.
+    RevisionOverlayStack(overlay_stack_cmd::OverlayStackArgs),
     /// Inspect, preview and transfer compatible annotations between explicitly paired saved revisions.
     RevisionTransfer(revision_transfer_cmd::RevisionTransferArgs),
     /// Review raster difference regions and create classified revision outlines in a new PDF copy.
@@ -88,6 +94,8 @@ enum Command {
     AnnotationRegister(register_cmd::RegisterArgs),
     /// Replace business/custom fields or regroup a count marker in a new PDF copy.
     AnnotationFields(register_cmd::FieldsArgs),
+    /// Preview and atomically patch business/custom text fields on explicitly selected annotations.
+    AnnotationFieldsBatch(register_batch_cmd::RegisterBatchArgs),
     /// Read persisted page calibration as JSON. Existing measurements keep their own scale.
     PageCalibration(calibration_cmd::ReadArgs),
     /// Persist a page scale for new measurements in a new PDF copy; never recalculate annotations.
@@ -106,8 +114,14 @@ enum Command {
     RecalibrateMeasurements(measurement_workspace_cmd::RecalibrateArgs),
     /// Find a real vector endpoint or straight-segment intersection near a displayed point.
     MeasurementSnap(measurement_workspace_cmd::SnapArgs),
-    /// Place an axis-aligned rectangle using real dimensions and an explicit scale source.
+    /// Place a clockwise-rotated rectangle using real dimensions and an explicit scale source.
     DimensionedRectangle(dimensioned_shape_cmd::RectangleArgs),
+    /// Create a calibrated segment from a start, physical length and clockwise angle.
+    DimensionedSegment(dimensioned_segment_cmd::SegmentArgs),
+    /// Create an editable 128-segment circular area using a real diameter and explicit scale.
+    DimensionedCircle(dimensioned_ellipse_cmd::CircleArgs),
+    /// Create an editable 128-segment elliptical area using real diameters and explicit scale.
+    DimensionedEllipse(dimensioned_ellipse_cmd::EllipseArgs),
     /// Add a calibrated measurement annotation in a new PDF copy.
     Measure {
         file: PathBuf,
@@ -1624,6 +1638,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         }
         Command::Count(args) => register_cmd::count(&engine, args),
         Command::RevisionOverlay(args) => overlay_cmd::run(&engine, args),
+        Command::RevisionOverlayStack(args) => overlay_stack_cmd::run(&engine, args),
         Command::RevisionTransfer(args) => revision_transfer_cmd::run(&engine, args),
         Command::RevisionOutlines(args) => revision_outlines_cmd::run(&engine, args),
         Command::PlanZones(args) => plan_zones_cmd::run(&engine, args),
@@ -1636,6 +1651,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         Command::ClearQuantityFields(args) => quantity_cmd::clear(&engine, args),
         Command::AnnotationRegister(args) => register_cmd::register(&engine, args),
         Command::AnnotationFields(args) => register_cmd::fields(&engine, args),
+        Command::AnnotationFieldsBatch(args) => register_batch_cmd::run(&engine, args),
         Command::ImageStamp {
             file,
             image,
@@ -1675,6 +1691,9 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         }
         Command::MeasurementSnap(args) => measurement_workspace_cmd::snap(&engine, args),
         Command::DimensionedRectangle(args) => dimensioned_shape_cmd::rectangle(&engine, args),
+        Command::DimensionedSegment(args) => dimensioned_segment_cmd::segment(&engine, args),
+        Command::DimensionedCircle(args) => dimensioned_ellipse_cmd::circle(&engine, args),
+        Command::DimensionedEllipse(args) => dimensioned_ellipse_cmd::ellipse(&engine, args),
         Command::Measure {
             file,
             kind,
@@ -3044,6 +3063,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
 fn output_path(command: &Command) -> Option<&std::path::Path> {
     match command {
         Command::RevisionOverlay(args) => Some(&args.out),
+        Command::RevisionOverlayStack(args) => Some(&args.out),
         Command::RevisionTransfer(args) => args.output_path(),
         Command::RevisionOutlines(args) => args.output_path(),
         Command::PlanZones(args) => args.output_path(),
@@ -3059,11 +3079,15 @@ fn output_path(command: &Command) -> Option<&std::path::Path> {
         Command::PlanLinks(args) => args.output_path(),
         Command::Count(args) => Some(&args.out),
         Command::AnnotationFields(args) => Some(&args.out),
+        Command::AnnotationFieldsBatch(args) => args.output_path(),
         Command::AnnotationRegister(args) => args.out.as_deref(),
         Command::SetPageCalibration(args) => Some(&args.out),
         Command::RemovePageCalibration(args) => Some(&args.out),
         Command::EditMeasurement(args) => Some(&args.out),
         Command::DimensionedRectangle(args) => Some(&args.out),
+        Command::DimensionedSegment(args) => Some(&args.out),
+        Command::DimensionedCircle(args) => Some(&args.common.out),
+        Command::DimensionedEllipse(args) => Some(&args.common.out),
         Command::SetMeasurementViewports(args) => Some(&args.out),
         Command::ClearMeasurementViewports(args) => Some(&args.out),
         Command::RecalibrateMeasurements(args) => args.out.as_deref(),
@@ -3740,6 +3764,41 @@ mod tests {
             "--use-page-calibration",
         ])
         .is_err());
+    }
+
+    #[test]
+    fn dimensioned_rectangle_rotation_defaults_to_zero_normalizes_and_rejects_nonfinite_input() {
+        let base = [
+            "sunipdf-cli",
+            "dimensioned-rectangle",
+            "source.pdf",
+            "--anchor",
+            "220,260",
+            "--width",
+            "0.8",
+            "--height",
+            "1.1",
+            "--out",
+            "copy.pdf",
+            "--use-page-calibration",
+        ];
+        let Command::DimensionedRectangle(defaults) = parse_cli(base).unwrap().command else {
+            panic!("rectangle command expected")
+        };
+        assert_eq!(defaults.rotation_degrees, 0.0);
+        for (value, expected) in [("-90", 270.0), ("450", 90.0), ("37.5", 37.5)] {
+            let Command::DimensionedRectangle(args) =
+                parse_cli(base.into_iter().chain(["--rotation-degrees", value]))
+                    .unwrap()
+                    .command
+            else {
+                panic!("rectangle command expected")
+            };
+            assert_eq!(args.rotation_degrees, expected);
+        }
+        for value in ["NaN", "inf", "-inf", "1e999", "clockwise"] {
+            assert!(parse_cli(base.into_iter().chain(["--rotation-degrees", value])).is_err());
+        }
     }
 
     #[test]

@@ -124,8 +124,9 @@ jobs:
           name: performance-windows-x64
           path: target/performance-evidence/
           if-no-files-found: warn
+      # Failed PR workspace tests cannot qualify follow-up gates; retain their logs below.
       - name: Reader interface layout and DX12 software rendering
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-reader-ui-evidence.ps1
       - name: Reader interface evidence
         if: steps.changes.outputs.docs_only != 'true' && always()
@@ -135,7 +136,7 @@ jobs:
           path: target/reader-ui-evidence/
           if-no-files-found: error
       - name: Pinned independent font reader
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: |
           .\scripts\fetch-test-mupdf.ps1
           python .\scripts\test-font-reader.py --mutool target/test-mupdf/1.28.5/mutool.exe --directory target/font-embedding-evidence
@@ -151,7 +152,7 @@ jobs:
             target/font-embedding-evidence/
           if-no-files-found: ignore
       - name: Native DX12 software renderer and texture limits
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-built-ci-test.ps1 -TestName native_wgpu
       - name: Native renderer evidence
         if: steps.changes.outputs.docs_only != 'true' && always()
@@ -161,13 +162,13 @@ jobs:
           path: target/native-wgpu-evidence/
           if-no-files-found: ignore
       - name: Pinned independent QPDF checker
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\fetch-qpdf.ps1
       - name: Independent feature-reader checker self-test
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: python .\scripts\test-feature-reader.py --self-test
       - name: Rich annotation and document structure independent readers
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: |
           .\scripts\fetch-test-mupdf.ps1
           python .\scripts\test-feature-reader.py
@@ -182,27 +183,27 @@ jobs:
             target/feature-030-evidence/
           if-no-files-found: ignore
       - name: QPDF archive checksum self-test
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\fetch-qpdf.ps1 -SelfTest
       - name: Synthetic corpus and generated PDF structural checks
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-built-ci-test.ps1 -TestName qpdf_corpus
       - name: Real corpus checksum self-test
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\fetch-regression-corpus.ps1 -SelfTest
       - name: Pinned licensed real PDF corpus
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\fetch-regression-corpus.ps1
       - name: Real PDFs and independent output regression
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-built-ci-test.ps1 -TestName real_corpus
       - name: Pinned PDF 2.0 interoperability corpus
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: |
           .\scripts\fetch-regression-corpus.ps1 -Interop -SelfTest
           .\scripts\fetch-regression-corpus.ps1 -Interop
       - name: PDF 2.0 text, pixels, annotations and immutable sources
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-built-ci-test.ps1 -TestName interop_corpus
       - name: Interoperability and bounded mutation evidence
         if: steps.changes.outputs.docs_only != 'true' && always()
@@ -215,14 +216,14 @@ jobs:
           if-no-files-found: error
       - name: Restore pinned Office MSI only
         id: office_installer_cache
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: target/test-office-installer/installer.msi
           key: windows-x64-office-msi-v1-${{ hashFiles('scripts/test-libreoffice.json', 'scripts/fetch-test-libreoffice.ps1') }}
       - name: Pinned local Office converter on disposable runner
         id: office_converter
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: |
           pwsh -NoProfile -File .\scripts\fetch-test-libreoffice.ps1 -SelfTest
           if ($LASTEXITCODE -ne 0) { throw 'Office converter setup self-test failed.' }
@@ -237,7 +238,7 @@ jobs:
           path: target/test-office-installer/installer.msi
           key: ${{ steps.office_installer_cache.outputs.cache-primary-key }}
       - name: Measured licensed Office exports and local converter profiles
-        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped'
+        if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         env:
           SUNIPDF_REQUIRE_OFFICE_CONVERTER: '1'
         run: |
@@ -292,6 +293,19 @@ jobs:
           name: revision-batch-evidence
           path: target/revision-batch-evidence/
           if-no-files-found: ignore
+      - name: Rotated rectangle independent geometry checks
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-rotated-rectangles.py --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --directory target\rotated-rectangle-evidence
+          if ($LASTEXITCODE -ne 0) { throw 'Rotated rectangle geometry regression failed.' }
+      - name: Rotated rectangle evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: rotated-rectangle-evidence
+          path: target/rotated-rectangle-evidence/
+          if-no-files-found: ignore
       - name: PDF inspection regression
         if: steps.changes.outputs.docs_only != 'true'
         run: |
@@ -317,6 +331,130 @@ jobs:
         with:
           name: visual-signature-evidence
           path: target/visual-signature-report.json
+          if-no-files-found: ignore
+      - name: Overlay stack independent pixel checks
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          python .\scripts\test-overlay-stack.py --cli "$env:SUNIPDF_QA_CLI" --directory target\overlay-stack-evidence --expected-version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Overlay stack pixel regression failed.' }
+      - name: Overlay stack evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: overlay-stack-evidence
+          path: target/overlay-stack-evidence/
+          if-no-files-found: ignore
+      - name: Saved stamp library independent appearance checks
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-saved-stamp-library.py --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --directory target\saved-stamp-evidence --expected-version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Saved stamp library appearance regression failed.' }
+      - name: Saved stamp library evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: saved-stamp-evidence
+          path: target/saved-stamp-evidence/
+          if-no-files-found: ignore
+      - name: Saved overlay setup round trips and source bindings
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          python .\scripts\test-overlay-setups.py --cli "$env:SUNIPDF_QA_CLI" --directory target\overlay-setup-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Saved overlay setup regression failed.' }
+      - name: Saved overlay setup evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: overlay-setup-evidence
+          path: target/overlay-setup-evidence/
+          if-no-files-found: ignore
+      - name: Formula unit conversion independent decimal and export checks
+        if: steps.changes.outputs.docs_only != 'true'
+        timeout-minutes: 6
+        run: |
+          python .\scripts\test-formula-unit-conversion.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Formula conversion oracle and fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          python .\scripts\test-formula-unit-conversion.py --cli "$env:SUNIPDF_QA_CLI" --directory target\formula-unit-conversion-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Formula unit conversion regression failed.' }
+      - name: Formula unit conversion evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: formula-unit-conversion-evidence
+          path: target/formula-unit-conversion-evidence/
+          if-no-files-found: ignore
+      - name: Annotation field batch independent saved-object checks
+        if: steps.changes.outputs.docs_only != 'true'
+        timeout-minutes: 6
+        run: |
+          python .\scripts\test-register-field-batch.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Register batch fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-register-field-batch.py --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --directory target\register-field-batch-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Register field batch regression failed.' }
+      - name: Annotation field batch evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: register-field-batch-evidence
+          path: target/register-field-batch-evidence/
+          if-no-files-found: ignore
+      - name: Saved text library independent appearance checks
+        if: steps.changes.outputs.docs_only != 'true'
+        timeout-minutes: 6
+        run: |
+          python .\scripts\test-saved-text-library.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Saved text library fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-saved-text-library.py --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --directory target\saved-text-library-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Saved text library regression failed.' }
+      - name: Saved text library evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: saved-text-library-evidence
+          path: target/saved-text-library-evidence/
+          if-no-files-found: ignore
+      - name: Dimensioned circle and ellipse independent geometry checks
+        if: steps.changes.outputs.docs_only != 'true'
+        timeout-minutes: 12
+        run: |
+          python .\scripts\test-dimensioned-ellipses-offline.py
+          if ($LASTEXITCODE -ne 0) { throw 'Dimensioned ellipse fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-dimensioned-ellipses.py --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --directory target\dimensioned-ellipse-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Dimensioned ellipse geometry regression failed.' }
+      - name: Dimensioned circle and ellipse evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: dimensioned-ellipse-evidence
+          path: target/dimensioned-ellipse-evidence/
+          if-no-files-found: ignore
+      - name: Dimensioned segment independent geometry checks
+        if: steps.changes.outputs.docs_only != 'true'
+        timeout-minutes: 12
+        run: |
+          python .\scripts\test-dimensioned-segments-offline.py
+          if ($LASTEXITCODE -ne 0) { throw 'Dimensioned segment fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-dimensioned-segments.py --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --directory target\dimensioned-segment-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Dimensioned segment geometry regression failed.' }
+      - name: Dimensioned segment evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: dimensioned-segment-evidence
+          path: target/dimensioned-segment-evidence/
           if-no-files-found: ignore
       - name: Page decorations regression
         if: steps.changes.outputs.docs_only != 'true'
@@ -410,6 +548,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.76.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.77.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.78.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.79.0
       - name: MSI upgrade regression evidence
         if: steps.changes.outputs.docs_only != 'true' && always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

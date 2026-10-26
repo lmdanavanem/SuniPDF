@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Regression checks for Linux archive and executable package boundaries."""
 import importlib.util
+import ast
 import gzip
 import hashlib
 import io
@@ -10,7 +11,7 @@ import struct
 import tarfile
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 def load(filename):
@@ -27,6 +28,33 @@ plan_fixture = load("native-plan-link-fixture.py")
 
 
 class LinuxPackagingTests(unittest.TestCase):
+    def test_portal_activation_session_inherits_the_virtual_display_as_the_test_user(self):
+        path = Path(__file__).with_name("test-deb.py")
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        lifecycle = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "lifecycle")
+        launches = [node for node in ast.walk(lifecycle) if isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name) and node.func.id == "command"
+                    and any(isinstance(part, ast.Constant) and part.value == "dbus-run-session"
+                            for part in ast.walk(node))]
+        self.assertEqual(len(launches), 1)
+        command = Mock()
+        environment = ["env", "HOME=/home/sunipdf-test", "XDG_RUNTIME_DIR=/home/sunipdf-test/.runtime",
+                       "GITHUB_SHA=" + "1" * 40]
+        evidence = Path("offline-evidence")
+        namespace = {"command": command, "ACCOUNT": "sunipdf-test", "environment": environment,
+                     "__file__": str(path), "version": "0.91.0", "evidence": evidence}
+        exec(compile(ast.Expression(launches[0]), str(path), "eval"), namespace)
+        arguments = command.call_args.args[0]
+        self.assertEqual(arguments[:4], ["runuser", "-u", "sunipdf-test", "--"])
+        self.assertEqual(arguments[4:4 + len(environment)], environment)
+        display = arguments.index("xvfb-run")
+        bus = arguments.index("dbus-run-session")
+        self.assertLess(display, bus, "Portal activation must inherit DISPLAY/XAUTHORITY from Xvfb")
+        self.assertEqual(arguments[display:bus], ["xvfb-run", "-a", "-s", "-screen 0 1400x1000x24 -dpi 96"])
+        self.assertEqual(arguments[bus:], ["dbus-run-session", "--", "python3", str(path), "--runtime",
+                                          "--version", "0.91.0", "--evidence", evidence])
+        self.assertEqual(command.call_args.kwargs, {"timeout": 1200})
+
     def test_plan_fixture_records_the_binary_separately_from_the_installed_launcher(self):
         with tempfile.TemporaryDirectory() as directory:
             launcher = Path(directory) / "sunipdf-cli"

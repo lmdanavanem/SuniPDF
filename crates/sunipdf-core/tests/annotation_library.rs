@@ -8,6 +8,9 @@ use sunipdf_core::{security, AnnotShape, AnnotStyle, Engine, EngineError, PointR
 
 const SOURCE: &[u8] = include_bytes!("fixtures/two-pages.pdf");
 
+#[path = "annotation_library/saved_stamps.rs"]
+mod saved_stamps;
+
 fn entry() -> LibraryEntry {
     let mut png = Cursor::new(Vec::new());
     image::RgbaImage::from_pixel(3, 2, image::Rgba([240, 30, 30, 180]))
@@ -82,6 +85,7 @@ fn normalized(
 fn annotation_library_placement_preview_atomicity_identity_rotation_and_encryption() {
     let engine = Engine::new().unwrap();
     saved_groups_capture_round_trip_and_refuse_stale_or_mixed_sources(&engine);
+    saved_stamps::round_trip_with_alpha_and_revision_isolation(&engine);
     let entry = entry();
     let placement = LibraryPlacement {
         origin: (40.0, 60.0),
@@ -457,15 +461,17 @@ fn saved_groups_capture_round_trip_and_refuse_stale_or_mixed_sources(engine: &En
             )
             .is_err());
         let unsupported = doc
-            .add_stamp_annotation(
+            .add_rich_free_text_annotation(
                 0,
+                None,
                 PointRect {
                     left: 40.0,
                     bottom: 310.0,
                     right: 150.0,
                     top: 340.0,
                 },
-                sunipdf_core::annot_rich::StampKind::Draft,
+                "Saved text",
+                &Default::default(),
                 None,
             )
             .unwrap();
@@ -480,8 +486,9 @@ fn saved_groups_capture_round_trip_and_refuse_stale_or_mixed_sources(engine: &En
             .is_err());
         let inventory = doc.library_capture_candidates(0).unwrap();
         assert!(
-            inventory[unsupported].fingerprint.is_none()
-                && inventory[unsupported].refusal.is_some()
+            inventory[unsupported].fingerprint.is_some()
+                && inventory[unsupported].refusal.is_none(),
+            "native saved text is reusable, but the supplied stale fingerprint is refused"
         );
         assert_eq!(
             normalized(&mixed_before, None),

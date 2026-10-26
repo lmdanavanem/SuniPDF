@@ -186,10 +186,12 @@ def install(package, digest, version, size):
     validate_request(package, digest, version, size)
     current = installed_version()
     require(version_tuple(version) > version_tuple(current), "The update must be newer than the installed version.")
-    verify_public_release(digest, version, size)
     with tempfile.TemporaryDirectory(prefix="sunipdf-update-", dir="/var/tmp") as directory:
         stage = Path(directory) / Path(package).name
         copy_verified(package, stage, digest, size, caller_uid)
+        # Refuse invalid local bytes before consuming a public API request. The
+        # official digest still has to match before parsing or installing the DEB.
+        verify_public_release(digest, version, size)
         validate_package(stage, version)
         # Recheck after network/file work, before entering the package manager.
         current = installed_version()

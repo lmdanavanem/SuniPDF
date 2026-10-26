@@ -299,6 +299,153 @@ jobs:
           name: revision-batch-evidence
           path: target/revision-batch-evidence/
           if-no-files-found: ignore
+      - name: Packaged rotated rectangle independent geometry checks (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-rotated-rectangles.py --cli $cli --qpdf $qpdf --directory target\rotated-rectangle-evidence
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged rotated rectangle geometry regression failed.' }
+      - name: Rotated rectangle evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: rotated-rectangle-evidence
+          path: target/rotated-rectangle-evidence/
+          if-no-files-found: ignore
+      - name: Packaged overlay stack independent pixel checks (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          python .\scripts\test-overlay-stack.py --cli $cli --directory target\overlay-stack-evidence --expected-version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged overlay stack pixel regression failed.' }
+      - name: Overlay stack evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: overlay-stack-evidence
+          path: target/overlay-stack-evidence/
+          if-no-files-found: ignore
+      - name: Packaged saved stamp library independent appearance checks (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-saved-stamp-library.py --cli $cli --qpdf $qpdf --directory target\saved-stamp-evidence --expected-version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged saved stamp library appearance regression failed.' }
+      - name: Saved stamp library evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: saved-stamp-evidence
+          path: target/saved-stamp-evidence/
+          if-no-files-found: ignore
+      - name: Packaged overlay setup round trips and source bindings (x64)
+        if: matrix.arch == 'x64'
+        run: |
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          python .\scripts\test-overlay-setups.py --cli $cli --directory target\overlay-setup-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged overlay setup regression failed.' }
+      - name: Saved overlay setup evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: overlay-setup-evidence
+          path: target/overlay-setup-evidence/
+          if-no-files-found: ignore
+      - name: Packaged formula unit conversion independent decimal and export checks (x64)
+        if: matrix.arch == 'x64'
+        timeout-minutes: 6
+        run: |
+          python .\scripts\test-formula-unit-conversion.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Formula conversion oracle and fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          python .\scripts\test-formula-unit-conversion.py --cli $cli --directory target\formula-unit-conversion-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged formula unit conversion regression failed.' }
+      - name: Formula unit conversion evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: formula-unit-conversion-evidence
+          path: target/formula-unit-conversion-evidence/
+          if-no-files-found: ignore
+      - name: Packaged annotation field batch independent saved-object checks (x64)
+        if: matrix.arch == 'x64'
+        timeout-minutes: 6
+        run: |
+          python .\scripts\test-register-field-batch.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Register batch fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-register-field-batch.py --cli $cli --qpdf $qpdf --directory target\register-field-batch-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged register field batch regression failed.' }
+      - name: Annotation field batch evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: register-field-batch-evidence
+          path: target/register-field-batch-evidence/
+          if-no-files-found: ignore
+      - name: Packaged saved text library independent appearance checks (x64)
+        if: matrix.arch == 'x64'
+        timeout-minutes: 6
+        run: |
+          python .\scripts\test-saved-text-library.py --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Saved text library fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-saved-text-library.py --cli $cli --qpdf $qpdf --directory target\saved-text-library-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged saved text library regression failed.' }
+      - name: Saved text library evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: saved-text-library-evidence
+          path: target/saved-text-library-evidence/
+          if-no-files-found: ignore
+      - name: Packaged dimensioned circle and ellipse independent geometry checks (x64)
+        if: matrix.arch == 'x64'
+        timeout-minutes: 12
+        run: |
+          python .\scripts\test-dimensioned-ellipses-offline.py
+          if ($LASTEXITCODE -ne 0) { throw 'Dimensioned ellipse fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-dimensioned-ellipses.py --cli $cli --qpdf $qpdf --directory target\dimensioned-ellipse-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged dimensioned ellipse geometry regression failed.' }
+      - name: Dimensioned circle and ellipse evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: dimensioned-ellipse-evidence
+          path: target/dimensioned-ellipse-evidence/
+          if-no-files-found: ignore
+      - name: Packaged dimensioned segment independent geometry checks (x64)
+        if: matrix.arch == 'x64'
+        timeout-minutes: 12
+        run: |
+          python .\scripts\test-dimensioned-segments-offline.py
+          if ($LASTEXITCODE -ne 0) { throw 'Dimensioned segment fixture checks failed.' }
+          $version = (Select-String -LiteralPath Cargo.toml -Pattern '^version = "(.+)"' | Select-Object -First 1).Matches[0].Groups[1].Value
+          $cli = Join-Path (Get-Location) "dist/SuniPDF-$version-win-x64-portable/sunipdf-cli.exe"
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-dimensioned-segments.py --cli $cli --qpdf $qpdf --directory target\dimensioned-segment-evidence --expected-version $version --source-sha "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged dimensioned segment geometry regression failed.' }
+      - name: Dimensioned segment evidence (x64)
+        if: always() && matrix.arch == 'x64'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: dimensioned-segment-evidence
+          path: target/dimensioned-segment-evidence/
+          if-no-files-found: ignore
       - name: Release native-library loading boundary (x64)
         if: matrix.arch == 'x64'
         run: .\scripts\test-release-native-loading.ps1
@@ -379,6 +526,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.76.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.77.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.78.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.79.0
       - name: MSI upgrade regression evidence (x64)
         if: always() && matrix.arch == 'x64'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

@@ -8,6 +8,9 @@ use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read};
 
+mod capture_stamps;
+mod capture_text;
+
 pub const MAX_LIBRARY_BYTES: usize = 16 * 1024 * 1024;
 pub const MAX_LIBRARY_ENTRIES: usize = 64;
 pub const MAX_GROUP_PRIMITIVES: usize = 16;
@@ -376,6 +379,9 @@ impl LibraryPrimitive {
         let mut result = self.clone();
         result.translate(dx, dy);
         result.validate()?;
+        if matches!(self, Self::FreeText { .. }) {
+            capture_text::preserve_dimensions(self.bounds(), result.bounds(), 1.0)?;
+        }
         Ok(result)
     }
 
@@ -500,7 +506,11 @@ impl LibraryEntry {
         let bounds = self.bounds()?;
         let mut result = self.clone();
         for p in &mut result.primitives {
+            let original = p.bounds();
             p.translate(-bounds[0], -bounds[1]);
+            if matches!(p, LibraryPrimitive::FreeText { .. }) {
+                capture_text::preserve_dimensions(original, p.bounds(), 1.0)?;
+            }
         }
         result.validate()?;
         Ok(result)
@@ -1327,18 +1337,34 @@ fn capture_replied_indices(
 }
 
 fn capture_without_thread(
+    document: &Document<'_>,
     pdf: &lopdf::Document,
     dict: &lopdf::Dictionary,
     geo: &crate::geometry::PageGeometry,
     replies: &HashSet<usize>,
     index: usize,
+    purpose: CapturePurpose,
 ) -> Result<(LibraryPrimitive, String), EngineError> {
     if replies.contains(&index) {
         return Err(invalid(
             "annotations with replies or review history cannot be captured or transferred",
         ));
     }
+    if matches!(purpose, CapturePurpose::Library) {
+        match capture_subtype(dict).as_str() {
+            "Stamp" => return capture_stamps::capture(pdf, dict, geo),
+            "FreeText" => return capture_text::capture(document, pdf, dict, geo),
+            _ => {}
+        }
+    }
     capture_primitive(pdf, dict, geo)
+}
+
+/// Revision transfer deliberately supports only the original shape/vertex subset.
+#[derive(Clone, Copy)]
+enum CapturePurpose {
+    Original,
+    Library,
 }
 
 impl Document<'_> {
@@ -1388,7 +1414,15 @@ impl Document<'_> {
                             "annotation identity or author is not safely transferable",
                         ));
                     }
-                    capture_without_thread(&pdf, dict, &geo, &replies, index)
+                    capture_without_thread(
+                        self,
+                        &pdf,
+                        dict,
+                        &geo,
+                        &replies,
+                        index,
+                        CapturePurpose::Original,
+                    )
                 })();
                 let (primitive, fingerprint, refusal) = match captured {
                     Ok((primitive, fingerprint)) => (Some(primitive), Some(fingerprint), None),
@@ -1446,7 +1480,15 @@ impl Document<'_> {
             .map(|index| {
                 let dict = capture_annotation(&pdf, page_id, index)?;
                 let subtype = capture_subtype(dict);
-                let result = capture_without_thread(&pdf, dict, &geo, &replies, index);
+                let result = capture_without_thread(
+                    self,
+                    &pdf,
+                    dict,
+                    &geo,
+                    &replies,
+                    index,
+                    CapturePurpose::Library,
+                );
                 Ok(LibraryCaptureCandidate {
                     index,
                     subtype,
@@ -1485,8 +1527,15 @@ impl Document<'_> {
                 return Err(invalid("duplicate annotation selection"));
             }
             let dict = capture_annotation(&pdf, page_id, selected.index)?;
-            let (primitive, fingerprint) =
-                capture_without_thread(&pdf, dict, &geo, &replies, selected.index)?;
+            let (primitive, fingerprint) = capture_without_thread(
+                self,
+                &pdf,
+                dict,
+                &geo,
+                &replies,
+                selected.index,
+                CapturePurpose::Library,
+            )?;
             if fingerprint != selected.fingerprint {
                 return Err(invalid("source annotation changed; refresh the selection"));
             }
@@ -1599,14 +1648,22 @@ impl Document<'_> {
                     rect: r,
                     text,
                     style,
-                } => self.add_rich_free_text_annotation(
-                    page,
-                    None,
-                    rect(*r),
-                    text,
-                    &style.placed(placement.scale),
-                    author,
-                )?,
+                } => {
+                    let placed = rect(*r);
+                    capture_text::preserve_dimensions(
+                        *r,
+                        [placed.left, placed.bottom, placed.right, placed.top],
+                        placement.scale,
+                    )?;
+                    self.add_rich_free_text_annotation(
+                        page,
+                        None,
+                        placed,
+                        text,
+                        &style.placed(placement.scale),
+                        author,
+                    )?
+                }
                 LibraryPrimitive::Vertices {
                     vertex_kind,
                     points,

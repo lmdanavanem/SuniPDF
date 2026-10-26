@@ -3,7 +3,8 @@ use clap::{ArgGroup, Args};
 use std::path::PathBuf;
 use sunipdf_core::{
     measurement::{
-        parse_measurement_distance, DimensionedRectangle, MeasurementUnit, RectangleScale,
+        normalize_rectangle_rotation, parse_measurement_distance, DimensionedRectangle,
+        MeasurementUnit, RectangleScale,
     },
     Engine, EngineError, PageCalibration,
 };
@@ -13,7 +14,7 @@ use sunipdf_core::{
     .args(["calibration", "use_page_calibration", "region", "automatic_scale"])))]
 pub struct RectangleArgs {
     pub file: PathBuf,
-    /// Lower-left corner "x,y" in displayed-page points, after crop and rotation.
+    /// Fixed anchor "x,y" in displayed-page points; lower-left at zero rectangle rotation.
     #[arg(long)]
     pub anchor: String,
     /// Positive real width in --unit; feet/inches notation is also accepted.
@@ -22,6 +23,9 @@ pub struct RectangleArgs {
     /// Positive real height in --unit; feet/inches notation is also accepted.
     #[arg(long, allow_hyphen_values = true)]
     pub height: String,
+    /// Clockwise angle around --anchor; finite angles normalize to [0, 360).
+    #[arg(long, default_value_t = 0.0, allow_hyphen_values = true, value_parser = rotation_degrees)]
+    pub rotation_degrees: f64,
     #[arg(long, value_parser = ["mm", "cm", "m", "in", "ft"], default_value = "m")]
     pub unit: String,
     #[arg(long, default_value_t = 2, value_parser = clap::value_parser!(u8).range(0..=4))]
@@ -56,6 +60,13 @@ pub struct RectangleArgs {
     pub out: PathBuf,
     #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
     pub password: Option<String>,
+}
+
+fn rotation_degrees(value: &str) -> Result<f64, String> {
+    let value = value
+        .parse::<f64>()
+        .map_err(|_| "enter a finite angle".to_owned())?;
+    normalize_rectangle_rotation(value).map_err(|error| error.to_string())
 }
 
 pub fn rectangle(engine: &Engine, args: RectangleArgs) -> Result<serde_json::Value, EngineError> {
@@ -105,6 +116,7 @@ pub fn rectangle(engine: &Engine, args: RectangleArgs) -> Result<serde_json::Val
         anchor: anchor[0],
         width,
         height,
+        rotation_degrees: args.rotation_degrees,
         unit,
         precision: usize::from(args.precision),
         scale,
@@ -128,5 +140,6 @@ pub fn rectangle(engine: &Engine, args: RectangleArgs) -> Result<serde_json::Val
         "out": args.out, "page": args.page, "index": index,
         "measurement": exported, "export_unavailable": export_unavailable,
         "original_unchanged": true, "encrypted": doc.properties().encrypted,
+        "rotation_degrees": normalize_rectangle_rotation(args.rotation_degrees)?,
     }))
 }

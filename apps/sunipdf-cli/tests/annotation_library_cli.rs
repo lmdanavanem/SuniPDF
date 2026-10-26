@@ -122,7 +122,8 @@ fn capture_saved_annotations_requires_provenance_and_matching_fingerprints() {
     let rows = inventory["annotations"].as_array().unwrap();
     assert_eq!(rows.len(), 2);
     assert!(rows[0]["fingerprint"].as_str().is_some());
-    assert!(rows[1]["fingerprint"].is_null() && rows[1]["refusal"].as_str().is_some());
+    assert!(rows[1]["fingerprint"].as_str().is_some());
+    assert!(rows[1]["refusal"].is_null());
     let token = format!("0:{}", rows[0]["fingerprint"].as_str().unwrap());
     let output = directory.path().join("captured.json");
     let capture = |out: &Path, selection: &str| {
@@ -178,6 +179,119 @@ fn capture_saved_annotations_requires_provenance_and_matching_fingerprints() {
             .unwrap(),
     );
     assert_eq!(std::fs::read(&source).unwrap(), before);
+}
+
+#[test]
+fn saved_native_stamp_and_transparent_image_groups_survive_cli_capture_and_reuse() {
+    use std::io::Cursor;
+    use sunipdf_core::annotation_library::{AnnotationLibrary, EmbeddedPng, LibraryPrimitive};
+    let directory = tempfile::tempdir().unwrap();
+    let root = directory.path();
+    let mut image = image::RgbaImage::from_pixel(12, 8, image::Rgba([240, 30, 40, 180]));
+    image.put_pixel(0, 0, image::Rgba([0, 0, 0, 0]));
+    image.put_pixel(1, 0, image::Rgba([20, 180, 40, 255]));
+    let mut encoded = Cursor::new(Vec::new());
+    image
+        .write_to(&mut encoded, image::ImageFormat::Png)
+        .unwrap();
+    let embedded = EmbeddedPng::from_png_bytes(encoded.get_ref()).unwrap();
+    let mut entry = group("review", "Mixed saved symbol");
+    entry["primitives"].as_array_mut().unwrap().push(json!({
+        "kind":"image","rect":[180,0,240,60],"png":embedded,"opacity":0.5
+    }));
+    let input_library = root.join("original-library.json");
+    write_json(&input_library, &library(vec![entry]));
+    let engine = sunipdf_core::Engine::new().unwrap();
+    for rotation in [0, 90, 180, 270] {
+        let original = root.join(format!("blank-{rotation}.pdf"));
+        let mut pdf = lopdf::Document::load(fixture()).unwrap();
+        let page = pdf.get_pages()[&1];
+        let dictionary = pdf.get_dictionary_mut(page).unwrap();
+        dictionary.set("Rotate", rotation);
+        dictionary.set(
+            "CropBox",
+            vec![10.into(), 20.into(), 550.into(), 700.into()],
+        );
+        pdf.save(&original).unwrap();
+        let source = root.join(format!("source-{rotation}.pdf"));
+        success(place(&input_library, &original, &source).output().unwrap());
+        let before = std::fs::read(&source).unwrap();
+        let inventory = success(
+            cli("capture-candidates")
+                .arg(&source)
+                .args(["--page", "1"])
+                .output()
+                .unwrap(),
+        );
+        let rows = inventory["annotations"].as_array().unwrap();
+        assert_eq!(rows.len(), 3);
+        assert!(rows
+            .iter()
+            .all(|row| row["fingerprint"].as_str().is_some() && row["refusal"].is_null()));
+        let captured = root.join(format!("captured-{rotation}.json"));
+        let mut command = cli("capture");
+        command
+            .arg(&source)
+            .args([
+                "--page",
+                "1",
+                "--id",
+                "review",
+                "--name",
+                "Mixed saved symbol",
+                "--source",
+                "Synthetic locally authored test",
+                "--credit",
+                "Test fixture",
+                "--license",
+                "CC0-1.0",
+                "--out",
+            ])
+            .arg(&captured);
+        for (index, row) in rows.iter().enumerate() {
+            command
+                .arg("--annotation")
+                .arg(format!("{index}:{}", row["fingerprint"].as_str().unwrap()));
+        }
+        let result = success(command.output().unwrap());
+        assert_eq!(result["count"], 3);
+        assert_eq!(result["original_unchanged"], true);
+        let captured_bytes = std::fs::read(&captured).unwrap();
+        let captured_text = String::from_utf8(captured_bytes.clone()).unwrap();
+        assert!(!captured_text.contains(source.to_str().unwrap()));
+        let imported = AnnotationLibrary::from_json(&captured_bytes).unwrap();
+        assert_eq!(imported.entries()[0].primitives.len(), 3);
+        let LibraryPrimitive::Image { png, opacity, .. } = &imported.entries()[0].primitives[2]
+        else {
+            panic!("captured native image must stay an embedded PNG");
+        };
+        assert_eq!(
+            *opacity, 1.0,
+            "original alpha already includes the source opacity"
+        );
+        let pixels = image::load_from_memory(&png.png_bytes().unwrap())
+            .unwrap()
+            .into_rgba8();
+        assert_eq!(pixels.dimensions(), (12, 8));
+        assert_eq!(pixels.get_pixel(0, 0).0, [0, 0, 0, 0]);
+        assert_eq!(pixels.get_pixel(1, 0).0, [20, 180, 40, 128]);
+        assert_eq!(pixels.get_pixel(2, 0).0, [240, 30, 40, 90]);
+        let reused = root.join(format!("reused-{rotation}.pdf"));
+        success(place(&captured, &original, &reused).output().unwrap());
+        let first = engine.open(&source, None).unwrap();
+        let second = engine.open(&reused, None).unwrap();
+        assert_eq!(
+            first.render_page(0, 1.0).unwrap().rgba,
+            second.render_page(0, 1.0).unwrap().rgba,
+            "saved stamp/image appearance must survive capture at page rotation {rotation}"
+        );
+        assert_eq!(std::fs::read(&source).unwrap(), before);
+        let old = annotations(&before, None, 1);
+        let new = annotations(&std::fs::read(&reused).unwrap(), None, 1);
+        for (first, second) in old.iter().zip(new) {
+            assert_ne!(first.get(b"NM").unwrap(), second.get(b"NM").unwrap());
+        }
+    }
 }
 
 #[test]

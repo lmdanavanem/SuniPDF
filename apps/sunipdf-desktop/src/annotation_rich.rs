@@ -164,7 +164,8 @@ impl RichPreview {
                 self.pixels_per_point = density;
             }
         }
-        ui.add(egui::Image::new(&self.texture).fit_to_exact_size(self.logical_size));
+        let fit = (ui.available_width() / self.logical_size.x).clamp(0.0, 1.0);
+        ui.add(egui::Image::new(&self.texture).fit_to_exact_size(self.logical_size * fit));
     }
 }
 
@@ -553,7 +554,12 @@ impl SuniApp {
         draft.page = page;
         draft.mode = RichMode::Measurement;
         draft.interactive_measurement = true;
-        draft.measure_kind = MeasurementKind::Area;
+        draft.measure_kind =
+            if rectangle.shape == crate::measurement_shapes_ui::DimensionedShape::Segment {
+                MeasurementKind::Length
+            } else {
+                MeasurementKind::Area
+            };
         draft.rectangle = Some(rectangle);
         self.request_rich_preview();
         true
@@ -1001,7 +1007,7 @@ impl SuniApp {
                     "rich.note"
                 },
             ))
-            .width(680.0),
+            .width(680.0_f32.min((ctx.content_rect().width() - 32.0).max(300.0))),
             |ui| {
                 let mut changed = false;
                 ui.add_enabled_ui(!draft.busy && !draft.applying, |ui| {
@@ -1094,8 +1100,8 @@ impl SuniApp {
                             ui.small(tr(lang, "library.bounds"));
                         }
                         RichMode::Measurement => {
-                            if let Some(rectangle) = &draft.rectangle {
-                                rectangle.summary(ui, lang);
+                            if let Some(rectangle) = &mut draft.rectangle {
+                                changed |= rectangle.summary(ui, lang);
                             } else if draft.interactive_measurement {
                                 ui.label(tr(lang, measure_key(draft.measure_kind)));
                                 if let Some(record) = &draft.measurement_edit {
@@ -1767,9 +1773,11 @@ mod tests {
             let (mut app, requests, _) = crate::app::tests::test_app();
             app.settings.language = language.into();
             let rectangle = crate::measurement_shapes_ui::RectanglePlacement {
+                shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
                 anchor: (50.0, 100.0),
                 width: 2.0,
                 height: 3.0,
+                rotation_degrees: 0.0,
                 unit: MeasurementUnit::Metres,
                 precision: 2,
                 scale: crate::measurement_shapes_ui::RectangleScaleSelection::Page,
@@ -1835,9 +1843,11 @@ mod tests {
         let size = app.document.as_ref().unwrap().info.page_sizes[0];
         app.document.as_mut().unwrap().info.page_sizes.push(size);
         let rectangle = crate::measurement_shapes_ui::RectanglePlacement {
+            shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
             anchor: (50.0, 100.0),
             width: 2.0,
             height: 3.0,
+            rotation_degrees: 0.0,
             unit: MeasurementUnit::Metres,
             precision: 2,
             scale: crate::measurement_shapes_ui::RectangleScaleSelection::Page,
@@ -1868,6 +1878,196 @@ mod tests {
             .try_iter()
             .all(|request| !matches!(request, Request::Edit(_))));
         assert!(!app.annotate.adv.rich.as_ref().unwrap().prepared);
+    }
+
+    #[test]
+    fn changing_rectangle_angle_in_the_bilingual_preview_requires_a_fresh_candidate() {
+        fn text_position(shape: &egui::Shape) -> Option<egui::Pos2> {
+            match shape {
+                egui::Shape::Text(text)
+                    if text.galley.text().trim_end_matches('\u{b0}').parse::<f64>() == Ok(0.0) =>
+                {
+                    Some(text.pos + text.galley.size() / 2.0)
+                }
+                egui::Shape::Vec(shapes) => shapes.iter().find_map(text_position),
+                _ => None,
+            }
+        }
+        for (language, height, shape) in ["en-US", "fr-FR"]
+            .into_iter()
+            .flat_map(|language| [480.0_f32, 680.0].map(move |height| (language, height)))
+            .flat_map(|(language, height)| {
+                [
+                    crate::measurement_shapes_ui::DimensionedShape::Rectangle,
+                    crate::measurement_shapes_ui::DimensionedShape::Segment,
+                ]
+                .map(move |shape| (language, height, shape))
+            })
+        {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.settings.language = language.into();
+            let ctx = egui::Context::default();
+            ctx.enable_accesskit();
+            ctx.all_styles_mut(|style| style.animation_time = 0.0);
+            assert!(app.open_dimensioned_rectangle_preview(
+                0,
+                crate::measurement_shapes_ui::RectanglePlacement {
+                    shape,
+                    anchor: (100.0, 100.0),
+                    width: 2.0,
+                    height: 3.0,
+                    rotation_degrees: 0.0,
+                    unit: MeasurementUnit::Metres,
+                    precision: 2,
+                    scale: crate::measurement_shapes_ui::RectangleScaleSelection::Page,
+                }
+            ));
+            let (epoch, first) = match requests.recv().unwrap() {
+                Request::PreviewDimensionedRectangle {
+                    epoch, generation, ..
+                } => (epoch, generation),
+                _ => panic!("first rectangle preview"),
+            };
+            app.on_rich_preview(&ctx, epoch, first, Ok(preview()));
+            assert!(app.annotate.adv.rich.as_ref().unwrap().prepared);
+            let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(560.0, height));
+            let mut time = 0.0;
+            let mut frame = |app: &mut SuniApp, events| {
+                time += 0.05;
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(screen),
+                        time: Some(time),
+                        events,
+                        ..Default::default()
+                    },
+                    |_| app.rich_annotation_dialog(&ctx),
+                );
+                output.textures_delta.clear();
+                output
+            };
+            let mut position = None;
+            let mut visible = std::collections::HashSet::new();
+            for frame_index in 0..3 {
+                let output = frame(&mut app, Vec::new());
+                if frame_index < 2 {
+                    continue;
+                }
+                position = output
+                    .shapes
+                    .iter()
+                    .find_map(|shape| {
+                        text_position(&shape.shape).filter(|point| shape.clip_rect.contains(*point))
+                    })
+                    .or(position);
+                if let Some(tree) = output.platform_output.accesskit_update {
+                    for (_, node) in &tree.nodes {
+                        for key in [
+                            "measure.rectangle.rotation",
+                            "bar.apply",
+                            "rich.preview",
+                            "dialog.password.cancel",
+                        ] {
+                            let expected = tr(app.lang(), key);
+                            // Numeric controls inherit their accessible name from a visible
+                            // label; that label stores its text as a value in AccessKit.
+                            let named = if key == "measure.rectangle.rotation" {
+                                node.numeric_value() == Some(0.0)
+                                    && node.labelled_by().iter().any(|label_id| {
+                                        tree.nodes.iter().any(|(id, label)| {
+                                            id == label_id && label.value() == Some(expected)
+                                        })
+                                    })
+                            } else {
+                                node.label() == Some(expected)
+                            };
+                            if named {
+                                if let Some(bounds) = node.bounds() {
+                                    assert!(
+                                        bounds.x0 >= 0.0
+                                            && bounds.y0 >= 0.0
+                                            && bounds.x1 <= 560.0
+                                            && bounds.y1 <= f64::from(height),
+                                        "{language}: {key} outside 560 x {height}: {bounds:?}"
+                                    );
+                                    if key == "measure.rectangle.rotation" {
+                                        assert!(
+                                            position.is_some_and(|point| {
+                                                (bounds.x0..=bounds.x1)
+                                                    .contains(&f64::from(point.x))
+                                                    && (bounds.y0..=bounds.y1)
+                                                        .contains(&f64::from(point.y))
+                                            }),
+                                            "{language}: visible angle text must belong to the named numeric control"
+                                        );
+                                    }
+                                    visible.insert(key);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            assert_eq!(
+                visible.len(),
+                4,
+                "angle and footer controls must remain visible: {language}, found {visible:?}"
+            );
+            let position = position.expect("visible angle editor");
+            let button = |pos, pressed| egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            };
+            frame(
+                &mut app,
+                vec![egui::Event::PointerMoved(position), button(position, true)],
+            );
+            let moved = position + egui::vec2(24.0, 0.0);
+            frame(&mut app, vec![egui::Event::PointerMoved(moved)]);
+            frame(&mut app, vec![button(moved, false)]);
+            let draft = app.annotate.adv.rich.as_ref().unwrap();
+            let angle = draft.rectangle.as_ref().unwrap().rotation_degrees;
+            assert!(angle > 0.0 && angle < 360.0);
+            assert!(!draft.prepared && draft.preview.is_none());
+            app.apply_rich_draft();
+            assert!(
+                requests.try_recv().is_err(),
+                "angle changes cannot apply the old candidate"
+            );
+            app.request_rich_preview();
+            let second = match requests.recv().unwrap() {
+                Request::PreviewDimensionedRectangle {
+                    rectangle,
+                    generation,
+                    ..
+                } => {
+                    assert_eq!(rectangle.rotation_degrees, angle);
+                    generation
+                }
+                _ => panic!("new angle preview"),
+            };
+            assert_ne!(second, first);
+            app.on_rich_preview(&ctx, epoch, first, Ok(preview()));
+            assert!(!app.annotate.adv.rich.as_ref().unwrap().prepared);
+            app.on_rich_preview(&ctx, epoch, second, Ok(preview()));
+            assert!(app.annotate.adv.rich.as_ref().unwrap().prepared);
+            frame(
+                &mut app,
+                vec![egui::Event::Key {
+                    key: egui::Key::Escape,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+            );
+            assert!(app.annotate.adv.rich.is_none());
+            assert!(requests
+                .try_iter()
+                .all(|request| matches!(request, Request::DiscardRichAnnotationPreview { .. })));
+        }
     }
 
     #[test]
@@ -2475,9 +2675,11 @@ mod tests {
                 assert!(app.open_dimensioned_rectangle_preview(
                     0,
                     crate::measurement_shapes_ui::RectanglePlacement {
+                        shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
                         anchor: (50.0, 100.0),
                         width: 2.0,
                         height: 3.0,
+                        rotation_degrees: 0.0,
                         unit: MeasurementUnit::Metres,
                         precision: 2,
                         scale: crate::measurement_shapes_ui::RectangleScaleSelection::Page,

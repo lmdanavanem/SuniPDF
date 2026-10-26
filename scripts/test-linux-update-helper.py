@@ -162,6 +162,11 @@ class InstallerBoundaries(unittest.TestCase):
             self.assertEqual(version, VERSION)
             calls.append("validate")
 
+        def verify(digest, version, size):
+            self.assertEqual((digest, version, size), (DIGEST, VERSION, SIZE))
+            self.assertEqual((stage_directory / NAME).read_bytes(), CONTENT)
+            calls.append("network")
+
         def run(arguments, timeout):
             self.assertEqual(arguments[:3], ["/usr/bin/apt-get", "--assume-yes", "--no-remove"])
             self.assertEqual(arguments[-3:-1], ["install", "--"])
@@ -169,11 +174,36 @@ class InstallerBoundaries(unittest.TestCase):
             self.assertIsNone(timeout, "Never kill an active dpkg transaction")
             calls.append("apt")
 
-        with patch.object(helper, "require_authorized_caller", return_value=1000), patch.object(helper, "installed_version", side_effect=["0.73.0", "0.73.0", VERSION]) as installed, patch.object(helper, "verify_public_release") as network, patch.object(helper.tempfile, "TemporaryDirectory", return_value=directory), patch.object(helper, "copy_verified", side_effect=copy), patch.object(helper, "validate_package", side_effect=validate), patch.object(helper, "run_bounded", side_effect=run):
+        with patch.object(helper, "require_authorized_caller", return_value=1000), patch.object(helper, "installed_version", side_effect=["0.73.0", "0.73.0", VERSION]) as installed, patch.object(helper, "verify_public_release", side_effect=verify) as network, patch.object(helper.tempfile, "TemporaryDirectory", return_value=directory), patch.object(helper, "copy_verified", side_effect=copy), patch.object(helper, "validate_package", side_effect=validate), patch.object(helper, "run_bounded", side_effect=run):
             helper.install("/private/" + NAME, DIGEST, VERSION, SIZE)
-        self.assertEqual(calls, ["copy", "validate", "apt"])
+        self.assertEqual(calls, ["copy", "network", "validate", "apt"])
         self.assertEqual(installed.call_count, 3)
         network.assert_called_once_with(DIGEST, VERSION, SIZE)
+        self.assertFalse(stage_directory.exists())
+
+    def test_invalid_local_bytes_do_not_consume_release_requests(self):
+        directory = tempfile.TemporaryDirectory()
+        stage_directory = Path(directory.name)
+        with patch.object(helper, "require_authorized_caller", return_value=1000), patch.object(helper, "installed_version", return_value="0.73.0"), patch.object(helper.tempfile, "TemporaryDirectory", return_value=directory), patch.object(helper, "copy_verified", side_effect=ValueError("SHA256 verification failed")), patch.object(helper, "verify_public_release") as network, patch.object(helper, "validate_package") as metadata, patch.object(helper, "run_bounded") as apt:
+            with self.assertRaisesRegex(ValueError, "SHA256"):
+                helper.install("/private/" + NAME, DIGEST, VERSION, SIZE)
+            network.assert_not_called()
+            metadata.assert_not_called()
+            apt.assert_not_called()
+        self.assertFalse(stage_directory.exists())
+
+    def test_public_verification_failure_never_parses_or_installs_staged_bytes(self):
+        directory = tempfile.TemporaryDirectory()
+        stage_directory = Path(directory.name)
+
+        def copy(source, stage, digest, size, uid):
+            stage.write_bytes(CONTENT)
+
+        with patch.object(helper, "require_authorized_caller", return_value=1000), patch.object(helper, "installed_version", return_value="0.73.0"), patch.object(helper.tempfile, "TemporaryDirectory", return_value=directory), patch.object(helper, "copy_verified", side_effect=copy), patch.object(helper, "verify_public_release", side_effect=ValueError("public verification unavailable")), patch.object(helper, "validate_package") as metadata, patch.object(helper, "run_bounded") as apt:
+            with self.assertRaisesRegex(ValueError, "public verification unavailable"):
+                helper.install("/private/" + NAME, DIGEST, VERSION, SIZE)
+            metadata.assert_not_called()
+            apt.assert_not_called()
         self.assertFalse(stage_directory.exists())
 
     def test_staging_failure_or_concurrent_upgrade_never_runs_apt(self):

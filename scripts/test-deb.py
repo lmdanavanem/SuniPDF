@@ -21,7 +21,7 @@ CLI = "/usr/bin/sunipdf-cli"
 
 
 def sha(path):
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def command(arguments, timeout=120, **kwargs):
@@ -106,6 +106,7 @@ def runtime(evidence, version):
     cases.extend(gui(evidence, source))
     cases.append("native-ui-open-pdf-visible-text-blue-fixture-and-private-library")
     cases.extend(plan_link_navigation(evidence, version))
+    cases.extend(plan_link_creation(evidence, version))
     assert sha(source) == original
     settings = HOME / ".config/sunipdf/settings.json"
     assert settings.is_file(), "Native application did not save user settings on close"
@@ -113,6 +114,7 @@ def runtime(evidence, version):
              "settingsSha256": sha(settings), "source": str(source), "settings": str(settings),
              "tesseract": command(["tesseract", "--version"]), "qpdf": command(["qpdf", "--version"])}
     proof["nativePlanLinks"] = {"file": "native-plan-links.json", "sha256": sha(evidence / "native-plan-links.json")}
+    proof["nativePlanCreation"] = {"file": "native-plan-creation.json", "sha256": sha(evidence / "native-plan-creation.json")}
     (evidence / "runtime.json").write_text(json.dumps(proof, indent=2) + "\n")
 
 
@@ -532,6 +534,507 @@ def plan_link_navigation(evidence, version):
                         process.wait(timeout=10)
         finally:
             (evidence / "native-plan-links.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    return cases
+
+
+def plan_link_creation(evidence, version):
+    """Create and save two reviewed link copies using the installed native UI."""
+    from PIL import Image
+    spec = importlib.util.spec_from_file_location("native_plan_creation_fixture", ROOT / "scripts/native-plan-creation-fixture.py")
+    fixtures = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fixtures)
+    fixture = fixtures.prepare(HOME / "Documents/Native plan creation", evidence, command, CLI)
+    profile = HOME / "native-plan-creation-profile"
+    settings = profile / ".config/sunipdf/settings.json"
+    settings.parent.mkdir(parents=True, exist_ok=False)
+    settings.write_text(json.dumps({"language": "en-US", "dark_theme": False, "theme_mode": "light",
+                                    "show_tools": False, "show_thumbnails": False, "continuous_view": False,
+                                    "view_mode": "single", "autosave": False, "check_updates": False}), encoding="utf-8")
+    environment = dict(os.environ, HOME=str(profile), XDG_CONFIG_HOME=str(profile / ".config"),
+                       XDG_DATA_HOME=str(profile / ".local/share"))
+    controls = evidence / "plan-creation-controls"
+    controls.mkdir(exist_ok=False)
+    scene_directory = evidence / "native-plan-creation-scenes"
+    scene_directory.mkdir(exist_ok=False)
+    cases, scenes, actions = [], [], []
+    chooser_discovery = {"method": "EWMH _NET_CLIENT_LIST", "snapshots": []}
+    app, manager, window = None, None, None
+    capture_index = 0
+    report = {"schema": 1, "status": "failed", "version": version, "sourceSha": os.environ.get("GITHUB_SHA"),
+              "fixtureReport": fixture["fixtureReport"], "fixtureReportSha256": sha(evidence / fixture["fixtureReport"]),
+              "syntheticOnly": True, "isolatedProfile": True, "cases": cases, "scenes": scenes, "actions": actions,
+              "nativeSaveChooserDiscovery": chooser_discovery,
+              "protectedFiles": dict(fixture["protected"]), "desktopLinkCreationTested": False,
+              "desktopLinkSavingTested": False, "sourceCount": 2, "expectedPhysicalDestinationPage": 2,
+              "method": "Installed desktop, actual X11/OCR controls, independent QPDF object inspection and exported save receipt",
+              "limits": "Synthetic searchable PDFs, X11/Openbox/Xvfb and software rendering. No image-only reference recognition, physical GPU, Wayland, encrypted inputs, dirty tabs or external-reader interoperability qualification."}
+
+    def alive():
+        assert app is not None and app.poll() is None, "Native plan creation application exited"
+
+    def key(*keys, target=None):
+        alive()
+        command(["xdotool", "windowactivate", "--sync", target or window, "key", "--clearmodifiers", *keys])
+
+    def type_text(value, target=None):
+        key("ctrl+a", target=target)
+        command(["xdotool", "type", "--clearmodifiers", "--delay", "1", str(value)])
+        actions.append({"keyboardText": str(value), "window": target or window})
+
+    def capture(target=None):
+        nonlocal capture_index
+        alive()
+        capture_index += 1
+        path = controls / f"capture-{capture_index:04d}.png"
+        command(["import", "-window", target or window, path], timeout=15)
+        return path
+
+    def read_capture(path, color=None, *, preparation="full-rgb-nearest-2x-psm11"):
+        methods = {"full-rgb-nearest-2x-psm11": (2, Image.NEAREST, 11),
+                   "full-rgb-lanczos-3x-psm11": (3, Image.LANCZOS, 11),
+                   "full-rgb-lanczos-4x-psm11": (4, Image.LANCZOS, 11),
+                   "full-rgb-lanczos-4x-psm6": (4, Image.LANCZOS, 6),
+                   "color-mask-nearest-3x-psm11": (3, Image.NEAREST, 11),
+                   "color-mask-nearest-3x-psm6": (3, Image.NEAREST, 6),
+                   "color-mask-lanczos-3x-psm11": (3, Image.LANCZOS, 11)}
+        assert preparation in methods, "Unknown native OCR preparation"
+        assert bool(color) == preparation.startswith("color-mask-"), \
+            "Coloured PDF fixtures retain their original OCR mask"
+        scale, resample, psm = methods[preparation]
+        with Image.open(path) as image:
+            size = image.size
+            if color:
+                mask, ink = colored_fixture_mask(image.convert("RGB").getdata(), color)
+                prepared = Image.frombytes("L", size, mask)
+            else:
+                prepared, ink = image.convert("RGB"), 0
+            prepared = prepared.resize((size[0] * scale, size[1] * scale),
+                                       resample=resample)
+            ocr_path = path.with_name(path.stem + "-" + preparation + ("-" + color if color else "") + ".png")
+            with ocr_path.open("xb") as stream:
+                prepared.save(stream, format="PNG")
+        tsv = command(["tesseract", ocr_path, "stdout", "-l", "eng", "--psm", str(psm), "tsv"], timeout=25)
+        tsv_path = ocr_path.with_suffix(".tsv")
+        with tsv_path.open("x", encoding="utf-8") as stream:
+            stream.write(tsv)
+        words = [row["text"] for row in csv.DictReader(io.StringIO(tsv), delimiter="\t", quoting=csv.QUOTE_NONE)
+                 if row.get("level") == "5" and row.get("text", "").strip()]
+        return {"text": " ".join(words), "tsv": tsv, "scale": scale, "size": size, "ink": ink,
+                "ocrPreparation": preparation,
+                "png": str(path.relative_to(evidence)), "pngSha256": sha(path),
+                "ocrInput": str(ocr_path.relative_to(evidence)), "ocrInputSha256": sha(ocr_path),
+                "ocr": str(tsv_path.relative_to(evidence)), "ocrSha256": sha(tsv_path)}
+
+    def observations(path, color=None):
+        # All alternatives read one unchanged full frame. Only a missing literal
+        # label permits another preparation; ambiguous labels remain fatal.
+        # PDF alternatives never read the RGB image: every method starts from
+        # the same full-frame color mask and original ink count. Neutral interface
+        # text is excluded; the expected complete PDF title must still be unique.
+        preparations = (("color-mask-nearest-3x-psm11", "color-mask-nearest-3x-psm6",
+                         "color-mask-lanczos-3x-psm11") if color else
+                        ("full-rgb-nearest-2x-psm11", "full-rgb-lanczos-3x-psm11",
+                         "full-rgb-lanczos-4x-psm11", "full-rgb-lanczos-4x-psm6"))
+        for preparation in preparations:
+            yield read_capture(path, color, preparation=preparation)
+
+    def evidence_fields(observation):
+        return {key: value for key, value in observation.items() if key not in ("tsv", "size", "scale")}
+
+    def scroll(direction, count=3):
+        # Scroll the actual dialog body, to the right of its nested destination list.
+        # Derive the point from the observed title and window bounds on this frame.
+        observed, box = locate("Link multiple plan PDFs", allow_scroll=False)
+        scale = observed["scale"]
+        x = min(observed["size"][0] - 140, box[0] // scale + 780)
+        y = min(observed["size"][1] - 180, box[3] // scale + 110)
+        command(["xdotool", "mousemove", "--window", window, x, y, "click", "--repeat", str(count),
+                 "--delay", "70", "4" if direction == "up" else "5"])
+        actions.append({"scroll": direction, "wheelSteps": count, "point": [x, y], **evidence_fields(observed)})
+        time.sleep(0.15)
+
+    def locate(label, *, line_contains=None, exact_line=False, color=None, target=None, allow_scroll=True,
+               below_label=None, above_label=None, within=None):
+        for attempt in range(12 if allow_scroll and target is None else 6):
+            missing_observations = []
+            for observed in observations(capture(target), color):
+                size = tuple(value * observed["scale"] for value in observed["size"])
+                try:
+                    def anchor(value, edge):
+                        if value is None:
+                            return None
+                        if isinstance(value, tuple):
+                            return fixtures.label_box(observed["tsv"], value[0], size, line_contains=value[1])[edge]
+                        return fixtures.label_box(observed["tsv"], value, size)[edge]
+
+                    box = fixtures.label_box(observed["tsv"], label, size,
+                                             line_contains=line_contains, exact_line=exact_line,
+                                             below=anchor(below_label, 3), above=anchor(above_label, 1),
+                                             within=tuple(value * observed["scale"] for value in within) if within else None)
+                    return observed, box
+                except fixtures.LabelMissing:
+                    missing_observations.append(observed)
+            if allow_scroll and target is None:
+                if attempt == 2:
+                    scroll("up", 18)
+                elif attempt > 2:
+                    scroll("down", 3)
+            time.sleep(0.2)
+        error = fixtures.LabelMissing(f"Native control never became visible: {label!r}; last OCR: {observed['text']}")
+        error.observations = missing_observations
+        raise error
+
+    def click(label, **options):
+        observed, box = locate(label, **options)
+        scale = observed["scale"]
+        point = [(box[0] + box[2]) // (2 * scale), (box[1] + box[3]) // (2 * scale)]
+        target = options.get("target") or window
+        actions.append({"click": label, "lineContains": options.get("line_contains"), "point": point,
+                        "belowLabel": options.get("below_label"), "aboveLabel": options.get("above_label"),
+                        "within": options.get("within"), "exactLine": options.get("exact_line", False),
+                        "window": target, **evidence_fields(observed)})
+        # Let the application process the observed pointer location before the
+        # button event. Moving and clicking in one command can miss a combo's
+        # first interaction while leaving only its hover state visible.
+        command(["xdotool", "mousemove", "--window", target, *map(str, point)])
+        time.sleep(0.15)
+        command(["xdotool", "click", "1"])
+        time.sleep(0.2)
+        return point
+
+    def choose_popup(combo, option, *, line_contains, margins, exact_line=False):
+        # Opening a native popup is an observed transition, not an assumed
+        # consequence of an input event. Retry only this same source-bound
+        # control; never send Escape, which could close the whole dialog.
+        for attempt in range(1, 4):
+            x, y = click(combo, line_contains=line_contains)
+            left, top, right, bottom = margins
+            within = (max(0, x - left), max(0, y - top), x + right, y + bottom)
+            try:
+                return click(option, allow_scroll=False, within=within, exact_line=exact_line)
+            except fixtures.LabelMissing as error:
+                if attempt == 3:
+                    raise
+                # Preserve every preparation from the same last frame so an
+                # independent reader can verify the missing option and scope.
+                actions.append({"popupRetry": combo, "option": option, "lineContains": line_contains,
+                                "attempt": attempt, "nextAttempt": attempt + 1, "within": within,
+                                "exactLine": exact_line,
+                                "observations": [evidence_fields(item) for item in error.observations]})
+
+    def verify_control(label, **options):
+        observed, box = locate(label, **options)
+        scale = observed["scale"]
+        point = [(box[0] + box[2]) // (2 * scale), (box[1] + box[3]) // (2 * scale)]
+        actions.append({"observedControl": label, "belowLabel": options.get("below_label"),
+                        "aboveLabel": options.get("above_label"), "lineContains": options.get("line_contains"),
+                        "within": options.get("within"), "exactLine": options.get("exact_line", False), "point": point,
+                        **evidence_fields(observed)})
+
+    def scene(name, *, pattern=None, kind=None, caption=None, allow_scroll=False):
+        deadline = time.monotonic() + 35
+        attempts = 0
+        while time.monotonic() < deadline:
+            color = "red" if kind == "destination" else "blue" if kind else None
+            title = command(["xdotool", "getwindowname", window])
+            for observed in observations(capture(), color):
+                matched = (fixtures.fixture_visible(kind, observed["ink"], observed["text"]) if kind
+                           else re.search(pattern, observed["text"], re.I) is not None)
+                if matched and name in ("creation-approved-alpha", "creation-approved-beta"):
+                    source_name = "Alpha.pdf" if name.endswith("alpha") else "Beta.pdf"
+                    try:
+                        fixtures.label_box(observed["tsv"], source_name,
+                                           tuple(value * observed["scale"] for value in observed["size"]),
+                                           line_contains="1 Approved links")
+                    except fixtures.LabelMissing:
+                        matched = False
+                if matched and (caption is None or caption in title):
+                    assert not any(item["name"] == name for item in scenes), "Native creation scene name is not unique"
+                    stable = evidence_fields(observed)
+                    for field, suffix in (("png", ".png"), ("ocrInput", "-ocr.png"), ("ocr", ".tsv")):
+                        retained = scene_directory / (name + suffix)
+                        with retained.open("xb") as stream:
+                            stream.write((evidence / observed[field]).read_bytes())
+                        assert sha(retained) == observed[field + "Sha256"]
+                        stable[field] = str(retained.relative_to(evidence))
+                    value = {"name": name, "windowTitle": title, "pdfKind": kind,
+                             "ocrContent": "pdf-fixture" if kind else "interface", **stable}
+                    scenes.append(value)
+                    return value
+            attempts += 1
+            if allow_scroll and attempts > 1:
+                scroll("down", 2)
+            time.sleep(0.2)
+        raise AssertionError(f"Native creation scene {name} did not qualify: {observed['text']}")
+
+    def open_command(label, name):
+        key("ctrl+k")
+        time.sleep(0.2)
+        command(["xdotool", "type", "--clearmodifiers", "--delay", "35", label])
+        scene(name, pattern=re.escape(label))
+        key("Return")
+
+    def preview_sources():
+        # Source and target are selected on the same actual control row; other
+        # occurrences in headings and preview captions cannot become click targets.
+        for index, name in enumerate(("Alpha.pdf", "Beta.pdf")):
+            if index:
+                # The popup can flip above the combo near the viewport bottom.
+                # Its exact option must still be unique beside this observed row.
+                choose_popup("Alpha.pdf", name, line_contains="Preview source",
+                             exact_line=True, margins=(80, 120, 220, 120))
+            click("Preview source", line_contains=name)
+            scene("created-preview-" + name[:-4].lower(), kind=("alpha", "beta")[index], allow_scroll=True)
+            # The native popup may open above or below its observed combo. Keep
+            # its unique literal option near that row, away from other sources
+            # and from the rendered PDF title further down the dialog.
+            choose_popup("Choose a destination", "Native destination two", line_contains=name,
+                         margins=(180, 120, 360, 120))
+            click("Preview destination", line_contains=name)
+            scene("created-destination-for-" + name[:-4].lower(), kind="destination", allow_scroll=True)
+
+    def managed_clients(stage):
+        # EWMH lists managed application clients, not decoration frames or their
+        # descendants. Keep the original properties so identity is independently
+        # reviewable even when discovering a chooser fails.
+        raw = command(["xprop", "-root", "_NET_CLIENT_LIST"])
+        snapshot = {"stage": stage, "clientList": raw, "clients": []}
+        chooser_discovery["snapshots"].append(snapshot)
+        match = re.fullmatch(r"_NET_CLIENT_LIST\(WINDOW\): window id #\s*(.*)", raw)
+        assert match is not None, "Managed X11 client list is missing or malformed"
+        tokens = match[1].split(",") if match[1] else []
+        windows = []
+        for token in tokens:
+            token = token.strip()
+            assert re.fullmatch(r"0x[0-9a-fA-F]{1,8}", token), "Malformed managed X11 window identity"
+            value = int(token, 16)
+            assert value > 0 and str(value) not in windows, "Zero or duplicate managed X11 window identity"
+            windows.append(str(value))
+        assert len(windows) <= 64, "Managed X11 client list is unexpectedly large"
+        for candidate in windows:
+            properties = command(["xprop", "-id", candidate, "WM_STATE", "_NET_WM_PID", "WM_CLASS",
+                                  "_NET_WM_WINDOW_TYPE", "WM_TRANSIENT_FOR"])
+            row = {"window": candidate, "properties": properties}
+            snapshot["clients"].append(row)
+            states = re.findall(r"^\s*window state: (Normal|Iconic)\s*$", properties, re.M)
+            assert len(states) == 1 and "WM_STATE(WM_STATE):" in properties, "Managed X11 client has no unique normal/iconic state"
+            pids = re.findall(r"^_NET_WM_PID\(CARDINAL\) = ([1-9][0-9]*)$", properties, re.M)
+            assert len(pids) <= 1 and (pids or "_NET_WM_PID(CARDINAL)" not in properties), "Malformed managed X11 process identity"
+            assert not pids or int(pids[0]) <= 0xffffffff, "Managed X11 process identity exceeds CARDINAL"
+            # A client may leave its instance empty while retaining its class.
+            # Preserve both quoted fields exactly, including escaped characters.
+            classes = re.findall(r'^WM_CLASS\(STRING\) = ("(?:[^"\\]|\\.)*", "(?:[^"\\]|\\.)+")$', properties, re.M)
+            assert len(classes) <= 1 and (classes or "WM_CLASS(STRING)" not in properties), "Malformed managed X11 class identity"
+            row.update(state=states[0], pid=int(pids[0]) if pids else None, wmClass=classes[0] if classes else None)
+        return snapshot
+
+    def export_receipt(path):
+        assert not path.exists()
+        before = {row["window"] for row in managed_clients("before-export")["clients"]}
+        click("Export save receipt")
+        chooser, identity = None, None
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            snapshot = managed_clients("chooser-poll")
+            matches = []
+            snapshot["matches"] = []
+            for client in snapshot["clients"]:
+                candidate = client["window"]
+                if candidate in before or client["state"] != "Normal":
+                    continue
+                geometry = command(["xdotool", "getwindowgeometry", "--shell", candidate])
+                client["geometry"] = geometry
+                values = dict(line.split("=", 1) for line in geometry.splitlines() if "=" in line)
+                assert values.get("WINDOW") == candidate, "Managed X11 geometry belongs to another client"
+                if int(values.get("WIDTH", "0")) < 300 or int(values.get("HEIGHT", "0")) < 150:
+                    continue
+                client["observations"] = []
+                client["matchesSaveChooser"] = False
+                for observed in observations(capture(candidate)):
+                    client["observations"].append(evidence_fields(observed))
+                    if re.search(r"\bSave\b", observed["text"], re.I) and re.search(r"\b(?:Name|Location)\b", observed["text"], re.I):
+                        assert client["pid"] is not None and client["wmClass"] is not None, "Native save chooser has no process/class identity"
+                        client["matchesSaveChooser"] = True
+                        snapshot["matches"].append(candidate)
+                        matches.append((client, observed))
+                        break
+            assert len(matches) <= 1, "More than one native save chooser was visible"
+            if matches:
+                client, observed = matches[0]
+                chooser = client["window"]
+                identity = {key: client[key] for key in ("window", "pid", "wmClass")}
+                chooser_discovery.update(selectedWindow=chooser, selectionSnapshot=len(chooser_discovery["snapshots"]) - 1)
+                actions.append({"nativeSaveChooser": chooser, "managedClient": identity, **evidence_fields(observed)})
+                break
+            time.sleep(0.25)
+        assert chooser is not None, "Native receipt save chooser was not observed"
+
+        def verify_chooser(stage):
+            clients = managed_clients(stage)["clients"]
+            assert {row["window"] for row in clients if row["state"] == "Normal"} == \
+                {row["window"] for row in snapshot["clients"] if row["state"] == "Normal"}, \
+                "Normal managed X11 clients changed after chooser selection"
+            matches = [row for row in clients if row["window"] == chooser]
+            assert len(matches) == 1 and matches[0]["state"] == "Normal", "Native save chooser is no longer a normal managed client"
+            assert {key: matches[0][key] for key in identity} == identity, "Native save chooser process/class identity changed"
+
+        # GTK portal and Zenity file choosers both expose the actual location
+        # entry through Ctrl+L. No dialog process or return value is replaced.
+        verify_chooser("before-location")
+        key("ctrl+l", target=chooser)
+        verify_chooser("before-path")
+        type_text(path, target=chooser)
+        verify_chooser("before-submit")
+        key("Return", target=chooser)
+        time.sleep(1)
+        after = managed_clients("after-submit")
+        if not path.exists():
+            if any(row["window"] == chooser and row["state"] == "Normal" for row in after["clients"]):
+                verify_chooser("before-save")
+                click("Save", exact_line=True, target=chooser, allow_scroll=False)
+        deadline = time.monotonic() + 25
+        while time.monotonic() < deadline and not path.exists():
+            time.sleep(0.25)
+        assert path.is_file(), "Native save chooser did not export the receipt"
+        managed_clients("after-save")
+        scene("created-receipt-exported", pattern=r"Save\s+receipt\s+exported", allow_scroll=True)
+
+    try:
+        manager = subprocess.Popen(["openbox"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        with (evidence / "native-plan-creation-desktop.log").open("w") as log:
+            # No source document is open behind the preview. Coloured PDF OCR can
+            # therefore only come from the actual selected preview image.
+            app = subprocess.Popen(["/usr/bin/sunipdf"], env=environment, stdout=log, stderr=subprocess.STDOUT)
+            deadline = time.monotonic() + 75
+            while time.monotonic() < deadline:
+                alive()
+                result = subprocess.run(["xdotool", "search", "--onlyvisible", "--pid", str(app.pid)],
+                                        text=True, capture_output=True, timeout=10)
+                if result.returncode == 0 and result.stdout.strip():
+                    window = result.stdout.splitlines()[-1]
+                    break
+                time.sleep(0.25)
+            assert window is not None, "Native creation window was not created"
+            command(["xdotool", "windowsize", window, "1200", "900", "windowmove", window, "40", "40"])
+            scene("creation-initial-home", pattern=r"Welcome\s+to\s+SuniPDF")
+            open_command("Plan links", "creation-command-open")
+            scene("creation-manifest-field", pattern=r"Manifest\s+path")
+            type_text(fixture["manifest"])
+            scene("creation-manifest-path-entered", pattern=r"plan-set\.json")
+            click("Load manifest", allow_scroll=False)
+            scene("creation-loaded-manifest", pattern=r"Native\s+creation\s+fixture")
+            click("Link multiple PDFs", allow_scroll=False)
+            scene("creation-batch-mode", pattern=r"Link\s+multiple\s+plan\s+PDFs")
+            for index, source in enumerate(fixture["sources"]):
+                following = (fixture["sources"][index + 1] if index + 1 < len(fixture["sources"])
+                             else fixture["target"]).name
+                click(source.name)
+                click("Destination sheets 0", below_label=source.name, above_label=following)
+                click("Native destination two", below_label=source.name, above_label=following)
+                # Selecting a destination changes the header identity and collapses
+                # the list. Observe the new count without reopening the prior source.
+                verify_control("Destination sheets 1", below_label=source.name, above_label=following)
+            click("Use saved files only")
+            click("Find references")
+            scene("creation-two-scanned-sources", pattern=r"Pages\s+checked\s*:?\s*2.*References\s+found\s*:?\s*2", allow_scroll=True)
+            for index, source in enumerate(fixture["sources"]):
+                click(source.name, line_contains="0 Approved links")
+                following = ((fixture["sources"][index + 1].name, "0 Approved links")
+                             if index + 1 < len(fixture["sources"]) else None)
+                click("A-101", line_contains="Page 1", below_label=(source.name, "0 Approved links"),
+                      above_label=following)
+                scene("creation-approved-" + source.stem.lower(), pattern=re.escape(source.name) + r".*1\s+Approved\s+links")
+                # Approval changes the result header identity and collapses it.
+                # Do not reopen it before approving the next source's reference.
+            click("Validate batch preview")
+            scene("creation-two-validated-outputs", pattern=r"Validated\s+output\s+files", allow_scroll=True)
+            preview_sources()
+            cases.append("native-plan-batch-explicit-two-source-review-and-previews")
+
+            occupied = fixture["outputs"][0]
+            marker = b"Synthetic occupied output: native batch must not overwrite this file.\n"
+            with occupied.open("xb") as stream:
+                stream.write(marker)
+            try:
+                click("Save reviewed copies")
+                scene("creation-existing-output-refused", pattern=r"Batch\s+stopped\s+after\s+an\s+error", allow_scroll=True)
+                assert not fixture["outputs"][1].exists() and occupied.read_bytes() == marker
+                assert all(sha(path) == value for path, value in fixture["protected"].items())
+                report["occupiedOutputRefusal"] = {"output": str(occupied), "sha256": sha(occupied),
+                                                   "unoccupiedOutputAbsent": True, "sentinelUnchanged": True,
+                                                   "scope": "First reviewed output occupied after preview"}
+            finally:
+                if occupied.exists():
+                    assert occupied.read_bytes() == marker, "Refused output was unexpectedly changed"
+                    occupied.unlink()
+            cases.append("native-plan-batch-existing-output-refused-before-any-write")
+            click("Validate batch preview")
+            scene("creation-revalidated-after-refusal", pattern=r"Validated\s+output\s+files", allow_scroll=True)
+            click("Save reviewed copies")
+            scene("creation-completed-two-copies", pattern=r"Batch\s+completed", allow_scroll=True)
+            outputs = fixtures.verify_outputs(fixture, evidence, command)
+            report["outputs"] = outputs
+            cases.append("native-plan-batch-save-two-copies-qpdf-originals-unchanged")
+            receipt_path = fixture["manifest"].parent / "native-save-receipt.json"
+            export_receipt(receipt_path)
+            report["saveReceipt"] = fixtures.verify_receipt(fixture, receipt_path, outputs)
+            cases.append("native-plan-batch-exported-receipt-matches-files")
+
+            for index, output in enumerate(fixture["outputs"]):
+                if index:
+                    open_command("Plan links", "creation-command-reopen")
+                    scene("creation-reopened-batch-receipt", pattern=r"Link\s+multiple\s+plan\s+PDFs")
+                click(str(output), line_contains="New linked copy saved")
+                click("Verify and open saved copy", below_label=(str(output), "New linked copy saved"))
+                scene("created-reopened-" + output.stem, kind=("alpha", "beta")[index], caption=output.name)
+                click("A-101", color="blue", allow_scroll=False)
+                scene("created-remote-confirmation-" + output.stem, pattern=r"Manifest\s+path", caption=output.name)
+                scene("created-bound-manifest-" + output.stem, pattern=r"Native\s+creation\s+fixture", caption=output.name)
+                click("Preview destination", allow_scroll=False)
+                scene("created-remote-preview-" + output.stem, kind="destination", caption=output.name)
+                click("Open verified destination", allow_scroll=False)
+                scene("created-physical-page-two-" + output.stem, kind="destination", caption=fixture["target"].name)
+                click("Return to source", allow_scroll=False)
+                scene("created-returned-" + output.stem, kind=("alpha", "beta")[index], caption=output.name)
+                assert "*" not in command(["xdotool", "getwindowname", window])
+            cases.append("native-plan-batch-reopen-and-verified-physical-page-two")
+            assert all(sha(path) == value for path, value in fixture["protected"].items())
+            report["protectedFiles"].update({item["output"]: item["outputSha256"] for item in outputs})
+            report["protectedFiles"][str(receipt_path)] = sha(receipt_path)
+            retained_directory = evidence / "native-plan-creation-files"
+            retained_directory.mkdir(exist_ok=False)
+            retained_files = []
+            originals = [(path, "source") for path in fixture["sources"]]
+            originals += [(fixture["target"], "target"), (fixture["manifest"], "manifest")]
+            originals += [(path, "output") for path in fixture["outputs"]] + [(receipt_path, "receipt")]
+            for original, role in originals:
+                assert original.is_file() and not original.is_symlink()
+                contents = original.read_bytes()
+                expected = report["protectedFiles"][str(original)]
+                assert hashlib.sha256(contents).hexdigest() == expected
+                retained = retained_directory / original.name
+                with retained.open("xb") as stream:
+                    stream.write(contents)
+                assert sha(retained) == expected
+                retained_files.append({"role": role, "originalPath": str(original),
+                                       "file": str(retained.relative_to(evidence)), "sha256": expected,
+                                       "bytes": len(contents)})
+            report["retainedFiles"] = retained_files
+            report.update(status="passed", originalsUnchanged=True, desktopLinkCreationTested=True,
+                          desktopLinkSavingTested=True, receiptExportedAndVerified=True,
+                          copiesReopenedAndDestinationVerified=2)
+    finally:
+        try:
+            for process in (app, manager):
+                if process is not None and process.poll() is None:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=10)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                        process.wait(timeout=10)
+        finally:
+            (evidence / "native-plan-creation.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return cases
 
 
@@ -971,7 +1474,12 @@ def lifecycle(package, evidence, identity):
                    "XDG_DATA_HOME=" + str(HOME / ".local/share"), "XDG_RUNTIME_DIR=" + str(runtime_dir),
                    "LIBGL_ALWAYS_SOFTWARE=1", "SUNIPDF_RENDERER=glow", "XDG_SESSION_TYPE=x11",
                    "WINIT_X11_SCALE_FACTOR=1", "GITHUB_SHA=" + source_sha]
-    command(["runuser", "-u", ACCOUNT, "--", *environment, "dbus-run-session", "--", "xvfb-run", "-a", "-s", "-screen 0 1400x1000x24 -dpi 96", "python3", __file__, "--runtime", "--version", version, "--evidence", evidence], timeout=600)
+    # Start D-Bus inside the display session so activated file-chooser portals
+    # inherit the real DISPLAY and XAUTHORITY created by xvfb-run.
+    command(["runuser", "-u", ACCOUNT, "--", *environment,
+             "xvfb-run", "-a", "-s", "-screen 0 1400x1000x24 -dpi 96",
+             "dbus-run-session", "--", "python3", __file__, "--runtime",
+             "--version", version, "--evidence", evidence], timeout=1200)
     runtime_proof = json.loads((evidence / "runtime.json").read_text())
     plan_path = evidence / "native-plan-links.json"
     plan_proof = json.loads(plan_path.read_text(encoding="utf-8"))
@@ -984,8 +1492,26 @@ def lifecycle(package, evidence, identity):
     assert plan_proof["returnToSource"]["sameSourcePdfAndReadingPosition"]
     assert plan_proof["returnToSource"]["returnControlHiddenAfterReturn"]
     assert all(case in runtime_proof["cases"] for case in plan_proof["cases"])
+    creation_path = evidence / "native-plan-creation.json"
+    creation = json.loads(creation_path.read_text(encoding="utf-8"))
+    assert runtime_proof["nativePlanCreation"] == {"file": creation_path.name, "sha256": sha(creation_path)}
+    assert creation["status"] == "passed" and creation["originalsUnchanged"]
+    assert creation["version"] == version and creation["sourceSha"] == source_sha
+    assert creation["syntheticOnly"] and creation["isolatedProfile"]
+    assert creation["desktopLinkCreationTested"] and creation["desktopLinkSavingTested"]
+    assert creation["receiptExportedAndVerified"] and creation["copiesReopenedAndDestinationVerified"] == 2
+    assert creation["sourceCount"] == len(creation["outputs"]) == 2
+    assert len(creation["cases"]) == len(set(creation["cases"])) == 5
+    assert all(case in runtime_proof["cases"] for case in creation["cases"])
+    assert sha(evidence / creation["fixtureReport"]) == creation["fixtureReportSha256"]
+    assert sha(Path(creation["saveReceipt"]["path"])) == creation["saveReceipt"]["sha256"]
+    for scene in creation["scenes"]:
+        assert sha(evidence / scene["png"]) == scene["pngSha256"]
+        assert sha(evidence / scene["ocrInput"]) == scene["ocrInputSha256"]
+        assert sha(evidence / scene["ocr"]) == scene["ocrSha256"]
     protected = {Path(runtime_proof["source"]): runtime_proof["sourceSha256"], Path(runtime_proof["settings"]): runtime_proof["settingsSha256"]}
     protected.update({Path(path): expected for path, expected in plan_proof["protectedFiles"].items()})
+    protected.update({Path(path): expected for path, expected in creation["protectedFiles"].items()})
     assert all(path.is_file() and sha(path) == expected for path, expected in protected.items())
     update_spec = importlib.util.spec_from_file_location("installed_update_qualification", ROOT / "scripts/test-linux-update-installed.py")
     update_qualification = importlib.util.module_from_spec(update_spec)
@@ -1014,6 +1540,10 @@ def lifecycle(package, evidence, identity):
                          "native_plan_link_changed_or_missing_destination_refused": True,
                          "native_plan_link_changed_source_refused": True,
                          "native_plan_link_return_to_source_preserves_reading_position": True,
+                         "native_plan_link_two_source_review_create_save": True,
+                         "native_plan_link_occupied_output_refused_before_writes": True,
+                         "native_plan_link_saved_copies_independently_checked": True,
+                         "native_plan_link_exported_receipt_verified": True,
                          "verified_public_deb_upgrade": True, "update_refusal_guards": True,
                          "reinstall": True, "uninstall": True, "user_data_preserved": True},
               "lifecycle": "Remove and reinstall the same verified candidate; existing documents and settings remain unchanged",
@@ -1021,6 +1551,9 @@ def lifecycle(package, evidence, identity):
               "normalUserExecution": True, "runtimeCases": runtime_proof["cases"]}
     report["nativePlanLinkEvidence"] = {**runtime_proof["nativePlanLinks"], "cases": plan_proof["cases"],
                                        "desktopLinkCreationTested": False, "desktopLinkSavingTested": False}
+    report["nativePlanCreationEvidence"] = {**runtime_proof["nativePlanCreation"], "cases": creation["cases"],
+                                           "desktopLinkCreationTested": True, "desktopLinkSavingTested": True,
+                                           "copiesReopenedAndDestinationVerified": 2}
     report["installedUpdateEvidence"] = {"file": "linux-update-installed.json",
                                         "sha256": sha(evidence / "linux-update-installed.json"),
                                         "polkitAuthenticationTested": False,

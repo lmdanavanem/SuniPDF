@@ -1166,9 +1166,11 @@ mod tests {
                     page: 0,
                     epoch: app.view.epoch,
                     placement: crate::measurement_shapes_ui::RectanglePlacement {
+                        shape: crate::measurement_shapes_ui::DimensionedShape::Rectangle,
                         anchor: (20.0, 30.0),
                         width: 2.0,
                         height: 3.0,
+                        rotation_degrees: 0.0,
                         unit: MeasurementUnit::Metres,
                         precision: 2,
                         scale: crate::measurement_shapes_ui::RectangleScaleSelection::Automatic,
@@ -1532,8 +1534,13 @@ mod tests {
             ..Default::default()
         };
         let mut target = None;
-        for _ in 0..2 {
-            let mut output = ctx.run_ui(input.clone(), |ui| app.measurement_bar(&ctx, ui));
+        let mut offset = 0.0;
+        for _ in 0..4 {
+            let mut output = ctx.run_ui(input.clone(), |ui| {
+                egui::ScrollArea::vertical()
+                    .vertical_scroll_offset(offset)
+                    .show(ui, |ui| app.measurement_bar(&ctx, ui));
+            });
             let tree = output.platform_output.accesskit_update.as_ref().unwrap();
             let button = tree
                 .nodes
@@ -1547,9 +1554,17 @@ mod tests {
                 ((bounds.x0 + bounds.x1) / 2.0) as f32,
                 ((bounds.y0 + bounds.y1) / 2.0) as f32,
             ));
+            let pos = target.unwrap();
+            if pos.y > 960.0 {
+                offset += pos.y - 500.0;
+            }
             output.textures_delta.clear();
         }
         let pos = target.unwrap();
+        assert!(
+            input.screen_rect.unwrap().contains(pos),
+            "Cancel must be visible after scrolling"
+        );
         for pressed in [true, false] {
             let mut input = input.clone();
             input.events = vec![
@@ -1561,7 +1576,11 @@ mod tests {
                     modifiers: Modifiers::NONE,
                 },
             ];
-            let mut output = ctx.run_ui(input, |ui| app.measurement_bar(&ctx, ui));
+            let mut output = ctx.run_ui(input, |ui| {
+                egui::ScrollArea::vertical()
+                    .vertical_scroll_offset(offset)
+                    .show(ui, |ui| app.measurement_bar(&ctx, ui));
+            });
             output.textures_delta.clear();
         }
         assert!(!app.annotate.measure.is_active_draft());

@@ -1097,7 +1097,7 @@ fn render_candidate(
             let Some(file) = files.get(batch.preview_source) else {
                 return;
             };
-            egui::ComboBox::from_id_salt("batch-preview-page")
+            egui::ComboBox::from_id_salt(("batch-preview-page", &file.source_file_id))
                 .selected_text(batch.preview_page.to_string())
                 .show_ui(ui, |ui| {
                     for page in &file.preview_pages {
@@ -1113,7 +1113,7 @@ fn render_candidate(
                 .filter(|((source, _), _)| source == &file.source_file_id)
                 .map(|(_, target)| target)
                 .collect();
-            egui::ComboBox::from_id_salt("batch-preview-target")
+            egui::ComboBox::from_id_salt(("batch-preview-target", &file.source_file_id))
                 .selected_text(
                     context
                         .set
@@ -1598,6 +1598,151 @@ mod tests {
             }
             egui::Shape::Vec(values) => values.iter().find_map(|v| text_bounds(v, text)),
             _ => None,
+        }
+    }
+
+    #[test]
+    fn preview_selectors_reopen_for_another_source_without_reusing_its_selection() {
+        struct Canvas {
+            ctx: egui::Context,
+            time: f64,
+            lang: Language,
+        }
+        impl Canvas {
+            fn frame(
+                &mut self,
+                batch: &mut BatchState,
+                context: &Context,
+                events: Vec<egui::Event>,
+            ) -> egui::FullOutput {
+                self.time += 0.03;
+                let mut action = None;
+                let mut output = self.ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(1200.0, 900.0),
+                        )),
+                        time: Some(self.time),
+                        events,
+                        ..Default::default()
+                    },
+                    |ui| {
+                        dialog::show(
+                            ui.ctx(),
+                            Spec::new("preview-selector-test", "Plan preview", false, false)
+                                .width(980.0),
+                            |ui| {
+                                render_candidate(ui, batch, context, self.lang, true, &mut action);
+                            },
+                            |_| {},
+                        );
+                    },
+                );
+                assert!(
+                    action.is_none(),
+                    "selecting controls never starts a write or preview job"
+                );
+                output.textures_delta.clear();
+                output
+            }
+            fn click(&mut self, batch: &mut BatchState, context: &Context, label: &str) {
+                let mut position = None;
+                for _ in 0..3 {
+                    let output = self.frame(batch, context, vec![]);
+                    position = output
+                        .shapes
+                        .iter()
+                        .find_map(|shape| text_bounds(&shape.shape, label))
+                        .map(|rect| rect.center());
+                }
+                let pos = position.unwrap_or_else(|| panic!("missing preview control: {label}"));
+                for pressed in [true, false] {
+                    self.frame(
+                        batch,
+                        context,
+                        vec![
+                            egui::Event::PointerMoved(pos),
+                            egui::Event::PointerButton {
+                                pos,
+                                button: egui::PointerButton::Primary,
+                                pressed,
+                                modifiers: egui::Modifiers::NONE,
+                            },
+                        ],
+                    );
+                }
+            }
+        }
+        for lang in [Language::English, Language::French] {
+            let mut context = context();
+            context.set.files[0].path = "Alpha.pdf".into();
+            context.set.files[0].page_count = 2;
+            let mut beta = context.set.files[0].clone();
+            beta.id = "beta-source".into();
+            beta.path = "Beta.pdf".into();
+            beta.page_count = 4;
+            context.set.files.push(beta);
+            let mut batch = BatchState {
+                candidate: Some((
+                    9,
+                    vec![
+                        PlanLinkBatchFilePlan {
+                            source_file_id: "source".into(),
+                            output: "Alpha-linked.pdf".into(),
+                            selected_occurrences: 1,
+                            preview_pages: vec![1, 2],
+                        },
+                        PlanLinkBatchFilePlan {
+                            source_file_id: "beta-source".into(),
+                            output: "Beta-linked.pdf".into(),
+                            selected_occurrences: 1,
+                            preview_pages: vec![3, 4],
+                        },
+                    ],
+                )),
+                preview_page: 1,
+                ..Default::default()
+            };
+            for source in ["source", "beta-source"] {
+                batch
+                    .selections
+                    .insert((source.into(), "reference-1".into()), "target-sheet".into());
+            }
+            let approved = batch.selections.clone();
+            let mut canvas = Canvas {
+                ctx: egui::Context::default(),
+                time: 0.0,
+                lang,
+            };
+            let _ = crate::icons::install(&canvas.ctx);
+            let target = &context.set.sheets[1];
+            let target_label =
+                format!("{} · {} · {}", target.number, target.title, target.revision);
+            canvas.click(&mut batch, &context, tr(lang, "plan_links.choose_target"));
+            assert!(egui::Popup::is_any_open(&canvas.ctx));
+            canvas.click(&mut batch, &context, &target_label);
+            assert_eq!(batch.target_sheet_id, "target-sheet");
+            canvas.click(&mut batch, &context, "1");
+            canvas.click(&mut batch, &context, "2");
+            assert_eq!(batch.preview_page, 2);
+            canvas.click(&mut batch, &context, "Alpha.pdf");
+            canvas.click(&mut batch, &context, "Beta.pdf");
+            assert_eq!(batch.preview_source, 1);
+            assert_eq!(batch.preview_page, 3);
+            assert!(batch.target_sheet_id.is_empty());
+            canvas.click(&mut batch, &context, tr(lang, "plan_links.choose_target"));
+            assert!(egui::Popup::is_any_open(&canvas.ctx));
+            canvas.click(&mut batch, &context, &target_label);
+            assert_eq!(batch.target_sheet_id, "target-sheet");
+            canvas.click(&mut batch, &context, "3");
+            canvas.click(&mut batch, &context, "4");
+            assert_eq!(batch.preview_page, 4);
+            canvas.click(&mut batch, &context, &target.number);
+            assert!(egui::Popup::is_any_open(&canvas.ctx));
+            canvas.click(&mut batch, &context, &target_label);
+            assert_eq!(batch.target_sheet_id, "target-sheet");
+            assert_eq!(batch.selections, approved);
         }
     }
 

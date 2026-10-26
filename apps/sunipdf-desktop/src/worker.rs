@@ -485,6 +485,11 @@ pub enum EditOp {
         fields: sunipdf_core::annotation_register::RegisterFields,
         count_group: Option<String>,
     },
+    CommitRegisterBatch {
+        epoch: u64,
+        generation: u64,
+    },
+    PreparedRegisterBatch(sunipdf_core::annotation_register_batch::RegisterBatchPlan),
     UpdateFreeText {
         page: usize,
         index: usize,
@@ -549,6 +554,8 @@ impl EditOp {
                 | Self::SetAnnotationText { .. }
                 | Self::AddCountMarker { .. }
                 | Self::SetAnnotationRegisterFields { .. }
+                | Self::CommitRegisterBatch { .. }
+                | Self::PreparedRegisterBatch(_)
                 | Self::SetQuantityFields { .. }
                 | Self::UpdateFreeText { .. }
                 | Self::DeleteAnnotationThread { .. }
@@ -816,6 +823,11 @@ pub enum Request {
     CancelAnnotationRegister {
         epoch: u64,
         generation: u64,
+    },
+    PreviewRegisterBatch {
+        epoch: u64,
+        generation: u64,
+        job: crate::annotation_register::bulk::PreviewJob,
     },
     MeasurementPage {
         page: usize,
@@ -1388,6 +1400,12 @@ struct State<'a> {
     search: Option<SearchJob>,
     register: Option<RegisterJob>,
     register_turn: bool,
+    register_batch: Option<(
+        u64,
+        u64,
+        sunipdf_core::annotation_register_batch::RegisterBatchPlan,
+        Arc<std::sync::atomic::AtomicBool>,
+    )>,
 }
 
 struct RectangleCalibrationCapture {
@@ -1496,6 +1514,7 @@ impl State<'_> {
         self.redaction_preview = None;
         self.search = None;
         self.register = None;
+        self.register_batch = None;
     }
 
     /// One bounded unit of background work; called only after requests and visible tiles.
@@ -1670,6 +1689,20 @@ impl State<'_> {
     /// (les opérations échouent avant de modifier, ou l'instantané est restauré).
     fn edit(&mut self, op: EditOp) -> Response {
         let op = match op {
+            EditOp::CommitRegisterBatch { epoch, generation } => match self.register_batch.take() {
+                Some((saved_epoch, saved_generation, plan, cancel))
+                    if saved_epoch == epoch
+                        && saved_generation == generation
+                        && !cancel.load(std::sync::atomic::Ordering::Acquire) =>
+                {
+                    EditOp::PreparedRegisterBatch(plan)
+                }
+                _ => {
+                    return Response::OperationFailed(EngineError::Other(
+                        "field preview is no longer current; preview again".into(),
+                    ))
+                }
+            },
             EditOp::CommitBoundaryFill { epoch, generation } => {
                 match self.boundary_fill.take(epoch, generation) {
                     Ok(prepared) => EditOp::PreparedBoundaryFill(Box::new(prepared)),
@@ -1954,6 +1987,7 @@ mod save_point_tests {
             search: None,
             register: None,
             register_turn: false,
+            register_batch: None,
         }
     }
 
@@ -2223,6 +2257,12 @@ fn apply(doc: &mut Document<'_>, op: EditOp, clip: &Option<ObjectClip>) -> Resul
             fields,
             count_group,
         } => doc.set_annotation_register_fields(&target, &fields, count_group.as_deref()),
+        EditOp::PreparedRegisterBatch(plan) => {
+            doc.apply_annotation_register_batch(&plan).map(|_| ())
+        }
+        EditOp::CommitRegisterBatch { .. } => Err(EngineError::Other(
+            "field preview must be committed by the document worker".into(),
+        )),
         EditOp::UpdateFreeText {
             page,
             index,
@@ -2553,6 +2593,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         search: None,
         register: None,
         register_turn: false,
+        register_batch: None,
     };
     let mut plan_links = crate::plan_links_ui::WorkerCache::default();
     let mut queue: VecDeque<Request> = VecDeque::new();
@@ -2607,6 +2648,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 | Request::Close
         ) {
             state.rectangle_calibration = None;
+            state.register_batch = None;
         }
         let response = match request {
             Request::PlanLinks { generation, job } => {
@@ -2699,7 +2741,32 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             }
             Request::RevisionOverlay { generation, job } => Response::RevisionOverlayDone {
                 generation,
-                result: crate::revision_overlay::run_job(&engine, job),
+                result: if state.modified()
+                    && state
+                        .document
+                        .as_ref()
+                        .is_some_and(|doc| job.touches_source(&doc.info().path))
+                {
+                    Err(EngineError::Other(
+                        "Save or close the modified overlay source before continuing".into(),
+                    ))
+                } else {
+                    crate::revision_overlay::run_job(&engine, job).and_then(|outcome| {
+                        if state.modified()
+                            && state
+                                .document
+                                .as_ref()
+                                .is_some_and(|doc| outcome.loaded_source_matches(&doc.info().path))
+                        {
+                            Err(EngineError::Other(
+                                "Save or close the modified overlay source before continuing"
+                                    .into(),
+                            ))
+                        } else {
+                            Ok(outcome)
+                        }
+                    })
+                },
             },
             Request::LocalReview(job) => {
                 let result =
@@ -3412,14 +3479,21 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 epoch,
                 generation,
             } => {
-                use crate::measurement_shapes_ui::RectangleScaleSelection;
-                use sunipdf_core::measurement::{DimensionedRectangle, RectangleScale};
+                use crate::measurement_shapes_ui::{DimensionedShape, RectangleScaleSelection};
+                use sunipdf_core::measurement::{
+                    DimensionedEllipse, DimensionedRectangle, DimensionedSegment, RectangleScale,
+                };
                 state.rich_preview = None;
                 let result = state
                     .document
                     .as_ref()
                     .ok_or(EngineError::PageOutOfRange(page))
                     .and_then(|doc| {
+                        if !rectangle.valid() {
+                            return Err(EngineError::Other(
+                                "invalid dimensioned shape inputs".into(),
+                            ));
+                        }
                         let scale = match rectangle.scale {
                             RectangleScaleSelection::Local(calibration) => {
                                 let capture =
@@ -3432,24 +3506,47 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                             RectangleScaleSelection::Region(id) => RectangleScale::Region(id),
                             RectangleScaleSelection::Automatic => RectangleScale::Automatic,
                         };
-                        let annotation =
+                        let annotation = if rectangle.shape == DimensionedShape::Segment {
+                            sunipdf_core::annot_rich::RichAnnotation::DimensionedSegment(
+                                DimensionedSegment {
+                                    start: rectangle.anchor,
+                                    length: rectangle.width,
+                                    rotation_degrees: rectangle.rotation_degrees,
+                                    unit: rectangle.unit,
+                                    precision: rectangle.precision,
+                                    scale,
+                                },
+                            )
+                        } else if rectangle.shape == DimensionedShape::Rectangle {
                             sunipdf_core::annot_rich::RichAnnotation::DimensionedRectangle(
                                 DimensionedRectangle {
                                     anchor: rectangle.anchor,
                                     width: rectangle.width,
                                     height: rectangle.height,
+                                    rotation_degrees: rectangle.rotation_degrees,
                                     unit: rectangle.unit,
                                     precision: rectangle.precision,
                                     scale,
                                 },
-                            );
+                            )
+                        } else {
+                            sunipdf_core::annot_rich::RichAnnotation::DimensionedEllipse(
+                                DimensionedEllipse {
+                                    center: rectangle.anchor,
+                                    diameter_x: rectangle.width,
+                                    diameter_y: rectangle.height,
+                                    rotation_degrees: rectangle.rotation_degrees,
+                                    unit: rectangle.unit,
+                                    precision: rectangle.precision,
+                                    scale,
+                                },
+                            )
+                        };
                         doc.preview_rich_annotation(page, &annotation, author.as_deref())
                     })
                     .and_then(|mut preview| {
                         let prepared = preview.prepared.take().ok_or_else(|| {
-                            EngineError::Other(
-                                "missing prepared dimensioned rectangle preview".into(),
-                            )
+                            EngineError::Other("missing prepared dimensioned shape preview".into())
                         })?;
                         state.rich_preview = Some((epoch, generation, prepared));
                         Ok(preview)
@@ -3910,6 +4007,39 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 });
                 continue;
             }
+            Request::PreviewRegisterBatch {
+                epoch,
+                generation,
+                job,
+            } => {
+                state.register_batch = None;
+                let result = if job.cancel.load(std::sync::atomic::Ordering::Acquire) {
+                    Err(EngineError::Other("field preview cancelled".into()))
+                } else {
+                    state
+                        .document
+                        .as_ref()
+                        .ok_or_else(|| EngineError::Other("no document".into()))
+                        .and_then(|doc| {
+                            doc.preview_annotation_register_batch(
+                                &job.register,
+                                &job.rows,
+                                &job.patch,
+                            )
+                        })
+                }
+                .and_then(|plan| {
+                    if job.cancel.load(std::sync::atomic::Ordering::Acquire) {
+                        return Err(EngineError::Other("field preview cancelled".into()));
+                    }
+                    let report = plan.report().clone();
+                    state.register_batch = Some((epoch, generation, plan, job.cancel.clone()));
+                    Ok(report)
+                });
+                let _ = job.reply.send(result);
+                ctx.request_repaint();
+                continue;
+            }
             Request::CancelAnnotationRegister { epoch, generation } => {
                 if state
                     .register
@@ -4079,6 +4209,7 @@ mod tests {
         reprotection_requires_the_current_owner_without_removing_existing_restrictions(&worker);
         inspection_uses_saved_bytes_and_refuses_unsaved_changes(&worker);
         count_register_edits_have_one_undo_and_stale_edits_add_no_history(&worker);
+        register_batches_are_reviewed_atomic_and_have_one_history_step(&worker);
         page_calibration_edits_have_history_and_survive_reopening(&worker);
         saved_measurement_edits_replace_in_place_and_keep_history(&worker);
         deducted_measurements_round_trip_through_guarded_worker_history(&worker);
@@ -5972,7 +6103,7 @@ mod tests {
     fn revision_overlay_jobs_preserve_sources_and_guard_exports(worker: &Worker) {
         use crate::revision_overlay::{Job, Outcome};
         use std::sync::atomic::AtomicBool;
-        use sunipdf_core::revision_overlay::OverlayOptions;
+        use sunipdf_core::revision_overlay::stack::{OverlayStackLayer, OverlayStackOptions};
         let dir = tempfile::tempdir().unwrap();
         let bytes = std::fs::read(
             PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -5983,6 +6114,10 @@ mod tests {
         let revision = dir.path().join("revision.pdf");
         std::fs::write(&base, &bytes).unwrap();
         std::fs::write(&revision, &bytes).unwrap();
+        let third = dir.path().join("third.pdf");
+        let fourth = dir.path().join("fourth.pdf");
+        std::fs::write(&third, &bytes).unwrap();
+        std::fs::write(&fourth, &bytes).unwrap();
         let prepare = |generation,
                        base: PathBuf,
                        passwords: [zeroize::Zeroizing<String>; 2],
@@ -5990,13 +6125,21 @@ mod tests {
             worker.send(Request::RevisionOverlay {
                 generation,
                 job: Job::Preview {
-                    base,
-                    revision: revision.clone(),
-                    options: OverlayOptions {
+                    options: OverlayStackOptions {
+                        layers: [base, revision.clone(), third.clone(), fourth.clone()]
+                            .into_iter()
+                            .enumerate()
+                            .map(|(index, path)| OverlayStackLayer::new(path, 1, index))
+                            .collect(),
                         long_side: 512,
-                        ..Default::default()
                     },
-                    passwords,
+                    expected_hashes: vec![None; 4],
+                    passwords: vec![
+                        passwords[0].clone(),
+                        passwords[1].clone(),
+                        Default::default(),
+                        Default::default(),
+                    ],
                     cancel: Arc::new(AtomicBool::new(cancel)),
                 },
             });
@@ -6017,6 +6160,28 @@ mod tests {
         };
         assert!(!worker.has_pending_mutations());
         crate::revision_overlay::tests::verify_prepared_controls(&preview);
+        let mut three_options = preview.options().clone();
+        three_options.layers.pop();
+        worker.send(Request::RevisionOverlay {
+            generation: 500,
+            job: Job::Preview {
+                options: three_options,
+                expected_hashes: vec![None; 3],
+                passwords: (0..3).map(|_| Default::default()).collect(),
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        });
+        match next_response(worker) {
+            Response::RevisionOverlayDone {
+                result: Ok(Outcome::Preview(three)),
+                ..
+            } => {
+                assert_eq!(three.options().layers.len(), 3);
+                crate::revision_overlay::tests::verify_prepared_controls(&three);
+            }
+            _ => panic!("three-layer overlay preview"),
+        }
+
         let export = |generation, path: PathBuf, json, cancel: bool| {
             worker.send(Request::RevisionOverlay {
                 generation,
@@ -6038,6 +6203,140 @@ mod tests {
                 _ => panic!("overlay export response"),
             }
         };
+        let setup_job = |generation, job| {
+            worker.send(Request::RevisionOverlay { generation, job });
+            match next_response(worker) {
+                Response::RevisionOverlayDone {
+                    generation: returned,
+                    result,
+                } => {
+                    assert_eq!(returned, generation);
+                    result
+                }
+                _ => panic!("overlay setup response"),
+            }
+        };
+        let setup = dir.path().join("overlay-setup.json");
+        assert!(matches!(
+            setup_job(
+                520,
+                Job::SaveSetup {
+                    preview: preview.clone(),
+                    path: setup.clone(),
+                    cancel: Arc::new(AtomicBool::new(false))
+                }
+            ),
+            Ok(Outcome::Exported(_))
+        ));
+        let setup_bytes = std::fs::read(&setup).unwrap();
+        let setup_json: serde_json::Value = serde_json::from_slice(&setup_bytes).unwrap();
+        assert!(setup_json["layers"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|layer| layer["expected_sha256"]
+                .as_str()
+                .is_some_and(|hash| hash.len() == 64)
+                && layer.get("password_env").is_none()
+                && layer.get("password").is_none()));
+        assert!(setup_job(
+            521,
+            Job::SaveSetup {
+                preview: preview.clone(),
+                path: setup.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert_eq!(std::fs::read(&setup).unwrap(), setup_bytes);
+        let (loaded_options, loaded_hashes) = match setup_job(
+            522,
+            Job::LoadSetup {
+                path: setup.clone(),
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        )
+        .unwrap()
+        {
+            Outcome::SetupLoaded {
+                options,
+                expected_hashes,
+                ..
+            } => (options, expected_hashes),
+            _ => panic!("bounded overlay setup load"),
+        };
+        let bound_preview = |generation, options, hashes| {
+            setup_job(
+                generation,
+                Job::Preview {
+                    options,
+                    expected_hashes: hashes,
+                    passwords: (0..4).map(|_| Default::default()).collect(),
+                    cancel: Arc::new(AtomicBool::new(false)),
+                },
+            )
+        };
+        let reopened =
+            match bound_preview(523, loaded_options.clone(), loaded_hashes.clone()).unwrap() {
+                Outcome::Preview(prepared) => prepared,
+                _ => panic!("reopened source-bound setup preview"),
+            };
+        assert_eq!(reopened.image().rgba, preview.image().rgba);
+        crate::revision_overlay::tests::verify_setup_controls(
+            &reopened,
+            &loaded_options,
+            &loaded_hashes,
+        );
+        let missing = dir.path().join("temporarily-missing.pdf");
+        std::fs::rename(&fourth, &missing).unwrap();
+        assert!(
+            matches!(
+                setup_job(
+                    524,
+                    Job::LoadSetup {
+                        path: setup.clone(),
+                        cancel: Arc::new(AtomicBool::new(false))
+                    }
+                ),
+                Ok(Outcome::SetupLoaded { .. })
+            ),
+            "loading the setup does not read source PDFs"
+        );
+        assert!(bound_preview(525, loaded_options.clone(), loaded_hashes.clone()).is_err());
+        std::fs::rename(&missing, &fourth).unwrap();
+        let mut changed_hidden = bytes.clone();
+        changed_hidden.extend_from_slice(b"\n% changed hidden setup source\n");
+        std::fs::write(&fourth, changed_hidden).unwrap();
+        let mut hidden_options = loaded_options.clone();
+        hidden_options.layers[3].visible = false;
+        assert!(
+            bound_preview(526, hidden_options, loaded_hashes.clone()).is_err(),
+            "hidden sources retain their saved hash binding"
+        );
+        std::fs::write(&fourth, &bytes).unwrap();
+        assert!(matches!(
+            setup_job(
+                527,
+                Job::LoadSetup {
+                    path: setup.clone(),
+                    cancel: Arc::new(AtomicBool::new(true))
+                }
+            ),
+            Err(EngineError::Cancelled)
+        ));
+        let cancelled_setup = dir.path().join("cancelled-setup.json");
+        assert!(matches!(
+            setup_job(
+                528,
+                Job::SaveSetup {
+                    preview: preview.clone(),
+                    path: cancelled_setup.clone(),
+                    cancel: Arc::new(AtomicBool::new(true))
+                }
+            ),
+            Err(EngineError::Cancelled)
+        ));
+        assert!(!cancelled_setup.exists());
         let png = dir.path().join("overlay.png");
         assert!(matches!(
             export(502, png.clone(), false, false),
@@ -6057,10 +6356,11 @@ mod tests {
         ));
         let report: serde_json::Value =
             serde_json::from_slice(&std::fs::read(json).unwrap()).unwrap();
-        assert_eq!(report["schema"], "sunipdf-revision-overlay");
+        assert_eq!(report["schema"], "sunipdf-revision-overlay-stack");
+        assert_eq!(report["layers"].as_array().unwrap().len(), 4);
         assert_eq!(
-            report["base"]["source_sha256"],
-            preview.report()["base"]["source_sha256"]
+            report["layers"][0]["source"]["source_sha256"],
+            preview.report()["layers"][0]["source"]["source_sha256"]
         );
         assert_eq!(std::fs::read(&base).unwrap(), bytes);
         assert_eq!(std::fs::read(&revision).unwrap(), bytes);
@@ -6081,6 +6381,54 @@ mod tests {
         assert!(export(507, stale.clone(), true, false).is_err());
         assert!(!stale.exists());
         std::fs::write(&revision, &bytes).unwrap();
+        worker.send(Request::Open {
+            path: fourth.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Edit(EditOp::AddText {
+            page: 0,
+            x: 200.0,
+            y: 200.0,
+            text: "Unsaved overlay source".into(),
+            style: TextStyle::default(),
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(prepare(510, base.clone(), Default::default(), false).is_err());
+        let dirty_export = dir.path().join("dirty-source.png");
+        assert!(export(511, dirty_export.clone(), false, false).is_err());
+        assert!(!dirty_export.exists());
+        assert!(
+            setup_job(
+                529,
+                Job::LoadSetup {
+                    path: setup.clone(),
+                    cancel: Arc::new(AtomicBool::new(false))
+                }
+            )
+            .is_err(),
+            "the worker independently refuses a setup using its modified source"
+        );
+        let dirty_setup = dir.path().join("dirty-setup.json");
+        assert!(setup_job(
+            530,
+            Job::SaveSetup {
+                preview: preview.clone(),
+                path: dirty_setup.clone(),
+                cancel: Arc::new(AtomicBool::new(false))
+            }
+        )
+        .is_err());
+        assert!(!dirty_setup.exists());
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert!(prepare(512, base.clone(), Default::default(), false).is_ok());
         for aes256 in [false, true] {
             let protected = dir.path().join(format!("restricted-{aes256}.pdf"));
             let user = format!(
@@ -6118,6 +6466,9 @@ mod tests {
         }
         assert_eq!(std::fs::read(base).unwrap(), bytes);
         assert_eq!(std::fs::read(revision).unwrap(), bytes);
+        assert_eq!(std::fs::read(third).unwrap(), bytes);
+        assert_eq!(std::fs::read(fourth).unwrap(), bytes);
+        assert_eq!(std::fs::read(setup).unwrap(), setup_bytes);
         assert!(!worker.has_pending_mutations());
     }
 
@@ -6301,11 +6652,14 @@ mod tests {
     }
 
     fn library_groups_use_one_preview_and_one_history_step(worker: &Worker) {
-        use sunipdf_core::annotation_library::{LibraryPlacement, LibraryPrimitive, LibraryStamp};
+        use sunipdf_core::annotation_library::{
+            AnnotationLibrary, EmbeddedPng, LibraryPlacement, LibraryPrimitive, LibraryStamp,
+        };
         let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        let original_source = std::fs::read(&source).unwrap();
         worker.send(Request::Open {
-            path: source,
+            path: source.clone(),
             password: None,
         });
         assert!(matches!(next_response(worker), Response::Opened(_)));
@@ -6332,6 +6686,15 @@ mod tests {
         entry.primitives.push(LibraryPrimitive::Stamp {
             rect: [80.0, 0.0, 200.0, 40.0],
             stamp: LibraryStamp::Approved,
+        });
+        let mut png_bytes = std::io::Cursor::new(Vec::new());
+        image::RgbaImage::from_pixel(6, 4, image::Rgba([50, 100, 150, 240]))
+            .write_to(&mut png_bytes, image::ImageFormat::Png)
+            .unwrap();
+        entry.primitives.push(LibraryPrimitive::Image {
+            rect: [0.0, 60.0, 60.0, 100.0],
+            png: EmbeddedPng::from_png_bytes(png_bytes.get_ref()).unwrap(),
+            opacity: 0.5,
         });
         let preview = |generation| {
             worker.send(Request::PreviewRichAnnotation {
@@ -6380,10 +6743,11 @@ mod tests {
             Response::DocumentChanged(DocState { can_undo: true, .. })
         ));
         let after = details();
-        assert_eq!(after.len(), before.len() + 2);
+        assert_eq!(after.len(), before.len() + 3);
         let added = &after[before.len()..];
         assert_eq!(added[0].subtype, "Square");
         assert_eq!(added[1].subtype, "Stamp");
+        assert_eq!(added[2].subtype, "Stamp");
         assert!(added
             .iter()
             .all(|detail| detail.name.is_some() && detail.parent.is_none()));
@@ -6401,20 +6765,30 @@ mod tests {
             } => candidates,
             _ => panic!("library capture inventory"),
         };
-        let square = candidates
+        assert_eq!(
+            candidates
+                .iter()
+                .filter(|row| row.fingerprint.is_some())
+                .count(),
+            3
+        );
+        let selections: Vec<_> = candidates
             .iter()
-            .find(|row| row.subtype == "Square")
-            .unwrap();
-        let selections = vec![sunipdf_core::annotation_library::LibraryCaptureSelection {
-            index: square.index,
-            fingerprint: square.fingerprint.clone().unwrap(),
-        }];
+            .filter_map(|row| {
+                row.fingerprint.as_ref().map(|fingerprint| {
+                    sunipdf_core::annotation_library::LibraryCaptureSelection {
+                        index: row.index,
+                        fingerprint: fingerprint.clone(),
+                    }
+                })
+            })
+            .collect();
         let capture = || {
             worker.send(Request::CaptureLibraryEntry {
                 page: 0,
                 selections: selections.clone(),
-                id: "captured-square".into(),
-                name: "Captured square".into(),
+                id: "captured-symbols".into(),
+                name: "Captured symbols".into(),
                 provenance: sunipdf_core::annotation_library::LibraryProvenance {
                     source: Some("Test drawing".into()),
                     ..Default::default()
@@ -6430,7 +6804,7 @@ mod tests {
                 epoch: 92,
                 generation: 21,
                 result: Ok(ref entry),
-            } if entry.primitives.len() == 1
+            } if entry.primitives.len() == 3
         ));
         assert_eq!(
             details(),
@@ -6486,219 +6860,515 @@ mod tests {
         worker.send(Request::Save { path: path.clone() });
         assert!(matches!(next_response(worker), Response::Saved { .. }));
         worker.send(Request::Open {
-            path,
+            path: path.clone(),
             password: None,
         });
         assert!(matches!(next_response(worker), Response::Opened(_)));
         assert_eq!(details(), after);
-    }
-
-    fn dimensioned_rectangles_preview_commit_and_revalidate_the_captured_reference(
-        worker: &Worker,
-    ) {
-        use crate::measurement_shapes_ui::{RectanglePlacement, RectangleScaleSelection};
-        use sunipdf_core::measurement::{MeasurementKind, MeasurementUnit, PageCalibration};
-        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
-        let original_bytes = std::fs::read(&source).unwrap();
-        worker.send(Request::Open {
-            path: source.clone(),
-            password: None,
+        let saved_source = std::fs::read(&path).unwrap();
+        worker.send(Request::LibraryCaptureCandidates {
+            page: 0,
+            epoch: 93,
+            generation: 30,
         });
-        assert!(matches!(next_response(worker), Response::Opened(_)));
-        let calibration = PageCalibration {
-            points: [(40.0, 40.0), (140.0, 40.0)],
-            known_distance: 10.0,
-            unit: MeasurementUnit::Metres,
+        let saved_candidates = match next_response(worker) {
+            Response::LibraryCaptureCandidates {
+                result: Ok(candidates),
+                ..
+            } => candidates,
+            _ => panic!("saved stamp capture inventory"),
         };
-        let rectangle = RectanglePlacement {
-            anchor: (50.0, 100.0),
-            width: 2.0,
-            height: 3.0,
-            unit: MeasurementUnit::Metres,
-            precision: 2,
-            scale: RectangleScaleSelection::Local(calibration.clone()),
+        let selections = saved_candidates
+            .iter()
+            .filter_map(|row| {
+                row.fingerprint.as_ref().map(|fingerprint| {
+                    sunipdf_core::annotation_library::LibraryCaptureSelection {
+                        index: row.index,
+                        fingerprint: fingerprint.clone(),
+                    }
+                })
+            })
+            .collect();
+        worker.send(Request::CaptureLibraryEntry {
+            page: 0,
+            selections,
+            id: "saved-stamp-group".into(),
+            name: "Saved inspection stamps".into(),
+            provenance: sunipdf_core::annotation_library::LibraryProvenance {
+                source: Some("Owned saved test drawing".into()),
+                ..Default::default()
+            },
+            epoch: 93,
+            generation: 31,
+        });
+        let captured = match next_response(worker) {
+            Response::LibraryEntryCaptured {
+                result: Ok(entry), ..
+            } => entry,
+            _ => panic!("capture native standard and image stamps from reopened PDF"),
         };
-        let preview = |generation| {
-            worker.send(Request::PreviewDimensionedRectangle {
-                page: 0,
-                rectangle: rectangle.clone(),
-                author: Some("lmdanavanem".into()),
-                epoch: 92,
-                generation,
-            });
-            match next_response(worker) {
-                Response::RichAnnotationPreview { result, .. } => result,
-                _ => panic!("dimensioned rectangle preview response"),
+        assert_eq!(captured.primitives.len(), 3);
+        assert!(captured.primitives.iter().any(|primitive| matches!(
+            primitive,
+            LibraryPrimitive::Stamp {
+                stamp: LibraryStamp::Approved,
+                ..
             }
-        };
-        let read = || {
-            worker.send(Request::MeasurementPage {
-                page: 0,
-                epoch: 92,
-                generation: 1,
-            });
-            match next_response(worker) {
-                Response::MeasurementPage {
-                    result: Ok(data), ..
-                } => data.records.unwrap(),
-                _ => panic!("rectangle inventory"),
-            }
-        };
-        assert!(preview(1).is_err(), "old UI calibration alone is not proof");
-        assert!(read().is_empty());
-        worker.send(Request::CaptureRectangleCalibration {
-            page: 0,
-            calibration: calibration.clone(),
-        });
-        assert!(preview(2).is_ok());
-        assert!(read().is_empty(), "preview leaves the document unchanged");
-        let mut invalid = calibration.clone();
-        invalid.known_distance = 0.0;
-        worker.send(Request::CaptureRectangleCalibration {
-            page: 0,
-            calibration: invalid.clone(),
-        });
-        assert!(
-            matches!(preview(20), Err(EngineError::Other(message)) if message == RECTANGLE_REFERENCE_REQUIRED),
-            "failed capture must replace the earlier valid token"
+        )));
+        let (png, opacity) = captured
+            .primitives
+            .iter()
+            .find_map(|primitive| match primitive {
+                LibraryPrimitive::Image { png, opacity, .. } => Some((png, *opacity)),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(
+            opacity, 1.0,
+            "captured image alpha already includes the original opacity"
         );
-        let mut rejected_rectangle = rectangle.clone();
-        rejected_rectangle.scale = RectangleScaleSelection::Local(invalid);
-        worker.send(Request::PreviewDimensionedRectangle {
-            page: 0,
-            rectangle: rejected_rectangle,
-            author: None,
-            epoch: 92,
-            generation: 21,
-        });
-        assert!(
-            matches!(next_response(worker), Response::RichAnnotationPreview {result: Err(EngineError::Other(message)), ..}
-            if message.starts_with(RECTANGLE_CAPTURE_FAILED)),
-            "capture failure retains its actual cause"
+        let decoded = image::load_from_memory(&png.png_bytes().unwrap())
+            .unwrap()
+            .to_rgba8();
+        assert!(decoded.pixels().all(|pixel| pixel.0 == [50, 100, 150, 120]));
+        let mut library = AnnotationLibrary::default();
+        library.insert(captured.clone()).unwrap();
+        let library_path = directory.path().join("saved-stamps.json");
+        std::fs::write(&library_path, library.to_json().unwrap()).unwrap();
+        let library = AnnotationLibrary::from_json(&std::fs::read(&library_path).unwrap()).unwrap();
+        assert_eq!(library.entries(), std::slice::from_ref(&captured));
+        assert_eq!(
+            details(),
+            after,
+            "library capture and JSON persistence leave PDF history unchanged"
         );
+        assert_eq!(std::fs::read(&path).unwrap(), saved_source);
         worker.send(Request::PreviewRichAnnotation {
             page: 0,
-            annotation: sunipdf_core::annot_rich::RichAnnotation::Measurement(
-                sunipdf_core::measurement::Measurement {
-                    holes: Vec::new(),
-                    depth: None,
-                    kind: MeasurementKind::Length,
-                    points: vec![(40.0, 100.0), (140.0, 100.0)],
-                    calibration: calibration.points,
-                    known_distance: calibration.known_distance,
-                    unit: calibration.unit,
-                    precision: 2,
+            annotation: sunipdf_core::annot_rich::RichAnnotation::LibraryPlacement {
+                entry: library.entries()[0].clone(),
+                placement: LibraryPlacement {
+                    origin: (50.0, 300.0),
+                    scale: 1.0,
                 },
-            ),
-            author: None,
-            epoch: 92,
-            generation: 22,
+            },
+            author: Some("lmdanavanem".into()),
+            epoch: 93,
+            generation: 32,
         });
-        assert!(
-            matches!(
-                next_response(worker),
-                Response::RichAnnotationPreview { result: Ok(_), .. }
-            ),
-            "a rectangle capture failure does not disable ordinary measurements"
+        let rendered = match next_response(worker) {
+            Response::RichAnnotationPreview {
+                result: Ok(preview),
+                ..
+            } => preview,
+            _ => panic!("captured mixed group preview"),
+        };
+        crate::annotation_library::tests::verify_saved_stamp_capture_controls(
+            &saved_candidates,
+            &captured,
+            &rendered,
         );
-        assert!(read().is_empty());
-        worker.send(Request::CaptureRectangleCalibration {
-            page: 0,
-            calibration: calibration.clone(),
-        });
-        assert!(preview(2).is_ok());
-        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
-            epoch: 92,
-            generation: 2,
-        }));
-        assert!(matches!(
-            next_response(worker),
-            Response::DocumentChanged(_)
-        ));
-        let records = read();
-        assert_eq!(records.len(), 1);
-        assert!(records[0].validity.is_current());
-        assert_eq!(records[0].measurement.kind, MeasurementKind::Area);
         assert_eq!(
-            records[0].measurement.points,
-            vec![(50.0, 100.0), (70.0, 100.0), (70.0, 130.0), (50.0, 130.0)]
+            details(),
+            after,
+            "prepared placement does not edit the source PDF"
         );
-        assert!((records[0].measurement.value().unwrap() - 6.0).abs() < 1e-8);
-        assert!(
-            preview(3).is_ok(),
-            "annotation-only changes retain a verified local scale"
-        );
-        worker.send(Request::DiscardRichAnnotationPreview {
-            epoch: 92,
-            generation: 3,
-        });
         worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
-            epoch: 92,
-            generation: 3,
+            epoch: 93,
+            generation: 32,
         }));
         assert!(matches!(
             next_response(worker),
-            Response::OperationFailed(_)
+            Response::DocumentChanged(DocState { can_undo: true, .. })
         ));
+        let copied = details();
+        assert_eq!(copied.len(), after.len() + 3);
         worker.send(Request::Undo);
         assert!(matches!(
             next_response(worker),
-            Response::DocumentChanged(_)
+            Response::DocumentChanged(DocState {
+                can_undo: false,
+                can_redo: true,
+                ..
+            })
         ));
-        assert!(read().is_empty(), "one Undo removes the only rectangle");
+        assert_eq!(details(), after);
         worker.send(Request::Redo);
         assert!(matches!(
             next_response(worker),
             Response::DocumentChanged(_)
         ));
-        assert_eq!(read(), records);
-        let temp = tempfile::tempdir().unwrap();
-        let output = temp.path().join("dimensioned-rectangle.pdf");
+        assert_eq!(details(), copied);
+        let placed_path = directory.path().join("saved-stamps-placed.pdf");
         worker.send(Request::Save {
-            path: output.clone(),
+            path: placed_path.clone(),
         });
         assert!(matches!(next_response(worker), Response::Saved { .. }));
         worker.send(Request::Open {
-            path: output,
+            path: placed_path,
             password: None,
         });
         assert!(matches!(next_response(worker), Response::Opened(_)));
-        assert_eq!(read(), records);
-        assert!(
-            preview(4).is_err(),
-            "opening a document clears temporary proof"
-        );
-        worker.send(Request::CaptureRectangleCalibration {
-            page: 0,
-            calibration: calibration.clone(),
-        });
-        assert!(preview(5).is_ok());
-        worker.send(Request::Edit(EditOp::AddText {
-            page: 0,
-            x: 200.0,
-            y: 200.0,
-            text: "Changed drawing".into(),
-            style: TextStyle::default(),
-        }));
-        assert!(matches!(
-            next_response(worker),
-            Response::DocumentChanged(_)
-        ));
-        worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
-            epoch: 92,
-            generation: 5,
-        }));
-        assert!(
-            matches!(next_response(worker), Response::OperationFailed(_)),
-            "a mutation discards the prepared candidate"
-        );
-        assert!(
-            preview(6).is_err(),
-            "page content changes invalidate the earlier reference"
-        );
-        assert_eq!(read().len(), 1);
-        assert_eq!(std::fs::read(source).unwrap(), original_bytes);
+        assert_eq!(details(), copied);
+        assert_eq!(std::fs::read(&path).unwrap(), saved_source);
+        assert_eq!(std::fs::read(&source).unwrap(), original_source);
+    }
+
+    fn dimensioned_rectangles_preview_commit_and_revalidate_the_captured_reference(
+        worker: &Worker,
+    ) {
+        use crate::measurement_shapes_ui::{
+            DimensionedShape, RectanglePlacement, RectangleScaleSelection,
+        };
+        use sunipdf_core::measurement::{MeasurementKind, MeasurementUnit, PageCalibration};
+        for shape in [
+            DimensionedShape::Rectangle,
+            DimensionedShape::Circle,
+            DimensionedShape::Ellipse,
+            DimensionedShape::Segment,
+        ] {
+            let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+            let original_bytes = std::fs::read(&source).unwrap();
+            worker.send(Request::Open {
+                path: source.clone(),
+                password: None,
+            });
+            let size = match next_response(worker) {
+                Response::Opened(state) => state.info.page_sizes[0],
+                _ => panic!("opened rectangle fixture"),
+            };
+            let calibration = PageCalibration {
+                points: [(40.0, 40.0), (140.0, 40.0)],
+                known_distance: 10.0,
+                unit: MeasurementUnit::Metres,
+            };
+            let rectangle = RectanglePlacement {
+                shape,
+                anchor: (50.0, 100.0),
+                width: 2.0,
+                height: if shape == DimensionedShape::Circle {
+                    2.0
+                } else {
+                    3.0
+                },
+                rotation_degrees: 33.5,
+                unit: MeasurementUnit::Metres,
+                precision: 2,
+                scale: RectangleScaleSelection::Local(calibration.clone()),
+            };
+            let preview = |generation| {
+                worker.send(Request::PreviewDimensionedRectangle {
+                    page: 0,
+                    rectangle: rectangle.clone(),
+                    author: Some("lmdanavanem".into()),
+                    epoch: 92,
+                    generation,
+                });
+                match next_response(worker) {
+                    Response::RichAnnotationPreview { result, .. } => result,
+                    _ => panic!("dimensioned rectangle preview response"),
+                }
+            };
+            let read = || {
+                worker.send(Request::MeasurementPage {
+                    page: 0,
+                    epoch: 92,
+                    generation: 1,
+                });
+                match next_response(worker) {
+                    Response::MeasurementPage {
+                        result: Ok(data), ..
+                    } => data.records.unwrap(),
+                    _ => panic!("rectangle inventory"),
+                }
+            };
+            assert!(preview(1).is_err(), "old UI calibration alone is not proof");
+            assert!(read().is_empty());
+            worker.send(Request::CaptureRectangleCalibration {
+                page: 0,
+                calibration: calibration.clone(),
+            });
+            assert!(preview(2).is_ok());
+            assert!(read().is_empty(), "preview leaves the document unchanged");
+            for (generation, anchor, angle) in [
+                (30, (0.0, 0.0), 45.0),
+                (31, (0.0, 0.0), 180.0),
+                (32, (50.0, 100.0), f64::NAN),
+            ] {
+                let mut invalid = rectangle.clone();
+                invalid.anchor = anchor;
+                invalid.rotation_degrees = angle;
+                worker.send(Request::PreviewDimensionedRectangle {
+                    page: 0,
+                    rectangle: invalid,
+                    author: None,
+                    epoch: 92,
+                    generation,
+                });
+                assert!(matches!(
+                    next_response(worker),
+                    Response::RichAnnotationPreview { result: Err(_), .. }
+                ));
+                worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                    epoch: 92,
+                    generation,
+                }));
+                assert!(matches!(
+                    next_response(worker),
+                    Response::OperationFailed(_)
+                ));
+                assert!(
+                    read().is_empty(),
+                    "rejected rotated preview never changes the document"
+                );
+            }
+
+            let mut invalid = calibration.clone();
+            invalid.known_distance = 0.0;
+            worker.send(Request::CaptureRectangleCalibration {
+                page: 0,
+                calibration: invalid.clone(),
+            });
+            assert!(
+                matches!(preview(20), Err(EngineError::Other(message)) if message == RECTANGLE_REFERENCE_REQUIRED),
+                "failed capture must replace the earlier valid token"
+            );
+            let mut rejected_rectangle = rectangle.clone();
+            rejected_rectangle.scale = RectangleScaleSelection::Local(invalid);
+            worker.send(Request::PreviewDimensionedRectangle {
+                page: 0,
+                rectangle: rejected_rectangle,
+                author: None,
+                epoch: 92,
+                generation: 21,
+            });
+            assert!(
+                matches!(next_response(worker), Response::RichAnnotationPreview {result: Err(EngineError::Other(message)), ..}
+            if message.starts_with(RECTANGLE_CAPTURE_FAILED)),
+                "capture failure retains its actual cause"
+            );
+            worker.send(Request::PreviewRichAnnotation {
+                page: 0,
+                annotation: sunipdf_core::annot_rich::RichAnnotation::Measurement(
+                    sunipdf_core::measurement::Measurement {
+                        holes: Vec::new(),
+                        depth: None,
+                        kind: MeasurementKind::Length,
+                        points: vec![(40.0, 100.0), (140.0, 100.0)],
+                        calibration: calibration.points,
+                        known_distance: calibration.known_distance,
+                        unit: calibration.unit,
+                        precision: 2,
+                    },
+                ),
+                author: None,
+                epoch: 92,
+                generation: 22,
+            });
+            assert!(
+                matches!(
+                    next_response(worker),
+                    Response::RichAnnotationPreview { result: Ok(_), .. }
+                ),
+                "a rectangle capture failure does not disable ordinary measurements"
+            );
+            assert!(read().is_empty());
+            worker.send(Request::CaptureRectangleCalibration {
+                page: 0,
+                calibration: calibration.clone(),
+            });
+            assert!(preview(2).is_ok());
+            worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                epoch: 92,
+                generation: 2,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            let records = read();
+            assert_eq!(records.len(), 1);
+            assert!(records[0].validity.is_current());
+            assert_eq!(
+                records[0].measurement.kind,
+                if shape == DimensionedShape::Segment {
+                    MeasurementKind::Length
+                } else {
+                    MeasurementKind::Area
+                }
+            );
+            let hover = crate::measurement_shapes_ui::indicative_outline(
+                &rectangle,
+                rectangle.anchor,
+                &calibration,
+                (size.width_pt, size.height_pt),
+            )
+            .unwrap();
+            assert_eq!(records[0].measurement.points, hover.to_vec());
+            let area = records[0].measurement.value().unwrap();
+            let expected_area = if shape == DimensionedShape::Segment {
+                rectangle.width
+            } else if shape == DimensionedShape::Rectangle {
+                rectangle.width * rectangle.height
+            } else {
+                let n = sunipdf_core::measurement::DIMENSIONED_ELLIPSE_SEGMENTS as f64;
+                n * (std::f64::consts::TAU / n).sin() * rectangle.width * rectangle.height / 8.0
+            };
+            assert!((area - expected_area).abs() < 1e-4);
+            assert_eq!(
+                records[0].measurement.points.len(),
+                if shape == DimensionedShape::Segment {
+                    2
+                } else if shape == DimensionedShape::Rectangle {
+                    4
+                } else {
+                    128
+                }
+            );
+            worker.send(Request::QuantityTable {
+                epoch: 92,
+                generation: 1,
+            });
+            match next_response(worker) {
+                Response::QuantityTable {
+                    result: Ok(table), ..
+                } => {
+                    let result = table.json(&Default::default()).unwrap();
+                    assert_eq!(result["summary"]["matched_rows"], 1);
+                    assert!(
+                        (table.rows()[0].quantity.as_ref().unwrap().value - area).abs() < 1e-10
+                    );
+                }
+                _ => panic!("dimensioned shape quantity table"),
+            }
+            assert!(
+                preview(3).is_ok(),
+                "annotation-only changes retain a verified local scale"
+            );
+            worker.send(Request::DiscardRichAnnotationPreview {
+                epoch: 92,
+                generation: 3,
+            });
+            worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                epoch: 92,
+                generation: 3,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::OperationFailed(_)
+            ));
+            worker.send(Request::Undo);
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            assert!(read().is_empty(), "one Undo removes the only rectangle");
+            worker.send(Request::Redo);
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            assert_eq!(read(), records);
+            let temp = tempfile::tempdir().unwrap();
+            let output = temp.path().join("dimensioned-rectangle.pdf");
+            worker.send(Request::Save {
+                path: output.clone(),
+            });
+            assert!(matches!(next_response(worker), Response::Saved { .. }));
+            worker.send(Request::Open {
+                path: output,
+                password: None,
+            });
+            assert!(matches!(next_response(worker), Response::Opened(_)));
+            assert_eq!(read(), records);
+            assert!(
+                preview(4).is_err(),
+                "opening a document clears temporary proof"
+            );
+            worker.send(Request::CaptureRectangleCalibration {
+                page: 0,
+                calibration: calibration.clone(),
+            });
+            assert!(preview(5).is_ok());
+            worker.send(Request::Edit(EditOp::AddText {
+                page: 0,
+                x: 200.0,
+                y: 200.0,
+                text: "Changed drawing".into(),
+                style: TextStyle::default(),
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                epoch: 92,
+                generation: 5,
+            }));
+            assert!(
+                matches!(next_response(worker), Response::OperationFailed(_)),
+                "a mutation discards the prepared candidate"
+            );
+            assert!(
+                preview(6).is_err(),
+                "page content changes invalidate the earlier reference"
+            );
+            assert_eq!(read().len(), 1);
+            worker.send(Request::Edit(EditOp::SetMeasurementViewports {
+                page: 0,
+                expected: Vec::new(),
+                replacement: vec![sunipdf_core::measurement::MeasurementViewport {
+                    id: "detail".into(),
+                    name: "Detail".into(),
+                    bounds: PointRect {
+                        left: 30.0,
+                        bottom: 30.0,
+                        right: 150.0,
+                        top: 150.0,
+                    },
+                    calibration: calibration.clone(),
+                }],
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+            for (generation, anchor, accepted) in
+                [(40, (80.0, 100.0), true), (41, (145.0, 100.0), false)]
+            {
+                let mut region_rectangle = rectangle.clone();
+                region_rectangle.anchor = anchor;
+                region_rectangle.scale = RectangleScaleSelection::Region("detail".into());
+                worker.send(Request::PreviewDimensionedRectangle {
+                    page: 0,
+                    rectangle: region_rectangle,
+                    author: None,
+                    epoch: 92,
+                    generation,
+                });
+                match next_response(worker) {
+                    Response::RichAnnotationPreview { result, .. } => {
+                        assert_eq!(result.is_ok(), accepted)
+                    }
+                    _ => panic!("bounded rotated region preview"),
+                }
+                worker.send(Request::DiscardRichAnnotationPreview {
+                    epoch: 92,
+                    generation,
+                });
+                worker.send(Request::Edit(EditOp::CommitRichAnnotationPreview {
+                    epoch: 92,
+                    generation,
+                }));
+                assert!(matches!(
+                    next_response(worker),
+                    Response::OperationFailed(_)
+                ));
+                assert_eq!(read().len(), 1);
+            }
+            assert_eq!(std::fs::read(source).unwrap(), original_bytes);
+        }
     }
 
     fn saved_measurement_edits_replace_in_place_and_keep_history(worker: &Worker) {
@@ -7357,6 +8027,225 @@ mod tests {
             Response::DocumentChanged(_)
         ));
         assert_eq!(read().rows[0].annotation_id, id);
+    }
+
+    fn register_batches_are_reviewed_atomic_and_have_one_history_step(worker: &Worker) {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use sunipdf_core::annotation_register_batch::{FieldPatch, RegisterFieldsPatch};
+        let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../crates/sunipdf-core/tests/fixtures/two-pages.pdf");
+        let original = std::fs::read(&source).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        for (page, group) in [(0, "Lights"), (1, "Sockets")] {
+            worker.send(Request::Edit(EditOp::AddCountMarker {
+                page,
+                point: (80.0, 90.0),
+                size: 18.0,
+                group: group.into(),
+                author: None,
+            }));
+            assert!(matches!(
+                next_response(worker),
+                Response::DocumentChanged(_)
+            ));
+        }
+        let read = || {
+            worker.send(Request::AnnotationRegister {
+                epoch: 860,
+                generation: 1,
+            });
+            match next_response(worker) {
+                Response::AnnotationRegister {
+                    result: Ok(report), ..
+                } => Arc::new(report),
+                _ => panic!("register"),
+            }
+        };
+        let baseline = read();
+        assert_eq!(baseline.rows.len(), 2);
+        let preview = |register: Arc<sunipdf_core::annotation_register::AnnotationRegister>,
+                       patch: RegisterFieldsPatch,
+                       generation,
+                       cancel: Arc<AtomicBool>| {
+            let (reply, receiver) = mpsc::channel();
+            worker.send(Request::PreviewRegisterBatch {
+                epoch: 860,
+                generation,
+                job: crate::annotation_register::bulk::PreviewJob {
+                    rows: register.rows.clone(),
+                    register,
+                    patch,
+                    cancel,
+                    reply,
+                },
+            });
+            receiver
+                .recv_timeout(std::time::Duration::from_secs(10))
+                .unwrap()
+        };
+        let patch = RegisterFieldsPatch {
+            business_status: FieldPatch::Set("Installed".into()),
+            discipline: FieldPatch::Set("Electrical".into()),
+            custom: std::collections::BTreeMap::from([(
+                "Room".into(),
+                FieldPatch::Set("A101".into()),
+            )]),
+        };
+        let cancelled = Arc::new(AtomicBool::new(true));
+        assert!(preview(baseline.clone(), patch.clone(), 1, cancelled).is_err());
+        assert_eq!(read().rows, baseline.rows);
+        let after_preview_cancel = Arc::new(AtomicBool::new(false));
+        let report = preview(
+            baseline.clone(),
+            patch.clone(),
+            2,
+            after_preview_cancel.clone(),
+        )
+        .unwrap();
+        assert_eq!((report.selected_count, report.changed_count), (2, 2));
+        after_preview_cancel.store(true, Ordering::Release);
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 2,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert_eq!(read().rows, baseline.rows);
+        preview(
+            baseline.clone(),
+            patch.clone(),
+            3,
+            Arc::new(AtomicBool::new(false)),
+        )
+        .unwrap();
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 3,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(DocState {
+                pages_unchanged: true,
+                measurement_scales_unchanged: true,
+                ..
+            })
+        ));
+        let changed = read();
+        for (before, after) in baseline.rows.iter().zip(&changed.rows) {
+            assert_eq!(after.fields.business_status.as_deref(), Some("Installed"));
+            assert_eq!(after.fields.discipline.as_deref(), Some("Electrical"));
+            assert_eq!(after.fields.custom["Room"], "A101");
+            assert_eq!(before.annotation_id, after.annotation_id);
+            assert_eq!(before.count_group, after.count_group);
+            assert_eq!(before.review_status, after.review_status);
+        }
+        // A consumed preview, no-op and stale source cannot add history entries.
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 3,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        let noop = preview(
+            changed.clone(),
+            patch.clone(),
+            4,
+            Arc::new(AtomicBool::new(false)),
+        )
+        .unwrap();
+        assert_eq!(noop.changed_count, 0);
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 4,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert!(preview(
+            baseline.clone(),
+            patch.clone(),
+            5,
+            Arc::new(AtomicBool::new(false))
+        )
+        .is_err());
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(
+            read().rows,
+            baseline.rows,
+            "one Undo restores the complete batch despite refused follow-ups"
+        );
+        worker.send(Request::Redo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read().rows, changed.rows);
+        let invalid = RegisterFieldsPatch {
+            custom: std::collections::BTreeMap::from([("=bad".into(), FieldPatch::Clear)]),
+            ..Default::default()
+        };
+        assert!(preview(read(), invalid, 6, Arc::new(AtomicBool::new(false))).is_err());
+        assert_eq!(read().rows, changed.rows);
+        let clear = RegisterFieldsPatch {
+            business_status: FieldPatch::Clear,
+            ..Default::default()
+        };
+        preview(read(), clear, 7, Arc::new(AtomicBool::new(false))).unwrap();
+        // A dirty in-memory document remains editable, but any intervening mutation invalidates the review.
+        worker.send(Request::Edit(EditOp::AddCountMarker {
+            page: 0,
+            point: (120.0, 90.0),
+            size: 18.0,
+            group: "Other".into(),
+            author: None,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 7,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        worker.send(Request::Undo);
+        assert!(matches!(
+            next_response(worker),
+            Response::DocumentChanged(_)
+        ));
+        assert_eq!(read().rows, changed.rows);
+        preview(read(), patch, 8, Arc::new(AtomicBool::new(false))).unwrap();
+        worker.send(Request::Open {
+            path: source.clone(),
+            password: None,
+        });
+        assert!(matches!(next_response(worker), Response::Opened(_)));
+        worker.send(Request::Edit(EditOp::CommitRegisterBatch {
+            epoch: 860,
+            generation: 8,
+        }));
+        assert!(matches!(
+            next_response(worker),
+            Response::OperationFailed(_)
+        ));
+        assert!(read().rows.is_empty());
+        assert_eq!(std::fs::read(source).unwrap(), original);
     }
 
     fn visual_search_reviewed_counts_have_one_undo_and_reject_stale_tokens(worker: &Worker) {

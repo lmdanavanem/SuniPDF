@@ -1,4 +1,4 @@
-//! Read-only decimal expressions for quantity reports. No calls, assignments or I/O.
+//! Read-only decimal expressions with one bounded unit-conversion builtin; no I/O.
 
 use super::{
     bad, decimal_units, format_units, short, QuantityRow, QuantityUnit, TypedValue, DECIMAL_LIMIT,
@@ -55,12 +55,14 @@ enum Node {
     Number(i128),
     Field(String),
     Quantity,
+    Convert(Box<Node>, QuantityUnit),
     Neg(Box<Node>),
     Binary(u8, Box<Node>, Box<Node>),
 }
 pub(super) struct CompiledFormula {
     column: FormulaColumn,
     node: Node,
+    uses_unit_conversion: bool,
 }
 
 impl FormulaColumn {
@@ -85,6 +87,7 @@ impl FormulaColumn {
             at: 0,
             tokens: 0,
             uses_quantity: false,
+            uses_unit_conversion: false,
         };
         let node = parser.expression(0)?;
         parser.space();
@@ -97,7 +100,12 @@ impl FormulaColumn {
         Ok(CompiledFormula {
             column: self.clone(),
             node,
+            uses_unit_conversion: parser.uses_unit_conversion,
         })
+    }
+    pub(super) fn uses_unit_conversion(&self) -> bool {
+        self.compile()
+            .is_ok_and(|compiled| compiled.uses_unit_conversion)
     }
 }
 
@@ -131,6 +139,7 @@ struct Parser<'a> {
     at: usize,
     tokens: usize,
     uses_quantity: bool,
+    uses_unit_conversion: bool,
 }
 impl Parser<'_> {
     fn space(&mut self) {
@@ -144,6 +153,41 @@ impl Parser<'_> {
             return Err(bad("formula exceeds 128 tokens"));
         }
         Ok(())
+    }
+    fn punctuation(&mut self, expected: u8) -> Result<(), EngineError> {
+        self.space();
+        if self.text.get(self.at) != Some(&expected) {
+            return Err(bad("conversion requires convert(expression, unit)"));
+        }
+        self.token()?;
+        self.at += 1;
+        Ok(())
+    }
+    fn conversion(&mut self, depth: usize) -> Result<Node, EngineError> {
+        self.at += b"convert".len();
+        self.punctuation(b'(')?;
+        let inner = self.expression(depth + 1)?;
+        self.punctuation(b',')?;
+        self.space();
+        self.token()?;
+        let start = self.at;
+        while self
+            .text
+            .get(self.at)
+            .is_some_and(u8::is_ascii_alphanumeric)
+        {
+            self.at += 1;
+        }
+        let id = std::str::from_utf8(&self.text[start..self.at])
+            .map_err(|_| bad("invalid conversion unit"))?;
+        let unit = QuantityUnit::from_id(id)
+            .filter(|unit| geometric_family(*unit).is_some())
+            .ok_or_else(|| {
+                bad("conversion requires mm, cm, m, in or ft, optionally suffixed 2 or 3")
+            })?;
+        self.punctuation(b')')?;
+        self.uses_unit_conversion = true;
+        Ok(Node::Convert(Box::new(inner), unit))
     }
     fn expression(&mut self, depth: usize) -> Result<Node, EngineError> {
         let mut node = self.product(depth + 1)?;
@@ -204,7 +248,8 @@ impl Parser<'_> {
             Some(b'q') if self.text[self.at..].starts_with(b"quantity") => {
                 self.at += 8; self.uses_quantity = true; Ok(Node::Quantity)
             }
-            _ => Err(bad("formula accepts decimals, quantity, [numeric fields], parentheses and + - * / only")),
+            Some(b'c') if self.text[self.at..].starts_with(b"convert") => self.conversion(depth),
+            _ => Err(bad("formula accepts decimals, quantity, [numeric fields], convert(expression, unit), parentheses and + - * / only")),
         }
     }
 }
@@ -272,6 +317,38 @@ fn combined_unit(
     Ok(Some(family[power - 1]))
 }
 
+fn convert_units(
+    value: i128,
+    source: Option<QuantityUnit>,
+    target: QuantityUnit,
+) -> Result<i128, FormulaError> {
+    let (source_family, source_power) = source
+        .and_then(geometric_family)
+        .ok_or(FormulaError::UnitMismatch)?;
+    let (target_family, target_power) =
+        geometric_family(target).ok_or(FormulaError::UnitMismatch)?;
+    if source_power != target_power {
+        return Err(FormulaError::UnitMismatch);
+    }
+    // Exact international length definitions in micrometres; powers preserve area/volume.
+    let micrometres = |unit| match unit {
+        QuantityUnit::Millimetres => 1_000i128,
+        QuantityUnit::Centimetres => 10_000,
+        QuantityUnit::Metres => 1_000_000,
+        QuantityUnit::Inches => 25_400,
+        QuantityUnit::Feet => 304_800,
+        _ => unreachable!("geometric families start with a length unit"),
+    };
+    let numerator = micrometres(source_family[0])
+        .checked_pow(source_power as u32)
+        .and_then(|factor| value.checked_mul(factor))
+        .ok_or(FormulaError::Overflow)?;
+    let denominator = micrometres(target_family[0])
+        .checked_pow(target_power as u32)
+        .ok_or(FormulaError::Overflow)?;
+    divide_round(numerator, denominator)
+}
+
 fn evaluate(
     node: &Node,
     row: &QuantityRow,
@@ -306,6 +383,10 @@ fn evaluate(
         Node::Neg(inner) => {
             let (value, unit) = evaluate(inner, row, expected_unit)?;
             (-value, unit)
+        }
+        Node::Convert(inner, target) => {
+            let (value, source) = evaluate(inner, row, expected_unit)?;
+            (convert_units(value, source, *target)?, Some(*target))
         }
         Node::Binary(op, left, right) => {
             let (a, ua) = evaluate(left, row, expected_unit)?;

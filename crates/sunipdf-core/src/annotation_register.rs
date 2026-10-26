@@ -29,6 +29,50 @@ fn short(text: &str, limit: usize) -> bool {
     text.len() <= limit && !text.chars().any(char::is_control)
 }
 
+fn valid_custom_field(key: &str, value: &str) -> bool {
+    !key.trim().is_empty()
+        && key == key.trim()
+        && !key.contains('=')
+        && short(key, 64)
+        && short(value, 1024)
+}
+
+/// One literal register text-field criterion. Case, whitespace and an empty value are significant.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "RegisterFieldFilterInput")]
+pub struct RegisterFieldFilter {
+    pub key: String,
+    pub value: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RegisterFieldFilterInput {
+    key: String,
+    value: String,
+}
+
+impl TryFrom<RegisterFieldFilterInput> for RegisterFieldFilter {
+    type Error = EngineError;
+    fn try_from(input: RegisterFieldFilterInput) -> Result<Self, Self::Error> {
+        let filter = Self {
+            key: input.key,
+            value: input.value,
+        };
+        filter.validate()?;
+        Ok(filter)
+    }
+}
+
+impl RegisterFieldFilter {
+    pub fn validate(&self) -> Result<(), EngineError> {
+        if !valid_custom_field(&self.key, &self.value) {
+            return Err(EngineError::Other("register field filter: key requires 1 to 64 UTF-8 bytes without surrounding whitespace, '=' or control characters; value allows 0 to 1024 UTF-8 bytes without control characters".into()));
+        }
+        Ok(())
+    }
+}
+
 pub fn validate_count_group(group: &str) -> Result<(), EngineError> {
     if group.trim().is_empty() || group != group.trim() || !short(group, 512) {
         return Err(EngineError::Other("count group must contain 1–512 UTF-8 bytes, without surrounding whitespace or control characters".into()));
@@ -50,13 +94,7 @@ impl RegisterFields {
             v.as_ref()
                 .is_some_and(|s| s.trim().is_empty() || s != s.trim() || !short(s, 512))
         }) || self.custom.len() > 16
-            || self.custom.iter().any(|(k, v)| {
-                k.trim().is_empty()
-                    || k != k.trim()
-                    || k.contains('=')
-                    || !short(k, 64)
-                    || !short(v, 1024)
-            })
+            || self.custom.iter().any(|(k, v)| !valid_custom_field(k, v))
         {
             return Err(bad());
         }
@@ -120,8 +158,20 @@ pub struct RegisterFilter {
     pub include_replies: bool,
     /// Optional custom text field overriding the built-in sort; missing values stay last.
     pub custom_sort: Option<String>,
+    /// Exact, case-sensitive match of one register text field; missing differs from empty.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_field: Option<RegisterFieldFilter>,
     pub zone: Option<crate::plan_zones::ZoneFilter>,
     pub zone_status: Option<crate::plan_zones::ZoneAssignmentStatus>,
+}
+
+impl RegisterFilter {
+    pub fn validate_custom_field(&self) -> Result<(), EngineError> {
+        if let Some(field) = &self.custom_field {
+            field.validate()?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -191,6 +241,7 @@ pub struct ZoneCoverage {
 
 impl AnnotationRegister {
     pub fn validate_zone_filter(&self, filter: &RegisterFilter) -> Result<(), EngineError> {
+        filter.validate_custom_field()?;
         if let Some(zone) = &filter.zone {
             if filter.page.is_some_and(|page| page != zone.page) {
                 return Err(EngineError::Other(
@@ -280,6 +331,9 @@ impl AnnotationRegister {
         sort: RegisterSort,
         descending: bool,
     ) -> Vec<usize> {
+        if filter.validate_custom_field().is_err() {
+            return Vec::new();
+        }
         let query = filter.query.to_lowercase();
         let exact =
             |wanted: &str, actual: Option<&str>| wanted.is_empty() || actual == Some(wanted);
@@ -305,6 +359,10 @@ impl AnnotationRegister {
                     && exact(&filter.discipline, r.fields.discipline.as_deref())
                     && exact(&filter.kind, Some(&r.kind))
                     && exact(&filter.count_group, r.count_group.as_deref())
+                    && filter
+                        .custom_field
+                        .as_ref()
+                        .is_none_or(|field| r.fields.custom.get(&field.key) == Some(&field.value))
                     && (query.is_empty()
                         || [
                             r.author.as_deref(),
@@ -382,7 +440,7 @@ impl AnnotationRegister {
                 counts.entry(group).or_default().push(serde_json::json!({"page":r.page,"index":r.index,"annotation_id":r.annotation_id}));
             }
         }
-        serde_json::json!({"schema":"sunipdf-annotation-register","version":1,"complete":filter.zone.is_none() || self.zone_coverage(filter).complete,"zone_coverage":self.zone_coverage(filter),"zone_filter_error":self.validate_zone_filter(filter).err().map(|e|e.to_string()),
+        serde_json::json!({"schema":"sunipdf-annotation-register","version":1,"complete":filter.validate_custom_field().is_ok() && (filter.zone.is_none() || self.zone_coverage(filter).complete),"zone_coverage":self.zone_coverage(filter),"zone_filter_error":self.validate_zone_filter(filter).err().map(|e|e.to_string()),
             "source_sha256":self.source_sha256,"page_count":self.page_count,"total_annotations":self.rows.len(),
             "coordinate_system":"displayed-page-points-bottom-left","filter":filter,"sort":sort.id(),"descending":descending,
             "matched_annotations":rows.len(),"rows":rows,

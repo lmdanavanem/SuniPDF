@@ -1849,7 +1849,7 @@ mod tests {
     /// sont exactement ceux du modèle lopdf. Seul test unitaire du crate à charger PDFium.
     #[test]
     fn lopdf_model_matches_pdfium_enumeration() {
-        let engine = crate::Engine::new().expect("pdfium.dll : scripts/fetch-pdfium.ps1");
+        let engine = crate::test_engine();
         let doc = engine.open(&fixture("acroform.pdf"), None).unwrap();
         let bytes = doc.snapshot().unwrap();
         let ld = lopdf::Document::load_mem(&bytes).unwrap();
