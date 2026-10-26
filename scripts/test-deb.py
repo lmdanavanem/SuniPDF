@@ -821,7 +821,9 @@ def plan_link_creation(evidence, version):
             pids = re.findall(r"^_NET_WM_PID\(CARDINAL\) = ([1-9][0-9]*)$", properties, re.M)
             assert len(pids) <= 1 and (pids or "_NET_WM_PID(CARDINAL)" not in properties), "Malformed managed X11 process identity"
             assert not pids or int(pids[0]) <= 0xffffffff, "Managed X11 process identity exceeds CARDINAL"
-            classes = re.findall(r'^WM_CLASS\(STRING\) = (".+", ".+")$', properties, re.M)
+            # A client may leave its instance empty while retaining its class.
+            # Preserve both quoted fields exactly, including escaped characters.
+            classes = re.findall(r'^WM_CLASS\(STRING\) = ("(?:[^"\\]|\\.)*", "(?:[^"\\]|\\.)+")$', properties, re.M)
             assert len(classes) <= 1 and (classes or "WM_CLASS(STRING)" not in properties), "Malformed managed X11 class identity"
             row.update(state=states[0], pid=int(pids[0]) if pids else None, wmClass=classes[0] if classes else None)
         return snapshot

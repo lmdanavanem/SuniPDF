@@ -455,7 +455,8 @@ class NativeSaveChooserTests(unittest.TestCase):
             if arguments[:2] == ["xprop", "-id"]:
                 candidate = int(arguments[2])
                 pid = 999 if replace_identity and len(discovery["snapshots"]) >= 3 else 123
-                return self.properties(pid, (states or {}).get(candidate, "Normal"))
+                wm_class = '"", "sunipdf"' if candidate == 101 else '"portal", "Portal"'
+                return self.properties(pid, (states or {}).get(candidate, "Normal"), wm_class)
             if arguments[:2] == ["xdotool", "getwindowgeometry"]:
                 return f'WINDOW={arguments[-1]}\nWIDTH=600\nHEIGHT=400\nX=30\nY=40\nSCREEN=0'
             self.fail(f"Unexpected native process in offline test: {arguments}")
@@ -602,6 +603,8 @@ class NativeSaveChooserTests(unittest.TestCase):
         self.assertEqual(helper("before-export")["clients"], [])
         for raw in (self.properties(pid=0), self.properties(pid=-1), self.properties(pid=4294967296),
                     self.properties(state="Withdrawn"), self.properties(wm_class='""'),
+                    self.properties(wm_class='"", ""'), self.properties(wm_class='"portal", ""'),
+                    self.properties(wm_class='"portal", "Portal", "extra"'),
                     self.properties() + '\n_NET_WM_PID(CARDINAL) = 124'):
             discovery = {"snapshots": []}
             command = MagicMock(side_effect=['_NET_CLIENT_LIST(WINDOW): window id # 0xca', raw])
@@ -609,6 +612,18 @@ class NativeSaveChooserTests(unittest.TestCase):
             with self.subTest(raw=raw), self.assertRaises(AssertionError):
                 helper("chooser-poll")
             self.assertEqual(discovery["snapshots"][0]["clients"][0]["properties"], raw)
+
+    def test_observed_application_empty_instance_retains_nonempty_class_and_identity(self):
+        raw = ('WM_STATE(WM_STATE):\n\t\twindow state: Normal\n\t\ticon window: 0x0\n'
+               '_NET_WM_PID(CARDINAL) = 7151\nWM_CLASS(STRING) = "", "sunipdf"\n'
+               '_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL\nWM_TRANSIENT_FOR:  not found.')
+        discovery = {"snapshots": []}
+        command = MagicMock(side_effect=['_NET_CLIENT_LIST(WINDOW): window id # 0x200003', raw])
+        helper = creation_helper("managed_clients", {"command": command, "re": re, "chooser_discovery": discovery})
+        snapshot = helper("before-export")
+        self.assertEqual(snapshot["clients"], [{"window": "2097155", "properties": raw,
+                                             "state": "Normal", "pid": 7151, "wmClass": '"", "sunipdf"'}])
+        self.assertEqual(discovery["snapshots"], [snapshot])
 
 
 def qpdf_document(link=None):
