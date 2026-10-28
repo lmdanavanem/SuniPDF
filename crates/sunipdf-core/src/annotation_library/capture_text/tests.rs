@@ -579,25 +579,37 @@ fn mutate_font(pdf: &mut lopdf::Document, annotation: lopdf::ObjectId, key: &[u8
 }
 
 #[test]
-fn portable_text_translation_refuses_precision_loss_without_guessing_a_layout() {
+fn portable_text_translation_tolerates_ulp_rounding_but_refuses_coarse_precision() {
+    // An ordinary click origin rounds the recomputed span by one ULP; it must still place.
+    assert_ne!((209.1f32 + 187.3) - 209.1, 187.3f32);
+    assert!(preserve_dimensions(
+        [0.0, 0.0, 187.3, 92.2],
+        [209.1, 301.3, 209.1 + 187.3, 301.3 + 92.2],
+        1.0
+    )
+    .is_ok());
     assert!(preserve_dimensions([0.0, 0.0, 260.0, 100.0], [20.0, 40.0, 280.0, 140.0], 1.0).is_ok());
     assert!(preserve_dimensions([0.0, 0.0, 260.0, 100.0], [20.0, 40.0, 150.0, 90.0], 0.5).is_ok());
-    assert!(
-        preserve_dimensions([0.0, 0.0, 10.1, 100.0], [4000.0, 40.0, 4010.1, 140.0], 1.0).is_err()
-    );
+    // f32 spacing is 0.0039 pt near 40000 pt, beyond the accepted 0.001-point drift.
     assert!(preserve_dimensions(
-        [0.0, 0.0, 260.0, 100.0],
-        [20.0, 40.0, f32::INFINITY, 140.0],
+        [0.0, 0.0, 10.1, 100.0],
+        [40000.0, 40.0, 40010.1, 140.0],
         1.0
     )
     .is_err());
+    for broken in [f32::INFINITY, f32::NAN] {
+        assert!(
+            preserve_dimensions([0.0, 0.0, 260.0, 100.0], [20.0, 40.0, broken, 140.0], 1.0)
+                .is_err()
+        );
+    }
     let primitive = LibraryPrimitive::FreeText {
         rect: [0.0, 0.0, 10.1, 40.0],
         text: "Text".into(),
         style: LibraryTextStyle::default(),
     };
     let original_primitive = primitive.clone();
-    assert!(primitive.translated(4000.0, 0.0).is_err());
+    assert!(primitive.translated(4000.0, 0.0).is_ok());
     assert_eq!(primitive, original_primitive);
     assert!(primitive.translated(0.0, 40.0).is_ok());
     let mut entry = LibraryEntry {
@@ -614,10 +626,75 @@ fn portable_text_translation_refuses_precision_loss_without_guessing_a_layout() 
         rect: [0.0003, 50.0, 100.0, 80.0],
         stamp: super::super::LibraryStamp::Draft,
     });
-    let original = entry.clone();
-    // The generic guard also applies to authored drafts and mixed groups.
-    assert!(entry.normalized().is_err());
-    assert_eq!(entry, original);
+    // The generic guard also applies to authored drafts and mixed groups; sub-ULP
+    // translation of a FreeText that is not the lowest-left primitive stays valid.
+    let normalized = entry.normalized().unwrap();
+    match &normalized.primitives[0] {
+        LibraryPrimitive::FreeText { rect, .. } => {
+            assert!(((rect[2] - rect[0]) - (50.17f32 - 0.001)).abs() <= 0.001);
+        }
+        _ => panic!("FreeText stays first"),
+    }
+}
+
+#[test]
+fn unaligned_text_on_rotated_crop_captures_and_places_at_click_origins() {
+    let engine = crate::test_engine();
+    // Rotate 180 with CropBox right 500.25: these display endpoints do not survive the
+    // display -> user -> display round trip exactly, so Rect alone cannot rebuild BBox.
+    let rect = PointRect {
+        left: 37.3,
+        bottom: 41.7,
+        right: 224.6,
+        top: 133.9,
+    };
+    let mut document = engine
+        .open_bytes(fixture(180), None, Path::new("source.pdf"))
+        .unwrap();
+    document
+        .add_rich_free_text_annotation(
+            0,
+            None,
+            rect,
+            "Unaligned native text",
+            &RichFreeTextStyle::default(),
+            None,
+        )
+        .unwrap();
+    let saved = document.snapshot().unwrap();
+    drop(document);
+    let document = engine
+        .open_bytes(saved, None, Path::new("saved.pdf"))
+        .unwrap();
+    let entry = captured(&document);
+    let LibraryPrimitive::FreeText { rect: stored, .. } = &entry.primitives[0] else {
+        panic!("native text primitive");
+    };
+    assert!(((stored[2] - stored[0]) - (rect.right - rect.left)).abs() <= 0.001);
+    assert!(((stored[3] - stored[1]) - (rect.top - rect.bottom)).abs() <= 0.001);
+    let mut destination = engine
+        .open_bytes(fixture(180), None, Path::new("destination.pdf"))
+        .unwrap();
+    // A raw click origin whose f32 sum does not reproduce the stored width exactly.
+    let width = stored[2] - stored[0];
+    assert_ne!((203.7f32 + width) - 203.7, width);
+    destination
+        .place_library_entry(
+            0,
+            &entry,
+            LibraryPlacement {
+                origin: (203.7, 71.3),
+                scale: 1.0,
+            },
+            None,
+        )
+        .unwrap();
+    let placed = destination.snapshot().unwrap();
+    drop(destination);
+    let reopened = engine
+        .open_bytes(placed, None, Path::new("placed.pdf"))
+        .unwrap();
+    assert_eq!(captured(&reopened).primitives.len(), 1);
 }
 
 #[test]

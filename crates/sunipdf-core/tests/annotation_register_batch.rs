@@ -587,3 +587,33 @@ fn strict_patch_json_and_complete_row_fingerprints_preserve_explicit_intent() {
         assert_ne!(fingerprint, register_row_fingerprint(&altered).unwrap());
     }
 }
+
+#[test]
+fn valid_fields_that_would_make_the_register_unreadable_refuse_the_whole_batch() {
+    let engine = engine();
+    let mut doc = engine
+        .open_bytes(source(&engine), None, Path::new("budget.pdf"))
+        .unwrap();
+    let register = doc.annotation_register().unwrap();
+    // Each accepted 1024-byte value doubles when JSON escapes its quotes; sixteen of them
+    // exceed the reader's 32 KiB per-record limit although every field is valid.
+    let quoted = "\"".repeat(1024);
+    let custom = ["Room", "Temporary", "Preserved", "Unspecified"]
+        .into_iter()
+        .map(String::from)
+        .chain((0..12).map(|index| format!("Field {index}")))
+        .map(|key| (key, FieldPatch::Set(quoted.clone())))
+        .collect();
+    let patch = RegisterFieldsPatch {
+        custom,
+        ..Default::default()
+    };
+    let plan = doc
+        .preview_annotation_register_batch(&register, &selected(&register.rows), &patch)
+        .unwrap();
+    let before = doc.snapshot().unwrap();
+    let error = doc.apply_annotation_register_batch(&plan).unwrap_err();
+    assert!(error.to_string().contains("unreadable"), "{error}");
+    same_document(&before, &doc.snapshot().unwrap());
+    assert!(doc.annotation_register().is_ok());
+}
