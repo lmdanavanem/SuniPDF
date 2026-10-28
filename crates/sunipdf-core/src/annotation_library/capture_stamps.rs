@@ -132,7 +132,7 @@ fn native_span_matches(low: f32, high: f32, dimension: f32) -> bool {
         && (f64::from(high) - f64::from(low) - f64::from(dimension)).abs() <= uncertainty
 }
 
-fn appearance_dimensions(
+pub(super) fn appearance_dimensions(
     pdf: &lopdf::Document,
     ap: &Stream,
     user_rect: PointRect,

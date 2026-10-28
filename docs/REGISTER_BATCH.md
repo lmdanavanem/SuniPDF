@@ -59,6 +59,7 @@ Protected inputs use the existing global `--password-env` or `--password-stdin` 
 - A plan is at most 1 MiB and contains 1–256 distinct row targets. Unknown fields, duplicate custom keys and invalid fingerprints are refused.
 - Register text metadata supports at most 16 custom keys, with keys up to 64 UTF-8 bytes, values up to 1,024 bytes and business status/discipline up to 512 bytes. The resulting fields on every annotation must fit these bounds.
 - Saved source and edited document snapshots are bounded to 128 MiB. The existing register limits of 1,000 pages and 10,000 rows still apply.
+- Before replacing the document, the edited register is read again. A batch whose stored text would exceed the register reader's limits (32 KiB per annotation record, 4 MiB per document) is refused as a whole, even when each field is valid.
 - Signed documents, unsupported annotation types and ambiguous annotation ownership are refused. The operation does not repair malformed metadata or bypass document permissions.
 
 Published qualification: [SuniPDF 0.91.0](RELEASE_0.91.0.md). Automated fixtures, native desktop interaction and broader independent-reader interoperability are separate evidence scopes.

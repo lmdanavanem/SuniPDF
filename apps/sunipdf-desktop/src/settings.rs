@@ -63,6 +63,10 @@ pub struct Settings {
     #[serde(deserialize_with = "deserialize_register_presets")]
     pub register_presets: sunipdf_core::register_presets::RegisterPresetLibrary,
     pub tables: crate::workspace_table::Preferences,
+    /// Unreadable `register_presets` JSON (newer version, hand edit), written back verbatim
+    /// so unrelated saves such as opening a document never erase it.
+    #[serde(skip)]
+    unreadable_register_presets: Option<serde_json::Value>,
 }
 
 impl Default for Settings {
@@ -86,6 +90,7 @@ impl Default for Settings {
             stamp_presets: Default::default(),
             register_presets: Default::default(),
             tables: Default::default(),
+            unreadable_register_presets: None,
         }
     }
 }
@@ -197,9 +202,27 @@ impl Settings {
                     .ok()?;
                 (text.len() <= MAX_SETTINGS_BYTES).then_some(text)
             })
-            // Tolère le BOM UTF-8 ajouté par certains éditeurs (Bloc-notes, PowerShell 5).
-            .and_then(|s| serde_json::from_str(s.trim_start_matches('\u{feff}')).ok())
+            .and_then(|s| Self::parse(&s))
             .unwrap_or_default()
+    }
+
+    fn parse(text: &str) -> Option<Self> {
+        // Tolère le BOM UTF-8 ajouté par certains éditeurs (Bloc-notes, PowerShell 5).
+        let value: serde_json::Value =
+            serde_json::from_str(text.trim_start_matches('\u{feff}')).ok()?;
+        let unreadable = value
+            .get("register_presets")
+            .filter(|raw| {
+                !raw.is_null()
+                    && serde_json::to_vec(raw).ok().is_none_or(|bytes| {
+                        sunipdf_core::register_presets::RegisterPresetLibrary::from_json(&bytes)
+                            .is_err()
+                    })
+            })
+            .cloned();
+        let mut settings: Self = serde_json::from_value(value).ok()?;
+        settings.unreadable_register_presets = unreadable;
+        Some(settings)
     }
 
     pub fn commit_stamp_presets(
@@ -224,6 +247,9 @@ impl Settings {
         })?;
         let mut next = self.clone();
         next.register_presets = presets;
+        // ponytail: an explicit preset commit replaces an unreadable library; keep a backup
+        // copy if downgrades with saved presets become common.
+        next.unreadable_register_presets = None;
         writer(&next)?;
         *self = next;
         Ok(())
@@ -249,7 +275,14 @@ impl Settings {
     }
 
     fn save_to(&self, path: &std::path::Path) -> std::io::Result<()> {
-        let bytes = serde_json::to_vec_pretty(self)?;
+        let bytes = match &self.unreadable_register_presets {
+            None => serde_json::to_vec_pretty(self)?,
+            Some(raw) => {
+                let mut value = serde_json::to_value(self)?;
+                value["register_presets"] = raw.clone();
+                serde_json::to_vec_pretty(&value)?
+            }
+        };
         if bytes.len() > MAX_SETTINGS_BYTES {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
@@ -338,6 +371,44 @@ mod tests {
         expected.register_presets = library;
         assert_eq!(settings, expected);
         assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn unreadable_register_presets_survive_unrelated_saves_until_replaced() {
+        let future = serde_json::json!({
+            "format": "sunipdf-register-filter-presets",
+            "version": 99,
+            "presets": [{"name": "Future"}]
+        });
+        let text = format!(
+            "\u{feff}{}",
+            serde_json::json!({"language": "fr-FR", "register_presets": future})
+        );
+        let mut settings = Settings::parse(&text).unwrap();
+        assert_eq!(settings.language, "fr-FR");
+        assert!(settings.register_presets.entries().is_empty());
+        let dir =
+            std::env::temp_dir().join(format!("sunipdf-unreadable-presets-{}", std::process::id()));
+        let path = dir.join("settings.json");
+        // Opening a document records a recent file and saves every preference.
+        settings.push_recent(std::path::Path::new("drawing.pdf"));
+        settings.save_to(&path).unwrap();
+        let stored: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_eq!(stored["register_presets"], future);
+        assert_eq!(stored["recent"].as_array().unwrap().len(), 1);
+        let reopened = Settings::parse(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(reopened, settings);
+        // A valid library is not treated as unreadable, and an explicit commit replaces it.
+        settings
+            .commit_register_presets(Default::default(), |next| next.save_to(&path))
+            .unwrap();
+        let stored: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+        assert_ne!(stored["register_presets"], future);
+        let reopened = Settings::parse(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert_eq!(reopened.unreadable_register_presets, None);
         std::fs::remove_dir_all(dir).unwrap();
     }
 

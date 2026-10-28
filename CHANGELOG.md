@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+### Fixed
+
+- Place saved text-library entries at ordinary click origins and save text groups; f32 rounding of the text box no longer refuses about half of the placements.
+- Capture saved native rich text on rotated or offset-crop pages from its appearance box instead of refusing it.
+- Refuse an annotation-fields batch whose stored text would exceed the register limits, instead of saving a document whose register can no longer be read.
+- Keep an unreadable saved-filter library (newer version, hand edit) in the preferences file instead of erasing it when other preferences are saved.
+
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.91.0] - 2026-10-26

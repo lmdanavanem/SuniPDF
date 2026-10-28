@@ -74,6 +74,8 @@ fn font_style(name: &[u8]) -> Result<(LibraryFont, bool, bool), EngineError> {
 }
 
 /// Translation must not change the effective text box used by the native line wrapper.
+/// Translated f32 endpoints round the recomputed span by about one ULP; refuse only drift
+/// beyond the 0.001-point resolution that saved stamp capture also accepts.
 pub(super) fn preserve_dimensions(
     before: [f32; 4],
     after: [f32; 4],
@@ -82,7 +84,11 @@ pub(super) fn preserve_dimensions(
     for (low, high) in [(0, 2), (1, 3)] {
         let expected = (before[high] - before[low]) * scale;
         let actual = after[high] - after[low];
-        if !expected.is_finite() || expected <= 0.0 || actual != expected {
+        if !expected.is_finite()
+            || expected <= 0.0
+            || !actual.is_finite()
+            || (actual - expected).abs() > 0.001
+        {
             return Err(invalid(
                 "text box precision would change its layout; choose a different origin or scale",
             ));
@@ -164,7 +170,7 @@ pub(super) fn capture(
         return Err(unsupported());
     }
     let rect = geo.rect_to_display(user_rect);
-    let (w, h) = crate::annot_rich::checked_rect(geo, rect)?;
+    crate::annot_rich::checked_rect(geo, rect)?;
     let appearances = field(pdf, dict, b"AP")?
         .as_dict()
         .map_err(|_| unsupported())?;
@@ -191,19 +197,10 @@ pub(super) fn capture(
     {
         return Err(unsupported());
     }
-    let bbox = field(pdf, &ap.dict, b"BBox")?
-        .as_array()
-        .map_err(|_| unsupported())?;
-    if bbox.len() != 4
-        || number(pdf, &bbox[0])? != 0.0
-        || number(pdf, &bbox[1])? != 0.0
-        || number(pdf, &bbox[2])? != w
-        || number(pdf, &bbox[3])? != h
-    {
-        return Err(invalid(
-            "saved text box precision cannot preserve its native layout",
-        ));
-    }
+    // BBox retains the writer's layout box. Recomputing it from Rect endpoints can differ
+    // by an f32 ULP after CropBox/rotation conversion, as for saved stamps.
+    let (w, h) = super::capture_stamps::appearance_dimensions(pdf, ap, user_rect, geo)
+        .map_err(|_| invalid("saved text box precision cannot preserve its native layout"))?;
     let resources = field(pdf, &ap.dict, b"Resources")?
         .as_dict()
         .map_err(|_| unsupported())?;

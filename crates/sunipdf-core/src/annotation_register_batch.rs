@@ -416,6 +416,9 @@ impl Document<'_> {
             touch(&mut dict);
             store_annot(&mut pdf, page, slot, dict)?;
         }
+        // Valid fields can still exceed the reader's per-record or document-wide text budget.
+        self.annotation_register_from_pdf(Vec::new(), &pdf)
+            .map_err(|_| invalid("edited fields would make the annotation register unreadable"))?;
         let bytes = security::save(pdf)?;
         if bytes.len() > MAX_SOURCE_BYTES {
             return Err(invalid("edited PDF exceeds 128 MiB"));
