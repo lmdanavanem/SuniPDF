@@ -45,7 +45,7 @@ $junction = Join-Path $workspace 'junction-cache'
 try {
     $portablePins = Read-SuniBaselinePins (Join-Path $PSScriptRoot 'test-portable-update.ps1') 'pins'
     $msiPins = Read-SuniBaselinePins (Join-Path $PSScriptRoot 'test-msi-upgrade.ps1') 'baselines'
-    Assert ($portablePins.Contains('0.79.0') -and $msiPins.Contains('0.79.0')) 'The latest published baseline is missing.'
+    Assert ($portablePins.Contains('0.91.0') -and $msiPins.Contains('0.91.0')) 'The latest published baseline is missing.'
     $maliciousPins = Join-Path $workspace 'nonliteral.ps1'
     $sentinel = Join-Path $workspace 'must-not-exist'
     [IO.File]::WriteAllText($maliciousPins, ('$pins = @{ bad = [IO.File]::WriteAllText(''' + $sentinel.Replace("'", "''") + ''', ''executed'') }'))

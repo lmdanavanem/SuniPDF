@@ -84,9 +84,7 @@ impl LibraryState {
             .path
             .clone()
             .or_else(|| Settings::path().map(|p| p.with_file_name("annotation-library.json")))
-            .ok_or_else(|| {
-                EngineError::Other("local annotation library directory is unavailable".into())
-            })?;
+            .ok_or_else(|| EngineError::Other("library.error.unavailable".into()))?;
         let original = library_store::read(&path)?;
         let data = match original.as_deref() {
             Some(bytes) => AnnotationLibrary::from_json(bytes)?,
@@ -107,9 +105,7 @@ impl LibraryState {
             self.reload()?;
         }
         if self.load_failed {
-            return Err(EngineError::Other(
-                "reload the annotation library after resolving the read error".into(),
-            ));
+            return Err(EngineError::Other("library.error.reload".into()));
         }
         Ok(())
     }
@@ -120,7 +116,7 @@ impl LibraryState {
         let path = self
             .path
             .as_ref()
-            .ok_or_else(|| EngineError::Other("annotation library path is unavailable".into()))?;
+            .ok_or_else(|| EngineError::Other("library.error.unavailable".into()))?;
         library_store::commit(path, self.original.as_deref(), &bytes)?;
         self.data = candidate;
         self.original = Some(bytes);
@@ -143,7 +139,7 @@ impl LibraryState {
     fn import(&mut self, path: &Path) -> Result<(), EngineError> {
         self.ensure_loaded()?;
         let bytes = library_store::read(path)?
-            .ok_or_else(|| EngineError::Other("selected library file is missing".into()))?;
+            .ok_or_else(|| EngineError::Other("library.error.missing_file".into()))?;
         let imported = AnnotationLibrary::from_json(&bytes)?;
         let mut candidate = self.copy_data();
         for entry in imported.entries() {
@@ -208,7 +204,7 @@ impl LibraryState {
         let group = self
             .group
             .as_ref()
-            .ok_or_else(|| EngineError::Other("no annotation group draft".into()))?;
+            .ok_or_else(|| EngineError::Other("library.error.no_group".into()))?;
         let mut primitives = Vec::new();
         for (entry, x, y) in &group.members {
             for primitive in &entry.primitives {
@@ -245,7 +241,7 @@ impl SuniApp {
             return;
         }
         if let Err(error) = self.library.ensure_loaded() {
-            self.library.error = Some(error.to_string());
+            self.library.error = Some(crate::app::error_text(self.lang(), &error));
             self.library.load_failed = true;
         }
         self.library.open = true;
@@ -325,7 +321,7 @@ impl SuniApp {
         draft.pending = false;
         match result {
             Ok(candidates) => draft.candidates = candidates,
-            Err(error) => self.library.error = Some(error.to_string()),
+            Err(error) => self.library.error = Some(crate::app::error_text(self.lang(), &error)),
         }
     }
 
@@ -403,7 +399,7 @@ impl SuniApp {
                 let draft = self.library.capture.as_mut().unwrap();
                 draft.pending = false;
                 draft.saving = false;
-                self.library.error = Some(error.to_string());
+                self.library.error = Some(crate::app::error_text(self.lang(), &error));
             }
         }
     }
@@ -710,7 +706,7 @@ impl SuniApp {
             Ok(())
         };
         if let Err(error) = result {
-            self.library.error = Some(error.to_string());
+            self.library.error = Some(crate::app::error_text(self.lang(), &error));
         } else if delete {
             self.library.deleting = false;
             self.library.message = Some(tr(lang, "library.deleted").into());
@@ -726,12 +722,14 @@ impl SuniApp {
         if import {
             if let Some(path) = rfd::FileDialog::new()
                 .set_title(tr(lang, "library.import"))
-                .add_filter("SuniPDF annotation library", &["json"])
+                .add_filter(tr(lang, "library.file_type"), &["json"])
                 .pick_file()
             {
                 match self.library.import(&path) {
                     Ok(()) => self.library.message = Some(tr(lang, "library.imported").into()),
-                    Err(error) => self.library.error = Some(error.to_string()),
+                    Err(error) => {
+                        self.library.error = Some(crate::app::error_text(self.lang(), &error))
+                    }
                 }
             }
         }
@@ -739,12 +737,14 @@ impl SuniApp {
             if let Some(path) = rfd::FileDialog::new()
                 .set_title(tr(lang, "library.export"))
                 .set_file_name("annotations.json")
-                .add_filter("SuniPDF annotation library", &["json"])
+                .add_filter(tr(lang, "library.file_type"), &["json"])
                 .save_file()
             {
                 match self.library.export(&path, export_selected) {
                     Ok(()) => self.library.message = Some(tr(lang, "library.exported").into()),
-                    Err(error) => self.library.error = Some(error.to_string()),
+                    Err(error) => {
+                        self.library.error = Some(crate::app::error_text(self.lang(), &error))
+                    }
                 }
             }
         }
@@ -770,7 +770,7 @@ impl SuniApp {
         let entry = match entry.normalized() {
             Ok(entry) => entry,
             Err(error) => {
-                self.library.error = Some(error.to_string());
+                self.library.error = Some(crate::app::error_text(self.lang(), &error));
                 self.library.open = true;
                 return;
             }
@@ -778,7 +778,7 @@ impl SuniApp {
         let bounds = match entry.bounds() {
             Ok(bounds) => bounds,
             Err(error) => {
-                self.library.error = Some(error.to_string());
+                self.library.error = Some(crate::app::error_text(self.lang(), &error));
                 self.library.open = true;
                 return;
             }

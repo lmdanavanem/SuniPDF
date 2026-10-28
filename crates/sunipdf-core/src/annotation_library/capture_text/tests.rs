@@ -231,7 +231,7 @@ fn native_refusals(engine: &Engine) {
     let (pdf, page, geometry) = document.capture_source(0).unwrap();
     let index = annotation_id(&pdf, 0);
     let base = pdf.get_dictionary(index).unwrap();
-    assert!(capture(&document, &pdf, base, &geometry).is_ok());
+    assert!(capture(&document, &pdf, base, &geometry, true).is_ok());
     type Mutation = fn(&mut lopdf::Document, lopdf::ObjectId);
     let mutations: &[(&str, Mutation)] = &[
         ("foreign identity", |pdf, id| {
@@ -407,7 +407,8 @@ fn native_refusals(engine: &Engine) {
                 &document,
                 &changed,
                 changed.get_dictionary(index).unwrap(),
-                &geometry
+                &geometry,
+                true
             )
             .is_err(),
             "{label}"
@@ -705,4 +706,100 @@ fn native_color_conversion_requires_exact_byte_colors() {
     for invalid in [f32::NAN, f32::INFINITY, -0.01, 1.01, 0.5] {
         assert!(color(invalid).is_err());
     }
+}
+
+/// Alters only the appearance content, which only full regeneration can detect.
+fn tamper_appearance(bytes: &[u8], index: usize) -> Vec<u8> {
+    let mut pdf = lopdf::Document::load_mem(bytes).unwrap();
+    let ap = ap_id(&pdf, annotation_id(&pdf, index));
+    let stream = pdf.get_object_mut(ap).unwrap().as_stream_mut().unwrap();
+    let mut content = stream.decompressed_content().unwrap();
+    content.extend_from_slice(b"\n0 0 m\n");
+    stream.set_plain_content(content);
+    let mut out = Vec::new();
+    pdf.save_to(&mut out).unwrap();
+    out
+}
+
+#[test]
+fn candidate_listing_bounds_text_regeneration_and_capture_still_verifies() {
+    let engine = crate::test_engine();
+    let small = PointRect {
+        left: 20.0,
+        bottom: 20.0,
+        right: 200.0,
+        top: 80.0,
+    };
+    let mut alone = engine
+        .open_bytes(fixture(0), None, Path::new("alone.pdf"))
+        .unwrap();
+    alone
+        .add_rich_free_text_annotation(0, None, small, "Tampered", &Default::default(), None)
+        .unwrap();
+    let tampered = tamper_appearance(&alone.snapshot().unwrap(), 0);
+    let alone = engine
+        .open_bytes(tampered, None, Path::new("alone.pdf"))
+        .unwrap();
+    assert!(
+        alone.library_capture_candidates(0).unwrap()[0]
+            .fingerprint
+            .is_none(),
+        "within budget, listing verifies the regenerated appearance"
+    );
+
+    let long = "word ".repeat(800);
+    let verified = super::super::CANDIDATE_TEXT_BUDGET
+        / (super::super::CANDIDATE_TEXT_OVERHEAD + long.chars().count());
+    let style = RichFreeTextStyle {
+        text: TextStyle {
+            size_pt: 4.0,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let mut document = engine
+        .open_bytes(fixture(0), None, Path::new("busy.pdf"))
+        .unwrap();
+    for _ in 0..verified {
+        document
+            .add_rich_free_text_annotation(
+                0,
+                None,
+                PointRect {
+                    left: 10.0,
+                    bottom: 10.0,
+                    right: 390.0,
+                    top: 590.0,
+                },
+                &long,
+                &style,
+                None,
+            )
+            .unwrap();
+    }
+    document
+        .add_rich_free_text_annotation(0, None, small, "Tampered", &Default::default(), None)
+        .unwrap();
+    let tampered = tamper_appearance(&document.snapshot().unwrap(), verified);
+    let document = engine
+        .open_bytes(tampered, None, Path::new("busy.pdf"))
+        .unwrap();
+    let candidates = document.library_capture_candidates(0).unwrap();
+    assert!(candidates[..verified]
+        .iter()
+        .all(|candidate| candidate.fingerprint.is_some()));
+    // Past the budget the listing defers regeneration; capture still refuses it.
+    let fingerprint = candidates[verified].fingerprint.clone().unwrap();
+    assert!(document
+        .capture_library_entry(
+            0,
+            &[LibraryCaptureSelection {
+                index: verified,
+                fingerprint,
+            }],
+            "deferred".into(),
+            "Deferred".into(),
+            provenance(),
+        )
+        .is_err());
 }

@@ -107,8 +107,9 @@ impl Draft {
                     ));
                 });
                 ui.separator();
-                ui.label(tr(lang, "register.presets.saved"));
-                egui::ComboBox::from_id_salt("register-preset-selection")
+                let saved_label = tr(lang, "register.presets.saved");
+                ui.label(saved_label);
+                let saved_response = egui::ComboBox::from_id_salt("register-preset-selection")
                     .selected_text(
                         self.selected
                             .as_deref()
@@ -123,7 +124,18 @@ impl Draft {
                                 &preset.name,
                             );
                         }
-                    });
+                    })
+                    .response;
+                let current = self
+                    .selected
+                    .clone()
+                    .unwrap_or_else(|| tr(lang, "register.presets.choose").into());
+                saved_response.widget_info(|| {
+                    let mut info =
+                        egui::WidgetInfo::labeled(egui::Role::ComboBox, true, saved_label);
+                    info.current_text_value = Some(current.clone());
+                    info
+                });
                 let selected = self.selected.as_deref().and_then(|name| library.get(name));
                 ui.horizontal_wrapped(|ui| {
                     if ui
@@ -178,24 +190,18 @@ impl Draft {
 fn read_import(path: &Path) -> Result<Vec<u8>, EngineError> {
     let metadata = std::fs::metadata(path)?;
     if !metadata.is_file() || metadata.len() > MAX_REGISTER_PRESET_JSON_BYTES as u64 {
-        return Err(EngineError::Other(
-            "filter presets require a regular JSON file of at most 128 KiB".into(),
-        ));
+        return Err(EngineError::Other("register.presets.file_limit".into()));
     }
     let file = std::fs::File::open(path)?;
     let metadata = file.metadata()?;
     if !metadata.is_file() || metadata.len() > MAX_REGISTER_PRESET_JSON_BYTES as u64 {
-        return Err(EngineError::Other(
-            "filter presets require a regular JSON file of at most 128 KiB".into(),
-        ));
+        return Err(EngineError::Other("register.presets.file_limit".into()));
     }
     let mut bytes = Vec::new();
     file.take((MAX_REGISTER_PRESET_JSON_BYTES + 1) as u64)
         .read_to_end(&mut bytes)?;
     if bytes.len() > MAX_REGISTER_PRESET_JSON_BYTES {
-        return Err(EngineError::Other(
-            "filter preset JSON exceeds 128 KiB".into(),
-        ));
+        return Err(EngineError::Other("register.presets.file_limit".into()));
     }
     Ok(bytes)
 }
@@ -211,7 +217,7 @@ fn commit(settings: &mut Settings, library: RegisterPresetLibrary) -> Result<(),
             }
             next.save()
         })
-        .map_err(|error| EngineError::Other(error.to_string()))
+        .map_err(|_| EngineError::Other("register.presets.save_failed".into()))
 }
 
 pub(super) fn show(
@@ -249,13 +255,13 @@ pub(super) fn show(
                     state.load_preset(preset)?;
                     Ok(Some("register.presets.loaded"))
                 } else {
-                    Err(EngineError::Other("saved filter no longer exists".into()))
+                    Err(EngineError::Other("register.presets.missing".into()))
                 }
             }
             Action::Delete(name) => {
                 let mut candidate = settings.register_presets.clone();
                 if !candidate.remove(&name) {
-                    return Err(EngineError::Other("saved filter no longer exists".into()));
+                    return Err(EngineError::Other("register.presets.missing".into()));
                 }
                 commit(settings, candidate)?;
                 state.presets.selected = None;
@@ -291,7 +297,7 @@ pub(super) fn show(
     match result {
         Ok(Some(key)) => state.presets.notice = Some(tr(lang, key).into()),
         Ok(None) => {}
-        Err(error) => state.presets.error = Some(error.to_string()),
+        Err(error) => state.presets.error = Some(crate::app::error_text(lang, &error)),
     }
 }
 

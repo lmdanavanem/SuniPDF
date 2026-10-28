@@ -17,7 +17,7 @@ use sunipdf_core::{
     annotation_register_batch::{FieldPatch, RegisterBatchReport, RegisterFieldsPatch},
     EngineError,
 };
-use sunipdf_i18n::{tr, Language};
+use sunipdf_i18n::{tr, tr_args, Language};
 
 pub(crate) struct PreviewJob {
     pub register: Arc<core::AnnotationRegister>,
@@ -92,7 +92,7 @@ impl Draft {
             action: Action::Set,
             value: "Ready for site".into(),
         };
-        self.start(worker);
+        self.start(worker, Language::DEFAULT);
     }
 
     #[cfg(all(test, windows))]
@@ -136,10 +136,10 @@ impl Draft {
         self.open = false;
     }
 
-    pub fn failed(&mut self, error: &EngineError) {
+    pub fn failed(&mut self, lang: Language, error: &EngineError) {
         if self.applying {
             self.invalidate();
-            self.error = Some(error.to_string());
+            self.error = Some(crate::app::error_text(lang, error));
         }
     }
 
@@ -150,7 +150,7 @@ impl Draft {
                 .insert(row.key.clone(), row.value.action.patch(&row.value.value))
                 .is_some()
             {
-                return Err(EngineError::Other("duplicate custom field".into()));
+                return Err(EngineError::Other("register.bulk.duplicate_field".into()));
             }
         }
         let patch = RegisterFieldsPatch {
@@ -162,7 +162,7 @@ impl Draft {
         Ok(patch)
     }
 
-    fn start(&mut self, worker: &Worker) {
+    fn start(&mut self, worker: &Worker, lang: Language) {
         self.invalidate();
         match self.patch() {
             Ok(patch) => {
@@ -185,7 +185,7 @@ impl Draft {
                 self.cancel = Some(cancel);
                 self.pending = Some(Pending { receiver });
             }
-            Err(error) => self.error = Some(error.to_string()),
+            Err(error) => self.error = Some(crate::app::error_text(lang, &error)),
         }
     }
 
@@ -211,7 +211,7 @@ impl Draft {
                 .and_then(|pending| match pending.receiver.try_recv() {
                     Ok(result) => Some(result),
                     Err(mpsc::TryRecvError::Disconnected) => Some(Err(EngineError::Other(
-                        "field preview was interrupted; preview again".into(),
+                        "register.bulk.preview_stale".into(),
                     ))),
                     Err(mpsc::TryRecvError::Empty) => None,
                 })
@@ -219,7 +219,7 @@ impl Draft {
             self.pending = None;
             match result {
                 Ok(report) => self.preview = Some(report),
-                Err(error) => self.error = Some(error.to_string()),
+                Err(error) => self.error = Some(crate::app::error_text(lang, &error)),
             }
         }
         let busy = self.pending.is_some() || self.applying;
@@ -251,6 +251,7 @@ impl Draft {
                         lang,
                         "bulk-status",
                         tr(lang, "register.business_status"),
+                        true,
                         &mut self.status,
                     );
                     changed |= value_ui(
@@ -258,6 +259,7 @@ impl Draft {
                         lang,
                         "bulk-discipline",
                         tr(lang, "register.discipline"),
+                        true,
                         &mut self.discipline,
                     );
                     ui.separator();
@@ -266,19 +268,26 @@ impl Draft {
                     for (index, row) in self.custom.iter_mut().enumerate() {
                         ui.push_id(index, |ui| {
                             ui.horizontal_wrapped(|ui| {
-                                ui.label(tr(lang, "register.bulk.key"));
+                                let key_label = ui.label(tr(lang, "register.bulk.key"));
                                 changed |= ui
                                     .add(
                                         egui::TextEdit::singleline(&mut row.key)
                                             .char_limit(64)
                                             .desired_width(190.0),
                                     )
+                                    .labelled_by(key_label.id)
                                     .changed();
                                 if ui.button(tr(lang, "register.bulk.remove")).clicked() {
                                     remove = Some(index);
                                 }
                             });
-                            changed |= value_ui(ui, lang, "custom-value", "", &mut row.value);
+                            let name = tr_args(
+                                lang,
+                                "register.bulk.custom_value",
+                                &[("key", row.key.trim())],
+                            );
+                            changed |=
+                                value_ui(ui, lang, "custom-value", &name, false, &mut row.value);
                         });
                     }
                     if let Some(index) = remove {
@@ -361,7 +370,7 @@ impl Draft {
             },
         );
         if preview {
-            self.start(worker);
+            self.start(worker, lang);
         }
         // Settings may have invalidated the report earlier in this very frame.
         if apply
@@ -394,31 +403,43 @@ fn value_ui(
     ui: &mut egui::Ui,
     lang: Language,
     id: &str,
-    label: &str,
+    name: &str,
+    show_label: bool,
     draft: &mut ValueDraft,
 ) -> bool {
-    if !label.is_empty() {
-        ui.label(label);
-    }
+    // Screen readers announce every control by its field, also when the label is implicit.
+    let label = show_label.then(|| ui.label(name));
     let previous = draft.action;
     let mut changed = false;
     ui.horizontal_wrapped(|ui| {
-        egui::ComboBox::from_id_salt(id)
+        let combo = egui::ComboBox::from_id_salt(id)
             .selected_text(tr(lang, draft.action.key()))
             .width(165.0)
             .show_ui(ui, |ui| {
                 for action in [Action::Keep, Action::Set, Action::Clear] {
                     ui.selectable_value(&mut draft.action, action, tr(lang, action.key()));
                 }
-            });
+            })
+            .response;
+        let action = tr(lang, draft.action.key());
+        combo.widget_info(|| {
+            let mut info = egui::WidgetInfo::labeled(egui::Role::ComboBox, ui.is_enabled(), name);
+            info.current_text_value = Some(action.into());
+            info
+        });
         if draft.action == Action::Set {
-            changed |= ui
-                .add(
-                    egui::TextEdit::singleline(&mut draft.value)
-                        .char_limit(1024)
-                        .desired_width(ui.available_width().min(380.0)),
-                )
-                .changed();
+            let mut response = ui.add(
+                egui::TextEdit::singleline(&mut draft.value)
+                    .char_limit(1024)
+                    .desired_width(ui.available_width().min(380.0)),
+            );
+            if let Some(label) = &label {
+                response = response.labelled_by(label.id);
+            }
+            response.widget_info(|| {
+                egui::WidgetInfo::labeled(egui::Role::TextInput, ui.is_enabled(), name)
+            });
+            changed |= response.changed();
         }
     });
     changed || previous != draft.action

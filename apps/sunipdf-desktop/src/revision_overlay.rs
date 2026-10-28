@@ -20,7 +20,7 @@ use sunipdf_core::{
     },
     EngineError,
 };
-use sunipdf_i18n::{tr, tr_args};
+use sunipdf_i18n::{tr, tr_args, Language};
 use zeroize::Zeroizing;
 
 pub enum Job {
@@ -99,9 +99,10 @@ pub fn run_job(engine: &sunipdf_core::Engine, job: Job) -> Result<Outcome, Engin
             }
             let loaded = recipe::read_regular(&path)?;
             recipe::require_desktop(&loaded.manifest)?;
-            let parent = loaded.path.parent().ok_or_else(|| {
-                EngineError::Other("The overlay setup directory is missing".into())
-            })?;
+            let parent = loaded
+                .path
+                .parent()
+                .ok_or_else(|| EngineError::Io(std::io::ErrorKind::NotFound.into()))?;
             let options = recipe::options(&loaded.manifest, parent)?;
             if cancel.load(Ordering::Relaxed) {
                 return Err(EngineError::Cancelled);
@@ -222,7 +223,7 @@ impl LayerState {
         let path = self
             .path
             .as_ref()
-            .ok_or_else(|| EngineError::Other("Choose a PDF for every overlay layer".into()))?;
+            .ok_or_else(|| EngineError::Other("overlay.error.layer_pdf".into()))?;
         let path = std::path::absolute(path)?;
         let alignment = if index == 0 {
             OverlayAlignment::default()
@@ -235,9 +236,7 @@ impl LayerState {
             } else if source_preview {
                 OverlayAlignment::default()
             } else {
-                return Err(EngineError::Other(
-                    "Choose two corresponding points on the base and selected layer".into(),
-                ));
+                return Err(EngineError::Other("overlay.error.anchors".into()));
             }
         } else {
             OverlayAlignment::Manual {
@@ -321,9 +320,7 @@ impl OverlayState {
     ) -> Result<(), EngineError> {
         options.validate()?;
         if hashes.len() != options.layers.len() || hashes.iter().any(Option::is_none) {
-            return Err(EngineError::Other(
-                "Saved overlay setups require every source fingerprint".into(),
-            ));
+            return Err(EngineError::Other("overlay.error.fingerprint".into()));
         }
         let layers = options
             .layers
@@ -465,7 +462,7 @@ impl OverlayState {
         ])
     }
 
-    fn select_layer(&mut self, ctx: &egui::Context, index: usize) {
+    fn select_layer(&mut self, ctx: &egui::Context, lang: Language, index: usize) {
         if self.busy || index == 0 || index >= self.layers.len() || index == self.selected {
             return;
         }
@@ -479,7 +476,7 @@ impl OverlayState {
                     }
                 }
                 Err(error) => {
-                    self.error = Some(error.to_string());
+                    self.error = Some(crate::app::error_text(lang, &error));
                     self.images = None;
                     self.dirty = true;
                 }
@@ -500,11 +497,11 @@ fn source_image(
         metadata["display_width_pt"].as_f64(),
         metadata["display_height_pt"].as_f64(),
     ) else {
-        return Err(EngineError::Other("Missing overlay page geometry".into()));
+        return Err(EngineError::Other("overlay.error.source_image".into()));
     };
     let raster = preview
         .layer_image(index)
-        .ok_or_else(|| EngineError::Other("Missing overlay source image".into()))?;
+        .ok_or_else(|| EngineError::Other("overlay.error.source_image".into()))?;
     Ok(SourceImage {
         texture: upload(ctx, &format!("source-{index}"), generation, raster),
         size_pt: [width, height],
@@ -537,6 +534,29 @@ fn same_path(a: &Path, b: &Path) -> bool {
     if cfg!(windows) {
         a.to_string_lossy()
             .eq_ignore_ascii_case(&b.to_string_lossy())
+    } else {
+        a == b
+    }
+}
+/// UI-thread comparison without filesystem access: canonicalizing can block on an
+/// unreachable mapped drive. The worker repeats the canonical check before each job.
+/// Open documents keep Rust's verbatim prefix, which is stripped here.
+fn same_path_lexical(a: &Path, b: &Path) -> bool {
+    let plain = |path: &Path| {
+        let text = std::path::absolute(path)
+            .unwrap_or_else(|_| path.into())
+            .to_string_lossy()
+            .into_owned();
+        match text.strip_prefix(r"\\?\UNC\") {
+            Some(share) => format!(r"\\{share}"),
+            None => text
+                .strip_prefix(r"\\?\")
+                .map_or_else(|| text.clone(), str::to_owned),
+        }
+    };
+    let (a, b) = (plain(a), plain(b));
+    if cfg!(windows) {
+        a.eq_ignore_ascii_case(&b)
     } else {
         a == b
     }
@@ -584,10 +604,10 @@ impl SuniApp {
                 && self
                     .document
                     .as_ref()
-                    .is_some_and(|doc| same_path(&doc.info.path, path)))
+                    .is_some_and(|doc| same_path_lexical(&doc.info.path, path)))
                 || self.tabs.tabs.iter().any(|tab| {
                     (tab.dirty || tab.ui.as_ref().is_some_and(|ui| ui.dirty))
-                        && same_path(&tab.path, path)
+                        && same_path_lexical(&tab.path, path)
                 })
         })
     }
@@ -642,7 +662,7 @@ impl SuniApp {
         let options = match self.overlay.options(true) {
             Ok(options) => options,
             Err(error) => {
-                self.overlay.error = Some(error.to_string());
+                self.overlay.error = Some(crate::app::error_text(self.lang(), &error));
                 return;
             }
         };
@@ -730,7 +750,9 @@ impl SuniApp {
                             &[("name", &crate::app::file_name(&path))],
                         ))
                     }
-                    Err(error) => self.overlay.error = Some(error.to_string()),
+                    Err(error) => {
+                        self.overlay.error = Some(crate::app::error_text(self.lang(), &error))
+                    }
                 }
             }
             Ok(Outcome::Preview(preview)) => {
@@ -749,7 +771,7 @@ impl SuniApp {
                 if fingerprints.len() != self.overlay.layers.len()
                     || fingerprints.iter().any(String::is_empty)
                 {
-                    self.overlay.error = Some("Missing overlay source fingerprint".into());
+                    self.overlay.error = Some(tr(self.lang(), "overlay.error.fingerprint").into());
                     return;
                 }
                 if !self.overlay.fingerprints.is_empty()
@@ -778,16 +800,13 @@ impl SuniApp {
                         self.overlay.fingerprints = fingerprints;
                         self.overlay.preview = Some(preview);
                     }
-                    Err(error) => self.overlay.error = Some(error.to_string()),
+                    Err(error) => {
+                        self.overlay.error = Some(crate::app::error_text(self.lang(), &error))
+                    }
                 }
             }
             Ok(Outcome::Exported(_)) => unreachable!(),
-            Err(error) => {
-                self.overlay.error = Some(format!(
-                    "{} ({error})",
-                    tr(self.lang(), crate::app::error_key(&error))
-                ))
-            }
+            Err(error) => self.overlay.error = Some(crate::app::error_text(self.lang(), &error)),
         }
     }
 
@@ -1160,7 +1179,7 @@ impl SuniApp {
             },
         );
         if let Some(index) = selected {
-            self.overlay.select_layer(ctx, index);
+            self.overlay.select_layer(ctx, lang, index);
         }
         if let Some(index) = remove {
             self.overlay.remove_layer(index);
@@ -1185,7 +1204,7 @@ impl SuniApp {
         if open_setup {
             if let Some(path) = rfd::FileDialog::new()
                 .set_title(tr(lang, "overlay.setup.open"))
-                .add_filter("SuniPDF overlay setup", &["json"])
+                .add_filter(tr(lang, "overlay.setup.file_type"), &["json"])
                 .pick_file()
             {
                 self.load_overlay_setup_from(path);
@@ -1194,7 +1213,7 @@ impl SuniApp {
         if save_setup {
             if let Some(path) = rfd::FileDialog::new()
                 .set_title(tr(lang, "overlay.setup.save"))
-                .add_filter("SuniPDF overlay setup", &["json"])
+                .add_filter(tr(lang, "overlay.setup.file_type"), &["json"])
                 .set_file_name("revision-overlay-setup.json")
                 .save_file()
             {
@@ -1805,6 +1824,28 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn ui_dirty_source_check_matches_paths_without_touching_the_filesystem() {
+        // Never-existing drive: a filesystem lookup would fail, a lexical one still matches.
+        let base = std::path::absolute("unreachable-share/plan.pdf").unwrap();
+        assert!(super::same_path_lexical(&base, &base));
+        assert!(!super::same_path_lexical(
+            &base,
+            &base.with_file_name("other.pdf")
+        ));
+        #[cfg(windows)]
+        {
+            assert!(super::same_path_lexical(
+                Path::new(r"\\?\Q:\Plans\A.pdf"),
+                Path::new(r"q:\plans\a.pdf")
+            ));
+            assert!(super::same_path_lexical(
+                Path::new(r"\\?\UNC\server\share\a.pdf"),
+                Path::new(r"\\server\share\a.pdf")
+            ));
+        }
+    }
+
+    #[test]
     fn cancelled_export_keeps_its_committed_receipt_even_after_the_modal_closes() {
         let (mut app, _, _) = test_app();
         app.overlay.open = true;
@@ -2130,7 +2171,8 @@ pub(crate) mod tests {
             );
             let base_texture = app.overlay.images.as_ref().unwrap().sources[0].texture.id();
             for selected in 2..preview.options().layers.len() {
-                app.overlay.select_layer(&controls.ctx, selected);
+                app.overlay
+                    .select_layer(&controls.ctx, Language::DEFAULT, selected);
                 let images = app.overlay.images.as_ref().unwrap();
                 assert_eq!(images.selected, selected);
                 assert_eq!(images.sources[0].texture.id(), base_texture);
@@ -2140,7 +2182,8 @@ pub(crate) mod tests {
                     "selection alone does not change the reviewed composite"
                 );
             }
-            app.overlay.select_layer(&controls.ctx, 1);
+            app.overlay
+                .select_layer(&controls.ctx, Language::DEFAULT, 1);
             controls.click(&mut app, "overlay.two_points");
             for index in 0..2 {
                 controls.source_point(&mut app, index, [0.2, 0.25]);
