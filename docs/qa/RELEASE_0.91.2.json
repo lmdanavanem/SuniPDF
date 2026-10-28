@@ -1,0 +1,205 @@
+{
+  "schema": 1,
+  "version": "0.91.2",
+  "source": "676d4577792eaf7d970c71b6d07f6976d788bd29",
+  "tag": "v0.91.2",
+  "release_id": 427297783,
+  "release_url": "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.2",
+  "author": "github-actions[bot]",
+  "published_at": "2026-10-28T23:23:57Z",
+  "verified_at": "2026-10-28T23:24:07Z",
+  "stable_latest_verified": true,
+  "assets": [
+    {
+      "name": "SuniPDF-0.91.2-linux-amd64.deb",
+      "id": 686674924,
+      "size": 23021288,
+      "sha256": "dcceddc960d15942e06c66227e2a124de007e54b9eeb4c20cb18e1096d384359",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-linux-amd64.deb",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.91.2-linux-amd64.deb.sha256",
+      "id": 686674916,
+      "size": 97,
+      "sha256": "a92236967a8461bb82e580ca78e3de4f31188522c345b683a28bd61753d5486b",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-linux-amd64.deb.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.91.2-macos-arm64.dmg",
+      "id": 686674921,
+      "size": 32829655,
+      "sha256": "b52be56ec191abf43dc67753328b509b05dfd3db66db15fac0e7aef1606615c6",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-macos-arm64.dmg",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.91.2-macos-arm64.dmg.sha256",
+      "id": 686674912,
+      "size": 97,
+      "sha256": "93c04bc13f8a7d54e935e13265792356a90ee52a8f8061440f905baa053e956b",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-macos-arm64.dmg.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.91.2-win-arm64-portable.zip",
+      "id": 686674926,
+      "size": 34987963,
+      "sha256": "370b95d4614855a94d6f48bf2bb6bf368383a919d82eef9e7f0358e6767c0161",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-win-arm64-portable.zip",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.91.2-win-arm64-portable.zip.sha256",
+      "id": 686674920,
+      "size": 105,
+      "sha256": "a605dd1a74dc558cc126afe3cce76c544e1b361dcb0eccaeec6e9074a281c0f8",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-win-arm64-portable.zip.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.91.2-win-x64-portable.zip",
+      "id": 686674923,
+      "size": 37043764,
+      "sha256": "19db30df50e50488f6afcda7910136f49bfc3e433a3cc61b534e4665cb546a52",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-win-x64-portable.zip",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.91.2-win-x64-portable.zip.sha256",
+      "id": 686674917,
+      "size": 103,
+      "sha256": "38943ba9c871809256694a101b847eae5f79a8c51fa12a041af7aeec30bf6c4d",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-win-x64-portable.zip.sha256",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.91.2-win-x64.msi",
+      "id": 686674918,
+      "size": 34840576,
+      "sha256": "58ed0d63c55d4d007b81440d63c86518d8ab6a2b23733f999729e7dad9da381b",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-win-x64.msi",
+      "public_unauthenticated": true
+    },
+    {
+      "name": "SuniPDF-0.91.2-win-x64.msi.sha256",
+      "id": 686674913,
+      "size": 94,
+      "sha256": "5711a8eda7195e23e15f014e305a42a8c5550fed56026497fd457a2bc98d8c5a",
+      "url": "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-win-x64.msi.sha256",
+      "public_unauthenticated": true
+    }
+  ],
+  "qualification": {
+    "release_run": 40782189348,
+    "release_url": "https://github.com/lmdanavanem/SuniPDF/actions/runs/40782189348",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "conclusion": "success",
+        "id": 123146376290,
+        "name": "build (x64)"
+      },
+      {
+        "conclusion": "success",
+        "id": 123146376476,
+        "name": "build (arm64)"
+      },
+      {
+        "conclusion": "success",
+        "id": 123146376570,
+        "name": "linux / Classify and validate documentation"
+      },
+      {
+        "conclusion": "success",
+        "id": 123146376952,
+        "name": "macos / Classify documentation change"
+      },
+      {
+        "conclusion": "success",
+        "id": 123146436054,
+        "name": "macos / Build macOS arm64"
+      },
+      {
+        "conclusion": "success",
+        "id": 123146442730,
+        "name": "linux / Build Ubuntu 22.04 amd64"
+      },
+      {
+        "conclusion": "success",
+        "id": 123150360986,
+        "name": "linux / PDF conformance and independent reader"
+      },
+      {
+        "conclusion": "success",
+        "id": 123150361002,
+        "name": "linux / Install and run on Ubuntu 24.04"
+      },
+      {
+        "conclusion": "success",
+        "id": 123150361110,
+        "name": "linux / Install and run on Ubuntu 22.04"
+      },
+      {
+        "conclusion": "success",
+        "id": 123150814766,
+        "name": "macos / Install and run on macOS"
+      },
+      {
+        "conclusion": "success",
+        "id": 123162187955,
+        "name": "publish"
+      }
+    ],
+    "main_ci": [
+      {
+        "conclusion": "success",
+        "head_sha": "676d4577792eaf7d970c71b6d07f6976d788bd29",
+        "id": 40775983650,
+        "name": "ci"
+      },
+      {
+        "conclusion": "success",
+        "head_sha": "676d4577792eaf7d970c71b6d07f6976d788bd29",
+        "id": 40775983510,
+        "name": "linux"
+      },
+      {
+        "conclusion": "success",
+        "head_sha": "676d4577792eaf7d970c71b6d07f6976d788bd29",
+        "id": 40775983651,
+        "name": "macos"
+      }
+    ],
+    "upgrade_baselines": "58 portable upgrade baselines plus 4 guards and 56 MSI upgrade baselines, including the published 0.91.0 packages."
+  },
+  "publication": {
+    "method": "draft created by the tagged release workflow, assets downloaded and checked against their SHA256 files, then owner-authenticated publication",
+    "public_download_check": "All five packages and SHA256 files were downloaded without authentication; every package matched its SHA256 file and the API digest.",
+    "withdrawn": "0.91.1 contained the same corrections and was withdrawn shortly after publication; its tag name cannot be reused."
+  },
+  "local_verification": {
+    "commands": [
+      "cargo fmt --all -- --check",
+      "cargo clippy -j 1 --workspace --all-targets -- -D warnings",
+      "cargo test -j 1 --workspace",
+      "scripts/check-i18n.ps1",
+      "scripts/ci-docs.py validate"
+    ],
+    "workspace_tests": {
+      "binaries": 115,
+      "passed": 1359,
+      "failed": 0,
+      "ignored": 15
+    },
+    "packaged_cli_regressions": "Fourteen version-bound CLI regression scripts passed locally against the debug CLI and QPDF 12.4.2.",
+    "note": "Local checks ran on the identical source tree before the version number changed from 0.91.1 to 0.91.2."
+  },
+  "limitations": [
+    "This corrective release adds no workflow; the 0.91.0 qualification scope and limits apply unchanged.",
+    "Windows packages are unsigned and the macOS DMG is ad hoc signed, not notarized.",
+    "Detailed engine refusal reasons remain in English inside a translated sentence.",
+    "Native screen-reader behavior of the new accessible names was not exercised with Narrator."
+  ]
+}

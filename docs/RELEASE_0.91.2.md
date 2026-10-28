@@ -1,8 +1,11 @@
-# SuniPDF 0.91.2 - candidate
+# SuniPDF 0.91.2
 
-This corrective candidate follows [SuniPDF 0.91.0](RELEASE_0.91.0.md). It adds no new workflow.
+Published stable on 2026-10-28. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.2) | [Qualification evidence](qa/RELEASE_0.91.2.json).
+
+This corrective release follows [SuniPDF 0.91.0](RELEASE_0.91.0.md). It adds no new workflow.
 It contains the same corrections as 0.91.1, which was withdrawn shortly after publication.
-Publication and package qualification are pending.
+The tagged source passed all 11 release jobs, including upgrades from the published 0.91.0 MSI and
+portable packages. All ten public downloads were checked anonymously against their SHA256 values.
 
 ## Saved text library
 

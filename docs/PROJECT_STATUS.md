@@ -1,5 +1,17 @@
 # Project status
 
+## Published 0.91.2
+
+[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.2) | [Release notes](RELEASE_0.91.2.md) | [Qualification evidence](qa/RELEASE_0.91.2.json).
+
+Corrective release of 0.91.0 without new workflows: saved text placement and rotated-page capture,
+register field size limits, retained unreadable saved filters, translated messages and accessible names.
+It republishes the corrections of 0.91.1, which was withdrawn shortly after publication.
+The tagged source passed all 11 release jobs, including 58 portable upgrade baselines plus 4 guards
+and 56 MSI upgrade baselines, now starting from the published 0.91.0 packages. Locally, the workspace
+passed 1,359 tests with clippy and formatting clean. All ten public downloads were checked anonymously
+against their SHA256 values, verified 2026-10-28T23:24:07Z.
+
 ## Published 0.91.0
 
 [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.0) | [Release notes](RELEASE_0.91.0.md) | [Qualification evidence](qa/RELEASE_0.91.0.json).

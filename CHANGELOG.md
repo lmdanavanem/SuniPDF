@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.91.2] - 2026-10-28
+
 - Place saved text-library entries at ordinary click origins and save text groups; f32 rounding of the text box no longer refuses about half of the placements.
 - Capture saved native rich text on rotated or offset-crop pages from its appearance box instead of refusing it.
 - Refuse annotation-field changes, in a batch or on one annotation, whose stored text would exceed the register limits, instead of saving a document whose register can no longer be read.
@@ -13,8 +17,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 - Translate overlay, register-field, saved-filter and annotation-library messages and file types, and name the field-change and saved-filter controls for screen readers.
 - Explain that overlay setups must be saved on a local drive, and check unsaved overlay sources without blocking the window on unreachable drives.
 
-The 0.91.2 increment is under qualification. See [the candidate notes](docs/RELEASE_0.91.2.md).
-Further work remains in the [roadmap](docs/ROADMAP.md).
+These corrections were first published as 0.91.1, which was withdrawn shortly after publication.
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.2). See [qualification and limits](docs/RELEASE_0.91.2.md).
 
 ## [0.91.0] - 2026-10-26
 
