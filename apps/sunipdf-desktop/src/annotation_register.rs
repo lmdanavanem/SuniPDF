@@ -379,10 +379,11 @@ impl SuniApp {
     }
 
     pub(crate) fn register_edit_failed(&mut self, error: &EngineError) {
-        self.annotate.register.bulk.failed(error);
+        let lang = self.lang();
+        self.annotate.register.bulk.failed(lang, error);
         if let Some(edit) = self.annotate.register.edit.as_mut().filter(|e| e.applying) {
             edit.applying = false;
-            edit.error = Some(error.to_string());
+            edit.error = Some(crate::app::error_text(lang, error));
         }
     }
 

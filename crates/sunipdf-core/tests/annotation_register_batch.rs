@@ -617,3 +617,30 @@ fn valid_fields_that_would_make_the_register_unreadable_refuse_the_whole_batch()
     same_document(&before, &doc.snapshot().unwrap());
     assert!(doc.annotation_register().is_ok());
 }
+
+#[test]
+fn single_record_fields_that_would_make_the_register_unreadable_are_refused() {
+    let engine = engine();
+    let mut doc = engine
+        .open_bytes(source(&engine), None, Path::new("single.pdf"))
+        .unwrap();
+    let register = doc.annotation_register().unwrap();
+    let row = register
+        .rows
+        .iter()
+        .find(|row| row.page == 1 && row.index == 0)
+        .unwrap();
+    let quoted = "\"".repeat(1024);
+    let fields = RegisterFields {
+        custom: (0..16)
+            .map(|index| (format!("Field {index}"), quoted.clone()))
+            .collect(),
+        ..Default::default()
+    };
+    fields.validate().unwrap();
+    let error = doc
+        .set_annotation_register_fields(&register.target(row), &fields, None)
+        .unwrap_err();
+    assert!(error.to_string().contains("unreadable"), "{error}");
+    assert_eq!(doc.annotation_register().unwrap().rows, register.rows);
+}

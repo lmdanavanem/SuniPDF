@@ -1350,10 +1350,16 @@ fn capture_without_thread(
             "annotations with replies or review history cannot be captured or transferred",
         ));
     }
-    if matches!(purpose, CapturePurpose::Library) {
+    if matches!(
+        purpose,
+        CapturePurpose::Library | CapturePurpose::LibraryListing
+    ) {
         match capture_subtype(dict).as_str() {
             "Stamp" => return capture_stamps::capture(pdf, dict, geo),
-            "FreeText" => return capture_text::capture(document, pdf, dict, geo),
+            "FreeText" => {
+                let verify = matches!(purpose, CapturePurpose::Library);
+                return capture_text::capture(document, pdf, dict, geo, verify);
+            }
             _ => {}
         }
     }
@@ -1365,7 +1371,16 @@ fn capture_without_thread(
 enum CapturePurpose {
     Original,
     Library,
+    /// Candidate listing past its text budget: FreeText appearance regeneration is
+    /// deferred to `capture_library_entry`, which always verifies it.
+    LibraryListing,
 }
+
+/// Native FreeText verification regenerates each appearance with PDFium on the engine
+/// thread. Bound that work per candidate listing: each text costs a fixed overhead plus
+/// its characters.
+const CANDIDATE_TEXT_BUDGET: usize = 64 * 1024;
+const CANDIDATE_TEXT_OVERHEAD: usize = 1024;
 
 impl Document<'_> {
     pub(crate) fn capture_original_annotations(
@@ -1476,19 +1491,23 @@ impl Document<'_> {
         let (pdf, page_id, geo) = self.capture_source(page)?;
         let replies = capture_replied_indices(&pdf, page_id)?;
         let count = capture_annotation_entries(&pdf, page_id)?.len();
+        let mut text_budget = CANDIDATE_TEXT_BUDGET;
         (0..count)
             .map(|index| {
                 let dict = capture_annotation(&pdf, page_id, index)?;
                 let subtype = capture_subtype(dict);
-                let result = capture_without_thread(
-                    self,
-                    &pdf,
-                    dict,
-                    &geo,
-                    &replies,
-                    index,
-                    CapturePurpose::Library,
-                );
+                let mut purpose = CapturePurpose::Library;
+                if subtype == "FreeText" {
+                    let cost = CANDIDATE_TEXT_OVERHEAD
+                        + crate::annot_write::text_of(&pdf, dict, b"Contents")
+                            .map_or(0, |text| text.chars().count());
+                    match text_budget.checked_sub(cost) {
+                        Some(left) => text_budget = left,
+                        None => purpose = CapturePurpose::LibraryListing,
+                    }
+                }
+                let result =
+                    capture_without_thread(self, &pdf, dict, &geo, &replies, index, purpose);
                 Ok(LibraryCaptureCandidate {
                     index,
                     subtype,

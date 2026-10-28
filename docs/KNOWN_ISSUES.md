@@ -71,6 +71,13 @@ Saved-group capture accepts reproducible native shapes, supported standard and i
   are unsupported. Malformed fields remain read-only and flattening can leave orphan fields.
 - Some form appearances can depend on system fonts. Keyboard behavior has automated coverage;
   screen-reader and broader cross-reader behavior require separate qualification.
+- Detailed engine refusal reasons have no stable error code yet. The desktop shows them in
+  English inside a translated sentence, including annotation-library capture refusals.
+  Overlay, register-field, saved-filter and library messages raised by the desktop are fully translated.
+- Listing library capture candidates fully verifies native text up to a fixed budget per page
+  (about 64 KiB of text). Larger pages defer that check to capture, which still refuses an
+  appearance that does not reproduce.
+- Overlay setups must be saved to a folder on a local drive; mapped network drives are refused.
 
 ## Redaction, saving and recovery
 

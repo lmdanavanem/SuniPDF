@@ -2162,5 +2162,22 @@
   "measure.segment.preview_note": "Vérifiez le tracé et la longueur avant application. Les extrémités enregistrées restent modifiables.",
   "measure.segment.invalid_dimensions": "Saisissez une longueur positive et finie.",
   "measure.segment.place_hint": "Cliquez le point de départ, puis vérifiez le segment. Échap annule.",
-  "measure.segment.endpoint_note": "La longueur et l'angle déterminent l'extrémité."
+  "measure.segment.endpoint_note": "La longueur et l'angle déterminent l'extrémité.",
+  "error.engine_detail": "L’opération n’a pas pu aboutir : {detail}",
+  "overlay.error.layer_pdf": "Choisissez un PDF pour chaque calque de superposition.",
+  "overlay.error.anchors": "Choisissez deux points correspondants sur la base et sur le calque sélectionné.",
+  "overlay.error.fingerprint": "Chaque source de la superposition doit avoir une empreinte. Relancez l’aperçu.",
+  "overlay.error.source_image": "Une image source de la superposition est indisponible. Relancez l’aperçu.",
+  "overlay.setup.file_type": "Configuration de superposition SuniPDF",
+  "register.bulk.duplicate_field": "Chaque champ personnalisé ne peut être modifié qu’une fois.",
+  "register.bulk.preview_stale": "L’aperçu des champs n’est plus à jour. Relancez l’aperçu.",
+  "register.bulk.custom_value": "Valeur de {key}",
+  "register.presets.missing": "Ce filtre enregistré n’existe plus.",
+  "register.presets.file_limit": "Les filtres enregistrés doivent être un fichier JSON ordinaire de 128 Kio au plus.",
+  "register.presets.save_failed": "Les filtres enregistrés n’ont pas pu être écrits dans le fichier de préférences.",
+  "library.file_type": "Bibliothèque d’annotations SuniPDF",
+  "library.error.unavailable": "Le dossier local de la bibliothèque d’annotations est indisponible.",
+  "library.error.reload": "Rechargez la bibliothèque d’annotations après avoir résolu l’erreur de lecture.",
+  "library.error.missing_file": "Le fichier de bibliothèque sélectionné est introuvable.",
+  "library.error.no_group": "Aucun groupe d’annotations à enregistrer."
 }

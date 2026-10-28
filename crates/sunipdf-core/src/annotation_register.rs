@@ -728,6 +728,7 @@ impl Document<'_> {
             ));
         }
         let page = target.page.checked_sub(1).ok_or_else(bad)?;
+        let previous = self.snapshot()?;
         self.edit_annotation_pdf(page, |pdf, page, _| {
             let (slot, mut dict) = load_annot(pdf, page, target.index)?;
             editable(&dict)?;
@@ -772,7 +773,16 @@ impl Document<'_> {
             );
             touch(&mut dict);
             store_annot(pdf, page, slot, dict)
-        })
+        })?;
+        // Valid fields can still exceed the reader's per-record or document-wide text budget.
+        let pdf = security::load(&self.snapshot()?, self.password())?;
+        if self.annotation_register_from_pdf(Vec::new(), &pdf).is_err() {
+            self.restore(previous)?;
+            return Err(EngineError::Other(
+                "edited fields would make the annotation register unreadable".into(),
+            ));
+        }
+        Ok(())
     }
 }
 

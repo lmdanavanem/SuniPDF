@@ -1699,7 +1699,7 @@ impl State<'_> {
                 }
                 _ => {
                     return Response::OperationFailed(EngineError::Other(
-                        "field preview is no longer current; preview again".into(),
+                        "register.bulk.preview_stale".into(),
                     ))
                 }
             },
@@ -4014,7 +4014,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             } => {
                 state.register_batch = None;
                 let result = if job.cancel.load(std::sync::atomic::Ordering::Acquire) {
-                    Err(EngineError::Other("field preview cancelled".into()))
+                    Err(EngineError::Cancelled)
                 } else {
                     state
                         .document
@@ -4030,7 +4030,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
                 .and_then(|plan| {
                     if job.cancel.load(std::sync::atomic::Ordering::Acquire) {
-                        return Err(EngineError::Other("field preview cancelled".into()));
+                        return Err(EngineError::Cancelled);
                     }
                     let report = plan.report().clone();
                     state.register_batch = Some((epoch, generation, plan, job.cancel.clone()));

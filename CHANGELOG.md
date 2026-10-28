@@ -5,13 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
-### Fixed
-
 - Place saved text-library entries at ordinary click origins and save text groups; f32 rounding of the text box no longer refuses about half of the placements.
 - Capture saved native rich text on rotated or offset-crop pages from its appearance box instead of refusing it.
-- Refuse an annotation-fields batch whose stored text would exceed the register limits, instead of saving a document whose register can no longer be read.
+- Refuse annotation-field changes, in a batch or on one annotation, whose stored text would exceed the register limits, instead of saving a document whose register can no longer be read.
 - Keep an unreadable saved-filter library (newer version, hand edit) in the preferences file instead of erasing it when other preferences are saved.
+- Bound native text verification while listing library capture candidates; capture still verifies every selected annotation.
+- Translate overlay, register-field, saved-filter and annotation-library messages and file types, and name the field-change and saved-filter controls for screen readers.
+- Explain that overlay setups must be saved on a local drive, and check unsaved overlay sources without blocking the window on unreachable drives.
 
+The 0.91.1 increment is under qualification. See [the candidate notes](docs/RELEASE_0.91.1.md).
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.91.0] - 2026-10-26

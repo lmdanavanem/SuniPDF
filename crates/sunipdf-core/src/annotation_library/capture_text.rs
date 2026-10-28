@@ -102,6 +102,7 @@ pub(super) fn capture(
     pdf: &lopdf::Document,
     dict: &Dictionary,
     geo: &PageGeometry,
+    verify_appearance: bool,
 ) -> Result<(LibraryPrimitive, String), EngineError> {
     if dict.iter().any(|(key, _)| {
         !matches!(
@@ -328,6 +329,10 @@ pub(super) fn capture(
         style: style.clone(),
     };
     primitive.validate()?;
+    let digest = digest_hex(&serde_json::to_vec(&fingerprint).map_err(|_| unsupported())?);
+    if !verify_appearance {
+        return Ok((primitive, digest));
+    }
     let expected_pdf = crate::security::load(
         &document.rich_text_source(w, h, &text, &style.placed(1.0))?,
         None,
@@ -358,10 +363,7 @@ pub(super) fn capture(
     {
         return Err(unsupported());
     }
-    Ok((
-        primitive,
-        digest_hex(&serde_json::to_vec(&fingerprint).map_err(|_| unsupported())?),
-    ))
+    Ok((primitive, digest))
 }
 
 #[cfg(test)]

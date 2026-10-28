@@ -2162,5 +2162,22 @@
   "measure.segment.preview_note": "Review the line and length before applying. The saved endpoints remain editable.",
   "measure.segment.invalid_dimensions": "Enter a positive finite length.",
   "measure.segment.place_hint": "Click the starting point, then review the segment. Esc cancels.",
-  "measure.segment.endpoint_note": "The endpoint follows the length and angle."
+  "measure.segment.endpoint_note": "The endpoint follows the length and angle.",
+  "error.engine_detail": "The operation could not be completed: {detail}",
+  "overlay.error.layer_pdf": "Choose a PDF for every overlay layer.",
+  "overlay.error.anchors": "Choose two corresponding points on the base and on the selected layer.",
+  "overlay.error.fingerprint": "Every overlay source needs a fingerprint. Preview again.",
+  "overlay.error.source_image": "An overlay source image is unavailable. Preview again.",
+  "overlay.setup.file_type": "SuniPDF overlay setup",
+  "register.bulk.duplicate_field": "Each custom field can be changed only once.",
+  "register.bulk.preview_stale": "The field preview is no longer current. Preview again.",
+  "register.bulk.custom_value": "Value of {key}",
+  "register.presets.missing": "This saved filter no longer exists.",
+  "register.presets.file_limit": "Saved filters must be a regular JSON file of at most 128 KiB.",
+  "register.presets.save_failed": "The saved filters could not be written to the preferences file.",
+  "library.file_type": "SuniPDF annotation library",
+  "library.error.unavailable": "The local annotation library folder is unavailable.",
+  "library.error.reload": "Reload the annotation library after resolving the read error.",
+  "library.error.missing_file": "The selected library file is missing.",
+  "library.error.no_group": "There is no annotation group to save."
 }

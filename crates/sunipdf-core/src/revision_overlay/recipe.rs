@@ -306,7 +306,9 @@ pub fn save_new(
     check_cancel(cancel)?;
     preview.revalidate_sources(cancel)?;
     let (destination, parent) = output_path(output)?;
-    let portable_parent = portable_local_path(&parent)?;
+    // A mapped network drive canonicalizes to a UNC folder, which setups never reference.
+    let portable_parent = portable_local_path(&parent)
+        .map_err(|_| invalid("save overlay setups in a folder on a local drive"))?;
     let mut layers = Vec::with_capacity(preview.options().layers.len());
     for (index, layer) in preview.options().layers.iter().enumerate() {
         check_cancel(cancel)?;

@@ -3865,7 +3865,39 @@ pub fn error_key(e: &EngineError) -> &'static str {
         EngineError::Other(message) if message == crate::worker::CERTIFICATE_SAVE_FIRST => {
             "error.certificate_save_first"
         }
-        EngineError::Other(_) => "error.unknown",
+        EngineError::Other(message) => DESKTOP_ERROR_KEYS
+            .iter()
+            .find(|key| **key == message.as_str())
+            .copied()
+            .unwrap_or("error.unknown"),
+    }
+}
+
+/// Errors raised by the desktop itself carry their i18n key as the message.
+const DESKTOP_ERROR_KEYS: &[&str] = &[
+    "overlay.error.layer_pdf",
+    "overlay.error.anchors",
+    "overlay.error.fingerprint",
+    "overlay.error.source_image",
+    "register.bulk.duplicate_field",
+    "register.bulk.preview_stale",
+    "register.presets.missing",
+    "register.presets.file_limit",
+    "register.presets.save_failed",
+    "library.error.unavailable",
+    "library.error.reload",
+    "library.error.missing_file",
+    "library.error.no_group",
+];
+
+/// Typed and desktop errors are fully translated. Engine refusal details (`Other`) have
+/// no stable code yet, so their English text is kept inside a translated sentence.
+pub fn error_text(lang: Language, e: &EngineError) -> String {
+    match (error_key(e), e) {
+        ("error.unknown", EngineError::Other(detail)) => {
+            tr_args(lang, "error.engine_detail", &[("detail", detail)])
+        }
+        (key, _) => tr(lang, key).into(),
     }
 }
 
