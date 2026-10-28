@@ -26,8 +26,8 @@ def main():
     parser.add_argument('--directory', type=Path, required=True)
     parser.add_argument('--expected-version', required=True)
     args = parser.parse_args()
-    if not re.fullmatch(r'0\.\d+\.0', args.expected_version):
-        parser.error('expected version must be an explicit 0.x.0 release')
+    if not re.fullmatch(r'\d+\.\d+\.\d+', args.expected_version):
+        parser.error('expected version must be an explicit packaged release version')
     cli, qpdf = args.cli.resolve(strict=True), args.qpdf.resolve(strict=True)
     directory = args.directory.resolve()
     directory.mkdir(parents=True, exist_ok=False)
