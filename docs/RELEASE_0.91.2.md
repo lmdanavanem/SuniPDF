@@ -1,6 +1,7 @@
-# SuniPDF 0.91.1 - candidate
+# SuniPDF 0.91.2 - candidate
 
 This corrective candidate follows [SuniPDF 0.91.0](RELEASE_0.91.0.md). It adds no new workflow.
+It contains the same corrections as 0.91.1, which was withdrawn shortly after publication.
 Publication and package qualification are pending.
 
 ## Saved text library

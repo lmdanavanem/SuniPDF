@@ -13,7 +13,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 - Translate overlay, register-field, saved-filter and annotation-library messages and file types, and name the field-change and saved-filter controls for screen readers.
 - Explain that overlay setups must be saved on a local drive, and check unsaved overlay sources without blocking the window on unreachable drives.
 
-The 0.91.1 increment is under qualification. See [the candidate notes](docs/RELEASE_0.91.1.md).
+The 0.91.2 increment is under qualification. See [the candidate notes](docs/RELEASE_0.91.2.md).
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.91.0] - 2026-10-26
