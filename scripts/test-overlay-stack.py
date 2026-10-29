@@ -233,6 +233,26 @@ def main():
         patch("four overlapping tints match independent solid-ink calculation", combined_pixels, (32, 32), interior_color(overlap))
         patch("overlap: independent transforms vacate the other regions", combined_pixels, (80, 80), (255, 255, 255, 255))
 
+        all_hidden = [dict(layer, visible=False) for layer in layers]
+        hidden_png, hidden_report = stack("all-hidden", all_hidden)
+        hidden_pixels = image(hidden_png)
+        check("all hidden: every exported pixel is opaque white",
+              hidden_pixels.getextrema() == ((255, 255),) * 4)
+        expected_hidden_report = copy.deepcopy(details)
+        for entry in expected_hidden_report["layers"]:
+            entry["visible"] = False
+        check("all hidden: exact source geometry transforms and styles are retained",
+              hidden_report == expected_hidden_report)
+        hidden_json, hidden_json_stdout = stack("all-hidden-report", all_hidden, "json")
+        check("all hidden: saved JSON and stdout retain all four hidden source identities",
+              json.loads(hidden_json.read_text(encoding="utf-8")) == hidden_json_stdout == hidden_report)
+        changed = copy.deepcopy(all_hidden)
+        changed[2]["path"] = "missing-all-hidden.pdf"
+        refuse("refuse-missing-all-hidden", changed)
+        changed = copy.deepcopy(all_hidden)
+        changed[2]["expected_sha256"] = "0" * 64
+        refuse("refuse-stale-all-hidden", changed)
+
         changed = copy.deepcopy(layers)
         changed[2].update(path="missing-hidden.pdf", visible=False)
         refuse("refuse-missing-hidden", changed)
@@ -240,7 +260,6 @@ def main():
         changed[2].update(expected_sha256="0" * 64, visible=False)
         refuse("refuse-stale-hidden", changed)
         refuse("refuse-fifth-layer", [*layers, copy.deepcopy(layers[0])])
-        refuse("refuse-all-hidden", [dict(layer, visible=False) for layer in layers])
         changed = copy.deepcopy(layers)
         changed[0]["alignment"] = manual((1, 0))
         refuse("refuse-base-alignment", changed)

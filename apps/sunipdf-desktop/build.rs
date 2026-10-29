@@ -10,7 +10,7 @@ fn main() {
         .set("ProductName", "SuniPDF")
         .set("FileDescription", "SuniPDF — PDF reader and editor")
         .set("CompanyName", "Navanem")
-        .set("LegalCopyright", "© 2026 Emanuel DE ALMEIDA (Navanem). MIT OR Apache-2.0.")
+        .set("LegalCopyright", "© 2026 Emmanuel Almeida (Navanem). MIT OR Apache-2.0.")
         .set("OriginalFilename", "sunipdf.exe")
         .set_language(0x0409)
         .set_manifest(
