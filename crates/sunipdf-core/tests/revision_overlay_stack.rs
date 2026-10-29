@@ -51,6 +51,38 @@ fn stack_four_layers_crop_rotations_png_and_report_preserve_exact_sources(engine
         }
         let preview = prepare_overlay_stack(engine, options(&paths), &[None; 4], &cancel).unwrap();
         let report = preview.report();
+        let visibility = [true, false, true, false];
+        let recomposed = preview.with_visibility(&visibility, &cancel).unwrap();
+        let mut hidden_options = preview.options().clone();
+        for (layer, &visible) in hidden_options.layers.iter_mut().zip(&visibility) {
+            layer.visible = visible;
+        }
+        let independent =
+            prepare_overlay_stack(engine, hidden_options, &[None; 4], &cancel).unwrap();
+        assert_eq!(recomposed.image().rgba, independent.image().rgba);
+        for index in 0..4 {
+            assert!(std::ptr::eq(
+                preview.layer_image(index).unwrap(),
+                recomposed.layer_image(index).unwrap()
+            ));
+        }
+        assert_eq!(
+            recomposed
+                .with_visibility(&[true; 4], &cancel)
+                .unwrap()
+                .image()
+                .rgba,
+            preview.image().rgba
+        );
+        let blank = preview.with_visibility(&[false; 4], &cancel).unwrap();
+        assert!(blank
+            .image()
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .all(|pixel| *pixel == [255; 4]));
+        assert!(preview.with_visibility(&[true; 3], &cancel).is_err());
         assert_eq!(report["schema"], "sunipdf-revision-overlay-stack");
         assert_eq!(report["version"], 1);
         assert_eq!(report["layers"].as_array().unwrap().len(), 4);
@@ -131,6 +163,9 @@ fn stack_refuses_hidden_stale_missing_oversized_sources_bad_pages_and_cancellati
     )
     .unwrap();
     assert!(preview.revalidate_sources(&cancel).is_err());
+    assert!(preview
+        .with_visibility(&[true, true, false], &cancel)
+        .is_err());
     assert!(preview.export_json(&cancel).is_err());
     assert!(preview.export_png(&cancel).is_err());
     std::fs::write(&paths[2], &bytes).unwrap();

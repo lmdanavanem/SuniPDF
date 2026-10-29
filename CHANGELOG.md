@@ -7,6 +7,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
+## [0.92.0] - 2026-10-29
+
+By Emmanuel Almeida.
+
+- Redesign About in English and French with privacy information, real update status, persisted update/recovery switches, license links and author credits.
+- Hide and show page objects with the eye in the Objects panel. This temporary, per-tab reading state affects rendered pages, thumbnails and canvas picking; saved PDF content stays unchanged, and document edits reset the masks.
+- Hide and show revision overlay layers by clicking their name or eye, automatically refreshing the preview and retaining visibility in exports and saved setups. Hiding every layer produces a white canvas.
+- Preserve object-row selection and drag ordering alongside the visibility control.
+
+Prepared for publication. See [qualification and limits](docs/RELEASE_0.92.0.md).
+
 ## [0.91.2] - 2026-10-28
 
 - Place saved text-library entries at ordinary click origins and save text groups; f32 rounding of the text box no longer refuses about half of the placements.

@@ -726,6 +726,11 @@ pub enum Request {
         epoch: u64,
         jobs: Vec<TileJob>,
     },
+    /// Reader-only masks. A new document revision invalidates these object indices.
+    SetHiddenObjects {
+        epoch: u64,
+        hidden: std::collections::BTreeMap<usize, Vec<usize>>,
+    },
     /// Miniature de `width_px` pixels de large (hauteur proportionnelle).
     Thumbnail {
         page: usize,
@@ -973,6 +978,9 @@ pub enum TaskKind {
 }
 
 pub enum Response {
+    ReaderVisibilityApplied {
+        epoch: u64,
+    },
     BoundaryFill {
         epoch: u64,
         generation: u64,
@@ -1372,6 +1380,7 @@ struct State<'a> {
     document: Option<Document<'a>>,
     signature_source: Option<SignatureSource>,
     cache: RenderCache,
+    hidden_objects: std::collections::BTreeMap<usize, Vec<usize>>,
     /// Tuiles voulues par l'UI, rendues une à une quand aucune requête n'attend.
     wanted: WantedQueue,
     undo: Vec<Snapshot>,
@@ -1485,7 +1494,12 @@ impl State<'_> {
             .document
             .as_ref()
             .ok_or(EngineError::PageOutOfRange(page))?;
-        let image = doc.render_page(page, scale)?;
+        let hidden = self
+            .hidden_objects
+            .get(&page)
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+        let image = doc.render_page_hiding(page, scale, hidden)?;
         Ok(self.cache.insert(scale, image))
     }
 
@@ -1497,13 +1511,19 @@ impl State<'_> {
             .document
             .as_ref()
             .ok_or(EngineError::PageOutOfRange(job.page))?;
-        let image = doc.render_region(job.page, job.scale(), job.region)?;
+        let hidden = self
+            .hidden_objects
+            .get(&job.page)
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+        let image = doc.render_region_hiding(job.page, job.scale(), job.region, hidden)?;
         log::trace!("tuile {job:?} ; cache {} octets", self.cache.bytes());
         Ok(self.cache.insert_tile(*job, image))
     }
 
     fn invalidate(&mut self) {
         self.cache.clear();
+        self.hidden_objects.clear();
         self.wanted.clear();
         self.rich_preview = None;
         self.plan_zones.clear();
@@ -1967,6 +1987,7 @@ mod save_point_tests {
             document: None,
             signature_source: None,
             cache: RenderCache::new(1024),
+            hidden_objects: Default::default(),
             wanted: WantedQueue::default(),
             undo: Vec::new(),
             redo: Vec::new(),
@@ -2573,6 +2594,7 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
         document: None,
         signature_source: None,
         cache: RenderCache::new(CACHE_BYTES),
+        hidden_objects: Default::default(),
         wanted: WantedQueue::default(),
         undo: Vec::new(),
         redo: Vec::new(),
@@ -3091,6 +3113,12 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 }
                 continue;
             }
+            Request::SetHiddenObjects { epoch, hidden } => {
+                state.hidden_objects = hidden;
+                state.cache.clear();
+                state.wanted.clear();
+                Response::ReaderVisibilityApplied { epoch }
+            }
             Request::Thumbnail { page, width_px } => {
                 let image = state
                     .document
@@ -3348,7 +3376,14 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             }
             Request::ObjectAt { page, x, y } => {
                 let Some(doc) = &state.document else { continue };
-                let info = doc.object_at(page, x, y).unwrap_or_default();
+                let hidden = state
+                    .hidden_objects
+                    .get(&page)
+                    .map(Vec::as_slice)
+                    .unwrap_or_default();
+                let info = doc
+                    .object_at_visible(page, x, y, hidden)
+                    .unwrap_or_default();
                 Response::ObjectSelected { page, info }
             }
             Request::ObjectInfo { page, index } => {
@@ -3365,8 +3400,15 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
             }
             Request::Pick { page, pick, mode } => {
                 let Some(doc) = &state.document else { continue };
+                let hidden = state
+                    .hidden_objects
+                    .get(&page)
+                    .map(Vec::as_slice)
+                    .unwrap_or_default();
                 let infos = match pick {
-                    Pick::At { x, y } => doc.object_at(page, x, y).map(|o| o.into_iter().collect()),
+                    Pick::At { x, y } => doc
+                        .object_at_visible(page, x, y, hidden)
+                        .map(|o| o.into_iter().collect()),
                     Pick::InRect { rect, touching } => doc.objects_in_rect(
                         page,
                         rect,
@@ -3388,7 +3430,11 @@ fn run(rx: Receiver<Request>, tx: Sender<Response>, ctx: egui::Context) {
                 };
                 Response::ObjectsSelected {
                     page,
-                    infos: infos.unwrap_or_default(),
+                    infos: infos
+                        .unwrap_or_default()
+                        .into_iter()
+                        .filter(|object| !hidden.contains(&object.index))
+                        .collect(),
                     mode,
                 }
             }

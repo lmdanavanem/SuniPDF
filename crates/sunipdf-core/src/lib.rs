@@ -60,6 +60,7 @@ mod measurement_segments;
 mod measurement_shapes;
 mod measurement_snap;
 mod measurement_viewports;
+mod object_visibility;
 pub mod ocr;
 pub mod office;
 mod page_calibration;
@@ -448,6 +449,26 @@ impl Document<'_> {
         scale: f32,
         isolate_form_appearances: bool,
     ) -> Result<RenderedPage, EngineError> {
+        self.render_page_with_visibility(page_index, scale, isolate_form_appearances, &[])
+    }
+
+    /// Render with temporary reader-only visibility. PDF bytes and object order stay intact.
+    pub fn render_page_hiding(
+        &self,
+        page_index: usize,
+        scale: f32,
+        hidden: &[usize],
+    ) -> Result<RenderedPage, EngineError> {
+        self.render_page_with_visibility(page_index, scale, true, hidden)
+    }
+
+    fn render_page_with_visibility(
+        &self,
+        page_index: usize,
+        scale: f32,
+        isolate_form_appearances: bool,
+        hidden: &[usize],
+    ) -> Result<RenderedPage, EngineError> {
         let size = self.page_size(page_index)?;
         if !(scale.is_finite() && scale > 0.0) {
             return Err(EngineError::RenderTooLarge);
@@ -470,7 +491,9 @@ impl Document<'_> {
             .set_target_size(width as Pixels, height as Pixels)
             .render_form_data(true)
             .render_annotations(true);
+        let mut visibility = object_visibility::HideGuard::new(&page, hidden)?;
         let bitmap = page.render_with_config(&config)?;
+        visibility.restore()?;
         Ok(RenderedPage {
             page_index,
             width: bitmap.width() as u32,
@@ -496,6 +519,28 @@ impl Document<'_> {
         scale: f32,
         region: PixelRect,
         include_annotations: bool,
+    ) -> Result<RenderedPage, EngineError> {
+        self.render_region_with_visibility(page_index, scale, region, include_annotations, &[])
+    }
+
+    /// Tiled equivalent of `render_page_hiding`; hidden objects are restored before returning.
+    pub fn render_region_hiding(
+        &self,
+        page_index: usize,
+        scale: f32,
+        region: PixelRect,
+        hidden: &[usize],
+    ) -> Result<RenderedPage, EngineError> {
+        self.render_region_with_visibility(page_index, scale, region, true, hidden)
+    }
+
+    fn render_region_with_visibility(
+        &self,
+        page_index: usize,
+        scale: f32,
+        region: PixelRect,
+        include_annotations: bool,
+        hidden: &[usize],
     ) -> Result<RenderedPage, EngineError> {
         let size = self.page_size(page_index)?;
         let (page_w, page_h) =
@@ -560,7 +605,9 @@ impl Document<'_> {
             } as Pixels,
             PdfBitmapFormat::default(),
         )?;
+        let mut visibility = object_visibility::HideGuard::new(&page, hidden)?;
         page.render_into_bitmap_with_config(&mut bitmap, &config)?;
+        visibility.restore()?;
         let mut rgba = bitmap.as_rgba_bytes();
         if !include_annotations && region != PixelRect::new(0, 0, page_w, page_h) {
             let mut cropped =

@@ -494,10 +494,24 @@ impl Document<'_> {
         x: f32,
         y: f32,
     ) -> Result<Option<ObjectInfo>, EngineError> {
+        self.object_at_visible(page_index, x, y, &[])
+    }
+
+    /// Reader hit testing ignores temporarily hidden objects, including those in front.
+    pub fn object_at_visible(
+        &self,
+        page_index: usize,
+        x: f32,
+        y: f32,
+        hidden: &[usize],
+    ) -> Result<Option<ObjectInfo>, EngineError> {
         let page = self.page_handle(page_index)?;
         let geo = geometry_of(&page)?;
         let objects = page.objects();
         for i in (0..objects.len()).rev() {
+            if hidden.contains(&i) {
+                continue;
+            }
             let Ok(object) = objects.get(i) else { continue };
             let quad = display_quad(&object, &geo);
             let b = quad_bounds(&quad);

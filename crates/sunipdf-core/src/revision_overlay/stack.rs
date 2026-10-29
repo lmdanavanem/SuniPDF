@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 pub const MIN_LAYERS: usize = 2;
 pub const MAX_LAYERS: usize = 4;
@@ -85,9 +86,6 @@ impl OverlayStackOptions {
         if !(64..=MAX_LONG_SIDE).contains(&self.long_side) {
             return Err(invalid("Overlay requires a raster side from 64 to 2048"));
         }
-        if !self.layers.iter().any(|layer| layer.visible) {
-            return Err(invalid("Show at least one overlay layer"));
-        }
         for (index, layer) in self.layers.iter().enumerate() {
             if layer.path.as_os_str().is_empty() || layer.page == 0 {
                 return Err(invalid(
@@ -142,9 +140,9 @@ fn checked_memory_add(total: usize, additional: usize) -> Result<usize, EngineEr
 /// A complete immutable review snapshot. Passwords and source PDF bytes are not retained.
 pub struct OverlayStackPreview {
     options: OverlayStackOptions,
-    sources: Vec<PinnedSource>,
+    sources: Arc<[PinnedSource]>,
     transforms: Vec<OverlayTransform>,
-    images: Vec<RenderedPage>,
+    images: Arc<[RenderedPage]>,
     image: RenderedPage,
 }
 
@@ -159,6 +157,39 @@ impl std::fmt::Debug for OverlayStackPreview {
 }
 
 impl OverlayStackPreview {
+    /// Recompose retained rasters without opening or rasterizing the source PDFs again.
+    /// Every source is still checked, including hidden ones, before publishing the result.
+    pub fn with_visibility(
+        &self,
+        visible: &[bool],
+        cancel: &AtomicBool,
+    ) -> Result<Self, EngineError> {
+        if visible.len() != self.options.layers.len() {
+            return Err(invalid("Provide visibility for every overlay layer"));
+        }
+        self.revalidate_sources(cancel)?;
+        let mut options = self.options.clone();
+        for (layer, &visible) in options.layers.iter_mut().zip(visible) {
+            layer.visible = visible;
+        }
+        options.validate()?;
+        let image = composite_stack(
+            &self.images,
+            &self.sources,
+            &options.layers,
+            &self.transforms,
+            cancel,
+        )?;
+        self.revalidate_sources(cancel)?;
+        Ok(Self {
+            options,
+            sources: self.sources.clone(),
+            transforms: self.transforms.clone(),
+            images: self.images.clone(),
+            image,
+        })
+    }
+
     pub fn image(&self) -> &RenderedPage {
         &self.image
     }
@@ -211,7 +242,7 @@ impl OverlayStackPreview {
     }
 
     pub fn revalidate_sources(&self, cancel: &AtomicBool) -> Result<(), EngineError> {
-        for pinned in &self.sources {
+        for pinned in self.sources.iter() {
             check_cancel(cancel)?;
             check_selected_path(&pinned.selected_path, &pinned.source.path)?;
             if digest(&read_pdf(&pinned.source.path)?) != pinned.source.source_sha256 {
@@ -296,9 +327,9 @@ pub fn prepare_overlay_stack(
     let image = composite_stack(&images, &sources, &options.layers, &transforms, cancel)?;
     let preview = OverlayStackPreview {
         options,
-        sources,
+        sources: sources.into(),
         transforms,
-        images,
+        images: images.into(),
         image,
     };
     preview.revalidate_sources(cancel)?;
@@ -545,7 +576,7 @@ mod tests {
         bad.layers
             .iter_mut()
             .for_each(|layer| layer.visible = false);
-        assert!(bad.validate().is_err());
+        assert!(bad.validate().is_ok());
         bad = valid.clone();
         bad.layers[0].alignment = OverlayAlignment::Manual {
             transform: OverlayTransform {

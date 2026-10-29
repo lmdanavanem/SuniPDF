@@ -448,7 +448,7 @@ its PDF password again: encryption is preserved and passwords are never written 
 The recovery folder is `%LOCALAPPDATA%\SuniPDF\recovery`; metadata includes the original path and page count.
 Explicitly discarding changes or saving successfully removes the relevant recovery copy. Recovery covers
 completed document edits and valid form drafts, not text still being typed in an unconfirmed dialog.
-Disable automatic snapshots with the checkbox in About. **File → Recover documents** reopens the list.
+Disable automatic snapshots with the recovery switch in About. **File → Recover documents** reopens the list.
 
 ## Reading
 
@@ -601,7 +601,9 @@ character. For existing text that is upright on screen, **F2** or double-click o
 to back. Click: select (Ctrl: add or remove, Shift: add); hover: orange marker on the page; buttons bring
 forward / send backward and delete.
 
-Everything can be undone (Ctrl+Z) and is written into the PDF when saving.
+Content edits can be undone (Ctrl+Z) and are written into the PDF when saving.
+
+Click the eye next to an object to hide it, and click again to show it. This temporary reading state stays with the tab, affects page tiles, thumbnails and canvas selection, and does not remove content from saved PDFs. Editing the document resets visibility because object indices can change.
 
 Limits: grouped paste remains a group; use **Paste editable** for supported individual objects.
 Eligible static TTF/OTF/TTC faces are subset and reused unless embedding restrictions require a full face.

@@ -8,6 +8,11 @@ Open the Objects panel with F3. Rows at the top are in front. Drag a row above o
 
 Escape cancels. Dropping outside a valid row, onto a selected row or at the same position does nothing. A drop into another page/document or after an intervening edit is refused. Selection follows the moved objects. Existing forward/backward buttons and keyboard commands remain available; one completed drag uses one Undo step and supports Redo through the existing worker transaction.
 
+Click the eye next to an object to hide it; click again to show it. This temporary reading preference
+applies to page tiles, thumbnails and canvas selection, and stays with the current tab. It does not
+remove content from saved PDFs or create an Undo step. Editing the document resets hidden objects
+because their native indices can change. This controls top-level page objects, not PDF optional-content groups.
+
 ## CLI
 
 List indices with `sunipdf-cli objects input.pdf --page 1`, then use:

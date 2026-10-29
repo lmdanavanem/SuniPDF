@@ -38,7 +38,7 @@ fn cli_wire_defaults_optional_bindings_and_desktop_requirements_remain_distinct(
         .contains("environment"));
     value["layers"][0]["visible"] = false.into();
     value["layers"][1]["visible"] = false.into();
-    assert!(options(&parsed(&value).unwrap(), Path::new(".")).is_err());
+    assert!(options(&parsed(&value).unwrap(), Path::new(".")).is_ok());
 }
 
 #[test]

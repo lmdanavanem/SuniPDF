@@ -216,4 +216,58 @@ try {
         }
     }
     if (@($report.scenes.name | Select-Object -Unique).Count -ne 20) { throw 'Reader UI scene names are not unique.' }
+
+    $aboutTest = 'reader_ui_evidence::about_ui_dx12_warp_evidence'
+    if (@($listing | Where-Object { $_ -ceq "${aboutTest}: test" }).Count -ne 1) {
+        throw 'The exact About UI test is absent from the qualified executable.'
+    }
+    $aboutStarted = [DateTime]::UtcNow
+    & $executable --ignored --exact $aboutTest --nocapture
+    if ($LASTEXITCODE -ne 0) { throw 'The actual About UI evidence gate failed.' }
+    $aboutRoot = Join-Path $root 'target/about-visibility-qa'
+    $aboutReportPath = Join-Path $aboutRoot 'about-ui-report.json'
+    $aboutFile = Get-Item -LiteralPath $aboutReportPath
+    if ($aboutFile.Length -gt 32KB -or $aboutFile.LastWriteTimeUtc -lt $aboutStarted) {
+        throw 'About UI report is oversized or stale.'
+    }
+    $about = [IO.File]::ReadAllText($aboutReportPath) | ConvertFrom-Json
+    $aboutExpected = @('about-fr-light', 'about-en-dark', 'about-fr-light-small')
+    if ($about.status -cne 'passed' -or @($about.scenes).Count -ne 3 -or
+        @($about.scenes.name | Select-Object -Unique).Count -ne 3 -or
+        $about.updateStatus -cne 'Default unchecked state; no live network request') {
+        throw 'About UI report did not qualify its three expected scenes.'
+    }
+    $aboutImages = @()
+    foreach ($scene in $about.scenes) {
+        $small = $scene.name -ceq 'about-fr-light-small'
+        $english = $scene.name -ceq 'about-en-dark'
+        $width = if ($small) { 720 } else { 1280 }
+        $height = if ($small) { 480 } else { 1000 }
+        $required = @('about.title', 'about.close', 'about.tagline')
+        if (-not $small) {
+            $required += @('about.privacy_title', 'about.updates_recovery', 'updates.startup',
+                'about.recovery_local', 'about.licenses', 'about.credit', 'about.author', 'about.website')
+        }
+        if ($scene.name -cnotin $aboutExpected -or $scene.png -cne "$($scene.name).png" -or
+            $scene.language -cne $(if ($english) { 'en-US' } else { 'fr-FR' }) -or
+            [bool]$scene.dark -ne $english -or @($scene.pixels).Count -ne 2 -or
+            $scene.pixels[0] -ne $width -or $scene.pixels[1] -ne $height -or
+            @($scene.visibleLabels).Count -ne $required.Count -or
+            @($scene.visibleLabels | Select-Object -Unique).Count -ne $required.Count) {
+            throw 'About UI scene metadata differs from its required scenario.'
+        }
+        foreach ($key in $required) {
+            if ($key -cnotin $scene.visibleLabels) { throw 'About UI scene is missing a required visible label.' }
+        }
+        $png = Get-Item -LiteralPath (Join-Path $aboutRoot $scene.png)
+        if ($png.Length -lt 1000 -or $png.Length -gt 8MB -or $png.LastWriteTimeUtc -lt $aboutStarted) {
+            throw 'About UI image is missing, stale or outside its expected size bound.'
+        }
+        $aboutImages += @{ name=$scene.png; sha256=(Get-FileHash -LiteralPath $png.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
+    }
+    @{ sourceSha=$env:GITHUB_SHA; test=$aboutTest;
+       executableSha256=(Get-FileHash -LiteralPath $executable -Algorithm SHA256).Hash.ToLowerInvariant();
+       reportSha256=(Get-FileHash -LiteralPath $aboutReportPath -Algorithm SHA256).Hash.ToLowerInvariant();
+       images=$aboutImages; status='passed' } |
+        ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $aboutRoot 'about-ci-provenance.json') -Encoding utf8
 } finally { Pop-Location }

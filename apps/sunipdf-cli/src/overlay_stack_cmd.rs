@@ -107,6 +107,7 @@ mod tests {
         let mut hidden = valid.clone();
         hidden["layers"][0]["visible"] = false.into();
         hidden["layers"][1]["visible"] = false.into();
-        assert!(options(&parse(&hidden).unwrap(), Path::new(".")).is_err());
+        // A fully hidden stack is a valid white canvas and can be saved/reopened.
+        assert!(options(&parse(&hidden).unwrap(), Path::new(".")).is_ok());
     }
 }

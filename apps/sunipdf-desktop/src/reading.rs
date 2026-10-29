@@ -201,6 +201,8 @@ impl NavigationHistory {
 pub struct ReadingState {
     pub rotation: ViewRotation,
     pub history: NavigationHistory,
+    /// Reader-only visibility, retained with the tab and reset after document edits.
+    pub hidden_objects: std::collections::BTreeMap<usize, Vec<usize>>,
 }
 
 impl SuniApp {

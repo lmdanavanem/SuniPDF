@@ -24,6 +24,11 @@ use sunipdf_i18n::{tr, tr_args, Language};
 use zeroize::Zeroizing;
 
 pub enum Job {
+    Visibility {
+        preview: Arc<OverlayStackPreview>,
+        visible: Vec<bool>,
+        cancel: Arc<AtomicBool>,
+    },
     Preview {
         options: OverlayStackOptions,
         expected_hashes: Vec<Option<String>>,
@@ -51,7 +56,9 @@ impl Job {
     pub(crate) fn touches_source(&self, path: &Path) -> bool {
         let options = match self {
             Self::Preview { options, .. } => options,
-            Self::Export { preview, .. } | Self::SaveSetup { preview, .. } => preview.options(),
+            Self::Export { preview, .. }
+            | Self::SaveSetup { preview, .. }
+            | Self::Visibility { preview, .. } => preview.options(),
             Self::LoadSetup { .. } => return false,
         };
         options
@@ -79,6 +86,13 @@ impl Outcome {
 
 pub fn run_job(engine: &sunipdf_core::Engine, job: Job) -> Result<Outcome, EngineError> {
     match job {
+        Job::Visibility {
+            preview,
+            visible,
+            cancel,
+        } => Ok(Outcome::Preview(Arc::new(
+            preview.with_visibility(&visible, &cancel)?,
+        ))),
         Job::Preview {
             options,
             expected_hashes,
@@ -563,6 +577,50 @@ fn same_path_lexical(a: &Path, b: &Path) -> bool {
 }
 
 impl SuniApp {
+    fn refresh_overlay_visibility(&mut self) {
+        if self.overlay.busy || !self.overlay.open {
+            return;
+        }
+        let Some(preview) = self.overlay.preview.clone() else {
+            self.overlay.changed();
+            if self.overlay.layers.iter().all(|layer| layer.path.is_some()) {
+                self.start_overlay_preview();
+            }
+            return;
+        };
+        // Other changed options need a full, reviewed preview. Visibility alone reuses
+        // the retained source rasters and still revalidates every source on the worker.
+        let options = self.overlay.options(false);
+        let matches_preview = options.as_ref().is_ok_and(|options| {
+            let mut previous = preview.options().clone();
+            for (layer, current) in previous.layers.iter_mut().zip(&options.layers) {
+                layer.visible = current.visible;
+            }
+            previous == *options
+        });
+        if !matches_preview {
+            self.overlay.changed();
+            self.start_overlay_preview();
+            return;
+        }
+        let visible = self
+            .overlay
+            .layers
+            .iter()
+            .map(|layer| layer.visible)
+            .collect();
+        let generation = self.overlay.begin();
+        self.overlay.dirty = true;
+        self.worker.send(Request::RevisionOverlay {
+            generation,
+            job: Job::Visibility {
+                preview,
+                visible,
+                cancel: self.overlay.cancel.clone(),
+            },
+        });
+    }
+
     pub(crate) fn open_revision_overlay(&mut self) {
         if self.overlay.busy || self.review.busy || self.ink_blocks_action() {
             return;
@@ -833,6 +891,7 @@ impl SuniApp {
         ) = (None, None, None, false, false, None, false, false);
         let mut clicked_anchor = None;
         let mut changed = false;
+        let mut visibility_changed = false;
         let mut source_changed = None;
         let (mut open_setup, mut save_setup) = (false, false);
         dialog::show(
@@ -847,6 +906,7 @@ impl SuniApp {
             |ui| {
                 ui.label(tr(lang, "overlay.saved_files"));
                 ui.small(tr(lang, "overlay.stack.limits"));
+                ui.small(tr(lang, "overlay.stack.visibility_hint"));
                 ui.horizontal_wrapped(|ui| {
                     open_setup = ui
                         .add_enabled(!busy, egui::Button::new(tr(lang, "overlay.setup.open")))
@@ -875,20 +935,38 @@ impl SuniApp {
                                             &[("number", &(index + 1).to_string())],
                                         )
                                     };
-                                    if index == 0 {
-                                        ui.strong(label);
-                                    } else if ui
-                                        .selectable_label(selected_layer == index, label)
-                                        .clicked()
-                                    {
-                                        selected = Some(index);
-                                    }
-                                    changed |= ui
-                                        .checkbox(
-                                            &mut layer.visible,
-                                            tr(lang, "overlay.stack.visible"),
+                                    let tip = tr_args(
+                                        lang,
+                                        if layer.visible {
+                                            "objects.hide"
+                                        } else {
+                                            "objects.show"
+                                        },
+                                        &[("object", &label)],
+                                    );
+                                    let eye = crate::objects::visibility_button(
+                                        ui,
+                                        layer.visible,
+                                        &tip,
+                                        !busy,
+                                    );
+                                    let name = ui
+                                        .selectable_label(
+                                            selected_layer == index,
+                                            egui::RichText::new(label).color(if layer.visible {
+                                                crate::theme::palette_for(ctx).text
+                                            } else {
+                                                crate::theme::palette_for(ctx).text_muted
+                                            }),
                                         )
-                                        .changed();
+                                        .on_hover_text(&tip);
+                                    if eye.clicked() || name.clicked() {
+                                        layer.visible = !layer.visible;
+                                        visibility_changed = true;
+                                        if index > 0 {
+                                            selected = Some(index);
+                                        }
+                                    }
                                     if ui.button(tr(lang, "overlay.stack.choose")).clicked() {
                                         pick = Some(index);
                                     }
@@ -1180,6 +1258,9 @@ impl SuniApp {
         );
         if let Some(index) = selected {
             self.overlay.select_layer(ctx, lang, index);
+        }
+        if visibility_changed {
+            self.refresh_overlay_visibility();
         }
         if let Some(index) = remove {
             self.overlay.remove_layer(index);
@@ -1513,6 +1594,9 @@ pub(crate) mod tests {
             let layer_two = tr_args(lang, "overlay.stack.layer", &[("number", "2")]);
             controls.click_text(&mut app, &layer_two);
             assert_eq!(app.overlay.selected, 1);
+            assert!(!app.overlay.layers[1].visible);
+            controls.click_text(&mut app, &layer_two);
+            assert!(app.overlay.layers[1].visible);
             controls.click(&mut app, "overlay.stack.remove");
             assert_eq!(app.overlay.layers.len(), 3);
             controls.click(&mut app, "overlay.stack.remove");
@@ -1691,7 +1775,6 @@ pub(crate) mod tests {
             );
             for key in [
                 "overlay.stack.choose",
-                "overlay.stack.visible",
                 "overlay.stack.color",
                 "overlay.stack.remove",
                 "overlay.setup.open",
@@ -1701,6 +1784,19 @@ pub(crate) mod tests {
                     accessible.contains(tr(lang, key)),
                     "accessible layer control: {key}"
                 );
+            }
+            for index in 0..4 {
+                let layer = if index == 0 {
+                    tr(lang, "overlay.stack.base").to_owned()
+                } else {
+                    tr_args(
+                        lang,
+                        "overlay.stack.layer",
+                        &[("number", &(index + 1).to_string())],
+                    )
+                };
+                let label = tr_args(lang, "objects.hide", &[("object", &layer)]);
+                assert!(accessible.contains(&label), "accessible layer eye: {label}");
             }
             assert!(requests.try_recv().is_err());
         }
@@ -1772,8 +1868,8 @@ pub(crate) mod tests {
             layer.visible = false;
         }
         assert!(
-            state.options(true).is_err(),
-            "an entirely hidden stack cannot be prepared"
+            state.options(true).is_ok(),
+            "an entirely hidden stack prepares a white canvas"
         );
         state.layers[0].visible = true;
         assert_eq!(

@@ -125,7 +125,7 @@ jobs:
           path: target/performance-evidence/
           if-no-files-found: warn
       # Failed PR workspace tests cannot qualify follow-up gates; retain their logs below.
-      - name: Reader interface layout and DX12 software rendering
+      - name: Reader and About interface layout and DX12 software rendering
         if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
         run: .\scripts\run-reader-ui-evidence.ps1
       - name: Reader interface evidence
@@ -134,6 +134,16 @@ jobs:
         with:
           name: reader-ui-evidence
           path: target/reader-ui-evidence/
+          if-no-files-found: error
+      - name: About interface evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: about-ui-evidence
+          path: |
+            target/about-visibility-qa/*.png
+            target/about-visibility-qa/about-ui-report.json
+            target/about-visibility-qa/about-ci-provenance.json
           if-no-files-found: error
       - name: Pinned independent font reader
         if: steps.changes.outputs.docs_only != 'true' && always() && !cancelled() && steps.workspace_tests.outcome != 'skipped' && (github.event_name != 'pull_request' || steps.workspace_tests.outcome == 'success')
@@ -550,6 +560,7 @@ jobs:
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.78.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.79.0
           .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.91.0
+          .\scripts\test-msi-upgrade.ps1 -MsiPath $msi -BaselineVersion 0.91.2
       - name: MSI upgrade regression evidence
         if: steps.changes.outputs.docs_only != 'true' && always() && github.event_name != 'pull_request'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

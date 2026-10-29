@@ -33,6 +33,7 @@ fn kind_icon(kind: ObjectKind) -> (&'static str, &'static str) {
 
 enum RowAction {
     Select(usize, PickMode),
+    Visibility(usize),
     Reorder(usize, ZOrder),
     Delete(usize),
     Drop(ObjectsDrag, usize, bool),
@@ -74,6 +75,45 @@ impl ObjectsDrag {
 }
 
 impl SuniApp {
+    fn toggle_object_visibility(&mut self, index: usize) {
+        if !self.form_builder_ready() || self.dialog_open() || self.palette.open {
+            return;
+        }
+        let Some(page) = self.document.as_ref().map(|doc| doc.page) else {
+            return;
+        };
+        if self.edit.objects_page != Some(page)
+            || !self.edit.objects.iter().any(|object| object.index == index)
+        {
+            return;
+        }
+        let hidden = self.view.reading.hidden_objects.entry(page).or_default();
+        if let Some(position) = hidden.iter().position(|&value| value == index) {
+            hidden.remove(position);
+        } else {
+            hidden.push(index);
+            hidden.sort_unstable();
+        }
+        if hidden.is_empty() {
+            self.view.reading.hidden_objects.remove(&page);
+        }
+        self.edit.selection = None;
+        self.edit.hover_index = None;
+        self.view.pool.clear();
+        self.view.bump_epoch();
+        if let Some(other) = &mut self.reader_views.other {
+            other.view.pool.clear();
+            other.view.reading.hidden_objects = self.view.reading.hidden_objects.clone();
+        }
+        self.thumbnails.remove(&page);
+        self.thumbs_pending.clear();
+        self.thumbs_failed.clear();
+        self.worker.send(Request::SetHiddenObjects {
+            epoch: self.view.epoch,
+            hidden: self.view.reading.hidden_objects.clone(),
+        });
+    }
+
     fn drop_objects(&mut self, drag: &ObjectsDrag, target: usize, above: bool) {
         if !self.form_builder_ready() || self.dialog_open() || self.palette.open {
             return;
@@ -148,6 +188,11 @@ impl SuniApp {
                 .size(11.5)
                 .color(p.text_muted),
         );
+        ui.label(
+            RichText::new(tr(lang, "objects.visibility_hint"))
+                .size(11.5)
+                .color(p.text_muted),
+        );
         ui.add_space(4.0);
         if self.edit.objects.is_empty() {
             ui.label(RichText::new(tr(lang, "objects.empty")).color(p.text_muted));
@@ -167,25 +212,60 @@ impl SuniApp {
             .show(ui, |ui| {
                 for o in self.edit.objects.iter().rev() {
                     let is_sel = selected.contains(&o.index);
+                    let visible = !self
+                        .view
+                        .reading
+                        .hidden_objects
+                        .get(&page)
+                        .is_some_and(|hidden| hidden.contains(&o.index));
                     let label = match &o.text {
                         Some(t) if !t.trim().is_empty() => truncate(t, 40),
                         _ => tr(lang, kind_key(o.kind)).to_string(),
                     };
-                    let row = Frame::new()
-                        .fill(if is_sel { p.accent_soft } else { p.surface })
-                        .stroke(Stroke::new(
-                            1.0,
-                            if is_sel { theme::BLUE } else { p.border },
-                        ))
-                        .corner_radius(8)
-                        .inner_margin(egui::Margin::symmetric(8, 5))
-                        .show(ui, |ui| {
-                            ui.set_width(ui.available_width());
-                            ui.horizontal(|ui| {
+                    let row = ui
+                        .scope_builder(
+                            egui::UiBuilder::new().sense(if ready {
+                                egui::Sense::click_and_drag()
+                            } else {
+                                egui::Sense::hover()
+                            }),
+                            |ui| {
+                                Frame::new()
+                                    .fill(if is_sel { p.accent_soft } else { p.surface })
+                                    .stroke(Stroke::new(
+                                        1.0,
+                                        if is_sel { theme::BLUE } else { p.border },
+                                    ))
+                                    .corner_radius(8)
+                                    .inner_margin(egui::Margin::symmetric(8, 5))
+                                    .show(ui, |ui| {
+                                        // The row owns drags; its buttons own clicks.
+                                        ui.style_mut().interaction.selectable_labels = false;
+                                        ui.set_width(ui.available_width());
+                                        ui.horizontal(|ui| {
+                                let action_label = tr_args(
+                                    lang,
+                                    if visible {
+                                        "objects.hide"
+                                    } else {
+                                        "objects.show"
+                                    },
+                                    &[("object", &label)],
+                                );
+                                if visibility_button(ui, visible, &action_label, ready).clicked() {
+                                    action = Some(RowAction::Visibility(o.index));
+                                }
                                 let (g, f) = kind_icon(o.kind);
                                 ui.label(icons::icon(has_icons, g, f, 14.0).color(p.text_muted));
                                 ui.add(
-                                    egui::Label::new(RichText::new(&label).size(13.0)).truncate(),
+                                    egui::Label::new(
+                                        RichText::new(&label).size(13.0).color(if visible {
+                                            p.text
+                                        } else {
+                                            p.text_muted
+                                        }),
+                                    )
+                                    .truncate(),
                                 );
                                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                                     let small = |ui: &mut egui::Ui, g: &str, f: &str, tip: &str| {
@@ -214,20 +294,17 @@ impl SuniApp {
                                     }
                                 });
                             });
-                        })
+                                    })
+                            },
+                        )
                         .response
-                        .interact(if ready {
-                            egui::Sense::click_and_drag()
-                        } else {
-                            egui::Sense::hover()
-                        })
                         .on_hover_cursor(egui::CursorIcon::Grab)
                         .on_hover_text(tr(lang, "objects.drag_hint"));
                     // Libellé lisible pour les lecteurs d'écran (sélection comprise).
                     row.widget_info(|| {
                         egui::WidgetInfo::selected(egui::Role::Button, ready, is_sel, &label)
                     });
-                    if row.hovered() {
+                    if row.hovered() && visible {
                         hover = Some(o.index);
                     }
                     if ready && row.drag_started() {
@@ -287,6 +364,7 @@ impl SuniApp {
             });
         self.edit.hover_index = hover;
         match action {
+            Some(RowAction::Visibility(index)) => self.toggle_object_visibility(index),
             Some(RowAction::Select(i, mode)) => {
                 if self.annotate.tool != crate::annotate::Tool::SelectObject {
                     self.execute(ctx, Command::ToolSelectObject);
@@ -321,9 +399,176 @@ impl SuniApp {
     }
 }
 
+/// Drawn icons work on all supported systems without depending on a font codepoint.
+pub(crate) fn visibility_button(
+    ui: &mut egui::Ui,
+    visible: bool,
+    label: &str,
+    enabled: bool,
+) -> egui::Response {
+    let p = theme::palette_for(ui.ctx());
+    let response = ui
+        .add_enabled(
+            enabled,
+            Button::new("")
+                .min_size(egui::vec2(27.0, 25.0))
+                .frame(false),
+        )
+        .on_hover_text(label);
+    response
+        .widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, enabled, visible, label));
+    let center = response.rect.center();
+    let color = if visible { p.accent } else { p.text_muted };
+    let color = if enabled {
+        color
+    } else {
+        color.gamma_multiply(0.4)
+    };
+    let stroke = Stroke::new(1.5, color);
+    ui.painter().add(egui::Shape::line(
+        [
+            (-9.0, 0.0),
+            (-5.0, -4.5),
+            (0.0, -6.0),
+            (5.0, -4.5),
+            (9.0, 0.0),
+            (5.0, 4.5),
+            (0.0, 6.0),
+            (-5.0, 4.5),
+            (-9.0, 0.0),
+        ]
+        .map(|(x, y)| center + egui::vec2(x, y))
+        .to_vec(),
+        stroke,
+    ));
+    ui.painter().circle_stroke(center, 2.5, stroke);
+    if !visible {
+        ui.painter().line_segment(
+            [
+                center + egui::vec2(-9.0, -8.0),
+                center + egui::vec2(9.0, 8.0),
+            ],
+            stroke,
+        );
+    }
+    response
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn object_visibility_is_reversible_per_tab_and_never_edits_the_document() {
+        let (mut app, requests, _) = crate::app::tests::test_app();
+        app.edit.objects = (0..3).map(object).collect();
+        app.edit.objects_page = Some(0);
+        let epoch = app.view.epoch;
+        app.toggle_object_visibility(1);
+        assert_eq!(app.view.reading.hidden_objects.get(&0), Some(&vec![1]));
+        assert!(app.view.epoch > epoch);
+        assert!(!app.dirty);
+        assert!(
+            matches!(requests.recv().unwrap(), Request::SetHiddenObjects { hidden, .. } if hidden.get(&0) == Some(&vec![1]))
+        );
+        assert!(requests.try_recv().is_err());
+        let tab = app.take_tab();
+        assert!(app.view.reading.hidden_objects.is_empty());
+        app.put_tab(tab);
+        assert_eq!(app.view.reading.hidden_objects.get(&0), Some(&vec![1]));
+        requests.try_iter().for_each(drop);
+        app.edit.objects = (0..3).map(object).collect();
+        app.edit.objects_page = Some(0);
+        app.toggle_object_visibility(1);
+        assert!(app.view.reading.hidden_objects.is_empty());
+        assert!(
+            matches!(requests.recv().unwrap(), Request::SetHiddenObjects { hidden, .. } if hidden.is_empty())
+        );
+        app.toggle_object_visibility(99);
+        assert!(requests.try_recv().is_err());
+        app.saving = true;
+        app.toggle_object_visibility(1);
+        assert!(app.view.reading.hidden_objects.is_empty());
+        assert!(requests.try_recv().is_err());
+    }
+
+    #[test]
+    fn object_eye_clicks_hide_and_show_without_selecting_or_editing() {
+        for language in sunipdf_i18n::Language::ALL {
+            let (mut app, requests, _) = crate::app::tests::test_app();
+            app.settings.set_language(language);
+            app.edit.objects = (0..3).map(object).collect();
+            app.edit.objects_page = Some(0);
+            let ctx = egui::Context::default();
+            ctx.enable_accesskit();
+            crate::icons::install(&ctx);
+            let frame = |app: &mut SuniApp, events: Vec<egui::Event>| {
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(320.0, 600.0),
+                        )),
+                        events,
+                        ..Default::default()
+                    },
+                    |ui| app.objects_panel(&ctx, ui),
+                );
+                output.textures_delta.clear();
+                output
+            };
+            frame(&mut app, vec![]);
+            for key in ["objects.hide", "objects.show"] {
+                let output = frame(&mut app, vec![]);
+                let label = tr_args(language, key, &[("object", "Object2")]);
+                let bounds = output
+                    .platform_output
+                    .accesskit_update
+                    .as_ref()
+                    .unwrap()
+                    .nodes
+                    .iter()
+                    .find_map(|(_, node)| {
+                        if node.label() == Some(label.as_str()) {
+                            node.bounds()
+                        } else {
+                            None
+                        }
+                    })
+                    .expect("accessible eye button");
+                let pos = egui::pos2(
+                    ((bounds.x0 + bounds.x1) / 2.0) as f32,
+                    ((bounds.y0 + bounds.y1) / 2.0) as f32,
+                );
+                for pressed in [true, false] {
+                    frame(
+                        &mut app,
+                        vec![
+                            egui::Event::PointerMoved(pos),
+                            egui::Event::PointerButton {
+                                pos,
+                                button: egui::PointerButton::Primary,
+                                pressed,
+                                modifiers: egui::Modifiers::NONE,
+                            },
+                        ],
+                    );
+                }
+                assert_eq!(
+                    app.view
+                        .reading
+                        .hidden_objects
+                        .get(&0)
+                        .is_some_and(|indices| indices.contains(&2)),
+                    key == "objects.hide"
+                );
+                assert!(app.edit.selection.is_none() && !app.dirty);
+            }
+            assert!(requests
+                .try_iter()
+                .all(|request| matches!(request, Request::SetHiddenObjects { .. })));
+        }
+    }
 
     fn object(index: usize) -> sunipdf_core::ObjectInfo {
         sunipdf_core::ObjectInfo {

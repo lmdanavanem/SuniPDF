@@ -23,7 +23,7 @@
 
 **From everyday documents to technical plans**, SuniPDF brings reading, annotation, page editing, calibrated measurements and quantity review into one desktop application. PDF processing stays local. The interface is available in **English and French**, with English as the default.
 
-Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)).
+Created by **Emmanuel Almeida** ([@lmdanavanem](https://github.com/lmdanavanem)).
 
 [Why SuniPDF?](#why-sunipdf) · [Download](#download) · [Get started](#get-started) · [Features](#features) · [What's new](#whats-new) · [FAQ](#faq) · [Contribute](#development-and-contributing)
 

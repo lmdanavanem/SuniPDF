@@ -1,5 +1,30 @@
 # Project status
 
+## Prepared 0.92.0
+
+By Emmanuel Almeida. [Release notes](RELEASE_0.92.0.md). Publication awaits the tagged package checks.
+
+The About dialog follows the supplied mockup in French and English: centered identity and version,
+privacy badges and panel, real update status, persisted update/recovery switches, third-party notices,
+and Sunitech credits. Its header and Close button remain accessible when the body must scroll.
+
+The Objects panel has reversible eye controls for reader-only visibility. Masks stay with each tab,
+apply to page tiles and thumbnails, and exclude hidden objects from canvas selection. They never
+remove objects from saved PDFs. Editing the document resets the masks because native object indices
+can change; the interface explains this behavior.
+
+Overlay layer names and eye controls toggle visibility and refresh the preview on the engine worker.
+Visibility-only changes share the existing source rasters; source hashes are checked again, including
+hidden layers. Hiding every layer produces a white canvas. Exports and saved setups retain the actual
+visibility settings and the existing source-validation guards.
+
+Local validation on 2026-10-29: 1,363 workspace tests passed, 16 environment-specific tests stayed
+ignored, and Clippy (`--all-targets -D warnings`), formatting and 2,197 bilingual keys passed.
+The workspace suite used one build job and disabled desktop test debug symbols to fit this host's
+available memory. Three actual About frames were also rendered and reviewed with DX12 WARP:
+French/light, English/dark and French at 720 × 480. These are offscreen renders, not native-window
+or physical-GPU qualification. The local desktop executable was rebuilt successfully.
+
 ## Published 0.91.2
 
 [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.2) | [Release notes](RELEASE_0.91.2.md) | [Qualification evidence](qa/RELEASE_0.91.2.json).

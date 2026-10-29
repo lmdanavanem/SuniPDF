@@ -121,7 +121,16 @@ impl SuniApp {
         self.effective_zoom = t.effective_zoom;
         self.view.reset();
         self.view.reading = t.reading;
+        if !self.view.reading.hidden_objects.is_empty() {
+            self.worker.send(Request::SetHiddenObjects {
+                epoch: self.view.epoch,
+                hidden: self.view.reading.hidden_objects.clone(),
+            });
+        }
         self.reader_views = t.reader_views;
+        if let Some(other) = &mut self.reader_views.other {
+            other.view.reading.hidden_objects = self.view.reading.hidden_objects.clone();
+        }
         if let Some(page) = t.scroll_to_page {
             self.view.request(crate::view::ScrollRequest::Page(page));
         } else if self.view.mode == t.view_mode {
@@ -278,6 +287,7 @@ impl SuniApp {
         let Some(ui) = tab.ui.as_mut() else {
             return;
         };
+        ui.reading.hidden_objects.clear();
         let same_sizes = ui
             .document
             .as_ref()

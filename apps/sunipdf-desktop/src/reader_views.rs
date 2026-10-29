@@ -58,6 +58,7 @@ impl ReaderViews {
         self.last_sync = None;
         self.wanted = Default::default();
         if let Some(other) = &mut self.other {
+            other.view.reading.hidden_objects.clear();
             other.page = other.page.min(info.page_count().saturating_sub(1));
             other.page_input = info.page_input(other.page);
             // This inactive viewport owns no textures or document identity.
@@ -119,6 +120,7 @@ impl SuniApp {
         let mut view = ViewState::new(self.view.mode == crate::view::ViewMode::Continuous);
         view.mode = self.view.mode;
         view.reading.rotation = self.view.reading.rotation;
+        view.reading.hidden_objects = self.view.reading.hidden_objects.clone();
         let origin = self.reading_page_origin();
         view.request(ScrollRequest::Destination {
             page: doc.page,

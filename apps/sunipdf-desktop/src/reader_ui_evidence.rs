@@ -1930,7 +1930,7 @@ fn capture_scene(
     }))
 }
 
-fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
+fn warp_device() -> EvidenceResult<(wgpu::Device, wgpu::Queue, wgpu::AdapterInfo)> {
     let mut descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
     descriptor.backends = wgpu::Backends::DX12;
     let instance = wgpu::Instance::new(descriptor);
@@ -1956,6 +1956,11 @@ fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
             ..Default::default()
         }),
     )??;
+    Ok((device, queue, info))
+}
+
+fn evidence(root: &Path, output: &Path) -> EvidenceResult<Value> {
+    let (device, queue, info) = warp_device()?;
     let fixture = root.join("crates/sunipdf-core/tests/fixtures/two-pages.pdf");
     let fixture_sha = sha256(&std::fs::read(&fixture)?);
     let engine = Engine::new()?;
@@ -2385,4 +2390,129 @@ fn reader_ui_dx12_warp_evidence() {
         panic!("Reader UI evidence failed: {error}");
     }
     eprintln!("Reader UI offscreen evidence PASS: 20 actual application scenes (3 Home, 11 reader, 2 settings, 4 register dialogs)");
+}
+
+#[test]
+#[ignore = "Requires Windows DX12 WARP; writes actual About dialog screenshots"]
+fn about_ui_dx12_warp_evidence() -> EvidenceResult<()> {
+    fn visible_label(shape: &egui::Shape, label: &str, clip: Rect, height: u32) -> bool {
+        match shape {
+            egui::Shape::Text(text) => {
+                text.galley.text() == label
+                    && clip.contains_rect(Rect::from_min_size(text.pos, text.galley.size()))
+                    && text.pos.y >= 0.0
+                    && text.pos.y + text.galley.size().y <= height as f32
+            }
+            egui::Shape::Vec(shapes) => shapes
+                .iter()
+                .any(|shape| visible_label(shape, label, clip, height)),
+            _ => false,
+        }
+    }
+    let output = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/about-visibility-qa");
+    std::fs::create_dir_all(&output)?;
+    let (device, queue, _) = warp_device()?;
+    let mut scenes = Vec::new();
+    for (name, language, dark, size) in [
+        ("about-fr-light", Language::French, false, [1280, 1000]),
+        ("about-en-dark", Language::English, true, [1280, 1000]),
+        ("about-fr-light-small", Language::French, false, [720, 480]),
+    ] {
+        let context = egui::Context::default();
+        context.enable_accesskit();
+        let (mut app, _, _) = crate::app::tests::test_app();
+        app.document = None;
+        app.tabs = Default::default();
+        app.show_tools = false;
+        app.has_icons = crate::icons::install(&context);
+        app.settings.set_language(language);
+        app.settings.dark_theme = dark;
+        app.settings.theme_mode = Some(if dark {
+            crate::theme::Mode::Dark
+        } else {
+            crate::theme::Mode::Light
+        });
+        app.sync_appearance(&context);
+        app.execute(&context, Command::About);
+        let mut renderer = egui_wgpu::Renderer::new(
+            &device,
+            wgpu::TextureFormat::Rgba8Unorm,
+            egui_wgpu::RendererOptions::PREDICTABLE,
+        );
+        let mut final_frame = None;
+        let mut pending_frees = Vec::new();
+        for index in 0..5 {
+            for id in pending_frees.drain(..) {
+                renderer.free_texture(&id);
+            }
+            let mut frame = context.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        vec2(size[0] as f32, size[1] as f32),
+                    )),
+                    time: Some(index as f64 * 0.25),
+                    max_texture_side: Some(device.limits().max_texture_dimension_2d as usize),
+                    ..Default::default()
+                },
+                |ui| app.render_ui(ui),
+            );
+            for (id, deltas) in frame.textures_delta.set.drain() {
+                for delta in deltas {
+                    renderer.update_texture(&device, &queue, id, &delta);
+                }
+            }
+            pending_frees.extend(frame.textures_delta.free.drain());
+            final_frame = Some(frame);
+        }
+        let frame = final_frame.ok_or("Missing About frame")?;
+        let pixels = readback(
+            &device,
+            &queue,
+            &mut renderer,
+            &context,
+            frame.clone(),
+            size,
+        )?;
+        let png = format!("{name}.png");
+        image::save_buffer(
+            output.join(&png),
+            &pixels,
+            size[0],
+            size[1],
+            image::ColorType::Rgba8,
+        )?;
+        let mut keys = vec!["about.title", "about.close", "about.tagline"];
+        if size[1] == 1000 {
+            keys.extend([
+                "about.privacy_title",
+                "about.updates_recovery",
+                "updates.startup",
+                "about.recovery_local",
+                "about.licenses",
+                "about.credit",
+                "about.author",
+                "about.website",
+            ]);
+        }
+        for &key in &keys {
+            let label = tr(language, key);
+            require(
+                frame
+                    .shapes
+                    .iter()
+                    .any(|shape| visible_label(&shape.shape, label, shape.clip_rect, size[1])),
+                &format!("About label is missing or clipped: {name}: {key}"),
+            )?;
+        }
+        scenes.push(json!({"name":name,"language":language.code(),"dark":dark,"pixels":size,"png":png,"visibleLabels":keys}));
+    }
+    std::fs::write(
+        output.join("about-ui-report.json"),
+        serde_json::to_vec_pretty(&json!({
+            "status":"passed", "method":"Actual SuniApp UI rendered offscreen with DX12 WARP; no native input or physical GPU qualification.",
+        "updateStatus":"Default unchecked state; no live network request", "scenes":scenes,
+        }))?,
+    )?;
+    Ok(())
 }

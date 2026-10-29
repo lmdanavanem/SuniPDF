@@ -872,6 +872,17 @@ impl SuniApp {
                 Response::TileFailed { epoch, job, error } => {
                     self.on_tile_failed(epoch, job, error)
                 }
+                Response::ReaderVisibilityApplied { epoch } => {
+                    if epoch == self.view.epoch {
+                        // FIFO acknowledgement follows thumbnails and selections rendered
+                        // before the mask; they must not replace the new visible state.
+                        self.thumbnails.clear();
+                        self.thumbs_pending.clear();
+                        self.thumbs_failed.clear();
+                        self.edit.selection = None;
+                        self.edit.hover_index = None;
+                    }
+                }
                 Response::Thumbnail { page, image } => {
                     if self.thumbs_pending.remove(&page)
                         && image.width == self.thumb_px
@@ -929,6 +940,7 @@ impl SuniApp {
                         self.plan_return_source_changed(tab_id);
                     }
                     self.measurement_scale_changed();
+                    self.view.reading.hidden_objects.clear();
                     self.annotate.register.invalidate();
                     self.annotate.quantities.invalidate();
                     self.docinfo.inspection_epoch = None;
@@ -3335,70 +3347,17 @@ impl SuniApp {
         }
         let lang = self.lang();
         let p = theme::palette_for(ctx);
-        let logo = self.brand_wordmark(ctx, 150.0);
-        let mut close = false;
+        let logo = self.brand_wordmark(ctx, 140.0);
         let mut startup_check = self.settings.check_updates;
         let mut autosave = self.settings.autosave;
         let mut manual_check = false;
-        let spec = dialog::Spec::new(
-            "about",
-            tr(lang, "about.title"),
+        let close = crate::about::show(
+            ctx,
+            lang,
             self.settings.dark_theme,
             self.has_icons,
-        )
-        .subtitle(tr(lang, "about.subtitle"))
-        .icon(glyph::APP, "S")
-        .width(500.0);
-        dialog::show(
-            ctx,
-            spec,
+            logo,
             |ui| {
-                ui.vertical_centered(|ui| {
-                    ui.spacing_mut().item_spacing.y = 4.0;
-                    if let Some(img) = logo.clone() {
-                        ui.add(img);
-                    } else {
-                        ui.label(crate::icons::semibold("SuniPDF", 26.0).color(p.text));
-                    }
-                    ui.label(
-                        egui::RichText::new(tr_args(
-                            lang,
-                            "about.version",
-                            &[("version", env!("CARGO_PKG_VERSION"))],
-                        ))
-                        .size(13.0)
-                        .color(p.text_muted),
-                    );
-                    ui.label(egui::RichText::new(tr(lang, "about.description")).size(13.5));
-                });
-                ui.add_space(10.0);
-                egui::Frame::new()
-                    .fill(p.chrome)
-                    .stroke(egui::Stroke::new(1.0, p.border))
-                    .corner_radius(10)
-                    .inner_margin(12)
-                    .show(ui, |ui| {
-                        ui.set_width(ui.available_width());
-                        ui.spacing_mut().item_spacing.y = 4.0;
-                        ui.label(egui::RichText::new(tr(lang, "about.privacy")).size(13.0));
-                        ui.label(
-                            egui::RichText::new(tr(lang, "about.engine"))
-                                .size(12.5)
-                                .color(p.text_muted),
-                        );
-                        ui.label(
-                            egui::RichText::new(tr(lang, "about.license"))
-                                .size(12.5)
-                                .color(p.text_muted),
-                        );
-                    });
-                ui.add_space(10.0);
-                self.update_controls(ctx, ui);
-                ui.checkbox(&mut startup_check, tr(lang, "updates.startup"));
-                ui.add_enabled(
-                    !self.close_must_wait(),
-                    egui::Checkbox::new(&mut autosave, tr(lang, "recovery.autosave")),
-                );
                 let busy = matches!(
                     self.updater.phase,
                     UpdatePhase::Checking
@@ -3408,26 +3367,51 @@ impl SuniApp {
                         | UpdatePhase::Installed(_)
                         | UpdatePhase::InstallFailed(_, _)
                 );
-                manual_check = ui
-                    .add_enabled(!busy, egui::Button::new(tr(lang, "updates.check")))
-                    .clicked();
-                ui.add_space(10.0);
                 ui.horizontal_wrapped(|ui| {
-                    ui.spacing_mut().item_spacing.x = 4.0;
-                    ui.label(crate::icons::semibold(tr(lang, "about.credit"), 13.5).color(p.text));
-                    ui.label(egui::RichText::new("-").size(13.5));
-                    ui.hyperlink_to(
-                        egui::RichText::new(tr(lang, "about.website")).size(13.5),
-                        "https://navanem.com/projets/sunipdf/",
-                    );
+                    match self.updater.phase {
+                        UpdatePhase::Idle | UpdatePhase::Failed(_)
+                            if !self.update_errors_visible =>
+                        {
+                            ui.label(
+                                egui::RichText::new(tr(lang, "updates.unchecked"))
+                                    .color(p.text_muted),
+                            );
+                        }
+                        UpdatePhase::UpToDate => {
+                            let (rect, _) = ui
+                                .allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
+                            ui.painter()
+                                .circle_filled(rect.center(), 5.0, theme::SUCCESS);
+                            ui.label(tr(lang, "updates.uptodate"));
+                        }
+                        _ => self.update_controls(ctx, ui),
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        manual_check =
+                            crate::about::update_button(ui, !busy, tr(lang, "updates.check"));
+                    });
                 });
-            },
-            |ui| {
-                if dialog::primary(ui, tr(lang, "about.close"))
-                    || ui.input(|i| i.key_pressed(Key::Escape))
-                {
-                    close = true;
-                }
+                ui.add_space(6.0);
+                egui::Frame::new()
+                    .stroke(egui::Stroke::new(1.0, p.border))
+                    .corner_radius(9)
+                    .show(ui, |ui| {
+                        ui.set_width(ui.available_width());
+                        ui.spacing_mut().item_spacing.y = 0.0;
+                        crate::about::preference(
+                            ui,
+                            &mut startup_check,
+                            tr(lang, "updates.startup"),
+                            true,
+                        );
+                        ui.separator();
+                        crate::about::preference(
+                            ui,
+                            &mut autosave,
+                            tr(lang, "about.recovery_local"),
+                            !self.close_must_wait(),
+                        );
+                    });
             },
         );
         if close {
@@ -3904,6 +3888,105 @@ pub fn error_text(lang: Language, e: &EngineError) -> String {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    #[test]
+    fn about_controls_keep_real_preferences_update_status_and_small_window_close_accessible() {
+        fn label_rect(output: &egui::FullOutput, text: &str) -> Option<egui::Rect> {
+            fn find(shape: &egui::Shape, text: &str) -> Option<egui::Rect> {
+                match shape {
+                    egui::Shape::Text(value) if value.galley.text() == text => {
+                        Some(egui::Rect::from_min_size(value.pos, value.galley.size()))
+                    }
+                    egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| find(shape, text)),
+                    _ => None,
+                }
+            }
+            output.shapes.iter().find_map(|shape| {
+                find(&shape.shape, text).filter(|rect| shape.clip_rect.contains_rect(*rect))
+            })
+        }
+        fn frame(
+            app: &mut SuniApp,
+            ctx: &egui::Context,
+            height: f32,
+            events: Vec<egui::Event>,
+        ) -> egui::FullOutput {
+            let mut output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(1000.0, height),
+                    )),
+                    events,
+                    ..Default::default()
+                },
+                |_| app.about_dialog(ctx),
+            );
+            output.textures_delta.clear();
+            output
+        }
+        for lang in Language::ALL {
+            let (mut app, requests, _) = test_app();
+            let ctx = egui::Context::default();
+            crate::icons::install(&ctx);
+            ctx.all_styles_mut(|style| style.animation_time = 0.0);
+            app.settings.set_language(lang);
+            app.execute(&ctx, Command::About);
+            frame(&mut app, &ctx, 1050.0, vec![]);
+            let output = frame(&mut app, &ctx, 1050.0, vec![]);
+            assert!(label_rect(&output, tr(lang, "updates.unchecked")).is_some());
+            assert!(label_rect(&output, tr(lang, "updates.uptodate")).is_none());
+            for key in ["updates.startup", "about.recovery_local", "about.close"] {
+                let output = frame(&mut app, &ctx, 1050.0, vec![]);
+                let pos = label_rect(&output, tr(lang, key))
+                    .unwrap_or_else(|| panic!("visible about control: {key}"))
+                    .center();
+                for pressed in [true, false] {
+                    frame(
+                        &mut app,
+                        &ctx,
+                        1050.0,
+                        vec![
+                            egui::Event::PointerMoved(pos),
+                            egui::Event::PointerButton {
+                                pos,
+                                button: egui::PointerButton::Primary,
+                                pressed,
+                                modifiers: Modifiers::NONE,
+                            },
+                        ],
+                    );
+                }
+            }
+            assert!(!app.settings.check_updates && !app.settings.autosave);
+            assert!(!app.show_about && !app.dirty);
+            assert!(requests
+                .try_iter()
+                .any(|request| matches!(request, Request::SetRecovery(_))));
+            app.execute(&ctx, Command::About);
+            app.updater.phase = UpdatePhase::UpToDate;
+            frame(&mut app, &ctx, 1050.0, vec![]);
+            let output = frame(&mut app, &ctx, 1050.0, vec![]);
+            assert!(label_rect(&output, tr(lang, "updates.uptodate")).is_some());
+            frame(&mut app, &ctx, 480.0, vec![]);
+            let output = frame(&mut app, &ctx, 480.0, vec![]);
+            let close = label_rect(&output, tr(lang, "about.close")).expect("small-window footer");
+            assert!(close.bottom() <= 480.0);
+            frame(
+                &mut app,
+                &ctx,
+                480.0,
+                vec![egui::Event::Key {
+                    key: Key::Escape,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: Modifiers::NONE,
+                }],
+            );
+            assert!(!app.show_about);
+        }
+    }
 
     pub(crate) fn test_app() -> (
         SuniApp,
