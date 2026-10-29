@@ -16,7 +16,7 @@ By Emmanuel Almeida.
 - Hide and show revision overlay layers by clicking their name or eye, automatically refreshing the preview and retaining visibility in exports and saved setups. Hiding every layer produces a white canvas.
 - Preserve object-row selection and drag ordering alongside the visibility control.
 
-Prepared for publication. See [qualification and limits](docs/RELEASE_0.92.0.md).
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.0). See [qualification and limits](docs/RELEASE_0.92.0.md).
 
 ## [0.91.2] - 2026-10-28
 

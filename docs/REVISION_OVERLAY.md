@@ -89,7 +89,7 @@ sunipdf-cli revision-overlay-stack --manifest layers.json --format setup --out c
 sunipdf-cli revision-overlay-stack --manifest coordinated-setup.json --out coordinated-again.png
 ```
 
-There must be two to four layers. Relative paths resolve against the manifest directory; explicit local absolute paths are accepted. Remote paths, unknown fields and unsupported versions are refused. The first layer requires identity manual alignment. Other layers may use the same `two_points` representation described below. Omitted pages default to 1, omitted visibility to true, and omitted styles use the four-layer palette. All-hidden stacks are refused.
+There must be two to four layers. Relative paths resolve against the manifest directory; explicit local absolute paths are accepted. Remote paths, unknown fields and unsupported versions are refused. The first layer requires identity manual alignment. Other layers may use the same `two_points` representation described below. Omitted pages default to 1, omitted visibility to true, and omitted styles use the four-layer palette. An all-hidden stack exports a white image on the unchanged base canvas; every source is still validated and retained in the report.
 
 Each input layer may add `expected_sha256` to require exact saved source bytes. Protected sources may name an existing environment variable in `password_env`; password values are never stored in the manifest or report. Global password flags are refused for this command. Each invocation writes one new PNG, JSON report or setup file and refuses existing destinations, even with `--overwrite`. A setup export adds every verified source hash and omits all credential references; protected sources require passwords again when reused.
 

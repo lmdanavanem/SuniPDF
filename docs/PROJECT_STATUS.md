@@ -1,8 +1,8 @@
 # Project status
 
-## Prepared 0.92.0
+## Published 0.92.0
 
-By Emmanuel Almeida. [Release notes](RELEASE_0.92.0.md). Publication awaits the tagged package checks.
+By Emmanuel Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.0) | [Release notes](RELEASE_0.92.0.md) | [Qualification evidence](qa/RELEASE_0.92.0.json).
 
 The About dialog follows the supplied mockup in French and English: centered identity and version,
 privacy badges and panel, real update status, persisted update/recovery switches, third-party notices,
@@ -18,12 +18,16 @@ Visibility-only changes share the existing source rasters; source hashes are che
 hidden layers. Hiding every layer produces a white canvas. Exports and saved setups retain the actual
 visibility settings and the existing source-validation guards.
 
-Local validation on 2026-10-29: 1,363 workspace tests passed, 16 environment-specific tests stayed
-ignored, and Clippy (`--all-targets -D warnings`), formatting and 2,197 bilingual keys passed.
-The workspace suite used one build job and disabled desktop test debug symbols to fit this host's
-available memory. Three actual About frames were also rendered and reviewed with DX12 WARP:
+The tagged source `306fbc25a39f86fad0aa24d31b130ce0dcd50562` passed all 11 release jobs.
+Windows x64 passed 1,363 workspace tests with zero failures and 16 default ignored tests,
+strict Clippy, formatting and 2,197 bilingual keys. Migration checks passed 59 portable baselines
+plus four guards and 57 MSI baselines, including the published 0.91.2 packages.
+The packaged overlay corpus passed 137 checks across 25 commands, including all-white pixels
+and retained source metadata when every layer is hidden, plus missing/stale hidden-source refusals.
+Three About frames from the final source match the visually reviewed DX12 WARP images:
 French/light, English/dark and French at 720 × 480. These are offscreen renders, not native-window
-or physical-GPU qualification. The local desktop executable was rebuilt successfully.
+or physical-GPU qualification. All ten public downloads were checked anonymously against their
+sizes, SHA256 files and GitHub digests; stable Latest was verified at 2026-10-29T02:55:40Z.
 
 ## Published 0.91.2
 

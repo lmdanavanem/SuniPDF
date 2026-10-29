@@ -1,0 +1,247 @@
+{
+    "schema":  1,
+    "version":  "0.92.0",
+    "source":  "306fbc25a39f86fad0aa24d31b130ce0dcd50562",
+    "tag":  "v0.92.0",
+    "release_id":  427366634,
+    "release_url":  "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.0",
+    "author":  "lmdanavanem",
+    "author_name":  "Emmanuel Almeida",
+    "published_at":  "2026-10-29T02:55:26Z",
+    "verified_at":  "2026-10-29T02:55:40.0345413Z",
+    "stable_latest_verified":  true,
+    "immutable":  true,
+    "assets":  [
+                   {
+                       "name":  "SuniPDF-0.92.0-linux-amd64.deb",
+                       "id":  687139390,
+                       "size":  23050228,
+                       "sha256":  "582c0eb8f9be1aac825c953c9e70033a6642cb890ad26ccd15a7fcdf05205e11",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-linux-amd64.deb",
+                       "public_unauthenticated":  true,
+                       "github_digest_verified":  true,
+                       "sidecar_verified":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.0-linux-amd64.deb.sha256",
+                       "id":  687139384,
+                       "size":  97,
+                       "sha256":  "02d4a38d19da7c4e3ff1405d1c6375150911bc5083518d56276b2e6060518f2e",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-linux-amd64.deb.sha256",
+                       "public_unauthenticated":  true,
+                       "github_digest_verified":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.0-macos-arm64.dmg",
+                       "id":  687139388,
+                       "size":  32873878,
+                       "sha256":  "6ea4ef391ded5bc3c04a6ebc3a37f40410b37910f6088d44570a93db4efcad86",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-macos-arm64.dmg",
+                       "public_unauthenticated":  true,
+                       "github_digest_verified":  true,
+                       "sidecar_verified":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.0-macos-arm64.dmg.sha256",
+                       "id":  687139381,
+                       "size":  97,
+                       "sha256":  "e78361c444b101a5a33f3aab7a7e2c06aa37e58da6296e15036e22fb72783ede",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-macos-arm64.dmg.sha256",
+                       "public_unauthenticated":  true,
+                       "github_digest_verified":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.0-win-arm64-portable.zip",
+                       "id":  687139392,
+                       "size":  35027800,
+                       "sha256":  "235a7b904a2059c458c0ab6ad3bf71a013a631f304d9f2e2c152f429cedcdad3",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-arm64-portable.zip",
+                       "public_unauthenticated":  true,
+                       "github_digest_verified":  true,
+                       "sidecar_verified":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.0-win-arm64-portable.zip.sha256",
+                       "id":  687139382,
+                       "size":  105,
+                       "sha256":  "be1daf4384cf75535c14ee2be68705c9d3125261a318f121afa8c768c1d1bb47",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-arm64-portable.zip.sha256",
+                       "public_unauthenticated":  true,
+                       "github_digest_verified":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.0-win-x64.msi",
+                       "id":  687139387,
+                       "size":  34877440,
+                       "sha256":  "b9954e0f72e932de49d4bcaf28aaf19348633f820e3884a995e9b2ceb6e2ceeb",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-x64.msi",
+                       "public_unauthenticated":  true,
+                       "github_digest_verified":  true,
+                       "sidecar_verified":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.0-win-x64.msi.sha256",
+                       "id":  687139386,
+                       "size":  94,
+                       "sha256":  "85251c410b4d3f33005d0de0a0774db84876a5d0d27a5b8857cdb9c98d8342f7",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-x64.msi.sha256",
+                       "public_unauthenticated":  true,
+                       "github_digest_verified":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.0-win-x64-portable.zip",
+                       "id":  687139389,
+                       "size":  37085134,
+                       "sha256":  "70599b86f4b8f5dd8866533a07dc61497fd4739537fb053f51f819eaed375981",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-x64-portable.zip",
+                       "public_unauthenticated":  true,
+                       "github_digest_verified":  true,
+                       "sidecar_verified":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.0-win-x64-portable.zip.sha256",
+                       "id":  687139385,
+                       "size":  103,
+                       "sha256":  "92a7342a174ca3b20bc8adfe4e6557b995fa9d838b71a0fb133bb5afda62eee5",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-x64-portable.zip.sha256",
+                       "public_unauthenticated":  true,
+                       "github_digest_verified":  true
+                   }
+               ],
+    "qualification":  {
+                          "release_run":  40803173375,
+                          "release_url":  "https://github.com/lmdanavanem/SuniPDF/actions/runs/40803173375",
+                          "conclusion":  "success",
+                          "jobs":  [
+                                       {
+                                           "id":  123215812775,
+                                           "name":  "build (x64)",
+                                           "conclusion":  "success"
+                                       },
+                                       {
+                                           "id":  123215813050,
+                                           "name":  "build (arm64)",
+                                           "conclusion":  "success"
+                                       },
+                                       {
+                                           "id":  123215813154,
+                                           "name":  "linux / Classify and validate documentation",
+                                           "conclusion":  "success"
+                                       },
+                                       {
+                                           "id":  123215813403,
+                                           "name":  "macos / Classify documentation change",
+                                           "conclusion":  "success"
+                                       },
+                                       {
+                                           "id":  123215857631,
+                                           "name":  "macos / Build macOS arm64",
+                                           "conclusion":  "success"
+                                       },
+                                       {
+                                           "id":  123215873528,
+                                           "name":  "linux / Build Ubuntu 22.04 amd64",
+                                           "conclusion":  "success"
+                                       },
+                                       {
+                                           "id":  123219432953,
+                                           "name":  "linux / Install and run on Ubuntu 24.04",
+                                           "conclusion":  "success"
+                                       },
+                                       {
+                                           "id":  123219433037,
+                                           "name":  "linux / Install and run on Ubuntu 22.04",
+                                           "conclusion":  "success"
+                                       },
+                                       {
+                                           "id":  123219433077,
+                                           "name":  "linux / PDF conformance and independent reader",
+                                           "conclusion":  "success"
+                                       },
+                                       {
+                                           "id":  123219514465,
+                                           "name":  "macos / Install and run on macOS",
+                                           "conclusion":  "success"
+                                       },
+                                       {
+                                           "id":  123232140779,
+                                           "name":  "publish",
+                                           "conclusion":  "success"
+                                       }
+                                   ],
+                          "windows_workspace":  {
+                                                    "source":  "306fbc25a39f86fad0aa24d31b130ce0dcd50562",
+                                                    "result_groups":  116,
+                                                    "passed":  1363,
+                                                    "failed":  0,
+                                                    "ignored_by_default":  16,
+                                                    "scope":  "Windows x64 workspace gate; environment-specific release gates run separately",
+                                                    "strict_clippy":  "passed",
+                                                    "formatting":  "passed",
+                                                    "bilingual_keys":  2197
+                                                },
+                          "upgrades":  {
+                                           "portable_baselines":  59,
+                                           "portable_guards":  [
+                                                                   "bad-hash",
+                                                                   "wrong-architecture",
+                                                                   "rollback",
+                                                                   "close-timeout"
+                                                               ],
+                                           "msi_baselines":  57,
+                                           "latest_baseline":  "0.91.2",
+                                           "portable_artifact":  "portable-update-evidence",
+                                           "msi_artifact":  "release-msi-upgrade-evidence",
+                                           "portable_report_sha256":  "77d77fab0e8626d18554f4a3740861e9d9c9f139b97215c969afe3205795cd9e"
+                                       },
+                          "overlay_stack":  {
+                                                "artifact":  "overlay-stack-evidence",
+                                                "source":  "306fbc25a39f86fad0aa24d31b130ce0dcd50562",
+                                                "version":  "0.92.0",
+                                                "status":  "passed",
+                                                "checks":  137,
+                                                "commands":  25,
+                                                "expected_refusals":  13,
+                                                "cli_sha256":  "807b5ac81ccbb8d402147dae0af563ce1898c5953ccb6302a7200aba59d7b6d5",
+                                                "report_sha256":  "bea0d1dfb5677ef189297dec2a5bbf2ba947ff56b24c17f0104a34f2c9d842a8",
+                                                "all_hidden":  "All PNG pixels are opaque white; source identities, geometry, styles and transforms remain in the matching JSON report; missing and stale hidden sources are refused."
+                                            },
+                          "about":  {
+                                        "artifact":  "about-ui-evidence",
+                                        "source":  "306fbc25a39f86fad0aa24d31b130ce0dcd50562",
+                                        "test":  "reader_ui_evidence::about_ui_dx12_warp_evidence",
+                                        "status":  "passed",
+                                        "executable_sha256":  "6dfe81ecd4b67addd44ea56b51e131627013df7b68d0d54cf10e388582f33b16",
+                                        "report_sha256":  "cf54ac7fb868feba1f50784fc0083c562828e87b130ed56acf102cedb1786487",
+                                        "images":  [
+                                                       {
+                                                           "name":  "about-fr-light.png",
+                                                           "sha256":  "949925dac7d04e983d55a40d919fdfe141403345bfb9999fe9b99617330f9812"
+                                                       },
+                                                       {
+                                                           "name":  "about-en-dark.png",
+                                                           "sha256":  "25f6095d489dfb5a7f855d22a4a2420c313d907b1fbd5f7accb0dcaab18b815d"
+                                                       },
+                                                       {
+                                                           "name":  "about-fr-light-small.png",
+                                                           "sha256":  "e330ba082ad2c59781074146c39ef35ed4be6b915ff0e0aca73046ae660ec788"
+                                                       }
+                                                   ],
+                                        "visual_review":  "Exact SHA256 equality with three visually reviewed actual application frames, regenerated on final tagged source",
+                                        "native_input_tested":  false,
+                                        "physical_gpu_tested":  false
+                                    }
+                      },
+    "publication":  {
+                        "method":  "Owner-created draft and owner-authenticated publication; packages built by the tagged release workflow",
+                        "public_download_check":  "All five packages and five checksum files were freshly downloaded without authentication and checked for exact size and GitHub SHA256 digest. Each package matched its checksum file; stable Latest was verified anonymously.",
+                        "verification_report_sha256":  "e0a5257d4bf45bfee62b44ce32947570568cb139e0a2b7ffb2645b4d2b738484"
+                    },
+    "limitations":  [
+                        "Objects-panel visibility is temporary per open tab, resets after document edits and does not change saved PDF content.",
+                        "Revision overlays retain source-validation requirements even when every layer is hidden; this is not PDF optional-content-group editing.",
+                        "About screenshots qualify actual offscreen DX12 WARP rendering, not native input, physical GPU behavior or human accessibility.",
+                        "Windows packages are unsigned. Windows ARM64 is cross-built without native hardware execution. The macOS app is ad hoc signed, not notarized.",
+                        "Final package qualification uses the tagged release workflow; no fresh local 0.92.0 build is claimed."
+                    ]
+}

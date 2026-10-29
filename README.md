@@ -37,16 +37,16 @@ Created by **Emmanuel Almeida** ([@lmdanavanem](https://github.com/lmdanavanem))
 
 ## Download
 
-**Current stable release: 0.91.2**, verified on 28 October 2026 at 23:24:07 UTC.
+**Current stable release: 0.92.0**, verified on 29 October 2026 at 02:55:40 UTC.
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-linux-amd64.deb) |
-| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-macos-arm64.dmg) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-linux-amd64.deb) |
+| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-macos-arm64.dmg) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.2) · [Release qualification](docs/RELEASE_0.91.2.md) · [Qualification evidence](docs/qa/RELEASE_0.91.2.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.0) · [Release qualification](docs/RELEASE_0.92.0.md) · [Qualification evidence](docs/qa/RELEASE_0.92.0.json)
 
 > **Platform notes:** Windows packages are unsigned. The macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified. Local OCR is available on Windows and Ubuntu.
 >
@@ -63,7 +63,7 @@ Created by **Emmanuel Almeida** ([@lmdanavanem](https://github.com/lmdanavanem))
 | macOS | Open the DMG and drag **SuniPDF** to **Applications**. For first-launch details, consult the [macOS guide](docs/MACOS.md). |
 
 ~~~bash
-sudo apt install ./SuniPDF-0.91.2-linux-amd64.deb
+sudo apt install ./SuniPDF-0.92.0-linux-amd64.deb
 ~~~
 
 ### 2. Open a PDF and find your tools
@@ -109,7 +109,15 @@ Explore [plan links](docs/PLAN_LINKS.md), [register batch workflows](docs/REGIST
 
 ## What's new
 
-### 0.91.2 — corrective release
+### 0.92.0 — About and layer visibility
+
+- A redesigned **About** window with privacy information, real update status, recovery settings and clear author credits in English and French.
+- Click the eye in **Objects** to hide or show a page object while reading. This temporary per-tab view leaves saved PDF content intact and resets after document edits.
+- Click a layer name or eye in **Revision overlay** to hide or show it and refresh the preview automatically. Exports and saved setups retain the visibility; hiding every layer produces a white canvas.
+
+See the [0.92.0 release qualification](docs/RELEASE_0.92.0.md) for validation and platform limits.
+
+### Highlights from 0.91.2
 
 - More reliable placement of saved text-library entries, including capture from rotated or offset-crop pages.
 - Guards against annotation-field changes that would make the register unreadable, while preserving unreadable saved-filter libraries instead of erasing them.
