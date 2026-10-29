@@ -3,24 +3,41 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/sunipdf-wordmark-dark.png">
-    <img src="assets/logo/sunipdf-wordmark-light.png" width="240" alt="SuniPDF">
+    <img src="assets/logo/sunipdf-wordmark-light.png" width="280" alt="SuniPDF">
   </picture>
 </p>
 
-**Free, open-source PDF reader and editor for Windows, Ubuntu and macOS.**
+<p align="center"><strong>Your PDFs. Your tools. On your computer.</strong></p>
+<p align="center">A free, open-source PDF reader and editor for Windows, Ubuntu and macOS.<br>Read, annotate, edit and measure — with no account or telemetry.</p>
 
-Read, edit, annotate and measure PDFs on your computer. No account or telemetry.
-The interface defaults to English; French is also available.
+<p align="center">
+  <a href="https://github.com/lmdanavanem/SuniPDF/releases/latest">Download SuniPDF</a> ·
+  <a href="docs/USER_GUIDE.en.md">User guide</a> ·
+  <a href="https://navanem.com/projets/sunipdf/">Website</a> ·
+  <a href="https://github.com/lmdanavanem/SuniPDF/issues">Report an issue</a>
+</p>
 
 [![Release](https://img.shields.io/github/v/release/lmdanavanem/SuniPDF)](https://github.com/lmdanavanem/SuniPDF/releases/latest)
 [![CI](https://github.com/lmdanavanem/SuniPDF/actions/workflows/ci.yml/badge.svg)](https://github.com/lmdanavanem/SuniPDF/actions/workflows/ci.yml)
-![License](https://img.shields.io/badge/license-MIT%20or%20Apache--2.0-blue)
+[![License](https://img.shields.io/badge/license-MIT%20or%20Apache--2.0-blue)](#license-and-acknowledgements)
 
-Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)) · [Project website](https://navanem.com/projets/sunipdf/)
+**From everyday documents to technical plans**, SuniPDF brings reading, annotation, page editing, calibrated measurements and quantity review into one desktop application. PDF processing stays local. The interface is available in **English and French**, with English as the default.
 
-## Download 0.91.2
+Created by **Emanuel DE ALMEIDA** ([@lmdanavanem](https://github.com/lmdanavanem)).
 
-SuniPDF 0.91.2 is the latest stable release, verified 2026-10-28T23:24:07Z.
+[Why SuniPDF?](#why-sunipdf) · [Download](#download) · [Get started](#get-started) · [Features](#features) · [What's new](#whats-new) · [FAQ](#faq) · [Contribute](#development-and-contributing)
+
+## Why SuniPDF?
+
+- **Keep PDF work local.** Read and process documents on your computer, without an account or telemetry.
+- **Go beyond reading.** Annotate, edit, fill forms, organize pages and export documents from the same application.
+- **Work with technical plans.** Calibrate scales, measure geometry, compare revisions and review quantities before exporting reports.
+- **Reuse your work.** Save annotation templates, text entries, register filters and overlay setups for supported workflows.
+- **Choose how you work.** Use the desktop interface or a scriptable JSON command-line interface.
+
+## Download
+
+**Current stable release: 0.91.2**, verified on 28 October 2026 at 23:24:07 UTC.
 
 | Platform | Package |
 |---|---|
@@ -29,93 +46,128 @@ SuniPDF 0.91.2 is the latest stable release, verified 2026-10-28T23:24:07Z.
 | Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-linux-amd64.deb) |
 | macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.91.2/SuniPDF-0.91.2-macos-arm64.dmg) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.2) · [qualification evidence](docs/qa/RELEASE_0.91.2.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.91.2) · [Release qualification](docs/RELEASE_0.91.2.md) · [Qualification evidence](docs/qa/RELEASE_0.91.2.json)
 
-Windows packages are unsigned; the macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified.
-See [Ubuntu platform limits](docs/UBUNTU.md), [macOS platform limits](docs/MACOS.md) and [known issues](docs/KNOWN_ISSUES.md).
-
-Open **Menu > Settings > Theme** for Classic or Liquid Glass, System/Light/Dark colors and reduced transparency.
+> **Platform notes:** Windows packages are unsigned. The macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified. Local OCR is available on Windows and Ubuntu.
+>
+> See [Ubuntu platform limits](docs/UBUNTU.md), [macOS platform limits](docs/MACOS.md) and [known issues](docs/KNOWN_ISSUES.md) before choosing a package.
 
 ## Get started
 
-- **Windows:** run the MSI, or extract the whole portable ZIP and open `sunipdf.exe`.
-- **Ubuntu:** download the DEB and install it with `sudo apt install ./SuniPDF-0.91.2-linux-amd64.deb`.
-- **macOS:** open the DMG and drag **SuniPDF** to **Applications**. On first launch, allow it in **System Settings > Privacy & Security > Open Anyway**.
-- Open a PDF, then choose **Tools** or press **F9**. Find measurements, quantity tables and the annotation library under **Review & measure**.
-- Use **Ctrl+K** (**⌘K** on macOS) to find a command. Save your document to keep applied changes.
+### 1. Install the application
 
-Update notifications appear at startup and can be disabled in About. Windows downloads and verifies the update before
-offering installation. Ubuntu 0.74 adds verified downloads, administrator authorization and save-protected restart; users on 0.73 or earlier install the current DEB manually once. On macOS, download the new DMG from the releases page. PDF processing stays local. Local OCR is available on Windows and Ubuntu.
-
-## What you can do
-
-| Area | Included workflows |
+| Platform | Installation |
 |---|---|
-| Read | Tabs, independent synchronized views of one PDF, continuous and two-page layouts, bookmarks, search, text selection, page labels and tiled rendering |
-| Annotate and edit | Notes, highlights, ink, shapes, text, images, object transforms, reply threads and reusable annotation templates |
-| Measure plans | Lengths, perimeters, areas with deductions, constant-depth volumes, dimensioned rectangles, angles, counts, reviewed visual-symbol matches, reviewed region-fill areas, saved page scales, named scale regions, eligible vector snapping and saved-vertex editing |
-| Review quantities | Docked or floating registers, typed fields, explicit unit prices, grouped formulas, PDF/CSV/JSON reports and XLSX snapshots with reviewed refresh |
-| Organize and compare | Reorder, rotate, crop, merge, split and extract pages; grouped local plan sets, verified plan-link previews and return to the source, reviewed annotation transfer, comparison and aligned revision overlays |
-| Fill and sign | AcroForm filling and creation, JSON/XFDF/FDF value exchange, visual signatures; certificate signatures on Windows within documented limits |
-| Convert and protect | Local English/French OCR, image compression, PDF/image/Office conversion, encryption, redaction and sanitized copies |
-| Recover and automate | Automatic recovery snapshots, Undo/Redo and a JSON command-line interface |
+| Windows | Run the MSI installer, or extract the **entire** portable ZIP and open **sunipdf.exe**. Keep the bundled files together. |
+| Ubuntu | Download the DEB, open a terminal in its folder and run the command below. |
+| macOS | Open the DMG and drag **SuniPDF** to **Applications**. For first-launch details, consult the [macOS guide](docs/MACOS.md). |
 
-[Feature matrix and limits](docs/FEATURE_MATRIX.md) · [User guide](docs/USER_GUIDE.en.md)
+~~~bash
+sudo apt install ./SuniPDF-0.91.2-linux-amd64.deb
+~~~
 
-## New in 0.91.2
+### 2. Open a PDF and find your tools
 
-- Place saved text-library entries at ordinary click origins, and capture saved text on rotated or offset-crop pages.
-- Refuse annotation-field changes that would make the register unreadable, and keep unreadable saved-filter libraries instead of erasing them.
-- Translate more overlay, register and library messages, and name the field-change controls for screen readers.
+1. Open a PDF in SuniPDF.
+2. Choose **Tools** or press **F9**. Measurements, quantity tables and the annotation library are under **Review & measure**.
+3. Use **Ctrl+K** (**⌘K** on macOS) to find a command.
+4. Save your document to keep applied changes.
 
-[Release qualification](docs/RELEASE_0.91.2.md).
+### 3. Make it yours
 
-## New in 0.91.0
+Open **Menu > Settings > Theme** to choose **Classic** or **Liquid Glass**, follow the system appearance or select light/dark colors, and reduce transparency.
 
-- Create calibrated dimensioned rectangles at an explicit clockwise angle, with matching preview and saved measurement geometry.
-- Compare two to four saved PDF pages with independent layer colors, visibility, opacity and reviewed alignment.
-- Capture supported native stamp and image groups into the local annotation library, preserving pixels and transparency.
-- Save reusable overlay setups with exact source hashes, including hidden layers, and require a fresh preview when reopening.
-- Qualify reviewed two-source plan-link creation, guarded new-copy saves, exported receipts and verified destination navigation in installed Ubuntu packages.
-- Convert formula inputs explicitly between supported length, area or volume units with checked decimal arithmetic and retained source-unit guards.
-- Review and apply keep/set/clear changes to business status, discipline and individual custom text keys across up to 256 explicitly selected annotations as one atomic Undo/Redo operation.
-- Refuse stale, locked or invalid selections as a complete batch; the annotation-fields-batch CLI previews changes and saves a new copy without overwriting existing files.
-- Save and exchange named register filters with their criteria and sort order; the bounded local library supports 16 entries and 128 KiB.
-- Match one stored custom text key and value literally and case-sensitively, distinguishing present empty values from missing fields; share the criterion across register, quantity and issue-report selections.
-- Use version-2 saved-filter libraries only when the custom-field criterion is present, preserving the exact version-1 representation otherwise.
-- Capture supported saved native rich-text annotations using twelve Helvetica, Times and Courier font/style variants with supported shapes and stamps, preserving verified appearances and geometry across cropped page rotations.
-- Create dimensioned circles and ellipses from explicit real dimensions, rotation and a captured/page/region/automatic calibration; keep their 128-vertex polygon approximation visible and compute area from saved vertices.
-- Create dimensioned two-point segments from a real length and clockwise angle with the same explicit scale sources; save an ordinary editable calibrated length without permanent geometric constraints.
-- Review source-bound previews before applying the complete measurement, and refuse invalid dimensions, stale references, unavailable scales or existing CLI output files.
+Need more detail? Start with the [user guide](docs/USER_GUIDE.en.md) or browse the [documentation index](docs/README.md).
 
-[Feature guide](docs/REGISTER_BATCH.md) | [Release qualification](docs/RELEASE_0.91.0.md).
+## Features
 
-[Plan-link workflow](docs/PLAN_LINKS.md) | [Appearance](docs/APPEARANCE.md) | [Release qualification](docs/RELEASE_0.91.0.md) | [Project status](docs/PROJECT_STATUS.md).
+| Workflow | What you can do |
+|---|---|
+| **Read and navigate** | Work with tabs, independent synchronized views of one PDF, continuous and two-page layouts, bookmarks, search, text selection, page labels and tiled rendering. |
+| **Annotate and edit** | Add notes, highlights, ink, shapes, text and images; transform objects, use reply threads and reuse annotation templates. |
+| **Measure plans** | Measure lengths, perimeters, areas with deductions, constant-depth volumes, angles and counts. Use saved page scales, named scale regions, eligible vector snapping and saved-vertex editing. |
+| **Review quantities** | Use docked or floating registers, typed fields, explicit unit prices and grouped formulas. Export PDF, CSV and JSON reports, or XLSX snapshots with reviewed refresh. |
+| **Organize pages** | Reorder, rotate, crop, merge, split and extract pages. |
+| **Compare revisions** | Work with grouped local plan sets, verified plan-link previews, reviewed annotation transfer, comparisons and aligned revision overlays. |
+| **Fill and sign** | Fill and create AcroForms, exchange values through JSON/XFDF/FDF and add visual signatures. Certificate signatures are available on Windows within documented limits. |
+| **Convert and protect** | Use local English/French OCR on Windows and Ubuntu, image compression, PDF/image/Office conversion, encryption, redaction and sanitized copies. |
+| **Recover and automate** | Use automatic recovery snapshots, Undo/Redo and a JSON command-line interface. |
 
-Earlier additions include [independent reader views](docs/RELEASE_0.76.0.md),
-[Apple Silicon support](docs/RELEASE_0.75.0.md), [themes and Ubuntu updates](docs/RELEASE_0.74.0.md),
-[region fill](docs/REGION_FILL.md), [Find symbols](docs/VISUAL_SEARCH.md),
-[quantity units](docs/RELEASE_0.70.0.md) and [reports and workbook refresh](docs/RELEASE_0.69.0.md).
+Feature availability and scope vary by platform and workflow. Consult the [feature matrix and limits](docs/FEATURE_MATRIX.md) for the precise support boundaries.
 
-## Documentation and development
+### A closer look at plan review
 
-- [Documentation index](docs/README.md): usage guides, engineering references and release history.
-- [Roadmap](docs/ROADMAP.md): priorities and remaining work.
-- [Project status](docs/PROJECT_STATUS.md): executed checks and qualification limits.
-- [Contributing](CONTRIBUTING.md) and [engineering notes](docs/ENGINEERING_NOTES.md): setup, builds and validation.
-- [Security policy](SECURITY.md): reporting vulnerabilities.
+SuniPDF includes tools for moving from a drawing to reviewed measurements and quantities:
 
-SuniPDF uses Rust, egui and PDFium. Private project-plan testing, physical-device checks and the remaining
-[1.0 release criteria](docs/RELEASE_1.0_CRITERIA.md) remain open.
+- **Calibrated geometry:** dimensioned rectangles, circles, ellipses and two-point segments with explicit dimensions and supported scale sources. Circles and ellipses use a visible 128-vertex polygon approximation; areas are computed from saved vertices.
+- **Revision overlays:** compare two to four saved PDF pages with independent colors, visibility, opacity and reviewed alignment. Reusable setups retain exact source hashes and require a fresh preview when reopened.
+- **Assisted takeoff:** review visual-symbol matches and region-fill areas before using the results.
+- **Structured review:** apply keep/set/clear field changes to up to 256 explicitly selected annotations as one atomic Undo/Redo operation; stale, locked or invalid selections are refused as a complete batch.
+- **Reusable filters:** save and exchange named register filters with criteria and sort order, including supported custom text-field matching.
+
+Explore [plan links](docs/PLAN_LINKS.md), [register batch workflows](docs/REGISTER_BATCH.md), [region fill](docs/REGION_FILL.md) and [Find symbols](docs/VISUAL_SEARCH.md).
+
+## What's new
+
+### 0.91.2 — corrective release
+
+- More reliable placement of saved text-library entries, including capture from rotated or offset-crop pages.
+- Guards against annotation-field changes that would make the register unreadable, while preserving unreadable saved-filter libraries instead of erasing them.
+- More translated overlay, register and library messages, plus screen-reader names for field-change controls.
+
+### Highlights from 0.91.0
+
+Dimensioned geometry, multi-page revision overlays, reusable native stamp/image and supported rich-text annotations, explicit quantity-unit conversions, batch annotation-field updates and saved register filters.
+
+For full technical details, see the [changelog](CHANGELOG.md), [0.91.0 release qualification](docs/RELEASE_0.91.0.md) and [latest release notes](https://github.com/lmdanavanem/SuniPDF/releases/latest).
+
+## FAQ
+
+### Does SuniPDF require an account or upload my PDFs?
+
+No account is required. PDF processing stays on your computer, and SuniPDF has no telemetry. Update notifications appear at startup and can be disabled in **About**.
+
+### Which languages are available?
+
+The interface supports **English and French** and defaults to English. Local OCR uses English/French models on Windows and Ubuntu.
+
+### How do updates work?
+
+- **Windows:** SuniPDF downloads and verifies the update before offering installation.
+- **Ubuntu:** version 0.74 introduced verified downloads, administrator authorization and save-protected restart. Users on 0.73 or earlier must install the current DEB manually once.
+- **macOS:** download the new DMG from the [releases page](https://github.com/lmdanavanem/SuniPDF/releases/latest).
+
+### Are visual signatures the same as certificate signatures?
+
+They are separate workflows. SuniPDF supports visual signatures; certificate signatures are available on Windows within the [documented feature limits](docs/FEATURE_MATRIX.md).
+
+### Is every feature qualified on every platform?
+
+No. Check the [feature matrix](docs/FEATURE_MATRIX.md), [known issues](docs/KNOWN_ISSUES.md) and [project status](docs/PROJECT_STATUS.md). Private project-plan testing, physical-device checks and the remaining [1.0 release criteria](docs/RELEASE_1.0_CRITERIA.md) remain open.
+
+## Documentation
+
+| Looking for… | Start here |
+|---|---|
+| Everyday usage | [User guide](docs/USER_GUIDE.en.md) |
+| All guides and references | [Documentation index](docs/README.md) |
+| Supported features and limitations | [Feature matrix](docs/FEATURE_MATRIX.md) · [Known issues](docs/KNOWN_ISSUES.md) |
+| Themes and appearance | [Appearance guide](docs/APPEARANCE.md) |
+| Priorities and release readiness | [Roadmap](docs/ROADMAP.md) · [Project status](docs/PROJECT_STATUS.md) · [1.0 criteria](docs/RELEASE_1.0_CRITERIA.md) |
+| Changes between versions | [Changelog](CHANGELOG.md) · [Releases](https://github.com/lmdanavanem/SuniPDF/releases) |
+
+## Development and contributing
+
+SuniPDF is built with **Rust**, **egui/eframe** and **PDFium**. For development setup, builds and validation, follow [CONTRIBUTING.md](CONTRIBUTING.md) and the [engineering notes](docs/ENGINEERING_NOTES.md).
+
+- **Found a bug?** Open an [issue](https://github.com/lmdanavanem/SuniPDF/issues) with your operating system, SuniPDF version, reproduction steps, and expected versus actual behavior. Use a minimal, non-confidential sample where possible.
+- **Have a question or idea?** Join the [discussions](https://github.com/lmdanavanem/SuniPDF/discussions).
+- **Found a security vulnerability?** Follow the [security policy](SECURITY.md).
+
+Please read the [code of conduct](CODE_OF_CONDUCT.md) when participating. If SuniPDF helps you, a GitHub star helps others discover the project.
 
 ## License and acknowledgements
 
-SuniPDF is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your choice.
-Keep the bundled `licenses/` directory with redistributed packages; [third-party notices](docs/THIRD_PARTY_NOTICES.md)
-describe the included components and their licenses.
+SuniPDF is dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your choice. Keep the bundled **licenses/** directory with redistributed packages. See the [third-party notices](docs/THIRD_PARTY_NOTICES.md) for included components and their licenses.
 
-Built with [PDFium](https://pdfium.googlesource.com/pdfium/), [pdfium-render](https://github.com/ajrcarey/pdfium-render),
-[lopdf](https://github.com/J-F-Liu/lopdf) and [egui/eframe](https://github.com/emilk/egui).
-Local OCR uses [Tesseract](https://github.com/tesseract-ocr/tesseract),
-[Leptonica](https://github.com/DanBloomberg/leptonica) and English/French
-[tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast) models.
+Built with [PDFium](https://pdfium.googlesource.com/pdfium/), [pdfium-render](https://github.com/ajrcarey/pdfium-render), [lopdf](https://github.com/J-F-Liu/lopdf) and [egui/eframe](https://github.com/emilk/egui). Local OCR uses [Tesseract](https://github.com/tesseract-ocr/tesseract), [Leptonica](https://github.com/DanBloomberg/leptonica) and English/French [tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast) models.
