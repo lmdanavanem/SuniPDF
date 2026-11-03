@@ -1,0 +1,68 @@
+name: Bug report
+description: Report incorrect behavior in SuniPDF
+labels: ["bug"]
+projects: ["lmdanavanem/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security issues (exploitable crash, password bypass, incomplete redaction, unsafe update, data leak)
+        must **not** be reported here. See [SECURITY.md](https://github.com/lmdanavanem/SuniPDF/blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: SuniPDF version
+      description: From About, or `sunipdf-cli --version`.
+      placeholder: "0.92.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows x64 (MSI)
+        - Windows x64 (portable)
+        - Windows ARM64
+        - Ubuntu (DEB)
+        - macOS Apple silicon
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS version and display scaling
+      placeholder: "Windows 11 24H2, 150 %"
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: Observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample PDF
+      description: Attach a minimal reproduction if possible. Never attach confidential documents.
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Launch `sunipdf.exe` from a console with `RUST_LOG=debug` and paste the relevant output.
+      render: text
