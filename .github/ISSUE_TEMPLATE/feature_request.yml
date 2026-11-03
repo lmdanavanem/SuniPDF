@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a missing capability or improvement
+labels: ["enhancement", "suggestion"]
+projects: ["lmdanavanem/1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [roadmap](https://github.com/lmdanavanem/SuniPDF/blob/main/docs/ROADMAP.md) and the
+        [project board](https://github.com/users/lmdanavanem/projects/1) first: the feature may already be planned.
+  - type: textarea
+    id: need
+    attributes:
+      label: Need
+      description: What are you trying to do, and in what context?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
