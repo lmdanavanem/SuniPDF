@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+- Choose the window state at startup in Settings: reopen as last closed (default), always maximized or always windowed. A windowed start is centered on the screen.
+- Keep the SuniPDF icon on Windows taskbar pins after MSI updates: the Start Menu shortcut now uses the icon embedded in `sunipdf.exe` instead of a per-version installer copy. A pin that already shows a blank icon needs to be unpinned and pinned again once after this update.
+
+The 0.92.1 increment is under qualification. See [the candidate notes](docs/RELEASE_0.92.1.md).
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.92.0] - 2026-10-29

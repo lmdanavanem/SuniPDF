@@ -19,6 +19,7 @@ Open **Menu → Settings → Theme** to choose **Classic** or **Liquid Glass**, 
 **System**, **Light** or **Dark**. The top-bar appearance button opens the same
 panel. Choices are saved automatically; **Reduce transparency** makes Glass
 surfaces opaque. The PDF itself is unchanged. [Theme guide](APPEARANCE.md).
+**Window at startup** reopens SuniPDF maximized or in a centered window.
 
 Version 0.64 provides [plan-set filtering and grouping](PLAN_SETS.md) and
 [reviewed annotation transfer between revisions](REVISION_TRANSFER.md). Open **Tools → Organize pages**

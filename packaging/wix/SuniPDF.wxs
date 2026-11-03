@@ -62,8 +62,11 @@
 
     <DirectoryRef Id="AppMenuFolder">
       <Component Id="StartMenuShortcut" Guid="4D1F6B2A-9C3E-4F7B-8A1D-5E2C7B9F0A21" Win64="yes">
+        <!-- No Icon table entry: it is cached under the per-product Installer folder, which each
+             major upgrade deletes, leaving taskbar pins copied from this shortcut blank. The
+             executable embeds the same icon at a path that upgrades keep. -->
         <Shortcut Id="StartMenuSuniPDF" Name="SuniPDF" Description="PDF reader and editor"
-                  Target="[INSTALLFOLDER]sunipdf.exe" WorkingDirectory="INSTALLFOLDER" Icon="SuniPDF.ico" />
+                  Target="[INSTALLFOLDER]sunipdf.exe" WorkingDirectory="INSTALLFOLDER" />
         <RemoveFolder Id="RemoveAppMenuFolder" On="uninstall" />
         <RegistryValue Root="HKCU" Key="Software\Navanem\SuniPDF" Name="installed" Type="integer" Value="1" KeyPath="yes" />
       </Component>

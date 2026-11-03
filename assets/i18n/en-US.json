@@ -2195,5 +2195,10 @@
   "library.error.unavailable": "The local annotation library folder is unavailable.",
   "library.error.reload": "Reload the annotation library after resolving the read error.",
   "library.error.missing_file": "The selected library file is missing.",
-  "library.error.no_group": "There is no annotation group to save."
+  "library.error.no_group": "There is no annotation group to save.",
+  "appearance.window": "Window at startup",
+  "appearance.window.remember": "Last state",
+  "appearance.window.maximized": "Maximized",
+  "appearance.window.windowed": "Windowed",
+  "appearance.window.description": "A windowed start is centered on the screen. Last state reopens SuniPDF maximized if it was maximized when closed. Applies at the next start."
 }

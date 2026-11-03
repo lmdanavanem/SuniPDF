@@ -90,6 +90,7 @@ fn main() -> eframe::Result<()> {
         .with_app_id("sunipdf")
         .with_inner_size([1280.0, 780.0])
         .with_min_inner_size([720.0, 480.0])
+        .with_maximized(settings::Settings::load().start_maximized())
         .with_drag_and_drop(true)
         .with_icon(window_icon());
     #[cfg(target_os = "linux")]
@@ -97,6 +98,8 @@ fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         renderer: renderer(std::env::var("SUNIPDF_RENDERER").ok().as_deref()),
         viewport,
+        // A windowed start opens in the middle of the screen (not supported by Wayland).
+        centered: true,
         ..Default::default()
     };
     log::info!("Rendering backend: {}", options.renderer);

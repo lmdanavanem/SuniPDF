@@ -29,6 +29,13 @@ the panel shows an error.
 For Liquid Glass, enable **Reduce transparency** to use opaque surfaces without
 the reflected highlights. The preference is retained when switching styles.
 
+## Window at startup
+
+Choose how SuniPDF opens next time. **Last state** (the default) reopens it
+maximized if it was maximized when you closed it. **Maximized** always opens it
+maximized; **Windowed** always opens a normal window. A normal window is centered
+on the screen; Ubuntu Wayland sessions place it themselves.
+
 The Theme panel can be used with the keyboard. Its contents scroll in shorter
 windows; **Escape** closes it without changing the document. You can switch back
 to Classic at any time.

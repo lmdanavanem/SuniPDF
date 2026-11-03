@@ -1,7 +1,7 @@
 # Real Windows Installer regression on a disposable, elevated Windows runner.
 param(
     [Parameter(Mandatory)] [string]$MsiPath,
-    [ValidateSet('0.8.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0', '0.32.0', '0.33.0', '0.34.0', '0.35.0', '0.36.0', '0.37.0', '0.38.0', '0.39.0', '0.40.0', '0.41.0', '0.42.0', '0.43.0', '0.44.0', '0.45.0', '0.46.0', '0.47.0', '0.48.0', '0.49.0', '0.50.0', '0.51.0', '0.60.0', '0.61.0', '0.62.0', '0.63.0', '0.64.0', '0.67.0', '0.69.0', '0.70.0', '0.71.0', '0.72.0', '0.73.0', '0.74.0', '0.75.0', '0.76.0', '0.77.0', '0.78.0', '0.79.0', '0.91.0', '0.91.2')] [string]$BaselineVersion = '0.8.0'
+    [ValidateSet('0.8.0', '0.9.1', '0.10.0', '0.11.0', '0.12.0', '0.13.0', '0.14.0', '0.15.0', '0.16.0', '0.17.0', '0.18.0', '0.19.0', '0.20.0', '0.21.0', '0.21.1', '0.30.0', '0.30.1', '0.31.0', '0.32.0', '0.33.0', '0.34.0', '0.35.0', '0.36.0', '0.37.0', '0.38.0', '0.39.0', '0.40.0', '0.41.0', '0.42.0', '0.43.0', '0.44.0', '0.45.0', '0.46.0', '0.47.0', '0.48.0', '0.49.0', '0.50.0', '0.51.0', '0.60.0', '0.61.0', '0.62.0', '0.63.0', '0.64.0', '0.67.0', '0.69.0', '0.70.0', '0.71.0', '0.72.0', '0.73.0', '0.74.0', '0.75.0', '0.76.0', '0.77.0', '0.78.0', '0.79.0', '0.91.0', '0.91.2', '0.92.0')] [string]$BaselineVersion = '0.8.0'
 )
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'MSI regression is restricted to disposable GitHub Actions runners.' }
@@ -80,6 +80,7 @@ $baselines = @{
     '0.79.0' = @{ hash='2B8FEF485DA045640A57E0C26C27BA9D35CC52E4D9617EA1AB493CF8574C936F'; language='1033'; productCode='{4230D2B6-A6E2-4EAF-97E2-C74E1A5A1BFB}' }
     '0.91.0' = @{ hash='A391802418857EDF26E732B95D966D3DB0FED8731CE553C0ACB7A91BDE32D425'; language='1033'; productCode='{1384E9BD-B294-47DA-BCF2-3FA5B53BA1FB}' }
     '0.91.2' = @{ hash='58ED0D63C55D4D007B81440D63C86518D8AB6A2B23733F999729E7DAD9DA381B'; language='1033'; productCode='{0DA242FB-A3CD-4D36-BE3E-6BBC4E4D8CD9}' }
+    '0.92.0' = @{ hash='B9954E0F72E932DE49D4BCAF28AAF19348633F820E3884A995E9B2CEB6E2CEEB'; language='1033'; productCode='{C4B88CA3-1836-422B-B7E3-74268A1D733E}' }
 }
 $installer = New-Object -ComObject WindowsInstaller.Installer
 function Read-Property([string]$Path, [string]$Name) {
@@ -182,7 +183,10 @@ try {
     if ((Get-FileHash -LiteralPath $sentinel).Hash -ne $sentinelHash -or (Get-FileHash -LiteralPath $document).Hash -ne $documentHash) { throw 'Rollback modified user data.' }
     Invoke-Msi $msi 'upgrade-current'
     Assert-Version $version $newCode
-    $portable = Join-Path $root "dist\SuniPDF-$version-win-x64-portable"
+    # Taskbar pins copy this shortcut; an icon cached per product disappears at the next upgrade.
+    $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $menu 'SuniPDF.lnk'))
+    if (-not (Test-Path -LiteralPath $shortcut.FullName) -or $shortcut.IconLocation -match '\\Installer\\') { throw "The Start Menu shortcut icon does not survive upgrades: $($shortcut.IconLocation)" }
+    $portable =Join-Path $root "dist\SuniPDF-$version-win-x64-portable"
     foreach ($name in $payloadNames) {
         if ((Get-FileHash -LiteralPath (Join-Path $target $name)).Hash -ne (Get-FileHash -LiteralPath (Join-Path $portable $name)).Hash) { throw "Installed payload differs: $name" }
     }

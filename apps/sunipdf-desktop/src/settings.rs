@@ -35,6 +35,17 @@ pub(crate) fn xdg_directory(
     absolute_path(configured).or_else(|| absolute_path(home).map(|path| path.join(fallback)))
 }
 
+/// Window state at startup. A windowed start is always centered on the screen.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum WindowStartup {
+    /// Reopen maximized when SuniPDF was maximized at its last closing.
+    #[default]
+    Remember,
+    Maximized,
+    Windowed,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(default)]
 pub struct Settings {
@@ -63,6 +74,10 @@ pub struct Settings {
     #[serde(deserialize_with = "deserialize_register_presets")]
     pub register_presets: sunipdf_core::register_presets::RegisterPresetLibrary,
     pub tables: crate::workspace_table::Preferences,
+    #[serde(deserialize_with = "deserialize_window_startup")]
+    pub window_startup: WindowStartup,
+    /// Maximized state recorded at the last closing, used by [`WindowStartup::Remember`].
+    pub window_maximized: bool,
     /// Unreadable `register_presets` JSON (newer version, hand edit), written back verbatim
     /// so unrelated saves such as opening a document never erase it.
     #[serde(skip)]
@@ -90,9 +105,20 @@ impl Default for Settings {
             stamp_presets: Default::default(),
             register_presets: Default::default(),
             tables: Default::default(),
+            window_startup: WindowStartup::Remember,
+            window_maximized: false,
             unreadable_register_presets: None,
         }
     }
+}
+
+fn deserialize_window_startup<'de, D>(deserializer: D) -> Result<WindowStartup, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    // A value from a newer version falls back to the default instead of resetting every preference.
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).unwrap_or_default())
 }
 
 fn deserialize_theme_style<'de, D>(deserializer: D) -> Result<crate::theme::Style, D::Error>
@@ -129,6 +155,25 @@ where
 }
 
 impl Settings {
+    pub fn start_maximized(&self) -> bool {
+        match self.window_startup {
+            WindowStartup::Remember => self.window_maximized,
+            WindowStartup::Maximized => true,
+            WindowStartup::Windowed => false,
+        }
+    }
+
+    /// Records the closing window state; returns whether it changed and needs saving.
+    pub fn record_window_maximized(&mut self, maximized: Option<bool>) -> bool {
+        match maximized {
+            Some(maximized) if maximized != self.window_maximized => {
+                self.window_maximized = maximized;
+                true
+            }
+            _ => false,
+        }
+    }
+
     pub fn effective_theme_mode(&self) -> crate::theme::Mode {
         self.theme_mode.unwrap_or(if self.dark_theme {
             crate::theme::Mode::Dark
@@ -410,6 +455,32 @@ mod tests {
         let reopened = Settings::parse(&std::fs::read_to_string(&path).unwrap()).unwrap();
         assert_eq!(reopened.unreadable_register_presets, None);
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn window_startup_remembers_maximized_state_and_tolerates_future_values() {
+        let mut settings = Settings::default();
+        assert_eq!(settings.window_startup, WindowStartup::Remember);
+        assert!(!settings.start_maximized());
+        assert!(!settings.record_window_maximized(None));
+        assert!(settings.record_window_maximized(Some(true)));
+        assert!(!settings.record_window_maximized(Some(true)));
+        assert!(settings.start_maximized());
+        settings.window_startup = WindowStartup::Windowed;
+        assert!(!settings.start_maximized());
+        settings.window_startup = WindowStartup::Maximized;
+        settings.window_maximized = false;
+        assert!(settings.start_maximized());
+        let stored: Settings =
+            serde_json::from_str(&serde_json::to_string(&settings).unwrap()).unwrap();
+        assert_eq!(stored, settings);
+        let future: Settings = serde_json::from_str(
+            r#"{"language":"fr-FR","window_startup":"fullscreen","window_maximized":true}"#,
+        )
+        .unwrap();
+        assert_eq!(future.language, "fr-FR");
+        assert_eq!(future.window_startup, WindowStartup::Remember);
+        assert!(future.start_maximized());
     }
 
     #[test]

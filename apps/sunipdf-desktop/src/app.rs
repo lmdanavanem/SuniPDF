@@ -3730,7 +3730,8 @@ impl SuniApp {
             }
             ctx.request_repaint();
         }
-        if ctx.input(|i| i.viewport().close_requested())
+        let closing = ctx.input(|i| i.viewport().close_requested());
+        if closing
             && (self.has_unsaved_changes()
                 || self.any_background_dirty().is_some()
                 || self.plan_sets.needs_close_guard()
@@ -3744,6 +3745,13 @@ impl SuniApp {
             if self.unsaved_prompt.is_none() {
                 self.execute(&ctx, Command::Quit);
             }
+        } else if closing
+            && self
+                .settings
+                .record_window_maximized(ctx.input(|i| i.viewport().maximized))
+        {
+            // The next start reopens maximized or windowed as it was closed.
+            self.persist_settings();
         }
         self.unsaved_dialog(&ctx);
         self.signed_save_dialog(&ctx);

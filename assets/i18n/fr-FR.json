@@ -2195,5 +2195,10 @@
   "library.error.unavailable": "Le dossier local de la bibliothèque d’annotations est indisponible.",
   "library.error.reload": "Rechargez la bibliothèque d’annotations après avoir résolu l’erreur de lecture.",
   "library.error.missing_file": "Le fichier de bibliothèque sélectionné est introuvable.",
-  "library.error.no_group": "Aucun groupe d’annotations à enregistrer."
+  "library.error.no_group": "Aucun groupe d’annotations à enregistrer.",
+  "appearance.window": "Fenêtre au démarrage",
+  "appearance.window.remember": "Dernier état",
+  "appearance.window.maximized": "Agrandie",
+  "appearance.window.windowed": "Fenêtrée",
+  "appearance.window.description": "Une fenêtre non agrandie s’ouvre au centre de l’écran. Dernier état rouvre SuniPDF agrandi s’il l’était à la fermeture. Prend effet au prochain démarrage."
 }

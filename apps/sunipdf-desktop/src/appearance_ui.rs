@@ -2,7 +2,7 @@
 
 use crate::app::SuniApp;
 use crate::dialog::{self, Spec};
-use crate::settings::Settings;
+use crate::settings::{Settings, WindowStartup};
 use crate::theme::{self, Mode, Style};
 use egui::{Color32, FontId, Rect, RichText, Stroke};
 use sunipdf_i18n::{tr, Language};
@@ -88,6 +88,7 @@ impl SuniApp {
         let lang = self.lang();
         let before = Choice::from_settings(&self.settings);
         let mut choice = before;
+        let mut window = self.settings.window_startup;
         let dark = self.settings.dark_theme;
         let palette = theme::palette_for(ctx);
         let mut close = false;
@@ -164,6 +165,27 @@ impl SuniApp {
                             .color(palette.text_muted),
                     );
                 }
+                ui.add_space(14.0);
+                ui.label(RichText::new(tr(lang, "appearance.window")).strong());
+                ui.horizontal_wrapped(|ui| {
+                    for (startup, key) in [
+                        (WindowStartup::Remember, "appearance.window.remember"),
+                        (WindowStartup::Maximized, "appearance.window.maximized"),
+                        (WindowStartup::Windowed, "appearance.window.windowed"),
+                    ] {
+                        if ui
+                            .selectable_label(window == startup, tr(lang, key))
+                            .clicked()
+                        {
+                            window = startup;
+                        }
+                    }
+                });
+                ui.label(
+                    RichText::new(tr(lang, "appearance.window.description"))
+                        .small()
+                        .color(palette.text_muted),
+                );
                 ui.add_space(10.0);
                 if error {
                     ui.colored_label(palette.error, tr(lang, "appearance.save_failed"));
@@ -192,6 +214,10 @@ impl SuniApp {
                     Ok(())
                 }
             });
+        }
+        if window != self.settings.window_startup {
+            self.settings.window_startup = window;
+            self.persist_settings();
         }
         if close {
             self.appearance.open = false;
