@@ -37,16 +37,16 @@ Created by **Emmanuel Almeida** ([@lmdanavanem](https://github.com/lmdanavanem))
 
 ## Download
 
-**Current stable release: 0.92.0**, verified on 29 October 2026 at 02:55:40 UTC.
+**Current stable release: 0.92.1**, verified on 3 November 2026 at 23:06:06 UTC.
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-linux-amd64.deb) |
-| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.0/SuniPDF-0.92.0-macos-arm64.dmg) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.1/SuniPDF-0.92.1-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.1/SuniPDF-0.92.1-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.1/SuniPDF-0.92.1-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.1/SuniPDF-0.92.1-linux-amd64.deb) |
+| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.1/SuniPDF-0.92.1-macos-arm64.dmg) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.0) · [Release qualification](docs/RELEASE_0.92.0.md) · [Qualification evidence](docs/qa/RELEASE_0.92.0.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.1) · [Release qualification](docs/RELEASE_0.92.1.md) · [Qualification evidence](docs/qa/RELEASE_0.92.1.json)
 
 > **Platform notes:** Windows packages are unsigned. The macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified. Local OCR is available on Windows and Ubuntu.
 >
@@ -63,7 +63,7 @@ Created by **Emmanuel Almeida** ([@lmdanavanem](https://github.com/lmdanavanem))
 | macOS | Open the DMG and drag **SuniPDF** to **Applications**. For first-launch details, consult the [macOS guide](docs/MACOS.md). |
 
 ~~~bash
-sudo apt install ./SuniPDF-0.92.0-linux-amd64.deb
+sudo apt install ./SuniPDF-0.92.1-linux-amd64.deb
 ~~~
 
 ### 2. Open a PDF and find your tools
@@ -108,6 +108,13 @@ SuniPDF includes tools for moving from a drawing to reviewed measurements and qu
 Explore [plan links](docs/PLAN_LINKS.md), [register batch workflows](docs/REGISTER_BATCH.md), [region fill](docs/REGION_FILL.md) and [Find symbols](docs/VISUAL_SEARCH.md).
 
 ## What's new
+
+### 0.92.1 — Window at startup and taskbar icon
+
+- Choose **Window at startup** in **Settings → Theme**: reopen as last closed, always maximized or always windowed. A windowed start is centered on the screen.
+- Windows taskbar pins keep the SuniPDF icon after MSI updates. Unpin and pin again once if a pin already shows a blank icon.
+
+See the [0.92.1 release qualification](docs/RELEASE_0.92.1.md).
 
 ### 0.92.0 — About and layer visibility
 

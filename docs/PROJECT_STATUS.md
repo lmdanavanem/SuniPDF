@@ -1,5 +1,18 @@
 # Project status
 
+## Published 0.92.1
+
+By Emmanuel Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.1) | [Release notes](RELEASE_0.92.1.md) | [Qualification evidence](qa/RELEASE_0.92.1.json).
+
+Adds the **Window at startup** preference (last state, maximized or windowed, centered when windowed)
+and keeps the MSI Start Menu shortcut icon stable so Windows taskbar pins survive updates.
+CI now removes evidence folders restored with its build cache. Includes Dependabot #79 and #84.
+The tagged source `cfc9f64a62971da04ef7224f394e19ebd7f1411b` passed all 11 release jobs, including 60 portable baselines plus four
+guards and 58 MSI baselines with the published 0.92.0 packages and a shortcut-icon check. Locally,
+584 desktop and translation tests, strict Clippy, formatting and 2,202 bilingual keys passed, and a
+real window check confirmed centered, maximized and remembered starts. All ten public downloads were
+checked anonymously against their SHA256 files and GitHub digests at 2026-11-03T23:06:06Z.
+
 ## Published 0.92.0
 
 By Emmanuel Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.0) | [Release notes](RELEASE_0.92.0.md) | [Qualification evidence](qa/RELEASE_0.92.0.json).
