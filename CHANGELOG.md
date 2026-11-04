@@ -5,11 +5,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+Further work remains in the [roadmap](docs/ROADMAP.md).
+
+## [0.92.2] - 2026-11-04
+
+By Emanuel de Almeida.
+
 - Fix copying selected text to the Windows clipboard (Fixes #157): Ctrl+C and the copy commands now reach other applications instead of staying inside SuniPDF.
 - Correct the author name to Emanuel de Almeida in the package metadata, About dialog and documentation.
 
-The 0.92.2 increment is under qualification. See [the candidate notes](docs/RELEASE_0.92.2.md).
-Further work remains in the [roadmap](docs/ROADMAP.md).
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.2). See [qualification and limits](docs/RELEASE_0.92.2.md).
 
 ## [0.92.1] - 2026-11-03
 

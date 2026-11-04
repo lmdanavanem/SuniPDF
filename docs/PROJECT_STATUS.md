@@ -1,12 +1,16 @@
 # Project status
 
-## Candidate 0.92.2
+## Published 0.92.2
 
-By Emanuel de Almeida. [Release notes](RELEASE_0.92.2.md).
+By Emanuel de Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.2) | [Release notes](RELEASE_0.92.2.md) | [Qualification evidence](qa/RELEASE_0.92.2.json).
 
-Fixes copying text to the Windows clipboard (#157): the eframe system clipboard feature was missing from the Windows build,
-so copied text stayed inside the application. Also corrects the author name spelling. Under qualification.
-
+Fixes copying text to the Windows clipboard (#157): the eframe system clipboard feature was missing
+from the Windows build, so copied text stayed inside the application. A regression test and a real
+Ctrl+C check now cover it. The author name spelling is corrected. The tagged source
+`1938aa3d71687b980ccbe568446418c5ea7b1b82` passed all 11 release jobs, including 61 portable baselines plus
+four guards and 59 MSI baselines with the published 0.92.1 packages. Locally, 585 desktop and
+translation tests, strict Clippy, formatting and 2,202 bilingual keys passed. All ten public
+downloads were checked anonymously against their SHA256 files and GitHub digests at 2026-11-04T20:17:40Z.
 ## Published 0.92.1
 
 By Emanuel de Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.1) | [Release notes](RELEASE_0.92.1.md) | [Qualification evidence](qa/RELEASE_0.92.1.json).

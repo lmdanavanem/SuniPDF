@@ -1,0 +1,202 @@
+{
+    "schema":  1,
+    "version":  "0.92.2",
+    "source":  "1938aa3d71687b980ccbe568446418c5ea7b1b82",
+    "tag":  "v0.92.2",
+    "release_id":  434404383,
+    "release_url":  "https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.2",
+    "author":  "github-actions[bot]",
+    "published_at":  "2026-11-04T20:17:02Z",
+    "verified_at":  "2026-11-04T20:17:40Z",
+    "stable_latest_verified":  true,
+    "qualification":  {
+                          "release_run":  41898358455,
+                          "release_url":  "https://github.com/lmdanavanem/SuniPDF/actions/runs/41898358455",
+                          "conclusion":  "success",
+                          "jobs":  [
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126813818734,
+                                           "name":  "build (arm64)"
+                                       },
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126813819239,
+                                           "name":  "build (x64)"
+                                       },
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126813819367,
+                                           "name":  "macos / Classify documentation change"
+                                       },
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126813819530,
+                                           "name":  "linux / Classify and validate documentation"
+                                       },
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126813900442,
+                                           "name":  "macos / Build macOS arm64"
+                                       },
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126814012969,
+                                           "name":  "linux / Build Ubuntu 22.04 amd64"
+                                       },
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126818556971,
+                                           "name":  "linux / PDF conformance and independent reader"
+                                       },
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126818557034,
+                                           "name":  "linux / Install and run on Ubuntu 22.04"
+                                       },
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126818557076,
+                                           "name":  "linux / Install and run on Ubuntu 24.04"
+                                       },
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126820713568,
+                                           "name":  "macos / Install and run on macOS"
+                                       },
+                                       {
+                                           "conclusion":  "success",
+                                           "id":  126836941160,
+                                           "name":  "publish"
+                                       }
+                                   ],
+                          "main_ci":  [
+                                          {
+                                              "conclusion":  "success",
+                                              "head_sha":  "1938aa3d71687b980ccbe568446418c5ea7b1b82",
+                                              "id":  41890018767,
+                                              "name":  "ci"
+                                          },
+                                          {
+                                              "conclusion":  "success",
+                                              "head_sha":  "1938aa3d71687b980ccbe568446418c5ea7b1b82",
+                                              "id":  41890018803,
+                                              "name":  "linux"
+                                          },
+                                          {
+                                              "conclusion":  "success",
+                                              "head_sha":  "1938aa3d71687b980ccbe568446418c5ea7b1b82",
+                                              "id":  41890018790,
+                                              "name":  "macos"
+                                          }
+                                      ],
+                          "upgrade_baselines":  "61 portable upgrade baselines plus 4 guards and 59 MSI upgrade baselines, including the published 0.92.1 packages.",
+                          "history_note":  "The first push of the release commit (eafe244) was replaced by 1938aa3 with an identical tree after its parent commit message was cleaned; CI on eafe244 was discarded and the results above are for 1938aa3."
+                      },
+    "publication":  {
+                        "method":  "draft created by the tagged release workflow, assets downloaded and checked against their SHA256 files and API digests, then owner-authenticated publication with release notes",
+                        "public_download_check":  "All five packages and SHA256 files were downloaded without authentication; every package matched its SHA256 file and the API digest."
+                    },
+    "local_verification":  {
+                               "commands":  [
+                                                "cargo fmt --all -- --check",
+                                                "cargo clippy --workspace -j 2 -- -D warnings",
+                                                "cargo test --workspace -j 1",
+                                                "scripts/check-i18n.ps1",
+                                                "scripts/ci-docs.py validate"
+                                            ],
+                               "desktop_and_i18n_tests":  {
+                                                              "passed":  578,
+                                                              "failed":  0,
+                                                              "ignored":  8
+                                                          },
+                               "clipboard_check":  "A real Ctrl+C in a debug build placed the selected text on the Windows clipboard (read back with Get-Clipboard); regression test copied_text_reaches_the_windows_clipboard passes."
+                           },
+    "limitations":  [
+                        "Windows packages are unsigned and the macOS DMG is ad hoc signed, not notarized.",
+                        "Windows ARM64 is cross-built without native hardware execution.",
+                        "The clipboard fix was exercised on Windows 11 x64 only; other platforms were not changed."
+                    ],
+    "assets":  [
+                   {
+                       "name":  "SuniPDF-0.92.2-linux-amd64.deb",
+                       "id":  710787593,
+                       "size":  23053924,
+                       "sha256":  "02336bd2e9927a28a415c6878d481adf878717e083da27b84ee3d65ec0a0f723",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-linux-amd64.deb",
+                       "public_unauthenticated":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.2-linux-amd64.deb.sha256",
+                       "id":  710787588,
+                       "size":  97,
+                       "sha256":  "5a87881e7da75de155e8418fa6c53eb469f9f1b5f5e601fa50e3a0914b41f822",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-linux-amd64.deb.sha256",
+                       "public_unauthenticated":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.2-macos-arm64.dmg",
+                       "id":  710787601,
+                       "size":  32877660,
+                       "sha256":  "358133ce2abdccaee6c5d14724d44c6069b31228aae8a8605956d39f6d794139",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-macos-arm64.dmg",
+                       "public_unauthenticated":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.2-macos-arm64.dmg.sha256",
+                       "id":  710787594,
+                       "size":  97,
+                       "sha256":  "0ed9ae89fba21caca5c1f9faacdc946531339a9b1f814c2c88618b6d437198c3",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-macos-arm64.dmg.sha256",
+                       "public_unauthenticated":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.2-win-arm64-portable.zip",
+                       "id":  710787600,
+                       "size":  35086747,
+                       "sha256":  "449e73caad051c83ab1637ff8739f4277733648de6a6430b8fd630f485fa850c",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-win-arm64-portable.zip",
+                       "public_unauthenticated":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.2-win-arm64-portable.zip.sha256",
+                       "id":  710787602,
+                       "size":  105,
+                       "sha256":  "fde482fc83c96f1dc546c773ba56967f3253f7b225a91be66db589fc65ae8c0a",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-win-arm64-portable.zip.sha256",
+                       "public_unauthenticated":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.2-win-x64-portable.zip",
+                       "id":  710787591,
+                       "size":  37136520,
+                       "sha256":  "98f2eccdea125db71128ef03cc137660230367c26b42eeba301a59a75bc7fada",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-win-x64-portable.zip",
+                       "public_unauthenticated":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.2-win-x64-portable.zip.sha256",
+                       "id":  710787598,
+                       "size":  103,
+                       "sha256":  "5d229894d245882f5d1dbfec516f927d4f70ddd6731fa1b40fbcd7b5de4c4eff",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-win-x64-portable.zip.sha256",
+                       "public_unauthenticated":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.2-win-x64.msi",
+                       "id":  710787595,
+                       "size":  34930688,
+                       "sha256":  "da133e7f75ce6952709dcfe9b5cc5e2043cdeea4015bfded04de14ca66b06ab2",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-win-x64.msi",
+                       "public_unauthenticated":  true
+                   },
+                   {
+                       "name":  "SuniPDF-0.92.2-win-x64.msi.sha256",
+                       "id":  710787592,
+                       "size":  94,
+                       "sha256":  "4099e0b519aca39ad3dbb7b1b506a14cd9eb3326c2bdad9c04dd92e3d4ceac73",
+                       "url":  "https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-win-x64.msi.sha256",
+                       "public_unauthenticated":  true
+                   }
+               ]
+}
