@@ -13,6 +13,7 @@ By Emanuel de Almeida.
 
 - Fix copying selected text to the Windows clipboard (Fixes #157): Ctrl+C and the copy commands now reach other applications instead of staying inside SuniPDF.
 - Correct the author name to Emanuel de Almeida in the package metadata, About dialog and documentation.
+- Add a generated hostile and large PDF corpus to the Windows test suite (Refs #97): 26 cases built at test time (page-tree cycles, recursive Form XObjects and Type 3 glyphs, deep nesting, a 128 MiB Flate bomb, JavaScript actions, broken xref/encryption, 3,000 pages, an A4 600 dpi scan, a dense content stream). Each runs info, text, render, optimize and redact under time, memory and output limits, with pinned error codes, reopened outputs and unchanged sources. Two limits it found are listed in the known issues.
 
 Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.2). See [qualification and limits](docs/RELEASE_0.92.2.md).
 

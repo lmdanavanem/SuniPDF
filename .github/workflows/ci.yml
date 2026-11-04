@@ -228,6 +228,7 @@ jobs:
           path: |
             target/interop-corpus-report.json
             target/adversarial-corpus-report.json
+            target/hostile-corpus-report.json
           if-no-files-found: error
       - name: Restore pinned Office MSI only
         id: office_installer_cache

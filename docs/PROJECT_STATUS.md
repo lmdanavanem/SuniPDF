@@ -1,5 +1,14 @@
 # Project status
 
+## In progress for 0.93.0
+
+Generated hostile and large PDF corpus (#97, still open): `apps/sunipdf-cli/tests/hostile_corpus.rs`
+builds 26 PDFs at test time and runs `info`, `text`, `render`, `optimize` and `redact` on each
+under the existing 60 s, 768 MiB and 2 MiB output guards. Local Windows x64 debug run: 182 commands
+in 22 s, no crash or timeout, peak working set 439 MiB. It found two defects, listed in the
+[known issues](KNOWN_ISSUES.md). Licensed real-world documents, complex forms, tagged/OCR files,
+cancellation and qpdf checks of these outputs remain open.
+
 ## Published 0.92.2
 
 By Emanuel de Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.2) | [Release notes](RELEASE_0.92.2.md) | [Qualification evidence](qa/RELEASE_0.92.2.json).

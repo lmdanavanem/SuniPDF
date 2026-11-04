@@ -96,6 +96,13 @@ Saved-group capture accepts reproducible native shapes, supported standard and i
 - Protected recovery PDFs stay encrypted, but JSON recovery metadata includes paths/page counts.
   Passwords are not saved and must be supplied again. Recovery never replaces the original.
 - Storage-failure regressions cover injected failures, not every physical disk or power-loss case.
+- `optimize` can publish a copy that PDFium cannot reopen when the source has no `/Root`, a cyclic
+  or 4,000-level page tree, or degenerate MediaBox values (exponent notation). The source stays
+  unchanged. The generated hostile corpus (`apps/sunipdf-cli/tests/hostile_corpus.rs`) pins these
+  five cases, so a fix or a new occurrence fails the test.
+- Redaction of a single dense page uses much more memory than its size: a 100,000-operator content
+  stream peaked at 355 MiB and a 200,000-operator one at 688 MiB before refusing with
+  `redaction_incomplete`. Redacting an oversized 20,000 pt page at 72 dpi peaked at 439 MiB.
 
 ## Signatures, security and conformance
 
