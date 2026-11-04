@@ -1,0 +1,36 @@
+# Linux (or macOS) with nightly and cargo-fuzz, from this directory:
+#   mkdir -p corpus/pdf_structure && cp ../crates/sunipdf-core/tests/fixtures/*.pdf corpus/pdf_structure/
+#   cargo +nightly fuzz run pdf_structure corpus/pdf_structure "--" -dict=pdf.dict -max_total_time=600
+# Same for cms_signatures. CI: .github/workflows/fuzz.yml. Crashes land in artifacts/<target>/.
+[package]
+name = "sunipdf-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Coverage-guided libFuzzer targets for SuniPDF byte-level PDF and CMS parsing (cargo fuzz, nightly)."
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+sunipdf-core = { path = "../crates/sunipdf-core" }
+
+# Kept out of the product workspace: libFuzzer needs nightly and sanitizer flags.
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "pdf_structure"
+path = "fuzz_targets/pdf_structure.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cms_signatures"
+path = "fuzz_targets/cms_signatures.rs"
+test = false
+doc = false
+bench = false

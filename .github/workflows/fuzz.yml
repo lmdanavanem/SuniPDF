@@ -1,0 +1,48 @@
+name: fuzz
+# Coverage-guided libFuzzer runs of the byte-level PDF/CMS targets in fuzz/ (Linux, nightly).
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Seconds per target
+        default: '600'
+
+permissions:
+  contents: read
+
+jobs:
+  fuzz:
+    name: cargo fuzz (${{ matrix.target }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [pdf_structure, cms_signatures]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install nightly and cargo-fuzz
+        run: |
+          rustup toolchain install nightly --profile minimal
+          cargo +nightly install cargo-fuzz --locked --version 0.12.0
+      - name: Seed the corpus with the committed generated fixtures
+        run: |
+          mkdir -p fuzz/corpus/${{ matrix.target }}
+          cp crates/sunipdf-core/tests/fixtures/*.pdf fuzz/corpus/${{ matrix.target }}/
+      - name: Fuzz
+        run: |
+          cd fuzz
+          set -o pipefail
+          libfuzzer=(-dict=pdf.dict -max_total_time=${{ inputs.seconds || '600' }} -rss_limit_mb=2048 -timeout=30 -print_final_stats=1)
+          cargo +nightly fuzz run ${{ matrix.target }} corpus/${{ matrix.target }} "--" "${libfuzzer[@]}" 2>&1 | tee fuzz-${{ matrix.target }}.log
+      - name: Retain crashes and statistics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: fuzz-${{ matrix.target }}
+          path: |
+            fuzz/fuzz-${{ matrix.target }}.log
+            fuzz/artifacts/
+          if-no-files-found: warn

@@ -9,6 +9,20 @@ in 22 s, no crash or timeout, peak working set 439 MiB. It found two defects, li
 [known issues](KNOWN_ISSUES.md). Licensed real-world documents, complex forms, tagged/OCR files,
 cancellation and qpdf checks of these outputs remain open.
 
+Every PDF writer on the same corpus (#98, still open): a second test in that file runs 56 PDF-writing
+commands on the 23 hostile cases and nine of them on the three large cases (1,315 runs, four child
+processes at a time; local Windows x64 debug run 62 s). Each run ends in a typed error that leaves
+its output directory empty, or in outputs that reopen with the expected page count. It found four
+panicking writers and five lopdf/signing writers publishing unreadable copies; both are fixed.
+Commands that need a non-PDF input, a review or precondition JSON, or produce no PDF are listed as
+out of scope in the test.
+
+Fuzzing (#98): `fuzz/` holds two cargo-fuzz targets (lopdf structure loading/inspection/rewriting,
+signature dictionaries and CMS envelopes) run by the `fuzz` workflow on Linux nightly, weekly or on
+demand; no local or CI fuzzing run has been recorded yet. `crates/sunipdf-core/tests/fuzz_smoke.rs`
+runs the same entry points on 10,000 fixed-seed mutations (30 s locally) in `cargo test`; this is not
+coverage-guided. PDFium itself is not instrumented. Hardware benchmarks remain open.
+
 ## Published 0.92.2
 
 By Emanuel de Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.2) | [Release notes](RELEASE_0.92.2.md) | [Qualification evidence](qa/RELEASE_0.92.2.json).

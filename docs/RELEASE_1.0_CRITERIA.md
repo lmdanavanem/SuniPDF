@@ -29,6 +29,12 @@ The examples cover UTF-8 annotations, incremental saves, a displaced header and 
 structures. They are distinct from the NIST research documents and from a real customer/hostile corpus.
 All downloaded examples and derived PDF copies remain outside Git and application packages.
 
+The generated hostile/large corpus also runs every single-PDF writer command (56 commands): a
+failure must leave no output or temporary file, and a published copy must reopen with the expected
+page count. Coverage-guided targets for byte-level PDF structure and CMS parsing exist in `fuzz/`
+(Linux nightly, `fuzz` workflow); the document-safety gate needs a recorded campaign (duration,
+executions, crashes) before fuzzing counts as evidence. PDFium itself is not instrumented.
+
 The mutation campaign is bounded smoke testing, **not coverage-guided fuzzing**. Its timeout/output guards
 have executable negative controls; successful editing outputs must reopen and rejected edits must publish
 no output. Reports identify the environment and sampling limits; CI/virtual-machine measurements do not
