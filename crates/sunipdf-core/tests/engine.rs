@@ -1067,9 +1067,13 @@ fn images_to_pdf_export_images_and_optimize() {
     assert_eq!((back.width(), back.height()), (612, 792));
 
     // Optimisation : fichier valide, même contenu, pas plus gros qu'un simple aller-retour.
-    let res =
-        sunipdf_core::convert::optimize_file(&fixture("two-pages.pdf"), &dir.join("opt.pdf"), None)
-            .unwrap();
+    let res = sunipdf_core::convert::optimize_file(
+        &engine,
+        &fixture("two-pages.pdf"),
+        &dir.join("opt.pdf"),
+        None,
+    )
+    .unwrap();
     assert!(res.before > 0 && res.after > 0);
     let opt = engine.open(&dir.join("opt.pdf"), None).unwrap();
     assert_eq!(opt.page_count(), 2);
@@ -1817,7 +1821,7 @@ fn lopdf_round_trips_keep_encryption_and_unprotect_needs_owner_password() {
     // Optimisation sans gain : jamais de fichier plus gros que l'entrée.
     let src = dir.join("src.pdf");
     std::fs::write(&src, &input).unwrap();
-    let opt = convert::optimize_file(&src, &dir.join("opt.pdf"), None).unwrap();
+    let opt = convert::optimize_file(&engine, &src, &dir.join("opt.pdf"), None).unwrap();
     assert!(opt.after <= opt.before);
     let _ = std::fs::remove_dir_all(dir);
 }

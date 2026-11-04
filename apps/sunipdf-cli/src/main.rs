@@ -2244,7 +2244,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             password,
         } => {
             let r = output::staged(&out, overwrite, |path| {
-                sunipdf_core::convert::optimize_file(&file, path, password.as_deref())
+                sunipdf_core::convert::optimize_file(&engine, &file, path, password.as_deref())
             })?;
             Ok(
                 serde_json::json!({ "out": out, "before": r.before, "after": r.after,

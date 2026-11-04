@@ -291,13 +291,26 @@ fn preserve_xml_metadata_compression(doc: &mut lopdf::Document) {
 }
 
 /// Optimise `input` vers `output` (écriture atomique) et renvoie les tailles.
+/// La copie optimisée est rouverte par PDFium avant publication : si elle ne s'ouvre pas, ou
+/// n'a pas le nombre de pages lu dans la source, `InvalidFormat` et aucune écriture.
 pub fn optimize_file(
+    engine: &crate::Engine,
     input: &Path,
     output: &Path,
     password: Option<&str>,
 ) -> Result<Optimized, EngineError> {
     let bytes = std::fs::read(input)?;
     let mut out = optimize(&bytes, password)?;
+    let expected = engine
+        .open(input, password)
+        .ok()
+        .map(|doc| doc.page_count());
+    let reopened = engine
+        .open_bytes(out.clone(), password, output)
+        .map(|doc| doc.page_count());
+    if reopened.is_err() || expected.is_some_and(|pages| reopened.ok() != Some(pages)) {
+        return Err(EngineError::InvalidFormat);
+    }
     if out.len() >= bytes.len() {
         // Jamais de fichier plus gros : sans gain, la sortie est une copie de l'entrée.
         out = bytes.clone();
@@ -437,7 +450,8 @@ mod tests {
         let input = dir.path().join("source.pdf");
         let output = dir.path().join("optimized.pdf");
         std::fs::write(&input, &stable).unwrap();
-        let result = optimize_file(&input, &output, None).unwrap();
+        let engine = crate::test_engine();
+        let result = optimize_file(&engine, &input, &output, None).unwrap();
         assert_eq!(result.before, stable.len() as u64);
         assert_eq!(result.after, result.before);
         assert_eq!(std::fs::read(&input).unwrap(), stable);

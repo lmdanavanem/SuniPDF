@@ -96,9 +96,6 @@ struct Case {
     open: Open,
     /// `render` error expected even though the document opens (e.g. oversized page).
     render_error: Option<&'static str>,
-    /// Known defect (docs/KNOWN_ISSUES.md): `optimize` publishes a copy that does not reopen with
-    /// the source's page count. Pinned so a fix or a new occurrence both fail this test.
-    optimize_unreopenable: bool,
 }
 
 fn case(name: &'static str, bytes: Vec<u8>, open: Open) -> Case {
@@ -107,14 +104,6 @@ fn case(name: &'static str, bytes: Vec<u8>, open: Open) -> Case {
         bytes,
         open,
         render_error: None,
-        optimize_unreopenable: false,
-    }
-}
-
-fn unreopenable_optimize(case: Case) -> Case {
-    Case {
-        optimize_unreopenable: true,
-        ..case
     }
 }
 
@@ -132,7 +121,7 @@ fn hostile_cases() -> Vec<Case> {
             b"%PDF-1.7\n%%EOF\n".to_vec(),
             Open::Error("invalid_format"),
         ),
-        unreopenable_optimize(case(
+        case(
             "missing-root",
             {
                 let mut bytes = valid.clone();
@@ -141,7 +130,7 @@ fn hostile_cases() -> Vec<Case> {
                 bytes
             },
             Open::Error("invalid_format"),
-        )),
+        ),
         case(
             "xref-offsets-zeroed",
             {
@@ -161,7 +150,7 @@ fn hostile_cases() -> Vec<Case> {
             one_page_trailer("/Prev {xref}"),
             Open::Pages(1),
         ),
-        unreopenable_optimize(case(
+        case(
             "pages-kids-self-cycle",
             pdf(
                 &[
@@ -171,8 +160,8 @@ fn hostile_cases() -> Vec<Case> {
                 "",
             ),
             Open::Error("other"),
-        )),
-        unreopenable_optimize(case(
+        ),
+        case(
             "pages-mutual-cycle",
             pdf(
                 &[
@@ -184,7 +173,7 @@ fn hostile_cases() -> Vec<Case> {
                 "",
             ),
             Open::Error("other"),
-        )),
+        ),
         case(
             "pages-count-overflow",
             pdf(
@@ -197,11 +186,11 @@ fn hostile_cases() -> Vec<Case> {
             ),
             Open::Pages(1),
         ),
-        unreopenable_optimize(case(
+        case(
             "pages-tree-deep-4000",
             deep_pages_tree(4000),
             Open::Error("other"),
-        )),
+        ),
         case(
             "length-reference-cycle",
             pdf(
@@ -333,7 +322,7 @@ fn hostile_cases() -> Vec<Case> {
             ),
             Open::Pages(1),
         ),
-        unreopenable_optimize(case(
+        case(
             "mediabox-degenerate",
             pdf(
                 &[
@@ -345,7 +334,7 @@ fn hostile_cases() -> Vec<Case> {
                 "",
             ),
             Open::Pages(2),
-        )),
+        ),
         case(
             "encrypt-unknown-filter",
             one_page_trailer_with(
@@ -616,13 +605,13 @@ fn exercise(temp: &Path, case: &Case) -> Value {
         .arg(&optimized);
     let (saved, exit) = run(optimize);
     record["optimize_exit"] = json!(exit);
-    let mut unreopenable = false;
     match saved {
         Ok(_) => {
             record["optimize_page_count"] = reopened_pages(&optimized);
             // A published copy must reopen with the page count PDFium reads from the source.
-            unreopenable = record["open"]["page_count"] != record["optimize_page_count"];
-            record["optimize_unreopenable"] = json!(unreopenable);
+            if record["open"]["page_count"] != record["optimize_page_count"] {
+                record["optimize_page_mismatch"] = json!(true);
+            }
         }
         Err(code) => {
             assert!(
@@ -632,9 +621,6 @@ fn exercise(temp: &Path, case: &Case) -> Value {
             );
             record["optimize_error"] = json!(code);
         }
-    }
-    if unreopenable != case.optimize_unreopenable {
-        record["optimize_page_mismatch"] = json!(true);
     }
 
     let redacted = temp.join(format!("{}-redacted.pdf", case.name));
