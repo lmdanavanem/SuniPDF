@@ -7,16 +7,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
+## [0.93.0] - 2026-11-04
+
+By Emanuel de Almeida.
+
+- Add a generated hostile and large PDF corpus to the Windows test suite (Refs #97): 26 cases built at test time (page-tree cycles, recursive Form XObjects and Type 3 glyphs, deep nesting, a 128 MiB Flate bomb, JavaScript actions, broken xref/encryption, 3,000 pages, an A4 600 dpi scan, a dense content stream). Each runs info, text, render, optimize and redact under time, memory and output limits, with pinned error codes, reopened outputs and unchanged sources. Two limits it found are listed in the known issues.
+- Make `optimize` reopen its result with PDFium before publishing it: a copy that no longer opens, or changes the page count, now fails with `invalid_format` and leaves no output file (five hostile corpus cases previously produced unreadable files). One corpus limit remains in the known issues.
+- Run every PDF-writing CLI command on the hostile and large corpus (Refs #98): 56 commands, 1,315 runs, each ending in a typed error with no output or temporary file left, or in a copy that reopens with the expected page count; sources stay unchanged. Fixes found by it: `stamp`, `page-numbers`, `headers-footers` and `image-watermark` panicked on a page whose content PDFium cannot list back (now `invalid_format`), and `protect`, `sanitize`, `set-metadata`, `strip-metadata` and `sign` could publish copies PDFium cannot reopen (now refused with `invalid_format`, using the same reopen check as `optimize`).
+- Add coverage-guided fuzzing targets for byte-level PDF structure and CMS signature parsing (`fuzz/`, cargo-fuzz on Linux nightly, weekly or on demand in the `fuzz` workflow) and a fixed-seed, time-boxed mutation smoke test that runs the same entry points in `cargo test` (Refs #98).
+
+The limits found by this work (exponent-notation MediaBox on `protect`, `set-metadata` and `strip-metadata`, plus the two corpus limits) are listed in the [known issues](docs/KNOWN_ISSUES.md). #97 and #98 stay open; #106, #105, #154 and #99 move to 0.94.0.
+
+The 0.93.0 increment is under qualification. See [the candidate notes](docs/RELEASE_0.93.0.md).
+
 ## [0.92.2] - 2026-11-04
 
 By Emanuel de Almeida.
 
 - Fix copying selected text to the Windows clipboard (Fixes #157): Ctrl+C and the copy commands now reach other applications instead of staying inside SuniPDF.
 - Correct the author name to Emanuel de Almeida in the package metadata, About dialog and documentation.
-- Add a generated hostile and large PDF corpus to the Windows test suite (Refs #97): 26 cases built at test time (page-tree cycles, recursive Form XObjects and Type 3 glyphs, deep nesting, a 128 MiB Flate bomb, JavaScript actions, broken xref/encryption, 3,000 pages, an A4 600 dpi scan, a dense content stream). Each runs info, text, render, optimize and redact under time, memory and output limits, with pinned error codes, reopened outputs and unchanged sources. Two limits it found are listed in the known issues.
-- Make `optimize` reopen its result with PDFium before publishing it: a copy that no longer opens, or changes the page count, now fails with `invalid_format` and leaves no output file (five hostile corpus cases previously produced unreadable files). One corpus limit remains in the known issues.
-- Run every PDF-writing CLI command on the hostile and large corpus (Refs #98): 56 commands, 1,315 runs, each ending in a typed error with no output or temporary file left, or in a copy that reopens with the expected page count; sources stay unchanged. Fixes found by it: `stamp`, `page-numbers`, `headers-footers` and `image-watermark` panicked on a page whose content PDFium cannot list back (now `invalid_format`), and `protect`, `sanitize`, `set-metadata`, `strip-metadata` and `sign` could publish copies PDFium cannot reopen (now refused with `invalid_format`, using the same reopen check as `optimize`).
-- Add coverage-guided fuzzing targets for byte-level PDF structure and CMS signature parsing (`fuzz/`, cargo-fuzz on Linux nightly, weekly or on demand in the `fuzz` workflow) and a fixed-seed, time-boxed mutation smoke test that runs the same entry points in `cargo test` (Refs #98).
 
 Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.2). See [qualification and limits](docs/RELEASE_0.92.2.md).
 

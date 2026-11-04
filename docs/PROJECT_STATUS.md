@@ -1,6 +1,10 @@
 # Project status
 
-## In progress for 0.93.0
+## Candidate 0.93.0
+
+By Emanuel de Almeida. [Release notes](RELEASE_0.93.0.md). Under qualification.
+
+Test-hardening increment: no new user-facing feature. #106, #105, #154 and #99 move to 0.94.0; #97 and #98 stay open.
 
 Generated hostile and large PDF corpus (#97, still open): `apps/sunipdf-cli/tests/hostile_corpus.rs`
 builds 26 PDFs at test time and runs `info`, `text`, `render`, `optimize` and `redact` on each
@@ -72,7 +76,7 @@ plus four guards and 57 MSI baselines, including the published 0.91.2 packages.
 The packaged overlay corpus passed 137 checks across 25 commands, including all-white pixels
 and retained source metadata when every layer is hidden, plus missing/stale hidden-source refusals.
 Three About frames from the final source match the visually reviewed DX12 WARP images:
-French/light, English/dark and French at 720 × 480. These are offscreen renders, not native-window
+French/light, English/dark and French at 720 Ã— 480. These are offscreen renders, not native-window
 or physical-GPU qualification. All ten public downloads were checked anonymously against their
 sizes, SHA256 files and GitHub digests; stable Latest was verified at 2026-10-29T02:55:40Z.
 
@@ -142,7 +146,7 @@ plans and applicable human accessibility checks retain their separate gates.
 No complete P1/P2 category, universal interoperability, general PDF/A/PDF/UA
 conformance or overall performance claim is made.
 
-[Backlog](AEC_BACKLOG.md) · [Roadmap](ROADMAP.md) · [Known issues](KNOWN_ISSUES.md) · [1.0 criteria](RELEASE_1.0_CRITERIA.md).
+[Backlog](AEC_BACKLOG.md) Â· [Roadmap](ROADMAP.md) Â· [Known issues](KNOWN_ISSUES.md) Â· [1.0 criteria](RELEASE_1.0_CRITERIA.md).
 Repository documentation does not establish GitHub Projects synchronization. English remains the default UI.
 
 ## History
