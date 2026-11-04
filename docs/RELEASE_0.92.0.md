@@ -1,6 +1,6 @@
 # SuniPDF 0.92.0
 
-By Emmanuel Almeida.
+By Emanuel de Almeida.
 
 Published stable on 2026-10-29 under [lmdanavanem](https://github.com/lmdanavanem).
 [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.0) | [Qualification evidence](qa/RELEASE_0.92.0.json) | [Project status](PROJECT_STATUS.md).

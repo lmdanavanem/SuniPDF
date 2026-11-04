@@ -159,4 +159,23 @@ mod tests {
         assert_eq!(super::renderer(Some("wgpu")), eframe::Renderer::Wgpu);
         assert_eq!(super::renderer(Some("invalid")), eframe::Renderer::Glow);
     }
+
+    /// #157 : sans la fonctionnalité `clipboard` d'eframe, egui-winit garde le texte copié
+    /// dans une chaîne interne et Windows ne reçoit rien. Une seconde instance n'y a pas accès :
+    /// elle ne relit le texte que s'il est passé par le presse-papiers du système.
+    #[cfg(windows)]
+    #[test]
+    fn copied_text_reaches_the_windows_clipboard() {
+        use egui_winit::clipboard::Clipboard;
+        // SAFETY: aucun handle d'affichage n'est fourni.
+        let (mut writer, mut reader) = unsafe { (Clipboard::new(None), Clipboard::new(None)) };
+        let previous = reader.get();
+        let marker = format!("sunipdf-157-{}", std::process::id());
+        writer.set_text(marker.clone());
+        let read_back = reader.get();
+        if let Some(previous) = previous {
+            writer.set_text(previous);
+        }
+        assert_eq!(read_back.as_deref(), Some(marker.as_str()));
+    }
 }

@@ -5,11 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+- Fix copying selected text to the Windows clipboard (Fixes #157): Ctrl+C and the copy commands now reach other applications instead of staying inside SuniPDF.
+- Correct the author name to Emanuel de Almeida in the package metadata, About dialog and documentation.
+
+The 0.92.2 increment is under qualification. See [the candidate notes](docs/RELEASE_0.92.2.md).
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.92.1] - 2026-11-03
 
-By Emmanuel Almeida.
+By Emanuel de Almeida.
 
 - Choose the window state at startup in Settings: reopen as last closed (default), always maximized or always windowed. A windowed start is centered on the screen.
 - Keep the SuniPDF icon on Windows taskbar pins after MSI updates: the Start Menu shortcut now uses the icon embedded in `sunipdf.exe` instead of a per-version installer copy. A pin that already shows a blank icon needs to be unpinned and pinned again once after this update.
@@ -19,7 +23,7 @@ Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/ta
 
 ## [0.92.0] - 2026-10-29
 
-By Emmanuel Almeida.
+By Emanuel de Almeida.
 
 - Redesign About in English and French with privacy information, real update status, persisted update/recovery switches, license links and author credits.
 - Hide and show page objects with the eye in the Objects panel. This temporary, per-tab reading state affects rendered pages, thumbnails and canvas picking; saved PDF content stays unchanged, and document edits reset the masks.

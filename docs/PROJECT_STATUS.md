@@ -1,8 +1,15 @@
 # Project status
 
+## Candidate 0.92.2
+
+By Emanuel de Almeida. [Release notes](RELEASE_0.92.2.md).
+
+Fixes copying text to the Windows clipboard (#157): the eframe system clipboard feature was missing from the Windows build,
+so copied text stayed inside the application. Also corrects the author name spelling. Under qualification.
+
 ## Published 0.92.1
 
-By Emmanuel Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.1) | [Release notes](RELEASE_0.92.1.md) | [Qualification evidence](qa/RELEASE_0.92.1.json).
+By Emanuel de Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.1) | [Release notes](RELEASE_0.92.1.md) | [Qualification evidence](qa/RELEASE_0.92.1.json).
 
 Adds the **Window at startup** preference (last state, maximized or windowed, centered when windowed)
 and keeps the MSI Start Menu shortcut icon stable so Windows taskbar pins survive updates.
@@ -15,7 +22,7 @@ checked anonymously against their SHA256 files and GitHub digests at 2026-11-03T
 
 ## Published 0.92.0
 
-By Emmanuel Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.0) | [Release notes](RELEASE_0.92.0.md) | [Qualification evidence](qa/RELEASE_0.92.0.json).
+By Emanuel de Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.0) | [Release notes](RELEASE_0.92.0.md) | [Qualification evidence](qa/RELEASE_0.92.0.json).
 
 The About dialog follows the supplied mockup in French and English: centered identity and version,
 privacy badges and panel, real update status, persisted update/recovery switches, third-party notices,

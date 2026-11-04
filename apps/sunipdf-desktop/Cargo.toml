@@ -34,6 +34,7 @@ zeroize = "1"
 eframe = { workspace = true, features = ["x11", "wayland", "clipboard"] }
 
 [target.'cfg(windows)'.dependencies]
+eframe = { workspace = true, features = ["clipboard"] }
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_Controls_Dialogs", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_Memory", "Win32_System_Com", "Win32_UI_WindowsAndMessaging", "Win32_Storage_Xps", "Win32_Security_Cryptography", "Win32_Security_Authorization", "Win32_System_Threading", "Win32_System_LibraryLoader"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -50,3 +51,7 @@ winresource = "0.1"
 [dev-dependencies]
 lopdf = { workspace = true }
 pollster = "=1.0.1"
+
+[target.'cfg(windows)'.dev-dependencies]
+# Test de non-régression #157 : le presse-papiers d'egui-winit doit atteindre celui de Windows.
+egui-winit = { version = "0.37", default-features = false }
