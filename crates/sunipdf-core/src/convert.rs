@@ -301,16 +301,7 @@ pub fn optimize_file(
 ) -> Result<Optimized, EngineError> {
     let bytes = std::fs::read(input)?;
     let mut out = optimize(&bytes, password)?;
-    let expected = engine
-        .open(input, password)
-        .ok()
-        .map(|doc| doc.page_count());
-    let reopened = engine
-        .open_bytes(out.clone(), password, output)
-        .map(|doc| doc.page_count());
-    if reopened.is_err() || expected.is_some_and(|pages| reopened.ok() != Some(pages)) {
-        return Err(EngineError::InvalidFormat);
-    }
+    engine.check_rewritten_copy(input, password, &out, password)?;
     if out.len() >= bytes.len() {
         // Jamais de fichier plus gros : sans gain, la sortie est une copie de l'entrée.
         out = bytes.clone();

@@ -96,6 +96,9 @@ Saved-group capture accepts reproducible native shapes, supported standard and i
 - Protected recovery PDFs stay encrypted, but JSON recovery metadata includes paths/page counts.
   Passwords are not saved and must be supplied again. Recovery never replaces the original.
 - Storage-failure regressions cover injected failures, not every physical disk or power-loss case.
+- `protect`, `set-metadata` and `strip-metadata` refuse with `invalid_format` a PDF that PDFium opens
+  but whose rewritten copy it cannot reopen (generated case: a MediaBox in exponent notation). The
+  refusal publishes nothing; the operation itself is unavailable for such files.
 - Redaction of a single dense page uses much more memory than its size: a 100,000-operator content
   stream peaked at 355 MiB and a 200,000-operator one at 688 MiB before refusing with
   `redaction_incomplete`. Redacting an oversized 20,000 pt page at 72 dpi peaked at 439 MiB.

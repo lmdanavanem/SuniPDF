@@ -144,6 +144,7 @@ pub fn sign(
         return Err(failure("signing did not preserve the original PDF bytes"));
     }
     let mut report = signatures_json(&certificate::verify_signatures(&signed, None)?);
+    sunipdf_core::Engine::new()?.check_rewritten_copy(&source, None, &signed, None)?;
     sunipdf_core::write_new_copy(out, &signed)?;
     report["out"] = serde_json::json!(out);
     Ok(report)

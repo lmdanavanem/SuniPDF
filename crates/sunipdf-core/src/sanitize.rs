@@ -351,8 +351,17 @@ pub fn sanitize_document(
 }
 
 impl Document<'_> {
+    /// Same publication gate as `Engine::check_rewritten_copy`, against this open document.
     pub fn sanitized_copy(&self) -> Result<(Vec<u8>, SanitizeReport), EngineError> {
-        sanitize_document(&self.snapshot()?, self.password())
+        let (bytes, report) = sanitize_document(&self.snapshot()?, self.password())?;
+        let reopened = self
+            .pdfium
+            .load_pdf_from_byte_vec(bytes.clone(), self.password())
+            .map_err(|_| EngineError::InvalidFormat)?;
+        if reopened.pages().len() as usize != self.page_count() {
+            return Err(EngineError::InvalidFormat);
+        }
+        Ok((bytes, report))
     }
 }
 

@@ -477,6 +477,13 @@ impl Document<'_> {
             .collect())
     }
 
+    /// Index of the object just added. A page whose content PDFium cannot list back (e.g. an
+    /// unparseable content stream) yields `InvalidFormat` instead of an index underflow.
+    pub(crate) fn last_object_index(&self, page_index: usize) -> Result<usize, EngineError> {
+        let count = self.page_handle(page_index)?.objects().len();
+        count.checked_sub(1).ok_or(EngineError::InvalidFormat)
+    }
+
     pub fn object_info(&self, page_index: usize, index: usize) -> Result<ObjectInfo, EngineError> {
         let page = self.page_handle(page_index)?;
         let geo = geometry_of(&page)?;

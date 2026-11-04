@@ -120,6 +120,29 @@ fn page_range_string(pages: &[usize]) -> String {
 }
 
 impl Engine {
+    /// Gate for a copy rewritten outside PDFium (lopdf rewrite, incremental signature) before it
+    /// is published: PDFium must reopen `copy` with `copy_password` and, when it opens `source`,
+    /// find the same page count. Otherwise `InvalidFormat`, so the caller writes nothing.
+    pub fn check_rewritten_copy(
+        &self,
+        source: &Path,
+        source_password: Option<&str>,
+        copy: &[u8],
+        copy_password: Option<&str>,
+    ) -> Result<(), EngineError> {
+        let expected = self
+            .open(source, source_password)
+            .ok()
+            .map(|doc| doc.page_count());
+        let reopened = self
+            .open_bytes(copy.to_vec(), copy_password, source)
+            .map(|doc| doc.page_count());
+        if reopened.is_err() || expected.is_some_and(|pages| reopened.ok() != Some(pages)) {
+            return Err(EngineError::InvalidFormat);
+        }
+        Ok(())
+    }
+
     /// Fusionne `inputs` (dans l'ordre) dans `output`. Renvoie le nombre de pages écrites.
     pub fn merge(&self, inputs: &[PathBuf], output: &Path) -> Result<usize, EngineError> {
         if inputs.is_empty() {
@@ -615,6 +638,29 @@ impl Document<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rewritten_copy_must_reopen_with_the_source_page_count() {
+        let engine = crate::test_engine();
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("two-pages.pdf");
+        let bytes = include_bytes!("../tests/fixtures/two-pages.pdf");
+        std::fs::write(&source, bytes).unwrap();
+        engine
+            .check_rewritten_copy(&source, None, bytes, None)
+            .unwrap();
+        let one_page = include_bytes!("../tests/fixtures/redact-incremental.pdf");
+        for copy in [
+            &b"%PDF-1.7\n%%EOF\n"[..],
+            &bytes[..bytes.len() / 2],
+            one_page,
+        ] {
+            assert!(matches!(
+                engine.check_rewritten_copy(&source, None, copy, None),
+                Err(EngineError::InvalidFormat)
+            ));
+        }
+    }
 
     #[test]
     fn rotation_arithmetic_wraps() {

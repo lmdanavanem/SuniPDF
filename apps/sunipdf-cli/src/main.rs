@@ -2052,6 +2052,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             password,
         } => {
             let input = std::fs::read(&file)?;
+            let reopen_password = (!user_password.is_empty()).then(|| user_password.clone());
             let bytes = sunipdf_core::security::protect(
                 &input,
                 password.as_deref(),
@@ -2064,6 +2065,12 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                     allow_annotate: !no_annotate,
                     aes256: !aes128,
                 },
+            )?;
+            engine.check_rewritten_copy(
+                &file,
+                password.as_deref(),
+                &bytes,
+                reopen_password.as_deref(),
             )?;
             output::write(&out, &bytes, overwrite)?;
             Ok(
@@ -2080,6 +2087,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                 &input,
                 password.as_deref().ok_or(EngineError::PasswordRequired)?,
             )?;
+            engine.check_rewritten_copy(&file, password.as_deref(), &bytes, None)?;
             output::write(&out, &bytes, overwrite)?;
             Ok(serde_json::json!({ "out": out }))
         }
@@ -2108,6 +2116,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             };
             let input = std::fs::read(&file)?;
             let bytes = sunipdf_core::security::set_metadata(&input, password.as_deref(), &meta)?;
+            engine.check_rewritten_copy(&file, password.as_deref(), &bytes, password.as_deref())?;
             output::write(&out, &bytes, overwrite)?;
             Ok(
                 serde_json::json!({ "out": out, "title": meta.title, "author": meta.author, "subject": meta.subject, "keywords": meta.keywords }),
@@ -2120,6 +2129,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
         } => {
             let input = std::fs::read(&file)?;
             let bytes = sunipdf_core::security::strip_metadata(&input, password.as_deref())?;
+            engine.check_rewritten_copy(&file, password.as_deref(), &bytes, password.as_deref())?;
             output::write(&out, &bytes, overwrite)?;
             Ok(serde_json::json!({ "out": out }))
         }
@@ -2131,6 +2141,7 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
             let input = std::fs::read(&file)?;
             let (bytes, report) =
                 sunipdf_core::sanitize::sanitize_document(&input, password.as_deref())?;
+            engine.check_rewritten_copy(&file, password.as_deref(), &bytes, password.as_deref())?;
             sunipdf_core::write_new_copy(&out, &bytes)?;
             Ok(serde_json::json!({"out":out,"verified":report.verified,
                 "removed_entries":report.removed_entries,"removed_annotations":report.removed_annotations,

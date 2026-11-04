@@ -4,12 +4,17 @@
 //! `info` outcome; published outputs must reopen and sources must stay byte-identical.
 #![cfg(windows)]
 
+#[path = "../../../crates/sunipdf-core/tests/support/certificate_identity.rs"]
+#[allow(dead_code)]
+mod identity;
 #[path = "support/bounded_process.rs"]
 mod process;
 
 use serde_json::{json, Value};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 const TIMEOUT: Duration = Duration::from_secs(60);
@@ -730,5 +735,531 @@ fn hostile_and_large_generated_pdfs_yield_typed_bounded_outcomes() {
     assert!(
         drifted.is_empty(),
         "pinned outcomes changed or a saved copy lost pages: {drifted:#?}"
+    );
+}
+
+/// Page count a successful writer must publish, from the page count PDFium reads in the source.
+#[derive(Clone, Copy)]
+enum Pages {
+    Same,
+    Plus(u64),
+    Double,
+    One,
+}
+
+type Writer = (&'static str, Pages, &'static [&'static str]);
+
+/// Every PDF-writing command that takes one PDF and plain arguments. `{in}`, `{dir}`, `{png}`,
+/// `{donor}` (valid one-page PDF) and `{pfx}` are substituted per run; `--out` is appended
+/// except for `split`. `optimize` and `redact` run in the per-case campaign above. Not listed:
+/// commands whose input is not a PDF (images2pdf, office-to-pdf), whose output is not a PDF,
+/// and review/precondition workflows that only write after a JSON record taken from an existing
+/// annotation or an inspect step (set/clear-quantity-fields, edit-measurement,
+/// set-measurement-viewports, recalibrate-measurements, plan-*, revision-*, region-fill,
+/// visual-search, annotation-fields-batch, annotation-library).
+const WRITERS: &[Writer] = &[
+    ("merge", Pages::Double, &["{in}", "{in}"]),
+    ("extract", Pages::One, &["{in}", "--pages", "1"]),
+    ("split", Pages::Same, &["{in}", "--out-dir", "{dir}"]),
+    ("rotate", Pages::Same, &["{in}", "--degrees", "90"]),
+    ("stamp", Pages::Same, &["{in}", "--text", "QA"]),
+    (
+        "headers-footers",
+        Pages::Same,
+        &["{in}", "--header-center", "QA {n}"],
+    ),
+    (
+        "image-watermark",
+        Pages::Same,
+        &["{in}", "--image", "{png}"],
+    ),
+    ("page-numbers", Pages::Same, &["{in}"]),
+    (
+        "set-page-labels",
+        Pages::Same,
+        &["{in}", "--style", "roman-lower"],
+    ),
+    ("reset-page-labels", Pages::Same, &["{in}"]),
+    ("insert", Pages::Plus(1), &["{in}", "--from", "{donor}"]),
+    ("move", Pages::Same, &["{in}", "--from", "1", "--to", "1"]),
+    (
+        "bookmark-add",
+        Pages::Same,
+        &["{in}", "--title", "QA", "--page", "1"],
+    ),
+    (
+        "bookmark-rename",
+        Pages::Same,
+        &["{in}", "--index", "1", "--title", "QA"],
+    ),
+    (
+        "bookmark-destination",
+        Pages::Same,
+        &["{in}", "--index", "1", "--page", "1"],
+    ),
+    (
+        "bookmark-move",
+        Pages::Same,
+        &["{in}", "--index", "1", "--position", "1"],
+    ),
+    ("bookmark-delete", Pages::Same, &["{in}", "--index", "1"]),
+    (
+        "protect",
+        Pages::Same,
+        &["{in}", "--owner-password", "qa-owner"],
+    ),
+    (
+        "unprotect",
+        Pages::Same,
+        &["{in}", "--password", "qa-owner"],
+    ),
+    ("set-metadata", Pages::Same, &["{in}", "--title", "QA"]),
+    ("strip-metadata", Pages::Same, &["{in}"]),
+    ("sanitize", Pages::Same, &["{in}"]),
+    ("compress-images", Pages::Same, &["{in}"]),
+    (
+        "add-text",
+        Pages::Same,
+        &["{in}", "--x", "72", "--y", "72", "--text", "QA"],
+    ),
+    (
+        "reorder-objects",
+        Pages::Same,
+        &["{in}", "--objects", "0", "--at", "0"],
+    ),
+    (
+        "set-opacity",
+        Pages::Same,
+        &["{in}", "--objects", "0", "--opacity", "0.5"],
+    ),
+    (
+        "rotate-object",
+        Pages::Same,
+        &["{in}", "--object", "0", "--degrees", "15"],
+    ),
+    (
+        "rotate-objects",
+        Pages::Same,
+        &["{in}", "--objects", "0", "--degrees", "15"],
+    ),
+    (
+        "resize-objects",
+        Pages::Same,
+        &["{in}", "--objects", "0", "--rect", "10,10,100,100"],
+    ),
+    (
+        "copy-objects",
+        Pages::Same,
+        &[
+            "{in}",
+            "--from-page",
+            "1",
+            "--objects",
+            "0",
+            "--to-page",
+            "1",
+            "--dx",
+            "5",
+        ],
+    ),
+    (
+        "replace-image",
+        Pages::Same,
+        &["{in}", "--object", "0", "--image", "{png}"],
+    ),
+    (
+        "add-image",
+        Pages::Same,
+        &["{in}", "--image", "{png}", "--x", "72", "--y", "72"],
+    ),
+    ("crop", Pages::Same, &["{in}", "--left", "10"]),
+    (
+        "resize-pages",
+        Pages::Same,
+        &["{in}", "--width", "400", "--height", "500"],
+    ),
+    ("insert-blank", Pages::Plus(1), &["{in}"]),
+    (
+        "fill-form",
+        Pages::Same,
+        &["{in}", "--set", "qa=1", "--ignore-unknown"],
+    ),
+    ("flatten", Pages::Same, &["{in}"]),
+    (
+        "annotate",
+        Pages::Same,
+        &["{in}", "--kind", "square", "--rect", "10,10,100,100"],
+    ),
+    (
+        "set-link-target",
+        Pages::Same,
+        &["{in}", "--index", "0", "--goto-page", "1"],
+    ),
+    ("annotation-delete", Pages::Same, &["{in}", "--index", "0"]),
+    (
+        "reply",
+        Pages::Same,
+        &["{in}", "--index", "0", "--text", "QA"],
+    ),
+    (
+        "review-state",
+        Pages::Same,
+        &["{in}", "--index", "0", "--state", "accepted"],
+    ),
+    (
+        "add-form-field",
+        Pages::Same,
+        &[
+            "{in}",
+            "--kind",
+            "text",
+            "--name",
+            "qa",
+            "--rect",
+            "72,72,200,100",
+        ],
+    ),
+    (
+        "image-stamp",
+        Pages::Same,
+        &["{in}", "--image", "{png}", "--rect", "72,72,200,200"],
+    ),
+    (
+        "measure",
+        Pages::Same,
+        &[
+            "{in}",
+            "--kind",
+            "angle",
+            "--points",
+            "100,100 200,100 200,200",
+        ],
+    ),
+    (
+        "ocr",
+        Pages::Same,
+        &["{in}", "--language", "eng", "--pages", "1"],
+    ),
+    (
+        "sign",
+        Pages::Same,
+        &[
+            "{in}",
+            "--certificate",
+            "{pfx}",
+            "--certificate-password-env",
+            "SUNIPDF_QA_PFX",
+        ],
+    ),
+    (
+        "count",
+        Pages::Same,
+        &["{in}", "--group", "QA", "--point", "100,100"],
+    ),
+    (
+        "annotation-fields",
+        Pages::Same,
+        &["{in}", "--index", "0", "--discipline", "QA"],
+    ),
+    (
+        "set-page-calibration",
+        Pages::Same,
+        &[
+            "{in}",
+            "--page",
+            "1",
+            "--calibration",
+            "0,0 100,0",
+            "--known-distance",
+            "1",
+        ],
+    ),
+    (
+        "remove-page-calibration",
+        Pages::Same,
+        &["{in}", "--page", "1"],
+    ),
+    (
+        "clear-measurement-viewports",
+        Pages::Same,
+        &["{in}", "--page", "1"],
+    ),
+    (
+        "dimensioned-rectangle",
+        Pages::Same,
+        &[
+            "{in}",
+            "--anchor",
+            "100,100",
+            "--width",
+            "1",
+            "--height",
+            "1",
+            "--calibration",
+            "0,0 100,0",
+            "--known-distance",
+            "1",
+        ],
+    ),
+    (
+        "dimensioned-segment",
+        Pages::Same,
+        &[
+            "{in}",
+            "--start",
+            "100,100",
+            "--length",
+            "1",
+            "--calibration",
+            "0,0 100,0",
+            "--known-distance",
+            "1",
+        ],
+    ),
+    (
+        "dimensioned-circle",
+        Pages::Same,
+        &[
+            "{in}",
+            "--center",
+            "200,200",
+            "--diameter",
+            "1",
+            "--calibration",
+            "0,0 100,0",
+            "--known-distance",
+            "1",
+        ],
+    ),
+    (
+        "dimensioned-ellipse",
+        Pages::Same,
+        &[
+            "{in}",
+            "--center",
+            "200,200",
+            "--diameter-x",
+            "1",
+            "--diameter-y",
+            "2",
+            "--calibration",
+            "0,0 100,0",
+            "--known-distance",
+            "1",
+        ],
+    ),
+];
+
+/// Writers also run on the large cases; the others stay on the hostile set to bound the runtime.
+/// `split` is left out: 3000 one-page files exceed the 60 s guard in a debug build.
+const LARGE_WRITERS: &[&str] = &[
+    "merge",
+    "extract",
+    "rotate",
+    "stamp",
+    "protect",
+    "sanitize",
+    "compress-images",
+    "insert-blank",
+    "flatten",
+];
+
+struct Inputs {
+    png: PathBuf,
+    donor: PathBuf,
+    pfx: PathBuf,
+    pfx_password: String,
+}
+
+fn directory_entries(path: &Path) -> Vec<PathBuf> {
+    let mut entries: Vec<PathBuf> = std::fs::read_dir(path)
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .collect();
+    entries.sort();
+    entries
+}
+
+/// Runs one writer on one source: a typed error publishes nothing (no temporary file either);
+/// a success publishes only its outputs, each reopening with the expected page count.
+fn exercise_writer(
+    work: &Path,
+    source: &Path,
+    source_pages: Option<u64>,
+    writer: &Writer,
+    inputs: &Inputs,
+) -> Value {
+    let (name, pages, args) = *writer;
+    let dir = work.join(name);
+    std::fs::create_dir_all(&dir).unwrap();
+    let out = dir.join("out.pdf");
+    let mut command = cli();
+    command
+        .arg(name)
+        .env("SUNIPDF_QA_PFX", &inputs.pfx_password);
+    for arg in args {
+        match *arg {
+            "{in}" => command.arg(source),
+            "{dir}" => command.arg(&dir),
+            "{png}" => command.arg(&inputs.png),
+            "{donor}" => command.arg(&inputs.donor),
+            "{pfx}" => command.arg(&inputs.pfx),
+            other => command.arg(other),
+        };
+    }
+    if name != "split" {
+        command.arg("--out").arg(&out);
+    }
+    let (result, exit) = run(command);
+    let mut record = json!({"command": name, "exit": exit});
+    let published = directory_entries(&dir);
+    match result {
+        Err(code) => {
+            record["error"] = json!(code);
+            if !published.is_empty() {
+                record["left_files"] = json!(published);
+            }
+        }
+        Ok(_) => {
+            if name != "split" && published != [out.clone()] {
+                record["unexpected_files"] = json!(published);
+            }
+            let mut total = 0u64;
+            for file in &published {
+                let reopened = reopened_pages(file);
+                match reopened.as_u64() {
+                    Some(count) => total += count,
+                    None => record["reopen_failed"] = reopened,
+                }
+            }
+            record["page_count"] = json!(total);
+            let expected = source_pages.map(|count| match pages {
+                Pages::Same => count,
+                Pages::Plus(extra) => count + extra,
+                Pages::Double => 2 * count,
+                Pages::One => 1,
+            });
+            if record.get("reopen_failed").is_none() && expected.is_some_and(|e| e != total) {
+                record["page_mismatch"] = json!(expected);
+            }
+        }
+    }
+    record
+}
+
+#[test]
+fn every_pdf_writer_publishes_a_reopenable_copy_or_nothing() {
+    let temp = tempfile::tempdir().unwrap();
+    let started = Instant::now();
+    let png = temp.path().join("mark.png");
+    image::RgbaImage::from_fn(32, 16, |x, _| image::Rgba([200, 30, x as u8 * 8, 255]))
+        .save(&png)
+        .unwrap();
+    let donor = temp.path().join("donor.pdf");
+    std::fs::write(&donor, one_page("", HELLO, vec![])).unwrap();
+    let pfx_password = format!(
+        "fixture-{}",
+        temp.path().file_name().unwrap().to_string_lossy()
+    );
+    let pfx = temp.path().join("identity.pfx");
+    std::fs::write(&pfx, identity::identity_with_password(&pfx_password)).unwrap();
+    let inputs = Inputs {
+        png,
+        donor,
+        pfx,
+        pfx_password,
+    };
+
+    let mut jobs = Vec::new();
+    let hostile = hostile_cases().into_iter().map(|case| (false, case));
+    for (large, case) in hostile.chain(large_cases().into_iter().map(|case| (true, case))) {
+        let source = temp.path().join(format!("{}.pdf", case.name));
+        std::fs::write(&source, &case.bytes).unwrap();
+        let pages = match case.open {
+            Open::Pages(count) => Some(count),
+            Open::Error(_) => None,
+        };
+        for writer in WRITERS {
+            if !large || LARGE_WRITERS.contains(&writer.0) {
+                jobs.push((case.name, source.clone(), pages, writer));
+            }
+        }
+    }
+    let next = AtomicUsize::new(0);
+    let records = Mutex::new(Vec::new());
+    // Independent child processes: four at a time bounds RAM (768 MiB guard each) and runtime.
+    std::thread::scope(|scope| {
+        for _ in 0..4 {
+            scope.spawn(|| loop {
+                let index = next.fetch_add(1, Ordering::Relaxed);
+                let Some((case, source, pages, writer)) = jobs.get(index) else {
+                    break;
+                };
+                assert!(
+                    started.elapsed() < BUDGET,
+                    "writer matrix exceeded its total budget"
+                );
+                let before = std::fs::read(source).unwrap();
+                let work = temp.path().join("runs").join(case);
+                // A panic, crash, untyped error or guard breach is recorded, not raised at once,
+                // so one run lists every failing writer.
+                let mut record = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    exercise_writer(&work, source, *pages, writer, &inputs)
+                }))
+                .unwrap_or_else(|panic| {
+                    let message = panic
+                        .downcast_ref::<String>()
+                        .cloned()
+                        .or_else(|| panic.downcast_ref::<&str>().map(|text| text.to_string()));
+                    json!({"command": writer.0, "violation": message})
+                });
+                assert_eq!(
+                    std::fs::read(source).unwrap(),
+                    before,
+                    "{case}/{}: source modified",
+                    writer.0
+                );
+                record["case"] = json!(case);
+                records.lock().unwrap().push(record);
+            });
+        }
+    });
+    let mut records = records.into_inner().unwrap();
+    records.sort_by_key(|record| (record["case"].to_string(), record["command"].to_string()));
+    let report = json!({
+        "campaign": "every PDF writer on the generated hostile and large corpus",
+        "runs": records,
+        "writers": WRITERS.iter().map(|writer| writer.0).collect::<Vec<_>>(),
+        "large_case_writers": LARGE_WRITERS,
+        "elapsed_ms": started.elapsed().as_millis(),
+        "hardware": process::hardware(),
+        "per_command_timeout_seconds": TIMEOUT.as_secs(),
+        "campaign_budget_seconds": BUDGET.as_secs(),
+    });
+    let directory = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target");
+    std::fs::create_dir_all(&directory).unwrap();
+    std::fs::write(
+        directory.join("hostile-writers-report.json"),
+        serde_json::to_vec_pretty(&report).unwrap(),
+    )
+    .unwrap();
+    let failed: Vec<&Value> = records
+        .iter()
+        .filter(|record| {
+            [
+                "violation",
+                "left_files",
+                "unexpected_files",
+                "reopen_failed",
+                "page_mismatch",
+            ]
+            .iter()
+            .any(|key| record.get(key).is_some())
+        })
+        .collect();
+    assert!(
+        failed.is_empty(),
+        "{} writer runs published an unreadable/wrong copy or left files: {failed:#?}",
+        failed.len()
     );
 }

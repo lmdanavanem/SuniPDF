@@ -140,7 +140,7 @@ impl Document<'_> {
         for (&page, &width) in targets.iter().zip(&widths) {
             let size = scratch.page_size(page)?;
             scratch.add_image_data(page, &image, 0.0, 0.0, width)?;
-            let index = scratch.page_objects(page)?.len() - 1;
+            let index = scratch.last_object_index(page)?;
             if style.angle.rem_euclid(360.0) != 0.0 {
                 scratch.rotate_object(page, index, -style.angle.rem_euclid(360.0))?;
             }

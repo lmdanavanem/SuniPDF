@@ -100,7 +100,7 @@ impl Document<'_> {
                     .replace("{n}", &(page + 1).to_string())
                     .replace("{total}", &total.to_string());
                 scratch.add_text(page, 0.0, 0.0, &text, &options.style)?;
-                let index = scratch.page_objects(page)?.len() - 1;
+                let index = scratch.last_object_index(page)?;
                 let bounds = scratch.object_info(page, index)?.bounds;
                 let width = bounds.right - bounds.left;
                 let height = bounds.top - bounds.bottom;

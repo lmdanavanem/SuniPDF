@@ -151,7 +151,7 @@ impl Document<'_> {
                 .replace("{total}", &total.to_string());
             let size = scratch.page_size(page)?;
             scratch.add_text(page, 0.0, 0.0, &text, &stamp.style)?;
-            let index = scratch.page_objects(page)?.len() - 1;
+            let index = scratch.last_object_index(page)?;
             // Pivoter d'abord : la position se calcule sur la boîte englobante du texte pivoté,
             // sinon un tampon à 45° dans un coin déborde de la page.
             if stamp.angle != 0.0 {
