@@ -1,0 +1,45 @@
+name: Project sync
+
+# Keeps https://github.com/users/lmdanavanem/projects/1 aligned with docs/AEC_BACKLOG.csv
+# and posts a project status update for each published release.
+# Requires the repository secret PROJECT_TOKEN (projects read/write); skipped without it.
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths: ["docs/AEC_BACKLOG.csv"]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only print the changes"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: project-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Sync project board
+        env:
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
+        run: |
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          if [ -n "$RELEASE_TAG" ]; then args+=(--release-tag "$RELEASE_TAG"); fi
+          python scripts/sync-project.py "${args[@]}"

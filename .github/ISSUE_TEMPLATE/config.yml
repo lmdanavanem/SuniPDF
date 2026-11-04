@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/lmdanavanem/SuniPDF/blob/main/SECURITY.md
+    about: Report vulnerabilities privately as described in SECURITY.md, never in a public issue.
+  - name: Roadmap and project board
+    url: https://github.com/users/lmdanavanem/projects/1
+    about: Planned work, priorities and current status.
