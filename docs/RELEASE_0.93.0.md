@@ -2,8 +2,8 @@
 
 By Emanuel de Almeida.
 
-Release candidate under qualification, built from the `main` source tagged `v0.93.0`.
-[Project status](PROJECT_STATUS.md) | [Changelog](../CHANGELOG.md) | [Known limitations](KNOWN_ISSUES.md).
+Published stable on 2026-11-05 under [lmdanavanem](https://github.com/lmdanavanem).
+[Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.93.0) | [Qualification evidence](qa/RELEASE_0.93.0.json) | [Project status](PROJECT_STATUS.md) | [Changelog](../CHANGELOG.md) | [Known limitations](KNOWN_ISSUES.md).
 
 ## What changes for you
 
@@ -18,6 +18,12 @@ This release is about robustness when SuniPDF meets damaged, hostile or very lar
 - A generated corpus of 26 hostile and large PDFs (page-tree cycles, recursive forms, a 128 MiB Flate bomb, broken cross-references and encryption, 3,000 pages, a 600 dpi scan) runs `info`, `text`, `render`, `optimize` and `redact` under time, memory and output limits (Refs #97).
 - Every PDF-writing CLI command (56) runs on that corpus: 1,315 runs, each ending in a typed error with no leftover file, or in a copy that reopens with the expected page count (Refs #98).
 - Two cargo-fuzz targets (PDF structure, CMS signatures) and a fixed-seed mutation smoke test in `cargo test`. The `fuzz` workflow has not been run yet; no fuzzing campaign result is claimed.
+
+## Validation and scope
+
+The exact tagged source is `3ac860f5d976763a70f9572dd91562180b30228a`. All 11 jobs in the [release workflow](https://github.com/lmdanavanem/SuniPDF/actions/runs/41935987358) passed, and so did the ci, linux and macos runs on that commit. Upgrade checks include the published 0.92.2 packages. Locally, the full workspace tests, strict Clippy, formatting, 2,202 matching English/French keys and docs validation passed.
+
+All five packages and their SHA256 files were downloaded after publication. Every package matched its checksum file and GitHub SHA256 digest.
 
 ## Limits
 

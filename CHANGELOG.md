@@ -18,7 +18,7 @@ By Emanuel de Almeida.
 
 The limits found by this work (exponent-notation MediaBox on `protect`, `set-metadata` and `strip-metadata`, plus the two corpus limits) are listed in the [known issues](docs/KNOWN_ISSUES.md). #97 and #98 stay open; #106, #105, #154 and #99 move to 0.94.0.
 
-The 0.93.0 increment is under qualification. See [the candidate notes](docs/RELEASE_0.93.0.md).
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.93.0). See [qualification and limits](docs/RELEASE_0.93.0.md).
 
 ## [0.92.2] - 2026-11-04
 

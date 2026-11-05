@@ -37,16 +37,16 @@ Created by **Emanuel de Almeida** ([@lmdanavanem](https://github.com/lmdanavanem
 
 ## Download
 
-**Current stable release: 0.92.2**, verified on 4 November 2026 at 20:17:40 UTC.
+**Current stable release: 0.93.0**, verified on 5 November 2026 at 00:35 UTC.
 
 | Platform | Package |
 |---|---|
-| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-win-x64-portable.zip) |
-| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-win-arm64-portable.zip) |
-| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-linux-amd64.deb) |
-| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.92.2/SuniPDF-0.92.2-macos-arm64.dmg) |
+| Windows 10/11 x64 | [MSI installer](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.93.0/SuniPDF-0.93.0-win-x64.msi) · [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.93.0/SuniPDF-0.93.0-win-x64-portable.zip) |
+| Windows ARM64 | [Portable ZIP](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.93.0/SuniPDF-0.93.0-win-arm64-portable.zip) |
+| Ubuntu 22.04 / 24.04 amd64 | [DEB package](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.93.0/SuniPDF-0.93.0-linux-amd64.deb) |
+| macOS 12+ Apple silicon | [DMG image](https://github.com/lmdanavanem/SuniPDF/releases/download/v0.93.0/SuniPDF-0.93.0-macos-arm64.dmg) |
 
-[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.92.2) · [Release qualification](docs/RELEASE_0.92.2.md) · [Qualification evidence](docs/qa/RELEASE_0.92.2.json)
+[Release notes and SHA256 files](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.93.0) · [Release qualification](docs/RELEASE_0.93.0.md) · [Qualification evidence](docs/qa/RELEASE_0.93.0.json)
 
 > **Platform notes:** Windows packages are unsigned. The macOS DMG is ad hoc signed but not notarized. Windows ARM64 is cross-built; execution on ARM64 hardware remains unqualified. Local OCR is available on Windows and Ubuntu.
 >
@@ -63,7 +63,7 @@ Created by **Emanuel de Almeida** ([@lmdanavanem](https://github.com/lmdanavanem
 | macOS | Open the DMG and drag **SuniPDF** to **Applications**. For first-launch details, consult the [macOS guide](docs/MACOS.md). |
 
 ~~~bash
-sudo apt install ./SuniPDF-0.92.2-linux-amd64.deb
+sudo apt install ./SuniPDF-0.93.0-linux-amd64.deb
 ~~~
 
 ### 2. Open a PDF and find your tools
@@ -108,6 +108,14 @@ SuniPDF includes tools for moving from a drawing to reviewed measurements and qu
 Explore [plan links](docs/PLAN_LINKS.md), [register batch workflows](docs/REGISTER_BATCH.md), [region fill](docs/REGION_FILL.md) and [Find symbols](docs/VISUAL_SEARCH.md).
 
 ## What's new
+
+### 0.93.0 — Robustness against hostile and large PDFs
+
+- `optimize`, `protect`, `sanitize`, `set-metadata`, `strip-metadata` and `sign` reopen their result before publishing it, so an unreadable copy is refused instead of saved.
+- `stamp`, `page-numbers`, `headers-footers` and `image-watermark` report a clear error instead of crashing on pages whose content cannot be read back.
+- New generated hostile and large PDF corpus and fuzzing targets in the test suite (Refs #97, Refs #98).
+
+See the [0.93.0 release qualification](docs/RELEASE_0.93.0.md).
 
 ### 0.92.2 — Clipboard copy fix
 

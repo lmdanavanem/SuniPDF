@@ -1,10 +1,10 @@
 # Project status
 
-## Candidate 0.93.0
+## Published 0.93.0
 
-By Emanuel de Almeida. [Release notes](RELEASE_0.93.0.md). Under qualification.
+By Emanuel de Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.93.0) | [Release notes](RELEASE_0.93.0.md) | [Qualification evidence](qa/RELEASE_0.93.0.json).
 
-Test-hardening increment: no new user-facing feature. #106, #105, #154 and #99 move to 0.94.0; #97 and #98 stay open.
+Test-hardening increment: no new user-facing feature. #106, #105, #154 and #99 move to 0.94.0; #97 and #98 stay open. The tagged source `3ac860f5d976763a70f9572dd91562180b30228a` passed all 11 release jobs and the ci, linux and macos runs on main. Locally, the full workspace tests, strict Clippy, formatting, 2,202 bilingual keys and docs validation passed. All five packages and their SHA256 files were checked against their checksum files and GitHub digests (anonymously at 2026-11-05T00:35Z).
 
 Generated hostile and large PDF corpus (#97, still open): `apps/sunipdf-cli/tests/hostile_corpus.rs`
 builds 26 PDFs at test time and runs `info`, `text`, `render`, `optimize` and `redact` on each
