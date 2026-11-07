@@ -3,12 +3,18 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `vX.Y.Z` tags;
 `release.yml` builds draft release assets (Windows portable x64/ARM64 ZIP, x64 MSI, Ubuntu amd64 DEB, macOS arm64 DMG); publication follows exact-source and package qualification.
 
-## [Unreleased]
+## [0.94.0] - 2026-11-07
+
+By Emanuel de Almeida.
 
 - Re-read SuniPDF outputs with independent readers (Refs #106): `scripts/test-conformance.py --readers` writes AES-256 and AES-128 copies, XMP metadata, filled and flattened forms, every annotation family (highlight, underline, strikeout, ink, free text with a reply, square, circle, line, arrow, URI and page links, image stamp) and a PFX signature with the CLI, then checks concrete facts with QPDF (objects, encryption revision and permissions, wrong-password refusal), Poppler (`pdfinfo`, `pdftotext`, `pdfsig`, `pdftoppm`) and OpenSSL (CMS verification over the signed byte ranges, tampered bytes rejected). Tool versions and SHA-256 are recorded in `report.json`. It runs in the Windows CI with QPDF 12.4.2 and OpenSSL, and in the Linux conformance job with Ubuntu's QPDF and Poppler.
 - Save highlight, underline, strikeout and note annotations with an appearance stream. They were written without `/AP`, so readers that do not draw one themselves showed nothing (PDF 2.0 requires it); found by the new re-read.
 - `annotate --kind` accepts `highlight`, `underline` and `strikeout`.
-- Internal: shared helpers replace duplicated hashing, bounded reads, cancellation and staged-write code; no behaviour change.
+- Internal: shared helpers replace duplicated hashing, bounded reads, cancellation and staged-write code, and an unused test dependency and dead code are removed (201 lines fewer); no behaviour change.
+
+#106 is closed: the gap is `pdfsig` on a signed copy, because signing is only available on Windows and the Poppler job runs on Linux. The highlight and note appearance was also checked by hand in Adobe Acrobat. #105, #154 and #99 move to 0.95.0.
+
+The 0.94.0 increment is under qualification. See [the candidate notes](docs/RELEASE_0.94.0.md).
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 

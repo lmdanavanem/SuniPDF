@@ -1,6 +1,10 @@
 # Project status
 
-## 0.94.0 in progress
+## Candidate 0.94.0
+
+By Emanuel de Almeida. [Release notes](RELEASE_0.94.0.md). Under qualification.
+
+Independent re-reads of feature outputs (#106, closed) and an internal clean-up; #105, #154 and #99 move to 0.95.0.
 
 Independent re-reads (#106, still open): `python scripts/test-conformance.py --readers --cli <sunipdf-cli> --qpdf <qpdf> [--poppler <dir>] [--openssl <openssl>] --out <dir>`
 writes AES-256 and AES-128 copies, XMP metadata, filled and flattened forms, every annotation family and a PFX
@@ -10,7 +14,8 @@ skipped in `report.json`. Windows CI runs it with QPDF 12.4.2 and OpenSSL; the L
 Ubuntu's QPDF and Poppler, where signing is unavailable. Locally (Windows x64 debug, QPDF 12.4.2, OpenSSL 3.5.7)
 six cases passed, also with QPDF JSON v1; Poppler was not run locally. It found highlight, underline, strikeout
 and note annotations saved without an appearance stream; fixed in `crates/sunipdf-core/src/annot.rs`.
-Remaining: Poppler results from CI, `pdfsig` on a signed copy, and visual checks in Adobe Acrobat.
+Highlight and note appearance was checked by hand in Adobe Acrobat by the maintainer. Remaining: `pdfsig` on a signed copy (signing is Windows-only, Poppler runs on Linux).
+Internal refactor (no behaviour change): shared helpers for SHA-256 hex, bounded file reads, cancellation and staged no-clobber writes, 201 net lines removed. Local checks on the refactored tree: formatting, strict Clippy, 1,371 workspace tests passed, 2,202 bilingual keys, docs validation.
 
 ## Published 0.93.0
 
