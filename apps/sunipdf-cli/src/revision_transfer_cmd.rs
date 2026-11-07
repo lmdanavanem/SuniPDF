@@ -2,9 +2,9 @@ use clap::{Args, Subcommand};
 use image::ImageEncoder;
 use serde_json::{json, Value};
 use std::collections::HashSet;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
+use sunipdf_core::file_io::{self, BoundedReadError};
 use sunipdf_core::revision_transfer::{self, RevisionTransferRequest, TransferPasswords};
 use sunipdf_core::{Engine, EngineError};
 use zeroize::Zeroize;
@@ -176,21 +176,14 @@ fn parse_pairs(value: &str) -> Result<PagePairs, String> {
 
 fn read_recipe(path: &Path) -> Result<RevisionTransferRequest, EngineError> {
     const MAXIMUM: u64 = revision_transfer::MAX_RECIPE_BYTES as u64;
-    if !std::fs::metadata(path)?.is_file() {
-        return Err(invalid("revision transfer recipe must be a regular file"));
-    }
-    let file = sunipdf_core::file_io::open_regular(path)?;
-    let metadata = file.metadata()?;
-    if !metadata.is_file() || metadata.len() > MAXIMUM {
-        return Err(invalid(
-            "revision transfer recipe must be a regular file of at most 256 KiB",
-        ));
-    }
-    let mut bytes = Vec::new();
-    file.take(MAXIMUM + 1).read_to_end(&mut bytes)?;
-    if bytes.len() as u64 > MAXIMUM {
-        return Err(invalid("revision transfer recipe exceeds 256 KiB"));
-    }
+    let bytes = file_io::read_bounded(path, MAXIMUM).map_err(|error| match error {
+        BoundedReadError::NotRegular => invalid("revision transfer recipe must be a regular file"),
+        BoundedReadError::TooLarge => {
+            invalid("revision transfer recipe must be a regular file of at most 256 KiB")
+        }
+        BoundedReadError::Grew => invalid("revision transfer recipe exceeds 256 KiB"),
+        BoundedReadError::Io(error) => EngineError::from(error),
+    })?;
     revision_transfer::parse_request(&bytes)
 }
 

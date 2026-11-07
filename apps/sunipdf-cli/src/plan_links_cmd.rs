@@ -2,9 +2,9 @@ use clap::{Args, Subcommand};
 use image::ImageEncoder;
 use serde_json::{json, Value};
 use std::collections::HashSet;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
+use sunipdf_core::file_io::{self, BoundedReadError};
 use sunipdf_core::plan_links::{self, PlanLinkCredentials, PlanLinkReview, PlanLinkScanRequest};
 use sunipdf_core::{plan_set, Engine, EngineError};
 use zeroize::Zeroizing;
@@ -151,23 +151,14 @@ fn read_review(path: &Path) -> Result<PlanLinkReview, EngineError> {
 }
 
 fn read_json_file(path: &Path, maximum: usize) -> Result<Vec<u8>, EngineError> {
-    let maximum = maximum as u64;
-    if !std::fs::metadata(path)?.is_file() {
-        return Err(invalid("JSON input must be a regular file"));
-    }
-    let file = sunipdf_core::file_io::open_regular(path)?;
-    let metadata = file.metadata()?;
-    if !metadata.is_file() || metadata.len() > maximum {
-        return Err(invalid(
-            "JSON input must be a regular file within its size limit",
-        ));
-    }
-    let mut bytes = Vec::new();
-    file.take(maximum + 1).read_to_end(&mut bytes)?;
-    if bytes.len() as u64 > maximum {
-        return Err(invalid("JSON input exceeds its size limit"));
-    }
-    Ok(bytes)
+    file_io::read_bounded(path, maximum as u64).map_err(|error| match error {
+        BoundedReadError::NotRegular => invalid("JSON input must be a regular file"),
+        BoundedReadError::TooLarge => {
+            invalid("JSON input must be a regular file within its size limit")
+        }
+        BoundedReadError::Grew => invalid("JSON input exceeds its size limit"),
+        BoundedReadError::Io(error) => error.into(),
+    })
 }
 
 fn read_passwords(

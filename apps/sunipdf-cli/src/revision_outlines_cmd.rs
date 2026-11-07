@@ -2,9 +2,9 @@ use crate::revision_transfer_cmd::TransferSources;
 use clap::{Args, Subcommand};
 use image::ImageEncoder;
 use serde_json::{json, Value};
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
+use sunipdf_core::file_io::{self, BoundedReadError};
 use sunipdf_core::revision_outlines::{self, OutlineOptions, OutlinePasswords, OutlineReview};
 use sunipdf_core::revision_overlay::{OverlayAlignment, OverlayTransform};
 use sunipdf_core::{Engine, EngineError};
@@ -195,19 +195,12 @@ fn two_points(value: &str) -> Result<[[f64; 2]; 2], String> {
 
 fn read_review(path: &Path) -> Result<OutlineReview, EngineError> {
     const MAXIMUM: u64 = 256 * 1024;
-    if !std::fs::metadata(path)?.is_file() {
-        return Err(invalid("review must be a regular file"));
-    }
-    let file = sunipdf_core::file_io::open_regular(path)?;
-    let metadata = file.metadata()?;
-    if !metadata.is_file() || metadata.len() > MAXIMUM {
-        return Err(invalid("review must be a regular file of at most 256 KiB"));
-    }
-    let mut bytes = Vec::new();
-    file.take(MAXIMUM + 1).read_to_end(&mut bytes)?;
-    if bytes.len() as u64 > MAXIMUM {
-        return Err(invalid("review exceeds 256 KiB"));
-    }
+    let bytes = file_io::read_bounded(path, MAXIMUM).map_err(|error| match error {
+        BoundedReadError::NotRegular => invalid("review must be a regular file"),
+        BoundedReadError::TooLarge => invalid("review must be a regular file of at most 256 KiB"),
+        BoundedReadError::Grew => invalid("review exceeds 256 KiB"),
+        BoundedReadError::Io(error) => EngineError::from(error),
+    })?;
     revision_outlines::parse_review(&bytes)
 }
 

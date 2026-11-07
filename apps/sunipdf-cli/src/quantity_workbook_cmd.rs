@@ -1,8 +1,8 @@
 use clap::{Args, Subcommand};
 use serde_json::Value;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
+use sunipdf_core::file_io::{self, BoundedReadError};
 use sunipdf_core::issue_report::SavedReportSource;
 use sunipdf_core::quantity_workbook::{
     QuantityWorkbookManifest, QuantityWorkbookOptions, WorkbookFormat, MAX_MANIFEST_BYTES,
@@ -88,19 +88,13 @@ fn sha256(value: &str) -> Result<String, String> {
     }
 }
 fn bounded(path: &Path, limit: usize) -> Result<Vec<u8>, EngineError> {
-    if !std::fs::metadata(path)?.is_file() {
-        return Err(invalid("configuration must be a regular file"));
-    }
-    let file = sunipdf_core::file_io::open_regular(path)?;
-    if !file.metadata()?.is_file() || file.metadata()?.len() > limit as u64 {
-        return Err(invalid("configuration exceeds its byte limit"));
-    }
-    let mut bytes = Vec::new();
-    file.take(limit as u64 + 1).read_to_end(&mut bytes)?;
-    if bytes.len() > limit {
-        return Err(invalid("configuration exceeds its byte limit"));
-    }
-    Ok(bytes)
+    file_io::read_bounded(path, limit as u64).map_err(|error| match error {
+        BoundedReadError::NotRegular => invalid("configuration must be a regular file"),
+        BoundedReadError::TooLarge | BoundedReadError::Grew => {
+            invalid("configuration exceeds its byte limit")
+        }
+        BoundedReadError::Io(error) => error.into(),
+    })
 }
 pub fn run(engine: &Engine, args: QuantityWorkbookArgs) -> Result<Value, EngineError> {
     let input = match &args.command {

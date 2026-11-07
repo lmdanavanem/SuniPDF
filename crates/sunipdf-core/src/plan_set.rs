@@ -3,6 +3,7 @@
 //! A manifest stores metadata and source fingerprints, never PDF content or credentials.
 //! Source inspection belongs on the same thread as the application's PDF engine.
 
+use crate::file_io::open_regular;
 use crate::{Engine, EngineError};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -294,10 +295,6 @@ fn within(root: &Path, path: &Path) -> bool {
     // Inputs are canonical paths. Exact components also protect NTFS directories
     // with per-directory case sensitivity; case folding is only for duplicate warnings.
     path.starts_with(root)
-}
-
-fn open_regular(path: &Path) -> std::io::Result<File> {
-    crate::file_io::open_regular(path)
 }
 
 #[derive(Debug)]

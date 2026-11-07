@@ -1,10 +1,10 @@
 use clap::{Args, Subcommand};
 use image::ImageEncoder;
 use serde_json::{json, Value};
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use sunipdf_core::annotation_register::{RegisterFilter, RegisterSort};
+use sunipdf_core::file_io::{self, BoundedReadError};
 use sunipdf_core::issue_report::{
     IssueReportFormat, IssueReportOptions, IssueReportSelection, SavedReportSource,
 };
@@ -182,18 +182,13 @@ fn zone_status(value: &str) -> Result<sunipdf_core::plan_zones::ZoneAssignmentSt
     .ok_or_else(|| "unknown zone assignment status".into())
 }
 fn formulas(path: &Path) -> Result<Vec<sunipdf_core::quantity_table::FormulaColumn>, EngineError> {
-    if !std::fs::metadata(path)?.is_file() {
-        return Err(invalid("formula definitions must be a regular file"));
-    }
-    let file = sunipdf_core::file_io::open_regular(path)?;
-    if !file.metadata()?.is_file() || file.metadata()?.len() > 64 * 1024 {
-        return Err(invalid("formula definitions exceed 64 KiB"));
-    }
-    let mut bytes = Vec::new();
-    file.take(64 * 1024 + 1).read_to_end(&mut bytes)?;
-    if bytes.len() > 64 * 1024 {
-        return Err(invalid("formula definitions exceed 64 KiB"));
-    }
+    let bytes = file_io::read_bounded(path, 64 * 1024).map_err(|error| match error {
+        BoundedReadError::NotRegular => invalid("formula definitions must be a regular file"),
+        BoundedReadError::TooLarge | BoundedReadError::Grew => {
+            invalid("formula definitions exceed 64 KiB")
+        }
+        BoundedReadError::Io(error) => EngineError::from(error),
+    })?;
     QuantityOptions::formulas_from_json(&bytes)
 }
 fn options(input: &ReportInput, pages: usize) -> Result<IssueReportOptions, EngineError> {

@@ -1,8 +1,8 @@
 use clap::{Args, Subcommand};
 use image::ImageEncoder;
 use serde_json::{json, Value};
-use std::io::Read;
 use std::path::{Path, PathBuf};
+use sunipdf_core::file_io::{self, BoundedReadError};
 use sunipdf_core::plan_zones::{self, ZoneValidity};
 use sunipdf_core::{Engine, EngineError};
 use zeroize::Zeroize;
@@ -120,22 +120,14 @@ fn digest(value: &str) -> Result<String, String> {
 }
 
 fn read_bounded(path: &Path, maximum: u64) -> Result<Vec<u8>, EngineError> {
-    if !std::fs::metadata(path)?.is_file() {
-        return Err(invalid("input must be a regular file"));
-    }
-    let file = sunipdf_core::file_io::open_regular(path)?;
-    let metadata = file.metadata()?;
-    if !metadata.is_file() || metadata.len() > maximum {
-        return Err(invalid(
-            "input is not a regular file within the supported size limit",
-        ));
-    }
-    let mut bytes = Vec::new();
-    file.take(maximum + 1).read_to_end(&mut bytes)?;
-    if bytes.len() as u64 > maximum {
-        return Err(invalid("input exceeds the supported size limit"));
-    }
-    Ok(bytes)
+    file_io::read_bounded(path, maximum).map_err(|error| match error {
+        BoundedReadError::NotRegular => invalid("input must be a regular file"),
+        BoundedReadError::TooLarge => {
+            invalid("input is not a regular file within the supported size limit")
+        }
+        BoundedReadError::Grew => invalid("input exceeds the supported size limit"),
+        BoundedReadError::Io(error) => error.into(),
+    })
 }
 
 fn revalidate(source: &Source, canonical: &Path, expected: &str) -> Result<(), EngineError> {
