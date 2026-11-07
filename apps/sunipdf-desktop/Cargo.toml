@@ -50,7 +50,6 @@ winresource = "0.1"
 
 [dev-dependencies]
 lopdf = { workspace = true }
-pollster = "=1.0.1"
 
 [target.'cfg(windows)'.dev-dependencies]
 # Test de non-régression #157 : le presse-papiers d'egui-winit doit atteindre celui de Windows.
