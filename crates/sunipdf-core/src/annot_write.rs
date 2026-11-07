@@ -180,13 +180,6 @@ pub struct AnnotDetail {
     pub replies: usize,
 }
 
-impl AnnotDetail {
-    /// Réponse ou état : ne s'affiche pas sur la page.
-    pub fn is_reply_or_state(&self) -> bool {
-        self.parent.is_some()
-    }
-}
-
 /// Statut courant d'un fil : `State` de la dernière annotation d'état parmi les descendants.
 pub fn thread_status(details: &[AnnotDetail], root: usize) -> ReviewStatus {
     let mut family: HashSet<usize> = HashSet::from([root]);
