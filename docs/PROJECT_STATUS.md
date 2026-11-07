@@ -1,10 +1,10 @@
 # Project status
 
-## Candidate 0.94.0
+## Published 0.94.0
 
-By Emanuel de Almeida. [Release notes](RELEASE_0.94.0.md). Under qualification.
+By Emanuel de Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.94.0) | [Release notes](RELEASE_0.94.0.md) | [Qualification evidence](qa/RELEASE_0.94.0.json).
 
-Independent re-reads of feature outputs (#106, closed) and an internal clean-up; #105, #154 and #99 move to 0.95.0.
+Independent re-reads of feature outputs (#106, closed) and an internal clean-up; #105, #154 and #99 move to 0.95.0. The tagged source `3fcd85522133fae996810e6e7b2795c2eb7870ad` passed all 11 release jobs and the ci, linux and macos runs on main. The first run on the preceding commit failed on an unused import under Linux and macOS clippy and was fixed before tagging. All five packages and their SHA256 files were downloaded anonymously and matched their checksum files and GitHub digests (2026-11-07T08:51Z).
 
 Independent re-reads (#106, still open): `python scripts/test-conformance.py --readers --cli <sunipdf-cli> --qpdf <qpdf> [--poppler <dir>] [--openssl <openssl>] --out <dir>`
 writes AES-256 and AES-128 copies, XMP metadata, filled and flattened forms, every annotation family and a PFX

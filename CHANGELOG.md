@@ -14,7 +14,7 @@ By Emanuel de Almeida.
 
 #106 is closed: the gap is `pdfsig` on a signed copy, because signing is only available on Windows and the Poppler job runs on Linux. The highlight and note appearance was also checked by hand in Adobe Acrobat. #105, #154 and #99 move to 0.95.0.
 
-The 0.94.0 increment is under qualification. See [the candidate notes](docs/RELEASE_0.94.0.md).
+Published stable: [downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.94.0). See [qualification and limits](docs/RELEASE_0.94.0.md).
 
 Further work remains in the [roadmap](docs/ROADMAP.md).
 

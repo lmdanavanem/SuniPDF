@@ -37,7 +37,7 @@ Start with [Contributing](../CONTRIBUTING.md) and the [security policy](../SECUR
 
 ## Releases and history
 
-- [0.94.0 release candidate and limits](RELEASE_0.94.0.md).
+- [0.94.0 release and limits](RELEASE_0.94.0.md) and [qualification evidence](qa/RELEASE_0.94.0.json).
 - [0.93.0 release and limits](RELEASE_0.93.0.md) and [qualification evidence](qa/RELEASE_0.93.0.json).
 - [0.92.2 release and limits](RELEASE_0.92.2.md) and [qualification evidence](qa/RELEASE_0.92.2.json).
 - [0.92.1 release and limits](RELEASE_0.92.1.md) and [qualification evidence](qa/RELEASE_0.92.1.json).
