@@ -983,9 +983,6 @@ fn publish_revision_transfer_checked(
         return Err(EngineError::AlreadyExists(output.into()));
     }
     let output_sha256 = digest(&prepared.bytes);
-    // Use the same temporary-file/no-clobber primitive as write_new_copy, with cancellation
-    // during staging and immediately before its single commit point.
-    use std::io::Write;
     let directory = output
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
@@ -993,22 +990,17 @@ fn publish_revision_transfer_checked(
     if create_directory {
         std::fs::create_dir_all(directory)?;
     }
-    let mut temporary = tempfile::NamedTempFile::new_in(directory)?;
-    for chunk in prepared.bytes.chunks(1024 * 1024) {
-        cancelled(cancel)?;
-        temporary.write_all(chunk)?;
-    }
-    temporary.as_file().sync_all()?;
-    prepared.revalidate_sources(cancel)?;
-    before_commit()?;
-    cancelled(cancel)?;
-    temporary.persist_noclobber(output).map_err(|failure| {
-        if failure.error.kind() == std::io::ErrorKind::AlreadyExists {
-            EngineError::AlreadyExists(output.into())
-        } else {
-            EngineError::Io(failure.error)
-        }
-    })?;
+    crate::pages::write_new_copy_staged(
+        directory,
+        output,
+        output,
+        &prepared.bytes,
+        cancel,
+        || {
+            prepared.revalidate_sources(cancel)?;
+            before_commit()
+        },
+    )?;
     prepared.report.output_path = Some(output.to_owned());
     prepared.report.output_sha256 = Some(output_sha256);
     Ok(prepared.report)

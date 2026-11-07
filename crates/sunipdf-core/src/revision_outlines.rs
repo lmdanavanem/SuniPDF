@@ -16,7 +16,6 @@ use lopdf::Object;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashSet};
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
@@ -1173,28 +1172,24 @@ pub fn publish_revision_outlines(
         return Err(invalid("choose an existing destination directory"));
     }
     let directory_canonical = directory.canonicalize()?;
-    let mut temporary = tempfile::NamedTempFile::new_in(&directory_canonical)?;
-    for chunk in prepared.bytes.chunks(1024 * 1024) {
-        cancelled(cancel)?;
-        temporary.write_all(chunk)?;
-    }
-    temporary.as_file().sync_all()?;
-    prepared.revalidate_sources(cancel)?;
-    if directory.canonicalize()? != directory_canonical {
-        return Err(invalid("destination directory changed during preparation"));
-    }
-    cancelled(cancel)?;
     let filename = output
         .file_name()
         .ok_or_else(|| invalid("output requires a filename"))?;
     let final_path = directory_canonical.join(filename);
-    temporary.persist_noclobber(&final_path).map_err(|e| {
-        if e.error.kind() == std::io::ErrorKind::AlreadyExists {
-            EngineError::AlreadyExists(output.into())
-        } else {
-            EngineError::Io(e.error)
-        }
-    })?;
+    crate::pages::write_new_copy_staged(
+        &directory_canonical,
+        &final_path,
+        output,
+        &prepared.bytes,
+        cancel,
+        || {
+            prepared.revalidate_sources(cancel)?;
+            if directory.canonicalize()? != directory_canonical {
+                return Err(invalid("destination directory changed during preparation"));
+            }
+            Ok(())
+        },
+    )?;
     prepared.report.output_path = Some(final_path);
     prepared.report.output_sha256 = Some(digest(&prepared.bytes));
     Ok(prepared.report)

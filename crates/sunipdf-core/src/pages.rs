@@ -91,18 +91,38 @@ fn atomic_write_with(
 
 /// Atomically publishes a new copy without replacing a file created in the meantime.
 pub fn write_new_copy(path: &Path, bytes: &[u8]) -> Result<(), EngineError> {
-    use std::io::Write;
     let dir = path
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or_else(|| Path::new("."));
     std::fs::create_dir_all(dir)?;
-    let mut file = tempfile::NamedTempFile::new_in(dir)?;
-    file.write_all(bytes)?;
-    file.as_file().sync_all()?;
-    file.persist_noclobber(path).map_err(|failure| {
+    let never = std::sync::atomic::AtomicBool::new(false);
+    write_new_copy_staged(dir, path, path, bytes, &never, || Ok(()))
+}
+
+/// Stages `bytes` in a temporary file of `directory` (cancellable between chunks), syncs it,
+/// runs `pre_commit`, then publishes it at `target` without replacing an existing file.
+/// A collision is reported as `AlreadyExists(reported)`; the temporary file is removed on error.
+pub fn write_new_copy_staged(
+    directory: &Path,
+    target: &Path,
+    reported: &Path,
+    bytes: &[u8],
+    cancel: &std::sync::atomic::AtomicBool,
+    pre_commit: impl FnOnce() -> Result<(), EngineError>,
+) -> Result<(), EngineError> {
+    use std::io::Write;
+    let mut temporary = tempfile::NamedTempFile::new_in(directory)?;
+    for chunk in bytes.chunks(64 * 1024) {
+        crate::cancelled(cancel)?;
+        temporary.write_all(chunk)?;
+    }
+    temporary.as_file().sync_all()?;
+    pre_commit()?;
+    crate::cancelled(cancel)?;
+    temporary.persist_noclobber(target).map_err(|failure| {
         if failure.error.kind() == std::io::ErrorKind::AlreadyExists {
-            EngineError::AlreadyExists(path.into())
+            EngineError::AlreadyExists(reported.into())
         } else {
             EngineError::Io(failure.error)
         }

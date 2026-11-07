@@ -10,7 +10,6 @@ use crate::{Document, EngineError};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashMap, HashSet};
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
@@ -750,26 +749,20 @@ impl Document<'_> {
             WorkbookFormat::Xlsx => &prepared.xlsx,
             WorkbookFormat::Manifest => &prepared.manifest_bytes,
         };
-        let mut temporary = tempfile::NamedTempFile::new_in(&canonical)?;
-        for chunk in bytes.chunks(64 * 1024) {
-            cancelled(cancel)?;
-            temporary.write_all(chunk)?;
-        }
-        temporary.as_file().sync_all()?;
-        self.validate_quantity_workbook(prepared, cancel)?;
-        if parent.canonicalize()? != canonical {
-            return Err(invalid("destination directory changed"));
-        }
-        cancelled(cancel)?;
-        temporary
-            .persist_noclobber(canonical.join(name))
-            .map_err(|e| {
-                if e.error.kind() == std::io::ErrorKind::AlreadyExists {
-                    EngineError::AlreadyExists(output.into())
-                } else {
-                    EngineError::Io(e.error)
+        crate::pages::write_new_copy_staged(
+            &canonical,
+            &canonical.join(name),
+            output,
+            bytes,
+            cancel,
+            || {
+                self.validate_quantity_workbook(prepared, cancel)?;
+                if parent.canonicalize()? != canonical {
+                    return Err(invalid("destination directory changed"));
                 }
-            })?;
+                Ok(())
+            },
+        )?;
         Ok(WorkbookReceipt {
             out: output.into(),
             format,
