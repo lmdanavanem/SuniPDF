@@ -1,5 +1,17 @@
 # Project status
 
+## 0.94.0 in progress
+
+Independent re-reads (#106, still open): `python scripts/test-conformance.py --readers --cli <sunipdf-cli> --qpdf <qpdf> [--poppler <dir>] [--openssl <openssl>] --out <dir>`
+writes AES-256 and AES-128 copies, XMP metadata, filled and flattened forms, every annotation family and a PFX
+signature with the CLI, and asserts facts with QPDF (objects, encryption, permissions), Poppler (info, text,
+`pdfsig`, raster against PDFium) and OpenSSL (CMS over the signed byte ranges). Missing tools are listed as
+skipped in `report.json`. Windows CI runs it with QPDF 12.4.2 and OpenSSL; the Linux conformance job with
+Ubuntu's QPDF and Poppler, where signing is unavailable. Locally (Windows x64 debug, QPDF 12.4.2, OpenSSL 3.5.7)
+six cases passed, also with QPDF JSON v1; Poppler was not run locally. It found highlight, underline, strikeout
+and note annotations saved without an appearance stream; fixed in `crates/sunipdf-core/src/annot.rs`.
+Remaining: Poppler results from CI, `pdfsig` on a signed copy, and visual checks in Adobe Acrobat.
+
 ## Published 0.93.0
 
 By Emanuel de Almeida. [Downloads](https://github.com/lmdanavanem/SuniPDF/releases/tag/v0.93.0) | [Release notes](RELEASE_0.93.0.md) | [Qualification evidence](qa/RELEASE_0.93.0.json).

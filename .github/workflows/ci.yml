@@ -348,6 +348,19 @@ jobs:
           name: visual-signature-evidence
           path: target/visual-signature-report.json
           if-no-files-found: ignore
+      - name: Feature outputs re-read by QPDF and OpenSSL
+        if: steps.changes.outputs.docs_only != 'true'
+        run: |
+          $qpdf = Join-Path (Get-Location) 'target/qpdf-12.4.2-msvc64/qpdf-12.4.2-msvc64/bin/qpdf.exe'
+          python .\scripts\test-conformance.py --readers --cli "$env:SUNIPDF_QA_CLI" --qpdf $qpdf --openssl 'C:\Program Files\Git\usr\bin\openssl.exe' --out target\reader-feature-evidence
+          if ($LASTEXITCODE -ne 0) { throw 'Independent feature re-read failed.' }
+      - name: Feature re-read evidence
+        if: steps.changes.outputs.docs_only != 'true' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: reader-feature-evidence
+          path: target/reader-feature-evidence/
+          if-no-files-found: ignore
       - name: Overlay stack independent pixel checks
         if: steps.changes.outputs.docs_only != 'true'
         run: |

@@ -363,7 +363,10 @@ impl Document<'_> {
             MarkupKind::Underline => markup!(annotations.create_underline_annotation()?),
             MarkupKind::StrikeOut => markup!(annotations.create_strikeout_annotation()?),
         }
-        Ok(())
+        drop(page);
+        // PDFium creates the annotation without /AP; readers that do not synthesise one (and
+        // PDF 2.0, which requires it) would show nothing. Generate and keep it before saving.
+        self.ensure_appearances(page_index)
     }
 
     /// Ajoute une note (annotation `Text`) dont le coin haut-gauche est en `(x, y)` (affichage).
@@ -385,7 +388,8 @@ impl Document<'_> {
             top: y,
         })))?;
         note.set_stroke_color(PdfColor::new(0xF5, 0x9E, 0x0B, 255))?;
-        Ok(())
+        drop(page);
+        self.ensure_appearances(page_index)
     }
 
     /// Annotations de la page, une ligne par entrée de `/Annots` (l'indice est celui de PDFium) :

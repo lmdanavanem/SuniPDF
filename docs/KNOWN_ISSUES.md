@@ -64,7 +64,9 @@ Saved-group capture accepts reproducible native shapes, supported standard and i
 - Grouped paste can create a non-editable Form XObject. Explicit editable paste accepts only
   supported native objects. Some non-orthogonal resize and unknown-opacity cases remain limited.
 - FreeText supports a uniform style, not arbitrary rich-text spans or foreign rich appearances.
-  Replies, review states and appearance preservation need broader independent-reader testing.
+  QPDF and Poppler re-read each annotation family, replies and image stamps (`test-conformance.py
+  --readers`, #106); review states, appearance preservation and visual checks in Adobe Acrobat
+  remain untested outside SuniPDF.
   See [rich annotations](RICH_ANNOTATIONS.md).
 - XFA is read-only; PDF JavaScript, calculations and active actions are not executed. FDF import
   accepts bounded value-only structures; FDF export and changing existing editable-field flags

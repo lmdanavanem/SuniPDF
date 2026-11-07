@@ -1102,13 +1102,14 @@ enum Command {
         #[arg(long, help = password_input::ARGV_PASSWORD_HELP)]
         password: Option<String>,
     },
-    /// Add a real PDF annotation: ink, square, circle, line, arrow, freetext or link. Coordinates
-    /// are displayed-page points (rotation and crop applied). An encrypted document stays encrypted.
+    /// Add a real PDF annotation: highlight, underline, strikeout, ink, square, circle, line, arrow,
+    /// freetext or link. Coordinates are displayed-page points (rotation and crop applied). An
+    /// encrypted document stays encrypted.
     Annotate {
         file: PathBuf,
         #[arg(long, default_value_t = 1)]
         page: usize,
-        /// ink, square, circle, line, arrow, freetext or link.
+        /// highlight, underline, strikeout, ink, square, circle, line, arrow, freetext or link.
         #[arg(long)]
         kind: String,
         /// left,bottom,right,top (a line or arrow runs from left,bottom to right,top).
@@ -2883,6 +2884,15 @@ fn run(mut cli: Cli) -> Result<serde_json::Value, EngineError> {
                         border_pt: width.unwrap_or(0.0),
                     };
                     doc.add_free_text_annotation(p, need_rect()?, text, &fts, author)?
+                }
+                "highlight" | "underline" | "strikeout" => {
+                    let markup = match kind.as_str() {
+                        "highlight" => sunipdf_core::MarkupKind::Highlight,
+                        "underline" => sunipdf_core::MarkupKind::Underline,
+                        _ => sunipdf_core::MarkupKind::StrikeOut,
+                    };
+                    doc.add_markup(p, markup, &[need_rect()?], style.rgb)?;
+                    doc.annotations(p)?.len() - 1
                 }
                 "link" => {
                     let target = annot_cmd::link_target(

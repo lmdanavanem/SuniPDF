@@ -930,7 +930,7 @@ the colour of its tool; entries such as "Edit a PDF" or "Add comments" open the 
 `sunipdf-cli.exe --help` lists the commands: `info`, `render`, `text`, `search`, `merge`, `split`, `extract`,
 `rotate`, `insert`, `move`, `images2pdf`, `export-images`, `optimize`, `protect`, `unprotect`,
 `properties`, `bookmarks`, `set-metadata`, `strip-metadata`, `stamp`, `page-numbers`, `commands`, for
-annotations: `annotations` (JSON list: index, subtype, rectangle in displayed-page points, text, author, style, link, thread), `annotate` (`--kind ink|square|circle|line|arrow|freetext|link`, `--rect left,bottom,right,top`, repeatable `--stroke "x,y x,y …"`, `--text`, `--color`, `--fill`, `--width`, `--opacity`, `--goto-page` or `--url`, `--author`), `reply`, `review-state` (`none|accepted|rejected|cancelled|completed`) and `annotation-delete` (`--thread`), and for
+annotations: `annotations` (JSON list: index, subtype, rectangle in displayed-page points, text, author, style, link, thread), `annotate` (`--kind highlight|underline|strikeout|ink|square|circle|line|arrow|freetext|link`, `--rect left,bottom,right,top`, repeatable `--stroke "x,y x,y …"`, `--text`, `--color`, `--fill`, `--width`, `--opacity`, `--goto-page` or `--url`, `--author`), `reply`, `review-state` (`none|accepted|rejected|cancelled|completed`) and `annotation-delete` (`--thread`), and for
 content editing: `objects` (a page's objects, 0-based indices), `add-text` (`--font-name "Arial"` or
 `--font-file` for an embedded system font; `\n` for a new line), `set-opacity`, `rotate-object` (free angle),
 `copy-objects` (to another page, `--into` for another document), `replace-image`, `crop` (`--unit mm`,

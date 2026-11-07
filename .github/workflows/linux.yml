@@ -181,6 +181,13 @@ jobs:
             --verapdf target/qa-tools/verapdf/verapdf \
             --qpdf qpdf --pdftoppm pdftoppm \
             --out target/conformance-evidence
+      - name: Re-read feature outputs with QPDF and Poppler
+        if: always() && !cancelled()
+        run: |
+          python3 scripts/test-conformance.py --readers \
+            --cli "$RUNNER_TEMP/conformance-package/usr/lib/sunipdf/sunipdf-cli" \
+            --qpdf qpdf --poppler /usr/bin --openssl openssl \
+            --out target/reader-feature-evidence
       - name: Retain conformance and interoperability evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -188,6 +195,7 @@ jobs:
           name: conformance-and-reader-evidence
           path: |
             target/conformance-evidence/
+            target/reader-feature-evidence/
             target/qa-tools/verapdf/provenance.json
             target/conformance-corpus/provenance.json
           if-no-files-found: warn

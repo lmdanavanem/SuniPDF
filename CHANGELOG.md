@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Releases are `
 
 ## [Unreleased]
 
+- Re-read SuniPDF outputs with independent readers (Refs #106): `scripts/test-conformance.py --readers` writes AES-256 and AES-128 copies, XMP metadata, filled and flattened forms, every annotation family (highlight, underline, strikeout, ink, free text with a reply, square, circle, line, arrow, URI and page links, image stamp) and a PFX signature with the CLI, then checks concrete facts with QPDF (objects, encryption revision and permissions, wrong-password refusal), Poppler (`pdfinfo`, `pdftotext`, `pdfsig`, `pdftoppm`) and OpenSSL (CMS verification over the signed byte ranges, tampered bytes rejected). Tool versions and SHA-256 are recorded in `report.json`. It runs in the Windows CI with QPDF 12.4.2 and OpenSSL, and in the Linux conformance job with Ubuntu's QPDF and Poppler.
+- Save highlight, underline, strikeout and note annotations with an appearance stream. They were written without `/AP`, so readers that do not draw one themselves showed nothing (PDF 2.0 requires it); found by the new re-read.
+- `annotate --kind` accepts `highlight`, `underline` and `strikeout`.
+
 Further work remains in the [roadmap](docs/ROADMAP.md).
 
 ## [0.93.0] - 2026-11-04

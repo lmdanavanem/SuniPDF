@@ -871,6 +871,62 @@ fn text_selection_and_annotations_round_trip() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Readers that do not synthesise appearances (PDF 2.0 requires `/AP` here) must still see the
+/// markup and the note: the saved copy carries a normal appearance without any prior rendering.
+#[test]
+fn markup_and_notes_are_saved_with_appearance_streams() {
+    use sunipdf_core::{MarkupKind, PointRect};
+    let engine = engine();
+    let mut doc = engine.open(&fixture("two-pages.pdf"), None).unwrap();
+    let rect = PointRect {
+        left: 72.0,
+        bottom: 695.0,
+        right: 260.0,
+        top: 722.0,
+    };
+    for kind in [
+        MarkupKind::Highlight,
+        MarkupKind::Underline,
+        MarkupKind::StrikeOut,
+    ] {
+        doc.add_markup(0, kind, &[rect], (255, 230, 0)).unwrap();
+    }
+    doc.add_note(0, 300.0, 600.0, "Note").unwrap();
+    let pdf = lopdf::Document::load_mem(&doc.snapshot().unwrap()).unwrap();
+    let page = pdf.get_pages()[&1];
+    let annots = pdf
+        .get_dictionary(page)
+        .unwrap()
+        .get(b"Annots")
+        .unwrap()
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_eq!(annots.len(), 4);
+    for annot in &annots {
+        let dict = match annot {
+            lopdf::Object::Reference(id) => pdf.get_dictionary(*id).unwrap(),
+            other => other.as_dict().unwrap(),
+        };
+        let subtype = dict.get(b"Subtype").unwrap().as_name().unwrap().to_vec();
+        let normal = dict
+            .get(b"AP")
+            .and_then(|ap| match ap {
+                lopdf::Object::Reference(id) => pdf.get_dictionary(*id),
+                other => other.as_dict(),
+            })
+            .and_then(|ap| ap.get(b"N"))
+            .and_then(|n| n.as_reference())
+            .and_then(|id| pdf.get_object(id))
+            .and_then(|n| n.as_stream());
+        assert!(
+            normal.is_ok(),
+            "{} has no normal appearance stream",
+            String::from_utf8_lossy(&subtype)
+        );
+    }
+}
+
 #[test]
 fn bookmarks_and_properties() {
     let engine = engine();
