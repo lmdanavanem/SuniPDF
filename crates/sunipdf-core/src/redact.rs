@@ -15,16 +15,14 @@
 //! Les zones sont en espace d'affichage (comme toute l'API, voir `geometry.rs`). Aucun texte recherché
 //! ni contenu n'est journalisé.
 
+use crate::cancelled;
 use crate::edit::{display_quad, quad_bounds};
 use crate::{Document, EngineError, PointRect, RenderedPage, TextStyle, MAX_RENDER_SIDE_PX};
 use lopdf::content::{Content, Operation};
 use lopdf::{Dictionary, Object, ObjectId};
 use pdfium_render::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
+use std::sync::{atomic::AtomicBool, Arc};
 
 /// Marge ajoutée autour d'une occurrence de texte (points).
 const TEXT_PAD_PT: f32 = 1.0;
@@ -103,14 +101,6 @@ pub struct PreparedRedaction {
     candidate: Vec<u8>,
     report: RedactReport,
     cancel: Arc<AtomicBool>,
-}
-
-fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 
 pub struct RedactionPreview {

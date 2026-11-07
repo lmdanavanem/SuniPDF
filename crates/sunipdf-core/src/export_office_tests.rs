@@ -1,5 +1,6 @@
 use super::*;
 use std::collections::BTreeMap;
+use std::sync::atomic::Ordering;
 
 #[derive(Debug, PartialEq)]
 struct LogicalSnapshot {

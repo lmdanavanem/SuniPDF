@@ -7,6 +7,7 @@
 pub mod recipe;
 pub mod stack;
 
+use crate::cancelled as check_cancel;
 use crate::local_review::{check_permission, read_pdf};
 use crate::plan_zones::source_sha256 as digest;
 use crate::{Document, Engine, EngineError, RenderedPage};
@@ -14,7 +15,7 @@ use image::ImageEncoder;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 
 pub const DEFAULT_LONG_SIDE: u32 = 1536;
 pub const MAX_LONG_SIDE: u32 = 2048;
@@ -23,14 +24,6 @@ const MIN_ANCHOR_DISTANCE: f64 = 0.001;
 
 fn invalid(message: &str) -> EngineError {
     EngineError::Other(message.into())
-}
-
-fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 
 /// Uniform scale and clockwise rotation around the revision's top-left origin, then translation.
@@ -523,6 +516,7 @@ fn composite(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::Ordering;
 
     fn raster(width: u32, height: u32, black: &[(u32, u32)]) -> RenderedPage {
         let mut rgba = vec![255; (width * height * 4) as usize];

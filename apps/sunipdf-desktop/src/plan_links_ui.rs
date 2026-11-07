@@ -14,6 +14,7 @@ use std::{
         Arc,
     },
 };
+use sunipdf_core::cancelled;
 use sunipdf_core::{
     plan_links::{
         self as core, PlanLinkCredentials, PlanLinkInspection, PlanLinkReceipt, PlanLinkReport,
@@ -198,13 +199,6 @@ pub struct WorkerCache {
 
 fn error(message: &str) -> EngineError {
     EngineError::Other(format!("Plan links: {message}"))
-}
-fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 fn borrowed(credentials: &Credentials) -> Vec<(&str, &str)> {
     credentials

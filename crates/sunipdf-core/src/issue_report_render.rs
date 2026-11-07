@@ -1,8 +1,9 @@
 //! Readable, selectable-text report pages; only newly created documents are rendered here.
 
+use crate::cancelled;
 use crate::issue_report::{
-    cancelled, display, invalid, IssueReportModel, IssueReportPhase, IssueReportProgress,
-    LegendStyle, MAX_REPORT_BYTES, MAX_REPORT_PAGES, MAX_TEXT_BYTES,
+    display, invalid, IssueReportModel, IssueReportPhase, IssueReportProgress, LegendStyle,
+    MAX_REPORT_BYTES, MAX_REPORT_PAGES, MAX_TEXT_BYTES,
 };
 use crate::{font_embed, EngineError};
 use pdfium_render::prelude::*;

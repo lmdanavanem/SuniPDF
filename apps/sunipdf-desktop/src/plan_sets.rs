@@ -12,6 +12,7 @@ use std::{
         Arc,
     },
 };
+use sunipdf_core::cancelled as check_cancel;
 use sunipdf_core::{
     plan_set::{self as core, PlanSet, PlanSetReport, PlanSheet, ReferenceStatus, VerifiedSheet},
     Engine, EngineError,
@@ -100,14 +101,6 @@ pub enum Outcome {
         path: PathBuf,
     },
     Navigate(Navigation),
-}
-
-fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 
 pub fn run_job(

@@ -1,5 +1,6 @@
 //! Local quantity snapshots and reviewed refreshes; spreadsheets never execute formulas.
 
+use crate::cancelled;
 use crate::issue_report::SavedReportSource;
 use crate::plan_zones::source_sha256 as digest;
 use crate::quantity_table::{
@@ -11,7 +12,7 @@ use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 
 pub const MAX_MANIFEST_BYTES: usize = 32 * 1024 * 1024;
 pub const MAX_WORKBOOK_ROWS: usize = 10_000;
@@ -19,13 +20,6 @@ const SCHEMA: &str = "sunipdf-quantity-workbook";
 
 pub(crate) fn invalid(message: &str) -> EngineError {
     EngineError::Other(format!("Quantity workbook: {message}"))
-}
-pub(crate) fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 fn valid_sha(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())

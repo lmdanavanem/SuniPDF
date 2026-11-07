@@ -8,6 +8,7 @@ use crate::annotation_library::{
     LibraryEntry, LibraryPlacement, LibraryPrimitive, LibraryProvenance, LibraryShape,
     LibraryStyle, OriginalCapture,
 };
+use crate::cancelled;
 use crate::geometry::PageGeometry;
 use crate::plan_set::PlanSheet;
 use crate::plan_zones::source_sha256 as digest;
@@ -17,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 
 pub const MAX_SOURCE_BYTES: u64 = 64 * 1024 * 1024;
 pub const MAX_CANDIDATE_BYTES: usize = 160 * 1024 * 1024;
@@ -31,14 +32,6 @@ const TRACE_KEY: &[u8] = b"SuniPDFRevisionTransfers";
 
 fn invalid(message: impl Into<String>) -> EngineError {
     EngineError::Other(format!("Revision transfer: {}", message.into()))
-}
-
-fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 
 fn hash_valid(value: &str) -> bool {

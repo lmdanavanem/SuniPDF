@@ -1,11 +1,9 @@
 //! Conservative editable text/cell exports and explicit raster-slide export, always to a new copy.
 
+use crate::cancelled;
 use crate::{Document, EngineError, ObjectInfo, ObjectKind, PageSize};
 use pdfium_render::prelude::PdfPageObjectsCommon;
-use std::{
-    path::Path,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use std::{path::Path, sync::atomic::AtomicBool};
 
 #[path = "export_office_zip.rs"]
 pub(crate) mod archive;
@@ -64,13 +62,6 @@ impl ExportReport {
 
 fn failure(message: &str) -> EngineError {
     EngineError::Other(message.into())
-}
-fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 
 pub(crate) fn xml_text(text: &str) -> Result<String, EngineError> {

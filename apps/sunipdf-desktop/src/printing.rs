@@ -4,6 +4,8 @@ use crate::dialog::{self, Spec};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 #[cfg(any(windows, test))]
+use sunipdf_core::cancelled as check_cancel;
+#[cfg(any(windows, test))]
 use sunipdf_core::PageSize;
 use sunipdf_core::{Document, EngineError};
 use sunipdf_i18n::{tr, tr_args, Language};
@@ -75,15 +77,6 @@ pub struct PrintReport {
 
 fn failure(message: &str) -> EngineError {
     EngineError::Other(message.into())
-}
-
-#[cfg(any(windows, test))]
-fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 
 #[cfg(any(windows, test))]

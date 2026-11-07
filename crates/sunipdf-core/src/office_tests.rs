@@ -1,4 +1,5 @@
 use super::*;
+use std::sync::atomic::Ordering;
 
 #[test]
 fn profiles_versions_urls_and_local_path_guards_are_explicit() {

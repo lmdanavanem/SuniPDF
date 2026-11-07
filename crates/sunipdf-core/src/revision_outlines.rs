@@ -6,6 +6,7 @@
 
 use crate::annot_rich::{vertex_annotation_components, VertexAnnotKind};
 use crate::annot_write::{self, AnnotStyle};
+use crate::cancelled;
 use crate::geometry::PageGeometry;
 use crate::plan_zones::source_sha256 as digest;
 use crate::revision_overlay::{OverlayAlignment, OverlayTransform};
@@ -17,7 +18,7 @@ use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 
 pub const MAX_REGIONS: usize = 512;
 pub const MAX_SELECTIONS: usize = 64;
@@ -29,13 +30,6 @@ const OUTLINE_MARGIN: f32 = 5.5;
 
 fn invalid(message: &str) -> EngineError {
     EngineError::Other(format!("Revision outlines: {message}"))
-}
-fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 fn hash_valid(value: &str) -> bool {
     value.len() == 64

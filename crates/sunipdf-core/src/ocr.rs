@@ -1,11 +1,12 @@
 //! Offline OCR using bundled Windows or Ubuntu system Tesseract and an invisible PDF text layer.
 
+use crate::cancelled as check_cancel;
 use crate::{Document, EngineError, PageSize, PointRect, RenderedPage};
 use pdfium_render::prelude::*;
 use std::io::{BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
 const MAX_IMAGE_PIXELS: f32 = 16_000_000.0;
@@ -53,14 +54,6 @@ struct Word {
 
 fn failure(message: &str) -> EngineError {
     EngineError::Other(message.into())
-}
-
-fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 
 /// Search the application directory; debug builds also accept an explicit development override.

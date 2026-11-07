@@ -2,6 +2,7 @@
 //!
 //! Remote targets are inert data. Opening one requires a fresh plan-set check and
 //! explicit confirmation. This module never launches a shell or external viewer.
+use crate::cancelled;
 use crate::plan_zones::source_sha256 as hash;
 use crate::{plan_set, Document, Engine, EngineError, LinkTarget, PointRect, RenderedPage};
 use lopdf::{Dictionary, Object};
@@ -10,7 +11,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet},
     io::{Read, Write},
     path::{Component, Path, PathBuf},
-    sync::atomic::{AtomicBool, Ordering},
+    sync::atomic::AtomicBool,
 };
 
 pub const MAX_SCAN_PAGES: usize = 32;
@@ -26,13 +27,6 @@ pub use batch::*;
 
 fn failure(message: impl Into<String>) -> EngineError {
     EngineError::Other(format!("Plan links: {}", message.into()))
-}
-fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 fn valid_hash(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|v| v.is_ascii_hexdigit())

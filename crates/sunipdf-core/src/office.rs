@@ -1,5 +1,7 @@
 //! Installed local LibreOffice only, isolated profiles, guarded inputs and new-copy PDF outputs.
 
+#[cfg(windows)]
+use crate::cancelled as check_cancel;
 use crate::{Engine, EngineError};
 use std::{
     fs,
@@ -10,7 +12,6 @@ use std::{
 use std::{
     io::Read,
     process::{Child, Command, Stdio},
-    sync::atomic::Ordering,
     time::{Duration, Instant},
 };
 
@@ -88,14 +89,6 @@ impl ConversionReport {
 }
 fn error(message: &str) -> EngineError {
     EngineError::Other(message.into())
-}
-#[cfg(windows)]
-fn check_cancel(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 
 fn validate_local_path(path: &Path) -> Result<(), EngineError> {

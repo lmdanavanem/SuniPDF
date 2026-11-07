@@ -1,5 +1,6 @@
 //! Bounded, snapshot-bound issue and quantity reports. Sources are never edited.
 
+use crate::cancelled;
 use crate::plan_zones::source_sha256 as digest;
 use crate::quantity_table::{QuantityOptions, QuantityTable};
 use crate::{Document, EngineError, RenderedPage};
@@ -8,7 +9,7 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 
 pub const MAX_SOURCE_BYTES: usize = 128 * 1024 * 1024;
 pub const MAX_REPORT_BYTES: usize = 32 * 1024 * 1024;
@@ -18,13 +19,6 @@ pub const MAX_GROUPS: usize = 256;
 
 pub(crate) fn invalid(message: &str) -> EngineError {
     EngineError::Other(format!("Issue report: {message}"))
-}
-pub(crate) fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 
 #[derive(Debug, Clone)]

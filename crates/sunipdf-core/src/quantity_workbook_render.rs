@@ -1,7 +1,8 @@
 //! Deliberately formula-free OOXML. Exact decimal cells are retained as text beside numbers.
 
+use crate::cancelled;
 use crate::export_office::{archive::Package, xml_text};
-use crate::quantity_workbook::{cancelled, invalid, QuantityWorkbookModel};
+use crate::quantity_workbook::{invalid, QuantityWorkbookModel};
 use crate::EngineError;
 use serde_json::Value;
 use std::sync::atomic::AtomicBool;

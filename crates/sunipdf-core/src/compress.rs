@@ -1,11 +1,12 @@
 //! Lossy image compression without rebuilding page content, fields or annotations.
 
+use crate::cancelled;
 use crate::{security, EngineError};
 use image::{imageops::FilterType, DynamicImage, ImageDecoder, ImageReader};
 use lopdf::{Object, Stream};
 use std::collections::HashSet;
 use std::io::Cursor;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 
 const MAX_PIXELS: u64 = 32_000_000;
 
@@ -42,14 +43,6 @@ pub struct CompressionReport {
     pub after: usize,
     pub images_changed: usize,
     pub images_skipped: usize,
-}
-
-fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
-    if cancel.load(Ordering::Relaxed) {
-        Err(EngineError::Cancelled)
-    } else {
-        Ok(())
-    }
 }
 
 fn is_image(stream: &Stream) -> bool {
@@ -271,6 +264,7 @@ pub fn compress_images(
 mod tests {
     use super::*;
     use lopdf::{dictionary, Document};
+    use std::sync::atomic::Ordering;
 
     fn image_pdf(mask: bool) -> Vec<u8> {
         let mut pdf = Document::with_version("1.7");

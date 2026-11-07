@@ -101,7 +101,7 @@ pub use edit::{
     FontFamily, ObjectInfo, ObjectKind, ObjectStyle, RectMode, ShapeKind, ShapeStyle, TextStyle,
     ZOrder,
 };
-pub use error::EngineError;
+pub use error::{cancelled, EngineError};
 pub use fonts::SystemFont;
 pub use form_data::ImportPlan;
 pub use forms::{

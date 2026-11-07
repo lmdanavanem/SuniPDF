@@ -1,5 +1,6 @@
 use pdfium_render::prelude::{PdfiumError, PdfiumInternalError};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Erreurs typées du moteur. L'interface les traduit ; le crate n'embarque aucun texte UI.
 #[derive(Debug, thiserror::Error)]
@@ -94,5 +95,14 @@ impl From<PdfiumError> for EngineError {
             PdfiumError::PageIndexOutOfBounds => Self::PageOutOfRange(usize::MAX),
             other => Self::Other(format!("{other:?}")),
         }
+    }
+}
+
+/// `Err(EngineError::Cancelled)` once `cancel` is set.
+pub fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
+    if cancel.load(Ordering::Relaxed) {
+        Err(EngineError::Cancelled)
+    } else {
+        Ok(())
     }
 }
