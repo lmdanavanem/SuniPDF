@@ -237,11 +237,7 @@ fn source_fingerprint(path: &std::path::Path, cancel: &AtomicBool) -> Result<Str
         }
         hash.update(&buffer[..read]);
     }
-    Ok(hash
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect())
+    Ok(sunipdf_core::plan_zones::lower_hex(&hash.finalize()))
 }
 fn unchanged_source(
     path: &std::path::Path,

@@ -1,6 +1,7 @@
 //! Page defaults are independent of the immutable scale in each saved measurement annotation.
 
 use crate::measurement::{Measurement, MeasurementKind, MeasurementUnit};
+use crate::plan_zones::lower_hex;
 use crate::security::{self, lopdf_err};
 use crate::{Document, EngineError, PageGeometry};
 use lopdf::{Dictionary, Object};
@@ -172,11 +173,7 @@ fn decoded_content_guard(
             digest.update(bytes);
         }
     }
-    let hash = digest
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect();
+    let hash = lower_hex(&digest.finalize());
     Ok((hash, contains_names))
 }
 
@@ -383,11 +380,7 @@ pub(crate) fn content_digest(
     let empty = Dictionary::new();
     let dictionary = resources(pdf, page)?.unwrap_or(&empty);
     graph.dictionary(&mut digest, dictionary, 0, None)?;
-    Ok(digest
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect())
+    Ok(lower_hex(&digest.finalize()))
 }
 
 /// Qualifies the initial page rendering as well as drawing programs/resources. Optional-content
@@ -412,11 +405,7 @@ pub(crate) fn qualified_content_digest(
             0,
         )?,
     );
-    Ok(digest
-        .finalize()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect())
+    Ok(lower_hex(&digest.finalize()))
 }
 
 fn record_digest(

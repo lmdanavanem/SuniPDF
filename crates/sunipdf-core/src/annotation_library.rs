@@ -1,10 +1,10 @@
 //! Portable, bounded annotation templates. No PDF objects, actions or external resources are imported.
 
 use crate::annot_rich::{RichAnnotation, RichFreeTextStyle, StampKind, VertexAnnotKind};
+use crate::plan_zones::source_sha256 as digest_hex;
 use crate::{AnnotShape, AnnotStyle, Document, EngineError, FontFamily, PointRect, TextStyle};
 use base64::prelude::*;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::{HashMap, HashSet};
 use std::io::{Cursor, Read};
 
@@ -19,13 +19,6 @@ const FORMAT: &str = "sunipdf-annotation-library";
 
 fn invalid(message: &str) -> EngineError {
     EngineError::Other(format!("invalid annotation library: {message}"))
-}
-
-fn digest_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
 }
 
 fn finite(value: f32, min: f32, max: f32) -> bool {

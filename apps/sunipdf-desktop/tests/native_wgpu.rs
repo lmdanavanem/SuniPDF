@@ -4,10 +4,10 @@
 use eframe::egui_wgpu::{self, wgpu};
 use egui::{pos2, vec2, Color32, Rect};
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
+use sunipdf_core::plan_zones::source_sha256 as sha256;
 use sunipdf_core::{tiles, Engine, PixelRect, TileLimits};
 
 const WIDTH: u32 = 512;
@@ -41,16 +41,6 @@ fn require(condition: bool, message: &str) -> TestResult<()> {
 fn pixel(bytes: &[u8], x: u32, y: u32) -> &[u8] {
     let start = ((y * WIDTH + x) * 4) as usize;
     &bytes[start..start + 4]
-}
-
-fn sha256(bytes: &[u8]) -> String {
-    const HEX: &[u8; 16] = b"0123456789abcdef";
-    let mut encoded = String::with_capacity(64);
-    for byte in Sha256::digest(bytes) {
-        encoded.push(char::from(HEX[usize::from(byte >> 4)]));
-        encoded.push(char::from(HEX[usize::from(byte & 15)]));
-    }
-    encoded
 }
 
 fn smoke(root: &Path, output: &Path) -> TestResult<Value> {

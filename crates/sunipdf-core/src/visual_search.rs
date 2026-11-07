@@ -728,7 +728,7 @@ impl Document<'_> {
         if source.len() > MAX_SOURCE_BYTES {
             return Err(failure("source exceeds 128 MiB"));
         }
-        let source_sha256 = crate::local_review::digest(&source);
+        let source_sha256 = crate::plan_zones::source_sha256(&source);
         let preview =
             self.render_visual_search_content_region(template_page.index, options.scale, region)?;
         let templates = templates(&preview, &options)?;

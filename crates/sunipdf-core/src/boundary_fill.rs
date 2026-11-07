@@ -678,7 +678,7 @@ impl Document<'_> {
             }
             closures.push(ClosureCursor::new(a, b));
         }
-        let source_sha256 = crate::local_review::digest(&source);
+        let source_sha256 = crate::plan_zones::source_sha256(&source);
         Ok(BoundaryFillJob {
             source: Arc::new(source),
             source_sha256,

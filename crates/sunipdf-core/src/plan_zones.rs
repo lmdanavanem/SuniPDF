@@ -11,10 +11,12 @@ use std::collections::{HashMap, HashSet};
 /// Identity of the supplied saved bytes; it is not a password derivation function.
 pub fn source_sha256(bytes: &[u8]) -> String {
     use sha2::{Digest, Sha256};
-    Sha256::digest(bytes)
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
+    lower_hex(&Sha256::digest(bytes))
+}
+
+/// Lowercase hexadecimal text of `bytes` (digests, random identifiers).
+pub fn lower_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 const KEY: &[u8] = b"SuniPDFPlanZones";

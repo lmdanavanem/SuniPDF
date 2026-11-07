@@ -3,11 +3,11 @@
 use crate::annot_rich::{checked_rect, rich_base};
 use crate::annot_write::{ap_stream, load_annot, push_annotation, store_annot, touch};
 use crate::appearance::{fmt_num, Ap};
+use crate::plan_zones::source_sha256 as digest;
 use crate::security::{self, lopdf_err};
 use crate::{Document, EngineError, PointRect};
 use lopdf::{Dictionary, Object};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
@@ -16,13 +16,6 @@ const MAX_TEXT: usize = 4 * 1024 * 1024;
 
 fn bad() -> EngineError {
     EngineError::Other("annotation register: unsupported, malformed or excessive metadata; export was not completed".into())
-}
-
-fn digest(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect()
 }
 
 fn short(text: &str, limit: usize) -> bool {

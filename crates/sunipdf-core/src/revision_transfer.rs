@@ -9,8 +9,8 @@ use crate::annotation_library::{
     LibraryStyle, OriginalCapture,
 };
 use crate::geometry::PageGeometry;
-use crate::local_review::digest;
 use crate::plan_set::PlanSheet;
+use crate::plan_zones::source_sha256 as digest;
 use crate::revision_overlay::OverlayTransform;
 use crate::{Document, Engine, EngineError, RenderedPage};
 use serde::{Deserialize, Serialize};

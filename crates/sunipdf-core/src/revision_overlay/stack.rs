@@ -7,7 +7,8 @@ use super::{
     check_cancel, invalid, luminance, render_source, sample, OverlayAlignment, OverlayTransform,
     Source, DEFAULT_LONG_SIDE, MAX_LONG_SIDE,
 };
-use crate::local_review::{check_permission, digest, read_pdf};
+use crate::local_review::{check_permission, read_pdf};
+use crate::plan_zones::source_sha256 as digest;
 use crate::{Engine, EngineError, RenderedPage};
 use image::ImageEncoder;
 use serde::{Deserialize, Serialize};

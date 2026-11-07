@@ -7,7 +7,7 @@
 use crate::annot_rich::{vertex_annotation_components, VertexAnnotKind};
 use crate::annot_write::{self, AnnotStyle};
 use crate::geometry::PageGeometry;
-use crate::local_review::digest;
+use crate::plan_zones::source_sha256 as digest;
 use crate::revision_overlay::{OverlayAlignment, OverlayTransform};
 use crate::revision_transfer::read_source;
 use crate::{Document, Engine, EngineError, RenderedPage};

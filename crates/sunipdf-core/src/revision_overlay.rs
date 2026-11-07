@@ -7,7 +7,8 @@
 pub mod recipe;
 pub mod stack;
 
-use crate::local_review::{check_permission, digest, read_pdf};
+use crate::local_review::{check_permission, read_pdf};
+use crate::plan_zones::source_sha256 as digest;
 use crate::{Document, Engine, EngineError, RenderedPage};
 use image::ImageEncoder;
 use serde::{Deserialize, Serialize};

@@ -514,7 +514,7 @@ impl TransferBatchOutcome {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::local_review::digest;
+    use crate::plan_zones::source_sha256 as digest;
     use std::sync::atomic::Ordering;
 
     // Private candidates isolate filesystem/queue orchestration from PDF parsing. The

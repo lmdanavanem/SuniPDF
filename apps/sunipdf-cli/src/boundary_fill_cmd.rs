@@ -8,6 +8,7 @@ use sunipdf_core::boundary_fill::{
     BoundaryClosure, BoundaryFillJob, BoundaryFillMeasurementOptions, BoundaryFillOptions,
 };
 use sunipdf_core::measurement::{MeasurementUnit, RectangleScale};
+use sunipdf_core::plan_zones::source_sha256 as hash;
 use sunipdf_core::{Document, Engine, EngineError, PageCalibration};
 use zeroize::Zeroize;
 
@@ -244,10 +245,6 @@ fn read_bounded(path: &Path, maximum: u64) -> Result<Vec<u8>, EngineError> {
         return Err(invalid("input exceeds its size limit"));
     }
     Ok(bytes)
-}
-
-fn hash(bytes: &[u8]) -> String {
-    sunipdf_core::plan_zones::source_sha256(bytes)
 }
 
 fn revalidate(source: &Source, canonical: &Path, expected: &str) -> Result<(), EngineError> {

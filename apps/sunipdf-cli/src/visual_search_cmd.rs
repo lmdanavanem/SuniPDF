@@ -4,6 +4,7 @@ use serde_json::{json, Value};
 use std::collections::BTreeSet;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use sunipdf_core::plan_zones::source_sha256 as hash;
 use sunipdf_core::visual_search::{VisualSearchJob, VisualSearchOptions, MAX_SCAN_PAGES};
 use sunipdf_core::{Document, Engine, EngineError, PointRect, Rotation};
 use zeroize::Zeroize;
@@ -245,10 +246,6 @@ fn read_bounded(path: &Path, maximum: u64) -> Result<Vec<u8>, EngineError> {
         return Err(invalid("input exceeds its size limit"));
     }
     Ok(bytes)
-}
-
-fn hash(bytes: &[u8]) -> String {
-    sunipdf_core::plan_zones::source_sha256(bytes)
 }
 
 fn revalidate(source: &Source, canonical: &Path, expected: &str) -> Result<(), EngineError> {

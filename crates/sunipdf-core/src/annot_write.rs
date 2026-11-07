@@ -229,10 +229,7 @@ fn pdf_date_now() -> String {
 fn new_name() -> Result<String, EngineError> {
     let mut b = [0u8; 8];
     getrandom::fill(&mut b).map_err(|e| EngineError::Other(format!("random: {e}")))?;
-    Ok(format!(
-        "{NAME_PREFIX}{}",
-        b.iter().map(|x| format!("{x:02x}")).collect::<String>()
-    ))
+    Ok(format!("{NAME_PREFIX}{}", crate::plan_zones::lower_hex(&b)))
 }
 
 fn name(s: &str) -> Object {

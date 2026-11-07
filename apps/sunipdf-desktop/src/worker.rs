@@ -42,10 +42,7 @@ pub struct SignatureSource {
 
 impl SignatureSource {
     pub(crate) fn sha256_hex(&self) -> String {
-        self.sha256
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect()
+        sunipdf_core::plan_zones::lower_hex(&self.sha256)
     }
 
     pub(crate) fn matches_sha256(&self, expected: &str) -> bool {
@@ -4648,10 +4645,7 @@ mod tests {
             assert_eq!(receipt.bytes, data.len());
             assert_eq!(
                 receipt.output_sha256,
-                Sha256::digest(&data)
-                    .iter()
-                    .map(|byte| format!("{byte:02x}"))
-                    .collect::<String>()
+                sunipdf_core::plan_zones::source_sha256(&data)
             );
             if extension == "pdf" {
                 assert_eq!(
@@ -4751,13 +4745,7 @@ mod tests {
             Outcome::Preview { token, model, .. } => {
                 assert_eq!(
                     model.provenance.saved_file_sha256.as_deref(),
-                    Some(
-                        Sha256::digest(&bytes)
-                            .iter()
-                            .map(|byte| format!("{byte:02x}"))
-                            .collect::<String>()
-                            .as_str()
-                    )
+                    Some(sunipdf_core::plan_zones::source_sha256(&bytes).as_str())
                 );
                 token
             }

@@ -2,11 +2,11 @@
 
 use crate::annot_write::{load_annot, store_annot, touch, Slot};
 use crate::annotation_register::{editable, AnnotationRegister, RegisterFields, RegisterRow};
+use crate::plan_zones::source_sha256 as digest;
 use crate::security::{self, lopdf_err};
 use crate::{Document, EngineError};
 use lopdf::{Object, ObjectId};
 use serde::{de, Deserialize, Deserializer, Serialize};
-use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
@@ -16,13 +16,6 @@ const MAX_REPORT_BYTES: usize = 16 * 1024 * 1024;
 
 fn invalid(reason: &str) -> EngineError {
     EngineError::Other(format!("annotation field batch: {reason}"))
-}
-
-fn digest(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
 }
 
 /// Keep leaves a field unchanged; Clear removes it; Set retains its literal text.

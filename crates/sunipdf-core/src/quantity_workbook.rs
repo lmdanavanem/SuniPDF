@@ -1,6 +1,7 @@
 //! Local quantity snapshots and reviewed refreshes; spreadsheets never execute formulas.
 
 use crate::issue_report::SavedReportSource;
+use crate::plan_zones::source_sha256 as digest;
 use crate::quantity_table::{
     DecimalValue, FormulaValue, QuantityOptions, QuantityRow, QuantityTable,
 };
@@ -25,9 +26,6 @@ pub(crate) fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
     } else {
         Ok(())
     }
-}
-fn digest(bytes: &[u8]) -> String {
-    crate::plan_zones::source_sha256(bytes)
 }
 fn valid_sha(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())

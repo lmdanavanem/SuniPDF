@@ -67,7 +67,7 @@ pub(super) fn verify_saved_copy(
         total += read;
         hash.update(&buffer[..read]);
     }
-    let actual: String = hash.finalize().iter().map(|b| format!("{b:02x}")).collect();
+    let actual = sunipdf_core::plan_zones::lower_hex(&hash.finalize());
     if total != copy.bytes
         || !actual.eq_ignore_ascii_case(&copy.sha256)
         || std::fs::canonicalize(&copy.output)? != path
@@ -128,10 +128,7 @@ mod tests {
                 inspection: inspection(),
                 created: vec![],
                 excluded_occurrences: vec![],
-                output_sha256: Sha256::digest(contents)
-                    .iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect(),
+                output_sha256: sunipdf_core::plan_zones::source_sha256(contents),
             },
         }
     }

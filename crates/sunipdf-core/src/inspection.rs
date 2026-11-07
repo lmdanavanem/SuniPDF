@@ -2,7 +2,6 @@
 
 use crate::{security, EngineError};
 use lopdf::{Dictionary, Object};
-use sha2::{Digest, Sha256};
 use std::{io::Read, path::Path};
 
 pub const MAX_INPUT_BYTES: usize = 128 * 1024 * 1024;
@@ -151,10 +150,7 @@ pub fn inspect(input: &[u8], password: Option<&str>) -> Result<Inspection, Engin
         ));
     }
     let mut report = Inspection {
-        source_sha256: Sha256::digest(input)
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect(),
+        source_sha256: crate::plan_zones::source_sha256(input),
         source_bytes: input.len(),
         stored_objects: pdf.objects.len(),
         examined_nodes: 0,
@@ -250,10 +246,7 @@ mod tests {
         assert_eq!(input, original);
         assert_eq!(
             report.source_sha256,
-            Sha256::digest(&original)
-                .iter()
-                .map(|byte| format!("{byte:02x}"))
-                .collect::<String>()
+            crate::plan_zones::source_sha256(&original)
         );
         assert_eq!(report.json()["malware_scan"], false);
         assert_eq!(report.json()["signature_integrity_verified"], false);

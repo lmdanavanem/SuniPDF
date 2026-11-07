@@ -1,7 +1,7 @@
 //! Read-only, bounded inspection of explicitly selected local files.
 
+use crate::plan_zones::source_sha256 as digest;
 use crate::{Document, Engine, EngineError, RenderedPage};
-use sha2::{Digest, Sha256};
 use std::{
     io::Read,
     path::{Path, PathBuf},
@@ -34,13 +34,6 @@ pub(crate) fn read_pdf(path: &Path) -> Result<Vec<u8>, EngineError> {
         ));
     }
     Ok(bytes)
-}
-
-pub(crate) fn digest(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
 }
 
 pub(crate) fn check_permission(doc: &Document<'_>) -> Result<(), EngineError> {

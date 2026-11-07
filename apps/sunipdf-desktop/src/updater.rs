@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::{Duration, Instant};
+use sunipdf_core::plan_zones::lower_hex as hex;
 use tempfile::TempDir;
 
 const LATEST_URL: &str = "https://api.github.com/repos/lmdanavanem/SuniPDF/releases/latest";
@@ -623,10 +624,6 @@ fn copy_verified(
         );
     }
     Ok(())
-}
-
-fn hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 #[cfg(test)]

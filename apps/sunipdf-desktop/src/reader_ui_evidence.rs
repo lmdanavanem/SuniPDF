@@ -5,11 +5,11 @@ use crate::worker::{Request, Response};
 use eframe::egui_wgpu::{self, wgpu};
 use egui::{pos2, vec2, Rect};
 use serde_json::{json, Value};
-use sha2::{Digest, Sha256};
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::sync::{mpsc, Arc};
 use std::time::{Duration, Instant};
+use sunipdf_core::plan_zones::source_sha256 as sha256;
 use sunipdf_core::{Command, Document, Engine, TileJob};
 use sunipdf_i18n::{tr, Language};
 
@@ -21,13 +21,6 @@ fn require(condition: bool, message: &str) -> EvidenceResult<()> {
     } else {
         Err(message.into())
     }
-}
-
-fn sha256(bytes: &[u8]) -> String {
-    Sha256::digest(bytes)
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
 }
 
 fn relative_luminance(rgb: [u8; 3]) -> f64 {

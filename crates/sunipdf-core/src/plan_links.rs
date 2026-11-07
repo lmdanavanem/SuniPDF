@@ -2,6 +2,7 @@
 //!
 //! Remote targets are inert data. Opening one requires a fresh plan-set check and
 //! explicit confirmation. This module never launches a shell or external viewer.
+use crate::plan_zones::source_sha256 as hash;
 use crate::{plan_set, Document, Engine, EngineError, LinkTarget, PointRect, RenderedPage};
 use lopdf::{Dictionary, Object};
 use serde::{Deserialize, Serialize};
@@ -32,9 +33,6 @@ fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
     } else {
         Ok(())
     }
-}
-fn hash(bytes: &[u8]) -> String {
-    crate::local_review::digest(bytes)
 }
 fn valid_hash(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|v| v.is_ascii_hexdigit())

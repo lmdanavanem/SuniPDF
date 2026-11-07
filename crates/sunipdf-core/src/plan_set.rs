@@ -139,7 +139,7 @@ fn failure(message: impl Into<String>) -> EngineError {
 fn identifier(prefix: &str) -> Result<String, EngineError> {
     let mut bytes = [0_u8; 16];
     getrandom::fill(&mut bytes).map_err(|error| failure(error.to_string()))?;
-    let value: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+    let value = crate::plan_zones::lower_hex(&bytes);
     Ok(format!("{prefix}-{value}"))
 }
 
@@ -506,7 +506,7 @@ fn source_file(
     let canonical = source.canonicalize()?;
     let path = relative_path(root, &canonical)?;
     let (canonical, bytes) = read_source(root, &path).map_err(Problem::engine)?;
-    let sha256 = crate::local_review::digest(&bytes);
+    let sha256 = crate::plan_zones::source_sha256(&bytes);
     let byte_len = bytes.len() as u64;
     let page_count = inspect_pdf(engine, bytes, &canonical, password)?;
     Ok(PlanFile {
@@ -656,7 +656,7 @@ fn inspect_file(
         }
     };
     report.path = Some(path.clone());
-    let digest = crate::local_review::digest(&bytes);
+    let digest = crate::plan_zones::source_sha256(&bytes);
     let matches = digest.eq_ignore_ascii_case(&file.sha256) && bytes.len() as u64 == file.byte_len;
     report.actual_sha256 = Some(digest);
     if !matches {
@@ -809,7 +809,7 @@ pub fn read_sheet(
             "resolve duplicate file references before navigation",
         ));
     }
-    let sha256 = crate::local_review::digest(&bytes);
+    let sha256 = crate::plan_zones::source_sha256(&bytes);
     if !sha256.eq_ignore_ascii_case(&file.sha256) || bytes.len() as u64 != file.byte_len {
         return Err(failure(
             "source fingerprint changed; explicitly refresh this file",

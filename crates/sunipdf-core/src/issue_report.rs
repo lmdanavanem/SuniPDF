@@ -1,5 +1,6 @@
 //! Bounded, snapshot-bound issue and quantity reports. Sources are never edited.
 
+use crate::plan_zones::source_sha256 as digest;
 use crate::quantity_table::{QuantityOptions, QuantityTable};
 use crate::{Document, EngineError, RenderedPage};
 use serde::Serialize;
@@ -24,9 +25,6 @@ pub(crate) fn cancelled(cancel: &AtomicBool) -> Result<(), EngineError> {
     } else {
         Ok(())
     }
-}
-fn digest(bytes: &[u8]) -> String {
-    crate::plan_zones::source_sha256(bytes)
 }
 
 #[derive(Debug, Clone)]
