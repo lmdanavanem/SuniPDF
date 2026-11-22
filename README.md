@@ -21,6 +21,12 @@
 [![CI](https://github.com/lmdanavanem/SuniPDF/actions/workflows/ci.yml/badge.svg)](https://github.com/lmdanavanem/SuniPDF/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT%20or%20Apache--2.0-blue)](#license-and-acknowledgements)
 
+<p align="center">
+  <a href="https://www.ithub.directory/pdf-document-tools/sunipdf">
+    <img src="assets/badges/ithub-top-ranking-light.png" width="520" alt="SuniPDF — Top Ranking on ITHub">
+  </a>
+</p>
+
 **From everyday documents to technical plans**, SuniPDF brings reading, annotation, page editing, calibrated measurements and quantity review into one desktop application. PDF processing stays local. The interface is available in **English and French**, with English as the default.
 
 Created by **Emanuel de Almeida** ([@lmdanavanem](https://github.com/lmdanavanem)).
