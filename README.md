@@ -23,7 +23,7 @@
 
 <p align="center">
   <a href="https://www.ithub.directory/pdf-document-tools/sunipdf">
-    <img src="assets/badges/ithub-top-ranking-light.png" width="520" alt="SuniPDF — Top Ranking on ITHub">
+    <img src="assets/badges/ithub-top-ranking-light.png" width="312" alt="SuniPDF — Top Ranking on ITHub">
   </a>
 </p>
 
