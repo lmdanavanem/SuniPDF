@@ -25,7 +25,7 @@ lopdf = { version = "0.45", git = "https://github.com/J-F-Liu/lopdf", rev = "6ce
 stringprep = "0.1"
 eframe = { version = "0.37", default-features = false, features = ["accesskit", "default_fonts", "glow", "wgpu", "links"] }
 egui = "0.37"
-rfd = "0.17"
+rfd = "0.18"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
